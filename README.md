@@ -1,6 +1,6 @@
 # ORAS .NET library
 
-> **Warning** This project is currently under active development. The API may and will change incompatibly from one commit to another.
+> **Warning** This project is currently under initial development. APIs may and will be changed incompatibly from one commit to another.
 
 ![ORAS](https://github.com/oras-project/oras-www/raw/main/docs/assets/images/oras.png)
 
