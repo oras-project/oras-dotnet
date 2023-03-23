@@ -35,10 +35,6 @@ namespace OrasDotnet.Models
             return Task.FromResult<Stream>(new MemoryStream(content));
         }
 
-        public void Push(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
 
         public Task PushAsync(Descriptor expected, Stream contentStream, CancellationToken cancellationToken = default)
         {

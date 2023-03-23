@@ -1,5 +1,6 @@
 ﻿using OrasDotnet.Interfaces;
 using OrasDotnet.Models;
+using OrasDotNet.Models.Errors;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,29 +12,41 @@ namespace OrasDotNet.Models
 {
     internal class MemoryTarget : ITarget
     {
-        public Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
+        public MemoryStorage Storage { get; set; } = new MemoryStorage();
+        public MemoryTagResolver TagResolver { get; set; } = new MemoryTagResolver();
+        public MemoryGraph Graph { get; set; } = new MemoryGraph();
+        async public Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return await Storage.ExistsAsync(target, cancellationToken);
         }
 
-        public Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
+        async public Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return await Storage.FetchAsync(target, cancellationToken);
         }
 
-        public Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
+        async public Task PushAsync(Descriptor expected, Stream contentStream, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await Storage.PushAsync(expected, contentStream, cancellationToken);
+            // index predecessors
         }
 
-        public Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
+        async public Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return await ResolveAsync(reference, cancellationToken);
         }
 
-        public Task TagAsync(Descriptor descriptor, CancellationToken cancellationToken = default)
+        async public Task TagAsync(string reference, Descriptor descriptor, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var exists = await Storage.ExistsAsync(descriptor, cancellationToken);
+            }
+            catch (Exception)
+            {
+                throw new Exception($"{descriptor.Digest} : {descriptor.MediaType} : {new NotFoundException().Message}");
+            }
+            await TagResolver.TagAsync(reference, descriptor, cancellationToken);
         }
     }
 }
