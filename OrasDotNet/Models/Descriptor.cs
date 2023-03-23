@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 
-namespace OrasDotNet.Models
+namespace OrasDotnet.Models
 {
     internal class Descriptor
     {
