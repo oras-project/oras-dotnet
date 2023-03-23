@@ -15,10 +15,7 @@ namespace OrasDotnet.Models
     {
         public ConcurrentDictionary<Descriptor, byte[]> Content { get; set; } = new ConcurrentDictionary<Descriptor, byte[]>();
 
-        public bool Exists(Descriptor target, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+
 
         public Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
@@ -26,10 +23,7 @@ namespace OrasDotnet.Models
             return Task.FromResult(contentExist);
         }
 
-        public Stream Fetch(Descriptor target, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+
 
         public Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
@@ -48,7 +42,7 @@ namespace OrasDotnet.Models
 
         public Task PushAsync(Descriptor expected, Stream contentStream, CancellationToken cancellationToken = default)
         {
-         
+
             var contentExist = Content.TryGetValue(expected, out byte[] content);
             if (!contentExist)
             {

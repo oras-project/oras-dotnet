@@ -1,14 +1,15 @@
 ﻿using OrasDotnet.Models;
 using System.Threading;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace OrasDotnet.Interfaces
 {
     internal interface IReadOnlyStorage
     {
-      
-        bool Exists(Descriptor target, CancellationToken cancellationToken = default);
-      
-       Stream Fetch(Descriptor target, CancellationToken cancellationToken = default);
+
+        Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default);
+
+        Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default);
     }
 }

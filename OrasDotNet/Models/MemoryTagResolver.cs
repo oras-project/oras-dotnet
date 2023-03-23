@@ -1,5 +1,6 @@
 ﻿using OrasDotnet.Interfaces;
 using OrasDotnet.Models;
+using OrasDotNet.Models.Errors;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -13,15 +14,22 @@ namespace OrasDotNet.Models
     internal class MemoryTagResolver : ITagResolver
     {
 
-        public ConcurrentDictionary<string, Descriptor> index = new ConcurrentDictionary<string, Descriptor>();
+        public ConcurrentDictionary<string, Descriptor> Index = new ConcurrentDictionary<string, Descriptor>();
         public Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+
+            var contentExist = Index.TryGetValue(reference, out Descriptor content);
+            if (!contentExist)
+            {
+                throw new Exception($"{new AlreadyExistsException().Message}");
+            }
+            return Task.FromResult(content);
         }
 
-        public Task TagAsync(Descriptor descriptor, CancellationToken cancellationToken = default)
+        public Task TagAsync(string reference, Descriptor descriptor, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            Index.TryAdd(reference, descriptor);
+            return Task.CompletedTask;
         }
     }
 }
