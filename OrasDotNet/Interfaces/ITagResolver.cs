@@ -4,8 +4,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using OrasDotnet.Models;
 
-namespace OrasDotNet.Interfaces
+namespace OrasDotnet.Interfaces
 {
     internal interface ITagResolver
     {

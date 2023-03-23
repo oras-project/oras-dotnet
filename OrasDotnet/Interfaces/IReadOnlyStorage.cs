@@ -1,6 +1,7 @@
 ﻿using OrasDotnet.Models;
 using System.Threading;
 using System.IO;
+
 namespace OrasDotnet.Interfaces
 {
     internal interface IReadOnlyStorage
