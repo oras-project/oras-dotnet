@@ -4,7 +4,8 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-    internal class InvalidDigestException
+    internal class InvalidDigestException : Exception
     {
+        public InvalidDigestException() : base("invalid digest") { }
     }
 }

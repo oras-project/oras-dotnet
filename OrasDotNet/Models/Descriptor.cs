@@ -11,20 +11,14 @@ namespace OrasDotNet.Models
 {
     internal class Descriptor
     {
-        /*
-    type Descriptor struct {
-	// MediaType is the media type of the object this schema refers to.
-	MediaType string `json:"mediaType,omitempty"`
-	// Digest is the digest of the targeted content.
-	Digest digest.Digest `json:"digest"`
-	// Size specifies the size in bytes of the blob.
-	Size int64 `json:"size"`
-}
-        */
-        // omit if empty
+        [JsonPropertyName("mediaType")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string MediaType { get; set; }
+
+        [JsonPropertyName("digest")]
         public string Digest { get; set; }
+
+        [JsonPropertyName("size")]
         public long Size { get; set; }
     }
 }

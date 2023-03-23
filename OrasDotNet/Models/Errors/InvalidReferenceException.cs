@@ -4,7 +4,8 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-    internal class InvalidReferenceException
+    internal class InvalidReferenceException : Exception
     {
+        public InvalidReferenceException() : base("invalid reference") {}
     }
 }

@@ -4,7 +4,8 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-    internal class AlreadyExistsException
+    internal class AlreadyExistsException : Exception
     {
+        public AlreadyExistsException() : base("already exists") { }
     }
 }

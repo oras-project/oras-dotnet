@@ -1,4 +1,5 @@
-﻿using OrasDotNet.Models;
+﻿using OrasDotNet.Interfaces;
+using OrasDotNet.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -7,10 +8,8 @@ using System.Threading.Tasks;
 
 namespace OrasDotnet.Interfaces
 {
-    internal interface ITarget : IStorage
+    internal interface ITarget : IStorage, ITagResolver
     {
-        Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default);
-        Task TagAsync(Descriptor descriptor, CancellationToken cancellationToken = default);
-        
+          
     }
 }

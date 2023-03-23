@@ -4,7 +4,8 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-    internal class UnsupportedException
+    internal class UnsupportedException : Exception
     {
+        public UnsupportedException() : base("unsupported") { }
     }
 }
