@@ -8,9 +8,8 @@ using OrasDotnet.Models;
 
 namespace OrasDotnet.Interfaces
 {
-    internal interface ITagResolver
+    public interface ITagResolver : IResolver
     {
-        Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default);
         Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default);
     }
 }

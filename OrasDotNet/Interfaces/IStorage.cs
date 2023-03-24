@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace OrasDotnet.Interfaces
 {
-    internal interface IStorage : IReadOnlyStorage
+    public interface IStorage : IReadOnlyStorage
     {
         Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default);
     }

@@ -6,6 +6,6 @@ namespace OrasDotNet.Models.Errors
 {
     internal class MissingReferenceException : Exception
     {
-        public MissingReferenceException() : base("missing reference") { }
+        public MissingReferenceException() : base("Missing Reference") { }
     }
 }
