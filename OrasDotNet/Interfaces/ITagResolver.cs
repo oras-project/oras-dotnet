@@ -11,6 +11,6 @@ namespace OrasDotnet.Interfaces
     internal interface ITagResolver
     {
         Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default);
-        Task TagAsync(string reference, Descriptor descriptor, CancellationToken cancellationToken = default);
+        Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default);
     }
 }
