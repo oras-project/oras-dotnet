@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace OrasDotnet.Interfaces
 {
-    internal interface IReadOnlyStorage
+    public interface IReadOnlyStorage
     {
 
         Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default);
