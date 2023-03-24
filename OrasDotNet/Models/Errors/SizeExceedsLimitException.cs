@@ -6,6 +6,6 @@ namespace OrasDotNet.Models.Errors
 {
     internal class SizeExceedsLimitException : Exception
     {
-        public SizeExceedsLimitException() : base("size exceeds limit") { }
+        public SizeExceedsLimitException() : base("Size exceeds Limit") { }
     }
 }

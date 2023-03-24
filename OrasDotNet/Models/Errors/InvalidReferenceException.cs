@@ -6,6 +6,6 @@ namespace OrasDotNet.Models.Errors
 {
     internal class InvalidReferenceException : Exception
     {
-        public InvalidReferenceException() : base("invalid reference") { }
+        public InvalidReferenceException() : base("Invalid Reference") { }
     }
 }

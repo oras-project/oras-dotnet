@@ -6,6 +6,6 @@ namespace OrasDotNet.Models.Errors
 {
     internal class NotFoundException : Exception
     {
-        public NotFoundException() : base("not found") { }
+        public NotFoundException() : base("Not Found") { }
     }
 }

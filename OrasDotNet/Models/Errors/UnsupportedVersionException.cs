@@ -6,6 +6,6 @@ namespace OrasDotNet.Models.Errors
 {
     internal class UnsupportedVersionException : Exception
     {
-        public UnsupportedVersionException() : base("unsupported version") { }
+        public UnsupportedVersionException() : base("Unsupported Version") { }
     }
 }
