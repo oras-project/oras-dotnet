@@ -6,6 +6,6 @@ namespace OrasDotNet.Models.Errors
 {
     internal class UnsupportedException : Exception
     {
-        public UnsupportedException() : base("unsupported") { }
+        public UnsupportedException() : base("Unsupported") { }
     }
 }

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace OrasDotnet.Interfaces
 {
-    public interface ITarget : IStorage, ITagResolver
+    public interface IReadOnlyTarget : IReadOnlyStorage, IResolver
     {
     }
 }
