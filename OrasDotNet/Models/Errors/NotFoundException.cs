@@ -4,8 +4,20 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-    internal class NotFoundException : Exception
+    public class NotFoundException : Exception
     {
-        public NotFoundException() : base("Not Found") { }
+        public NotFoundException()
+        {
+        }
+
+        public NotFoundException(string message)
+            : base(message)
+        {
+        }
+
+        public NotFoundException(string message, Exception inner)
+            : base(message, inner)
+        {
+        }
     }
 }
