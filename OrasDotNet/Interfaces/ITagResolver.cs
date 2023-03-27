@@ -9,10 +9,16 @@ using OrasDotnet.Models;
 namespace OrasDotnet.Interfaces
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
     internal interface ITagResolver
     {
         Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default);
         Task TagAsync(string reference, Descriptor descriptor, CancellationToken cancellationToken = default);
+=======
+    public interface ITagResolver : IResolver
+    {
+        Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default);
+>>>>>>> interface
 =======
     public interface ITagResolver : IResolver
     {

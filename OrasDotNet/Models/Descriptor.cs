@@ -42,7 +42,6 @@ namespace OrasDotnet.Models
         public string ArtifactType { get; set; }
     }
 
-
     public class Platform
     {
         [JsonPropertyName("architecture")]

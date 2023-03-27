@@ -6,7 +6,11 @@ using System.Threading.Tasks;
 namespace OrasDotnet.Interfaces
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
     internal interface IReadOnlyStorage
+=======
+    public interface IReadOnlyStorage
+>>>>>>> interface
 =======
     public interface IReadOnlyStorage
 >>>>>>> interface
