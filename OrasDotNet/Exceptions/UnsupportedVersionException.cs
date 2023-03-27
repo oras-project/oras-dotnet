@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace OrasDotNet.Models.Errors
+namespace OrasDotNet.Exceptions
 {
     public class UnsupportedVersionException : Exception
     {
