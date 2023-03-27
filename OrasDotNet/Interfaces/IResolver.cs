@@ -10,6 +10,5 @@ namespace OrasDotnet.Interfaces
     public interface IResolver
     {
         Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default);
-
     }
 }

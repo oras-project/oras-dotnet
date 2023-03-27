@@ -23,11 +23,11 @@ namespace OrasDotnet.Models
 
         [JsonPropertyName("urls")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public List<string> URLs { get; set; }
+        public IList<string> URLs { get; set; }
 
         [JsonPropertyName("annotations")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public Dictionary<string, string> Annotations { get; set; }
+        public IDictionary<string, string> Annotations { get; set; }
 
         [JsonPropertyName("data")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -56,7 +56,7 @@ namespace OrasDotnet.Models
 
         [JsonPropertyName("os.features")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public List<string> OSFeatures { get; set; }
+        public IList<string> OSFeatures { get; set; }
 
         [JsonPropertyName("variant")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
