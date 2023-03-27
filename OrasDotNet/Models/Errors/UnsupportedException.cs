@@ -4,11 +4,6 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-<<<<<<< HEAD
-    internal class UnsupportedException : Exception
-    {
-        public UnsupportedException() : base("unsupported") { }
-=======
     public class UnsupportedException : Exception
     {
         public UnsupportedException()
@@ -24,6 +19,5 @@ namespace OrasDotNet.Models.Errors
             : base(message, inner)
         {
         }
->>>>>>> interface
     }
 }

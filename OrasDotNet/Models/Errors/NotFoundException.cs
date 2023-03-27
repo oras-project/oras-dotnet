@@ -4,11 +4,6 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-<<<<<<< HEAD
-    internal class NotFoundException : Exception
-    {
-        public NotFoundException() : base("not found") { }
-=======
     public class NotFoundException : Exception
     {
         public NotFoundException()
@@ -24,6 +19,5 @@ namespace OrasDotNet.Models.Errors
             : base(message, inner)
         {
         }
->>>>>>> interface
     }
 }

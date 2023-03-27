@@ -4,11 +4,6 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-<<<<<<< HEAD
-    internal class InvalidDigestException : Exception
-    {
-        public InvalidDigestException() : base("invalid digest") { }
-=======
     public class InvalidDigestException : Exception
     {
         public InvalidDigestException()
@@ -24,6 +19,5 @@ namespace OrasDotNet.Models.Errors
             : base(message, inner)
         {
         }
->>>>>>> interface
     }
 }
