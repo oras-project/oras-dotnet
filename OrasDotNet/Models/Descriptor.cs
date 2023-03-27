@@ -9,7 +9,11 @@ using System.Threading.Tasks;
 
 namespace OrasDotnet.Models
 {
+<<<<<<< HEAD
     internal class Descriptor
+=======
+    public class Descriptor
+>>>>>>> interface
     {
         [JsonPropertyName("mediaType")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -42,7 +46,11 @@ namespace OrasDotnet.Models
         public string ArtifactType { get; set; }
     }
 
+<<<<<<< HEAD
     internal class Platform
+=======
+    public class Platform
+>>>>>>> interface
     {
         [JsonPropertyName("architecture")]
         public string Architecture { get; set; }
