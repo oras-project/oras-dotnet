@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace OrasDotNet.Models.Errors
+namespace OrasDotNet.Exceptions
 {
 <<<<<<< HEAD
     internal class UnsupportedVersionException : Exception
