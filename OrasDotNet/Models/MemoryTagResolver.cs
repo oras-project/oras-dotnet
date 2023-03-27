@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace OrasDotNet.Models
 {
-    internal class MemoryTagResolver : ITagResolver
+    public class MemoryTagResolver : ITagResolver
     {
 
         public ConcurrentDictionary<string, Descriptor> Index = new ConcurrentDictionary<string, Descriptor>();
@@ -26,7 +26,7 @@ namespace OrasDotNet.Models
             return Task.FromResult(content);
         }
 
-        public Task TagAsync(string reference, Descriptor descriptor, CancellationToken cancellationToken = default)
+        public Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
         {
             Index.TryAdd(reference, descriptor);
             return Task.CompletedTask;

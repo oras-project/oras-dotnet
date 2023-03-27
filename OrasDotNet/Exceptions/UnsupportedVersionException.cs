@@ -4,14 +4,6 @@ using System.Text;
 
 namespace OrasDotNet.Exceptions
 {
-<<<<<<< HEAD
-<<<<<<< HEAD
-    internal class UnsupportedVersionException : Exception
-    {
-        public UnsupportedVersionException() : base("unsupported version") { }
-=======
-=======
->>>>>>> interface
     public class UnsupportedVersionException : Exception
     {
         public UnsupportedVersionException()
@@ -27,9 +19,5 @@ namespace OrasDotNet.Exceptions
             : base(message, inner)
         {
         }
-<<<<<<< HEAD
->>>>>>> interface
-=======
->>>>>>> interface
     }
 }

@@ -19,9 +19,5 @@ namespace OrasDotNet.Exceptions
             : base(message, inner)
         {
         }
-<<<<<<< HEAD
->>>>>>> interface
-=======
->>>>>>> interface
     }
 }
