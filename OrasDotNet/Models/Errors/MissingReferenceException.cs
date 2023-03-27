@@ -4,8 +4,20 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-    internal class MissingReferenceException : Exception
+    public class MissingReferenceException : Exception
     {
-        public MissingReferenceException() : base("Missing Reference") { }
+        public MissingReferenceException()
+        {
+        }
+
+        public MissingReferenceException(string message)
+            : base(message)
+        {
+        }
+
+        public MissingReferenceException(string message, Exception inner)
+            : base(message, inner)
+        {
+        }
     }
 }

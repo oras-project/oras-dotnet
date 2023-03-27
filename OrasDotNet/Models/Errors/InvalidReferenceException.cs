@@ -4,8 +4,20 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-    internal class InvalidReferenceException : Exception
+    public class InvalidReferenceException : Exception
     {
-        public InvalidReferenceException() : base("Invalid Reference") { }
+        public InvalidReferenceException()
+        {
+        }
+
+        public InvalidReferenceException(string message)
+            : base(message)
+        {
+        }
+
+        public InvalidReferenceException(string message, Exception inner)
+            : base(message, inner)
+        {
+        }
     }
 }

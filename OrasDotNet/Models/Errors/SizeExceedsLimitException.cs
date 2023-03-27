@@ -4,8 +4,20 @@ using System.Text;
 
 namespace OrasDotNet.Models.Errors
 {
-    internal class SizeExceedsLimitException : Exception
+    public class SizeExceedsLimitException : Exception
     {
-        public SizeExceedsLimitException() : base("Size exceeds Limit") { }
+        public SizeExceedsLimitException()
+        {
+        }
+
+        public SizeExceedsLimitException(string message)
+            : base(message)
+        {
+        }
+
+        public SizeExceedsLimitException(string message, Exception inner)
+            : base(message, inner)
+        {
+        }
     }
 }
