@@ -1,6 +1,6 @@
 ﻿using OrasDotnet.Interfaces;
 using OrasDotnet.Models;
-using OrasDotNet.Models.Errors;
+using OrasDotNet.Exceptions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -21,7 +21,7 @@ namespace OrasDotNet.Models
             var contentExist = Index.TryGetValue(reference, out Descriptor content);
             if (!contentExist)
             {
-                throw new Exception($"{new AlreadyExistsException().Message}");
+                throw new AlreadyExistsException();
             }
             return Task.FromResult(content);
         }

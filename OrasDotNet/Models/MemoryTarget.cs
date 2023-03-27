@@ -1,5 +1,6 @@
 ﻿using OrasDotnet.Interfaces;
 using OrasDotnet.Models;
+using OrasDotNet.Exceptions;
 using OrasDotNet.Models.Errors;
 using System;
 using System.Collections.Generic;
@@ -44,7 +45,7 @@ namespace OrasDotNet.Models
             }
             catch (Exception)
             {
-                throw new Exception($"{descriptor.Digest} : {descriptor.MediaType} : {new NotFoundException().Message}");
+                throw new NotFoundException($"{descriptor.Digest} : {descriptor.MediaType}");
             }
             await TagResolver.TagAsync(reference, descriptor, cancellationToken);
         }

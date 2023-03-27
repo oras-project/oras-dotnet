@@ -1,6 +1,6 @@
 ﻿using OrasDotnet.Interfaces;
 using OrasDotnet.Models;
-using OrasDotNet.Models.Errors;
+using OrasDotNet.Exceptions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -30,7 +30,7 @@ namespace OrasDotnet.Models
             var contentExist = Content.TryGetValue(target, out byte[] content);
             if (!contentExist)
             {
-                throw new Exception($"{target.Digest} : {target.MediaType} : {new NotFoundException().Message}");
+                throw new NotFoundException($"{target.Digest} : {target.MediaType}");
             }
             return Task.FromResult<Stream>(new MemoryStream(content));
         }
