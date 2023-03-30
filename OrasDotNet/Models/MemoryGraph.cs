@@ -1,5 +1,5 @@
-﻿using OrasDotnet.Interfaces;
-using OrasDotnet.Models;
+﻿using Oras.Interfaces;
+using Oras.Models;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OrasDotNet.Models
+namespace Oras.Models
 {
     public class MemoryGraph
     {

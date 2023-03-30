@@ -1,5 +1,5 @@
-﻿using OrasDotnet.Constants;
-using OrasDotnet.Interfaces;
+﻿using Oras.Constants;
+using Oras.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 
-namespace OrasDotnet.Models
+namespace Oras.Models
 {
     public class Descriptor
     {

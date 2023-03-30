@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace OrasDotNet.Exceptions
+namespace Oras.Exceptions
 {
    public class AlreadyExistsException : Exception
     {

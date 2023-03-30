@@ -1,6 +1,6 @@
-﻿using OrasDotnet.Interfaces;
-using OrasDotnet.Models;
-using OrasDotNet.Exceptions;
+﻿using Oras.Interfaces;
+using Oras.Models;
+using Oras.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OrasDotNet.Models
+namespace Oras.Models
 {
     public class MemoryTarget : ITarget
     {

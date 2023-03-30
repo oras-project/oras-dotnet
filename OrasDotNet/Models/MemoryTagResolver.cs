@@ -1,6 +1,6 @@
-﻿using OrasDotnet.Interfaces;
-using OrasDotnet.Models;
-using OrasDotNet.Exceptions;
+﻿using Oras.Interfaces;
+using Oras.Models;
+using Oras.Exceptions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OrasDotNet.Models
+namespace Oras.Models
 {
     public class MemoryTagResolver : ITagResolver
     {

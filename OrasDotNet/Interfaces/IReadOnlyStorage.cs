@@ -1,9 +1,9 @@
-﻿using OrasDotnet.Models;
+﻿using Oras.Models;
 using System.Threading;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace OrasDotnet.Interfaces
+namespace Oras.Interfaces
 {
     public interface IReadOnlyStorage : IFetcher
     {
