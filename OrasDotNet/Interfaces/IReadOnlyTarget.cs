@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace OrasDotnet.Interfaces
+namespace Oras.Interfaces
 {
     public interface IReadOnlyTarget : IReadOnlyStorage, IResolver
     {

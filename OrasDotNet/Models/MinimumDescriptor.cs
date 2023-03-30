@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 
-namespace OrasDotnet.Models
+namespace Oras.Models
 {
     internal class MinimumDescriptor
     {
