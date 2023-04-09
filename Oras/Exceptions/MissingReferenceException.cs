@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Oras.Exceptions
 {
+    /// <summary>
+    /// MissingReferenceException is thrown when a reference is missing.
+    /// </summary>
     public class MissingReferenceException : Exception
     {
         public MissingReferenceException()

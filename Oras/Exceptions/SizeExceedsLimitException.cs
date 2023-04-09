@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Oras.Exceptions
 {
+    /// <summary>
+    /// SizeExceedsLimitException is thrown when a size exceeds the limit.
+    /// </summary>
     public class SizeExceedsLimitException : Exception
     {
         public SizeExceedsLimitException()
