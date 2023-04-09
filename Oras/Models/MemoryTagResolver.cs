@@ -13,12 +13,12 @@ namespace Oras.Models
 {
     public class MemoryTagResolver : ITagResolver
     {
-
-        public ConcurrentDictionary<string, Descriptor> Index = new ConcurrentDictionary<string, Descriptor>();
+        
+        private ConcurrentDictionary<string, Descriptor> index = new ConcurrentDictionary<string, Descriptor>();
         public Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         {
 
-            var contentExist = Index.TryGetValue(reference, out Descriptor content);
+            var contentExist = index.TryGetValue(reference, out Descriptor content);
             if (!contentExist)
             {
                 throw new AlreadyExistsException();
@@ -28,7 +28,7 @@ namespace Oras.Models
 
         public Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
         {
-            Index.TryAdd(reference, descriptor);
+            index.TryAdd(reference, descriptor);
             return Task.CompletedTask;
         }
     }
