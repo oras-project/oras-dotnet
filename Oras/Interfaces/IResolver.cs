@@ -13,7 +13,7 @@ namespace Oras.Interfaces
     public interface IResolver
     {
         /// <summary>
-        /// ResolveAsync resolves the tag to a descriptor.
+        /// ResolveAsync resolves the reference to a descriptor.
         /// </summary>
         /// <param name="reference"></param>
         /// <param name="cancellationToken"></param>
