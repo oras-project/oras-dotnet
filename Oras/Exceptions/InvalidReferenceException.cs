@@ -5,7 +5,7 @@ using System.Text;
 namespace Oras.Exceptions
 {
     /// <summary>
-    /// InvalidDigestException is thrown when a digest is invalid.
+    /// InvalidReferenceException is thrown when the reference is invlid
     /// </summary>
     public class InvalidReferenceException : Exception
     {
