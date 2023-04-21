@@ -1,15 +1,31 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
+<<<<<<< HEAD
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oras", "Oras.csproj", "{57EBB8BE-BBDC-4AB7-92EB-4AA9DD374738}"
+=======
 VisualStudioVersion = 17.6.33417.168
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Oras", "Oras.csproj", "{EB08041E-9A30-48AB-BDC4-D77362B484C7}"
+>>>>>>> main
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
+<<<<<<< HEAD
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{57EBB8BE-BBDC-4AB7-92EB-4AA9DD374738}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57EBB8BE-BBDC-4AB7-92EB-4AA9DD374738}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57EBB8BE-BBDC-4AB7-92EB-4AA9DD374738}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57EBB8BE-BBDC-4AB7-92EB-4AA9DD374738}.Release|Any CPU.Build.0 = Release|Any CPU
+=======
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{EB08041E-9A30-48AB-BDC4-D77362B484C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EB08041E-9A30-48AB-BDC4-D77362B484C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
@@ -21,5 +37,6 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4AA37F94-00D2-44FE-BE1E-203C26B7936B}
+>>>>>>> main
 	EndGlobalSection
 EndGlobal
