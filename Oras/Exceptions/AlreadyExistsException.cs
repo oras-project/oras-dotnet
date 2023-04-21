@@ -4,7 +4,10 @@ using System.Text;
 
 namespace Oras.Exceptions
 {
-   public class AlreadyExistsException : Exception
+    /// <summary>
+    /// AlreadyExistsException is thrown when a resource already exists.
+    /// </summary>
+    public class AlreadyExistsException : Exception
     {
         public AlreadyExistsException()
         {

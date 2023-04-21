@@ -6,6 +6,9 @@ namespace Oras.Exceptions
 {
     public class UnsupportedVersionException : Exception
     {
+        /// <summary>
+        /// UnsupportedVersionException is thrown when a version is not supported
+        /// </summary>
         public UnsupportedVersionException()
         {
         }

@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Oras.Exceptions
 {
+    /// <summary>
+    /// InvalidReferenceException is thrown when the reference is invlid
+    /// </summary>
     public class InvalidReferenceException : Exception
     {
         public InvalidReferenceException()

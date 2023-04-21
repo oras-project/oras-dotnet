@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Oras.Exceptions
 {
+    /// <summary>
+    /// UnsupportedException is thrown when a feature is not supported.
+    /// </summary>
     public class UnsupportedException : Exception
     {
         public UnsupportedException()

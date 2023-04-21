@@ -54,7 +54,7 @@ namespace Oras.Models
                 Digest = descriptor.Digest,
                 Size = descriptor.Size
             };
-        }
+    }
 
         async public Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
@@ -134,4 +134,5 @@ namespace Oras.Models
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Variant { get; set; }
     }
+
 }
