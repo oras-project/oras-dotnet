@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Oras.Constants
 {
-    internal class DockerMediaTypes
+    public class DockerMediaTypes
     {
         // Docker media types
        public const string Config = "application/vnd.docker.container.image.v1+json";

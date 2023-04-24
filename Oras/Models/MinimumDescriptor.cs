@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Oras.Models
 {
-    public class MinimumDescriptor
+    internal class MinimumDescriptor
     {
         [JsonPropertyName("mediaType")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]

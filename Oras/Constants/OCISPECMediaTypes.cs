@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Oras.Constants
 {
-    internal class OCISPECMediaTypes
+    public class OCISPECMediaTypes
     {
         // MediaTypeDescriptor specifies the media type for a content descriptor.
         public const string Descriptor = "application/vnd.oci.descriptor.v1+json";

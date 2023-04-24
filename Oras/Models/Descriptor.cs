@@ -1,4 +1,5 @@
 ﻿using Oras.Constants;
+using Oras.Content;
 using Oras.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -46,7 +47,7 @@ namespace Oras.Models
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string ArtifactType { get; set; }
 
-        public static MinimumDescriptor FromOCI(Descriptor descriptor)
+        internal static MinimumDescriptor FromOCI(Descriptor descriptor)
         {
             return new MinimumDescriptor
             {
@@ -54,11 +55,11 @@ namespace Oras.Models
                 Digest = descriptor.Digest,
                 Size = descriptor.Size
             };
-    }
+        }
 
         async public Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
-            var content = await FetchAllAsync(fetcher, node, cancellationToken);
+            var content = await Storage.FetchAllAsync(fetcher, node, cancellationToken);
             switch (node.MediaType)
             {
                 case DockerMediaTypes.Manifest:
@@ -102,15 +103,6 @@ namespace Oras.Models
 
             }
             return default;
-        }
-
-        async public Task<Byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
-        {
-            var t = await fetcher.FetchAsync(desc, cancellationToken);
-            var tempByte = new byte[t.Length];
-            // ought to implement a readall function to handle verification of the stream
-            t.Read(tempByte, 0, (int)t.Length);
-            return tempByte;
         }
     }
 

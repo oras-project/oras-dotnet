@@ -9,11 +9,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Oras.Models
+namespace Oras.Memory
 {
-    public class MemoryTagResolver : ITagResolver
+    internal class MemoryTagResolver : ITagResolver
     {
-        
+
         private ConcurrentDictionary<string, Descriptor> index = new ConcurrentDictionary<string, Descriptor>();
         public Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         {
