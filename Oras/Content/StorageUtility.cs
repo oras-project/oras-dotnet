@@ -1,20 +1,19 @@
-﻿using Oras.Interfaces;
+﻿using Oras.Constants;
+using Oras.Interfaces;
 using Oras.Models;
 using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading;
-using Oras.Constants;
-using System.Text.Json;
-using Index = Oras.Models.Index;
 using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Index = Oras.Models.Index;
 
 namespace Oras.Content
 {
     public class StorageUtility
     {
-        async static Task<Byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
+        static async Task<Byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
         {
             var t = await fetcher.FetchAsync(desc, cancellationToken);
             var tempByte = new byte[t.Length];
@@ -22,7 +21,7 @@ namespace Oras.Content
             t.Read(tempByte, 0, (int)t.Length);
             return tempByte;
         }
-        async public static Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
+        public static async Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
             var content = await StorageUtility.FetchAllAsync(fetcher, node, cancellationToken);
             switch (node.MediaType)
@@ -58,6 +57,33 @@ namespace Oras.Content
             return default;
         }
 
+        // Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
+        // in the source Target to the destination Target.
+        // The destination reference will be the same as the source reference if the
+        // destination reference is left blank.
+        // Returns the descriptor of the root node on successful copy.
+        public async Task<Descriptor> Copy(ITarget src, string srcRef, ITarget dst, string dstRef, CancellationToken cancellationToken)
+        {
+            if (src is null)
+            {
+                throw new Exception("nil source target");
+            }
+            if (dst is null)
+            {
+                throw new Exception("nil destination target");
+            }
+            if (dstRef == string.Empty)
+            {
+                dstRef = srcRef;
+            }
+            var root = await src.ResolveAsync(srcRef, cancellationToken);
+            await CopyGraph(src, dst, root, cancellationToken);
+            return default(Descriptor);
+        }
 
+        private Task CopyGraph(ITarget src, ITarget dst, Descriptor root, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

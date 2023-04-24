@@ -1,12 +1,10 @@
-﻿using Oras.Interfaces;
-using Oras.Exceptions;
+﻿using Oras.Exceptions;
+using Oras.Interfaces;
+using Oras.Models;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Oras.Models;
 
 namespace Oras.Memory
 {
