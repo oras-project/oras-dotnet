@@ -14,21 +14,21 @@ namespace Oras.Memory
     internal class MemoryTagResolver : ITagResolver
     {
 
-        private ConcurrentDictionary<string, Descriptor> index = new ConcurrentDictionary<string, Descriptor>();
+        private ConcurrentDictionary<string, Descriptor> _index = new ConcurrentDictionary<string, Descriptor>();
         public Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         {
 
-            var contentExist = index.TryGetValue(reference, out Descriptor content);
+            var contentExist = _index.TryGetValue(reference, out Descriptor content);
             if (!contentExist)
             {
-                throw new AlreadyExistsException();
+                throw new NotFoundException();
             }
             return Task.FromResult(content);
         }
 
         public Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
         {
-            index.TryAdd(reference, descriptor);
+            _index.TryAdd(reference, descriptor);
             return Task.CompletedTask;
         }
     }

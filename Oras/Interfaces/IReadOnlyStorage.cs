@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 namespace Oras.Interfaces
 {
     /// <summary>
-    /// IReadOnlyStorage represents a read-only Storage.
+    /// IReadOnlyStorage represents a read-only StorageUtility.
     /// </summary>
     public interface IReadOnlyStorage : IFetcher
     {
         /// <summary>
-        /// ExistsAsync returns true if the described content exists.
+        /// ExistsAsync returns true if the described _content exists.
         /// </summary>
         /// <param name="target"></param>
         /// <param name="cancellationToken"></param>
