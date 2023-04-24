@@ -1,16 +1,5 @@
-﻿using Oras.Constants;
-using Oras.Content;
-using Oras.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Net.Sockets;
-using System.Text;
-using System.Text.Json;
+﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using System.Threading;
-using System.Threading.Tasks;
 
 
 namespace Oras.Models
@@ -57,7 +46,7 @@ namespace Oras.Models
             };
         }
 
-           }
+    }
 
     public class Platform
     {
