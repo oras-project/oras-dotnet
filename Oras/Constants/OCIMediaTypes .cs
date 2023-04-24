@@ -4,9 +4,9 @@ using System.Text;
 
 namespace Oras.Constants
 {
-    public class OCISPECMediaTypes
+    public class OCIMediaTypes
     {
-        // MediaTypeDescriptor specifies the media type for a content descriptor.
+        // MediaTypeDescriptor specifies the media type for a _content descriptor.
         public const string Descriptor = "application/vnd.oci.descriptor.v1+json";
 
         // MediaTypeLayoutHeader specifies the media type for the oci-layout.
@@ -15,8 +15,8 @@ namespace Oras.Constants
         // MediaTypeImageManifest specifies the media type for an image manifest.
         public const string ImageManifest = "application/vnd.oci.image.manifest.v1+json";
 
-        // MediaTypeImageIndex specifies the media type for an image index.
-        public const string ImageIndex = "application/vnd.oci.image.index.v1+json";
+        // MediaTypeImageIndex specifies the media type for an image _index.
+        public const string ImageIndex = "application/vnd.oci.image._index.v1+json";
 
         // MediaTypeImageLayer is the media type used for layers referenced by the manifest.
         public const string ImageLayer = "application/vnd.oci.image.layer.v1.tar";
@@ -46,7 +46,7 @@ namespace Oras.Constants
         // MediaTypeImageConfig specifies the media type for the image configuration.
         public const string ImageConfig = "application/vnd.oci.image.config.v1+json";
 
-        // MediaTypeArtifactManifest specifies the media type for a content descriptor.
+        // MediaTypeArtifactManifest specifies the media type for a _content descriptor.
         public const string ArtifactManifest = "application/vnd.oci.artifact.manifest.v1+json";
     }
 }

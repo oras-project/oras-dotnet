@@ -11,7 +11,7 @@ namespace Oras.Interfaces
     public interface IFetcher
     {
         /// <summary>
-        /// FetchAsync fetches the content identified by the descriptor.
+        /// FetchAsync fetches the _content identified by the descriptor.
         /// </summary>
         /// <param name="target"></param>
         /// <param name="cancellationToken"></param>

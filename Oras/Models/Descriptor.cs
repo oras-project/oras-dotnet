@@ -57,54 +57,7 @@ namespace Oras.Models
             };
         }
 
-        async public Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
-        {
-            var content = await Storage.FetchAllAsync(fetcher, node, cancellationToken);
-            switch (node.MediaType)
-            {
-                case DockerMediaTypes.Manifest:
-                    {
-                        // OCI manifest schema can be used to marshal docker manifest
-                        var dockerManifest = JsonSerializer.Deserialize<Manifest>(content);
-                        var descriptors = new List<Descriptor> { dockerManifest.Config }.Concat(dockerManifest.Layers).ToList();
-                        return descriptors;
-                    }
-                case OCISPECMediaTypes.ImageManifest:
-                    {
-                        var manifest = JsonSerializer.Deserialize<Manifest>(content);
-                        var descriptors = new List<Descriptor>();
-                        if (manifest.Subject != null)
-                        {
-                            descriptors.Add(manifest.Subject);
-                        }
-                        descriptors.Add(manifest.Config);
-                        descriptors.AddRange(manifest.Layers);
-                        return descriptors;
-                    }
-                case DockerMediaTypes.ManifestList:
-                case OCISPECMediaTypes.ImageIndex:
-                    {
-                        // docker manifest list and oci index are equivalent for successors.
-                        var index = JsonSerializer.Deserialize<Index>(content);
-                        return index.Manifests;
-                    }
-
-                case OCISPECMediaTypes.ArtifactManifest:
-                    {
-                        var artifact = JsonSerializer.Deserialize<Artifact>(content);
-                        var nodes = new List<Descriptor>();
-                        if (artifact.Subject != null)
-                        {
-                            nodes.Add(artifact.Subject);
-                        }
-                        nodes.AddRange(artifact.Blobs);
-                        return nodes;
-                    }
-
-            }
-            return default;
-        }
-    }
+           }
 
     public class Platform
     {

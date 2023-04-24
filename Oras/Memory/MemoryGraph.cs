@@ -1,4 +1,5 @@
-﻿using Oras.Interfaces;
+﻿using Oras.Content;
+using Oras.Interfaces;
 using Oras.Models;
 using System;
 using System.Collections;
@@ -16,13 +17,13 @@ namespace Oras.Memory
 
         async public Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
-            IList<Descriptor> successors = await node.SuccessorsAsync(fetcher, node, cancellationToken);
+            IList<Descriptor> successors = await StorageUtility.SuccessorsAsync(fetcher, node, cancellationToken);
             Index(node, successors, cancellationToken);
         }
 
-        // index indexes predecessors for each direct successor of the given node.
+        // _index indexes predecessors for each direct successor of the given node.
         // There is no data consistency issue as long as deletion is not implemented
-        // for the underlying storage.
+        // for the underlying _storage.
         private void Index(Descriptor node, IList<Descriptor> successors, CancellationToken cancellationToken)
         {
             if (successors.Count == 0)
