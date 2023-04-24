@@ -9,9 +9,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Oras.Models
+namespace Oras.Memory
 {
-    public class MemoryStorage : IStorage
+    internal class MemoryStorage : IStorage
     {
         private ConcurrentDictionary<MinimumDescriptor, byte[]> content { get; set; } = new ConcurrentDictionary<MinimumDescriptor, byte[]>();
 
@@ -37,7 +37,7 @@ namespace Oras.Models
         public Task PushAsync(Descriptor expected, Stream contentStream, CancellationToken cancellationToken = default)
         {
             var key = Descriptor.FromOCI(expected);
-            var contentExist = this.content.TryGetValue(key, out byte[] _);
+            var contentExist = content.TryGetValue(key, out byte[] _);
             if (!contentExist)
             {
                 throw new Exception($"{expected.Digest} : {expected.MediaType} : {new AlreadyExistsException().Message}");
@@ -46,7 +46,7 @@ namespace Oras.Models
             using (var memoryStream = new MemoryStream())
             {
                 contentStream.CopyTo(memoryStream);
-              var exists = this.content.TryAdd(key, memoryStream.ToArray());
+                var exists = content.TryAdd(key, memoryStream.ToArray());
                 if (!exists) throw new AlreadyExistsException($"{key.Digest} : {key.MediaType}");
             }
             return Task.CompletedTask;
