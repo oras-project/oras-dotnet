@@ -3,6 +3,7 @@ using Oras.Interfaces;
 using Oras.Models;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -62,7 +63,7 @@ namespace Oras.Content
         // The destination reference will be the same as the source reference if the
         // destination reference is left blank.
         // Returns the descriptor of the root node on successful copy.
-        public async Task<Descriptor> Copy(ITarget src, string srcRef, ITarget dst, string dstRef, CancellationToken cancellationToken)
+        public async Task<Descriptor> CopyAsync(ITarget src, string srcRef, ITarget dst, string dstRef, CancellationToken cancellationToken)
         {
             if (src is null)
             {
@@ -77,13 +78,35 @@ namespace Oras.Content
                 dstRef = srcRef;
             }
             var root = await src.ResolveAsync(srcRef, cancellationToken);
-            await CopyGraph(src, dst, root, cancellationToken);
-            return default(Descriptor);
+            await CopyGraphAsync(src, dst, root, cancellationToken);
+            await dst.TagAsync(root, dstRef, cancellationToken);
+            return root;
         }
 
-        private Task CopyGraph(ITarget src, ITarget dst, Descriptor root, CancellationToken cancellationToken)
+        private async Task CopyGraphAsync(ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            // check if node exists in target
+            if (await dst.ExistsAsync(node, cancellationToken))
+            {
+                // retrieve child nodes
+                var childNodes = await StorageUtility.SuccessorsAsync(src, node, cancellationToken);
+                // obtain data stream
+                var dataStream = new MemoryStream(await StorageUtility.FetchAllAsync(src, node, cancellationToken));
+                // check if the node has children
+                if (childNodes.Count > 0)
+                {
+                    foreach (var childNode in childNodes)
+                    {
+                        await CopyGraphAsync(src, dst, childNode, cancellationToken);
+                    }
+                    await dst.PushAsync(node, dataStream, cancellationToken);
+                }
+                else
+                {
+                    await dst.PushAsync(node, dataStream, cancellationToken);
+                }
+
+            }
         }
     }
 }
