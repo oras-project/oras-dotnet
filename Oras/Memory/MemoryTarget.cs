@@ -1,7 +1,6 @@
 ﻿using Oras.Exceptions;
 using Oras.Interfaces;
 using Oras.Models;
-using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,15 +36,18 @@ namespace Oras.Memory
 
         async public Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
         {
-            try
+
+            var exists = await _storage.ExistsAsync(descriptor, cancellationToken);
+            if (exists)
             {
-                var exists = await _storage.ExistsAsync(descriptor, cancellationToken);
+                await _tagResolver.TagAsync(descriptor, reference, cancellationToken);
+
             }
-            catch (Exception)
+            else
             {
                 throw new NotFoundException($"{descriptor.Digest} : {descriptor.MediaType}");
+
             }
-            await _tagResolver.TagAsync(descriptor, reference, cancellationToken);
         }
     }
 }

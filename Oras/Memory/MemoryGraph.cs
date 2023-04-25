@@ -10,8 +10,8 @@ namespace Oras.Memory
 {
     public class MemoryGraph
     {
-        private ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>> predecessors = new ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>>();
-        private ConcurrentDictionary<MinimumDescriptor, object> indexed = new ConcurrentDictionary<MinimumDescriptor, object>();
+        private ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>> _predecessors = new ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>>();
+        private ConcurrentDictionary<MinimumDescriptor, object> _indexed = new ConcurrentDictionary<MinimumDescriptor, object>();
 
         async public Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
@@ -34,7 +34,7 @@ namespace Oras.Memory
             foreach (var successor in successors)
             {
                 var successorKey = Descriptor.FromOCI(successor);
-                var predecessors = this.predecessors.GetOrAdd(successorKey, new ConcurrentDictionary<MinimumDescriptor, Descriptor>());
+                var predecessors = this._predecessors.GetOrAdd(successorKey, new ConcurrentDictionary<MinimumDescriptor, Descriptor>());
                 predecessors.TryAdd(predecessorKey, node);
             }
 

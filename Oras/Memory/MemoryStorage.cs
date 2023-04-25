@@ -1,7 +1,6 @@
 ﻿using Oras.Exceptions;
 using Oras.Interfaces;
 using Oras.Models;
-using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;

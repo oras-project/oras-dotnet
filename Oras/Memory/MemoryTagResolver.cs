@@ -24,7 +24,7 @@ namespace Oras.Memory
 
         public Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
         {
-            _index.TryAdd(reference, descriptor);
+            _index.AddOrUpdate(reference, descriptor, (key, oldValue) => descriptor);
             return Task.CompletedTask;
         }
     }
