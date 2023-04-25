@@ -19,12 +19,18 @@ namespace Oras.Memory
             Index(node, successors, cancellationToken);
         }
 
-        // _index indexes predecessors for each direct successor of the given node.
-        // There is no data consistency issue as long as deletion is not implemented
-        // for the underlying _storage.
+
+        /// <summary>
+        /// Index indexes predecessors for each direct successor of the given node.
+        /// There is no data consistency issue as long as deletion is not implemented
+        /// for the underlying _storage.
+        /// </summary>
+        /// <param name="node"></param>
+        /// <param name="successors"></param>
+        /// <param name="cancellationToken"></param>
         private void Index(Descriptor node, IList<Descriptor> successors, CancellationToken cancellationToken)
         {
-            if (successors.Count == 0)
+            if (successors is null || successors.Count == 0)
             {
                 {
                     return;
