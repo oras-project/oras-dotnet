@@ -53,19 +53,6 @@ namespace Oras.Content
                         var index = JsonSerializer.Deserialize<Index>(content);
                         return index.Manifests;
                     }
-
-                case OCIMediaTypes.ArtifactManifest:
-                    {
-                        var artifact = JsonSerializer.Deserialize<Artifact>(content);
-                        var nodes = new List<Descriptor>();
-                        if (artifact.Subject != null)
-                        {
-                            nodes.Add(artifact.Subject);
-                        }
-                        nodes.AddRange(artifact.Blobs);
-                        return nodes;
-                    }
-
             }
             return default;
         }
