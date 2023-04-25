@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 namespace Oras.Interfaces
 {
     /// <summary>
-    /// IReadOnlyStorage represents a read-only StorageUtility.
+    /// IReadOnlyStorage represents a read-only Storage.
     /// </summary>
     public interface IReadOnlyStorage : IFetcher
     {
