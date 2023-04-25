@@ -10,7 +10,7 @@ namespace Oras.Interfaces
     public interface IReadOnlyStorage : IFetcher
     {
         /// <summary>
-        /// ExistsAsync returns true if the described _content exists.
+        /// ExistsAsync returns true if the described content exists.
         /// </summary>
         /// <param name="target"></param>
         /// <param name="cancellationToken"></param>
