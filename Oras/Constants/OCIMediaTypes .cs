@@ -2,7 +2,7 @@
 {
     public class OCIMediaTypes
     {
-        // MediaTypeDescriptor specifies the media type for a _content descriptor.
+        // MediaTypeDescriptor specifies the media type for a content descriptor.
         public const string Descriptor = "application/vnd.oci.descriptor.v1+json";
 
         // MediaTypeLayoutHeader specifies the media type for the oci-layout.
@@ -11,7 +11,7 @@
         // MediaTypeImageManifest specifies the media type for an image manifest.
         public const string ImageManifest = "application/vnd.oci.image.manifest.v1+json";
 
-        // MediaTypeImageIndex specifies the media type for an image _index.
+        // MediaTypeImageIndex specifies the media type for an image index.
         public const string ImageIndex = "application/vnd.oci.image._index.v1+json";
 
         // MediaTypeImageLayer is the media type used for layers referenced by the manifest.
@@ -42,7 +42,5 @@
         // MediaTypeImageConfig specifies the media type for the image configuration.
         public const string ImageConfig = "application/vnd.oci.image.config.v1+json";
 
-        // MediaTypeArtifactManifest specifies the media type for a _content descriptor.
-        public const string ArtifactManifest = "application/vnd.oci.artifact.manifest.v1+json";
     }
 }
