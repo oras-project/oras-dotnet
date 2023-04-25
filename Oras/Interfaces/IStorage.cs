@@ -7,7 +7,7 @@ namespace Oras.Interfaces
 {
     /// <summary>
     /// IStorage represents a _content-addressable _storage (CAS) where contents are accessed via Descriptors.
-    /// The _storage is designed to handle blobs of large sizes.
+    /// The storage is designed to handle blobs of large sizes.
     /// </summary>
     public interface IStorage : IReadOnlyStorage
     {
