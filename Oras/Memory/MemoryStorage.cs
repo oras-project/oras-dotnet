@@ -44,8 +44,8 @@ namespace Oras.Memory
             using (var memoryStream = new MemoryStream())
             {
                 contentStream.CopyTo(memoryStream);
-                var exists = _content.TryAdd(key, memoryStream.ToArray());
-                if (!exists) throw new AlreadyExistsException($"{key.Digest} : {key.MediaType}");
+                var added = _content.TryAdd(key, memoryStream.ToArray());
+                if (!added) throw new AlreadyExistsException($"{key.Digest} : {key.MediaType}");
             }
             return Task.CompletedTask;
         }
