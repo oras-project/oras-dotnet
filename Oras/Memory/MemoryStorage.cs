@@ -38,7 +38,7 @@ namespace Oras.Memory
             var contentExist = _content.TryGetValue(key, out byte[] _);
             if (contentExist)
             {
-                throw new Exception($"{expected.Digest} : {expected.MediaType} : {new AlreadyExistsException().Message}");
+                throw new AlreadyExistsException($"{expected.Digest} : {expected.MediaType}");
             }
 
             using (var memoryStream = new MemoryStream())
