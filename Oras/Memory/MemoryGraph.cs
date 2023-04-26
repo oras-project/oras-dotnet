@@ -1,8 +1,10 @@
 ﻿using Oras.Content;
 using Oras.Interfaces;
 using Oras.Models;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,6 +20,28 @@ namespace Oras.Memory
             Index(node, successors, cancellationToken);
         }
 
+        /// <summary>
+        /// PredecessorsAsync returns the nodes directly pointing to the current node.
+        /// Predecessors returns null without error if the node does not exists in the
+        /// store.
+        /// </summary>
+        /// <param name="node"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        internal async Task<IList<Descriptor>> PredecessorsAsync(Descriptor node, CancellationToken cancellationToken)
+        {
+            var minimumDescriptor = Descriptor.FromOCI(node);
+            if (!this._predecessors.TryGetValue(minimumDescriptor, out ConcurrentDictionary<MinimumDescriptor, Descriptor> predecessors))
+            {
+                return null;
+            }
+            var res = new List<Descriptor>();
+            foreach (var predecessor in predecessors)
+            {
+                res.Add(predecessor.Value);
+            }
+            return await Task.FromResult(res);
+        }
 
         /// <summary>
         /// Index indexes predecessors for each direct successor of the given node.
