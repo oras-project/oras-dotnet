@@ -46,6 +46,11 @@ namespace Oras.Memory
             else
             {
                 throw new NotFoundException($"{descriptor.Digest} : {descriptor.MediaType}");
+if (!exists)
+{
+      throw new NotFoundException($"{descriptor.Digest} : {descriptor.MediaType}");
+}
+await _tagResolver.TagAsync(descriptor, reference, cancellationToken);
 
             }
         }
