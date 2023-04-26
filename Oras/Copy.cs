@@ -13,7 +13,7 @@ using Index = Oras.Models.Index;
 
 namespace Oras
 {
-    public class Oras
+    public class Copy
     {
         // Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
         // in the source Target to the destination Target.

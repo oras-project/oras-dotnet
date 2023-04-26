@@ -21,13 +21,14 @@ namespace Oras.Content
             t.Read(tempByte, 0, (int)t.Length);
             return tempByte;
         }
+        
        public static async Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
-            var content = await StorageUtility.FetchAllAsync(fetcher, node, cancellationToken);
             switch (node.MediaType)
             {
                 case DockerMediaTypes.Manifest:
                     {
+                        var content = await StorageUtility.FetchAllAsync(fetcher, node, cancellationToken);
                         // OCI manifest schema can be used to marshal docker manifest
                         var dockerManifest = JsonSerializer.Deserialize<Manifest>(content);
                         var descriptors = new List<Descriptor> { dockerManifest.Config }.Concat(dockerManifest.Layers).ToList();
@@ -35,6 +36,7 @@ namespace Oras.Content
                     }
                 case OCIMediaTypes.ImageManifest:
                     {
+                        var content = await StorageUtility.FetchAllAsync(fetcher, node, cancellationToken);
                         var manifest = JsonSerializer.Deserialize<Manifest>(content);
                         var descriptors = new List<Descriptor>();
                         if (manifest.Subject != null)
@@ -48,6 +50,7 @@ namespace Oras.Content
                 case DockerMediaTypes.ManifestList:
                 case OCIMediaTypes.ImageIndex:
                     {
+                        var content = await StorageUtility.FetchAllAsync(fetcher, node, cancellationToken);
                         // docker manifest list and oci _index are equivalent for successors.
                         var index = JsonSerializer.Deserialize<Index>(content);
                         return index.Manifests;
