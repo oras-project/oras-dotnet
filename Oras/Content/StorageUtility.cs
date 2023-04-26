@@ -11,14 +11,14 @@ using Index = Oras.Models.Index;
 
 namespace Oras.Content
 {
-    public class StorageUtility
+    public static class StorageUtility
     {
         static async Task<Byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
         {
             var t = await fetcher.FetchAsync(desc, cancellationToken);
             var tempBytes = new byte[t.Length];
             // ought to implement a readall function to handle verification of the stream
-            t.Read(tempBytes, 0, (int)t.Length);
+            await t.ReadAsync(tempBytes, 0, (int)t.Length, cancellationToken);
             return tempBytes;
         }
         public static async Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)

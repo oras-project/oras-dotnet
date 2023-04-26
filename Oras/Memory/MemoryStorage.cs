@@ -10,7 +10,7 @@ namespace Oras.Memory
 {
     internal class MemoryStorage : IStorage
     {
-        private ConcurrentDictionary<MinimumDescriptor, byte[]> _content { get; set; } = new ConcurrentDictionary<MinimumDescriptor, byte[]>();
+        private ConcurrentDictionary<MinimumDescriptor, byte[]> _content = new ConcurrentDictionary<MinimumDescriptor, byte[]>();
 
         public Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
         {

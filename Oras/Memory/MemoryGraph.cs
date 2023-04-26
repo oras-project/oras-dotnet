@@ -13,7 +13,7 @@ namespace Oras.Memory
         private ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>> _predecessors = new ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>>();
         private ConcurrentDictionary<MinimumDescriptor, object> _indexed = new ConcurrentDictionary<MinimumDescriptor, object>();
 
-        async public Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
+        public async Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
             IList<Descriptor> successors = await StorageUtility.SuccessorsAsync(fetcher, node, cancellationToken);
             Index(node, successors, cancellationToken);

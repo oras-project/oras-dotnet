@@ -18,7 +18,7 @@ namespace Oras.Models
         [JsonPropertyName("manifests")]
         public List<Descriptor> Manifests { get; set; }
 
-        // Annotations contains arbitrary metadata for the image _index.
+        // Annotations contains arbitrary metadata for the image index.
         [JsonPropertyName("annotations")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 
