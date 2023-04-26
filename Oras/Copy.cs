@@ -1,15 +1,9 @@
-﻿using Oras.Constants;
-using Oras.Content;
+﻿using Oras.Content;
 using Oras.Interfaces;
 using Oras.Models;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Index = Oras.Models.Index;
 
 namespace Oras
 {
@@ -40,7 +34,7 @@ namespace Oras
             return root;
         }
 
-        private async Task CopyGraphAsync(ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
+        public async Task CopyGraphAsync(ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
         {
             // check if node exists in target
             if (!await dst.ExistsAsync(node, cancellationToken))
@@ -48,7 +42,7 @@ namespace Oras
                 // retrieve child nodes
                 var childNodes = await StorageUtility.SuccessorsAsync(src, node, cancellationToken);
                 // obtain data stream
-                var dataStream = new MemoryStream(await StorageUtility.FetchAllAsync(src, node, cancellationToken));
+                var dataStream = await src.FetchAsync(node, cancellationToken);
                 // check if the node has children
                 if (childNodes != null)
                 {
@@ -62,7 +56,6 @@ namespace Oras
                 {
                     await dst.PushAsync(node, dataStream, cancellationToken);
                 }
-
             }
         }
     }

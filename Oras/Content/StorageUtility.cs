@@ -13,7 +13,7 @@ namespace Oras.Content
 {
     public class StorageUtility
     {
-       public static async Task<Byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
+        public static async Task<Byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
         {
             var t = await fetcher.FetchAsync(desc, cancellationToken);
             var tempByte = new byte[t.Length];
@@ -21,8 +21,8 @@ namespace Oras.Content
             t.Read(tempByte, 0, (int)t.Length);
             return tempByte;
         }
-        
-       public static async Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
+
+        public static async Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
             switch (node.MediaType)
             {
