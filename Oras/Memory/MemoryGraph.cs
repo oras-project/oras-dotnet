@@ -30,7 +30,7 @@ namespace Oras.Memory
         /// <param name="cancellationToken"></param>
         private void Index(Descriptor node, IList<Descriptor> successors, CancellationToken cancellationToken)
         {
-            if (successors is null || successors.Count == 0)
+            if (successors is null)
             {
                 return;
             }
