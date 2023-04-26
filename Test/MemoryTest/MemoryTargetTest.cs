@@ -1,16 +1,8 @@
 ﻿using Oras.Interfaces;
 using Oras.Memory;
 using Oras.Models;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using Xunit.Abstractions;
 
 namespace OrasTest.MemoryTest
 {
