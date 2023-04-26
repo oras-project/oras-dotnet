@@ -33,20 +33,20 @@ namespace Oras
             await dst.TagAsync(root, dstRef, cancellationToken);
             return root;
         }
-
-        public async Task CopyGraphAsync(ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
+        
+        public static async Task CopyGraphAsync(ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
         {
             // check if node exists in target
             if (!await dst.ExistsAsync(node, cancellationToken))
             {
-                // retrieve child nodes
-                var childNodes = await StorageUtility.SuccessorsAsync(src, node, cancellationToken);
+                // retrieve successors
+                var successors = await StorageUtility.SuccessorsAsync(src, node, cancellationToken);
                 // obtain data stream
                 var dataStream = await src.FetchAsync(node, cancellationToken);
                 // check if the node has children
-                if (childNodes != null)
+                if (successors != null)
                 {
-                    foreach (var childNode in childNodes)
+                    foreach (var childNode in successors)
                     {
                         await CopyGraphAsync(src, dst, childNode, cancellationToken);
                     }
