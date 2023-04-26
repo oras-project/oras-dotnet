@@ -1,6 +1,6 @@
 ﻿namespace Oras.Constants
 {
-    public class OCIMediaTypes
+    public static class OCIMediaTypes
     {
         // MediaTypeDescriptor specifies the media type for a content descriptor.
         public const string Descriptor = "application/vnd.oci.descriptor.v1+json";
@@ -12,7 +12,7 @@
         public const string ImageManifest = "application/vnd.oci.image.manifest.v1+json";
 
         // MediaTypeImageIndex specifies the media type for an image index.
-        public const string ImageIndex = "application/vnd.oci.image._index.v1+json";
+        public const string ImageIndex = "application/vnd.oci.image.index.v1+json";
 
         // MediaTypeImageLayer is the media type used for layers referenced by the manifest.
         public const string ImageLayer = "application/vnd.oci.image.layer.v1.tar";

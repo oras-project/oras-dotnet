@@ -18,11 +18,6 @@ namespace Oras.Models
         [JsonPropertyName("layers")]
         public List<Descriptor> Layers { get; set; }
 
-        [JsonPropertyName("subject")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-
-        public Descriptor Subject { get; set; }
-
         [JsonPropertyName("annotations")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 

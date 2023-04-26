@@ -15,7 +15,7 @@ namespace Oras.Memory
 
         public async Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
-            IList<Descriptor> successors = await StorageUtility.SuccessorsAsync(fetcher, node, cancellationToken);
+            IList<Descriptor> successors = await GraphUtility.SuccessorsAsync(fetcher, node, cancellationToken);
             Index(node, successors, cancellationToken);
         }
 
@@ -23,7 +23,7 @@ namespace Oras.Memory
         /// <summary>
         /// Index indexes predecessors for each direct successor of the given node.
         /// There is no data consistency issue as long as deletion is not implemented
-        /// for the underlying _storage.
+        /// for the underlying storage.
         /// </summary>
         /// <param name="node"></param>
         /// <param name="successors"></param>

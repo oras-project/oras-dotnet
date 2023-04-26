@@ -9,9 +9,9 @@ namespace Oras.Memory
 {
     public class MemoryTarget : ITarget
     {
-        private MemoryStorage _storage  = new MemoryStorage();
-        private MemoryTagResolver _tagResolver  = new MemoryTagResolver();
-        private MemoryGraph _graph  = new MemoryGraph();
+        private MemoryStorage _storage = new MemoryStorage();
+        private MemoryTagResolver _tagResolver = new MemoryTagResolver();
+        private MemoryGraph _graph = new MemoryGraph();
         public async Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
             return await _storage.ExistsAsync(target, cancellationToken);

@@ -8,7 +8,7 @@ namespace Oras.Models
         [JsonPropertyName("schemaVersion")]
         public int SchemaVersion { get; set; }
 
-        // MediaType specifies the type of this document data structure e.g. `application/vnd.oci.image._index.v1+json`
+        // MediaType specifies the type of this document data structure e.g. `application/vnd.oci.image.index.v1+json`
         [JsonPropertyName("mediaType")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 
