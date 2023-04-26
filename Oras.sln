@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Oras.Tests", "Oras.Test\Oras.Tests.csproj", "{70DFCE13-53AA-4CC2-8E1A-F73A1344A0CB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Oras.Tests", "Oras.Tests\Oras.Tests.csproj", "{70DFCE13-53AA-4CC2-8E1A-F73A1344A0CB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Oras", "Oras\Oras.csproj", "{547F152F-6F4D-4E5A-AD3A-C3BC5CDCFD27}"
 EndProject
