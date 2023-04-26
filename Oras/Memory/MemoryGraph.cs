@@ -32,9 +32,7 @@ namespace Oras.Memory
         {
             if (successors is null || successors.Count == 0)
             {
-                {
-                    return;
-                }
+                return;
             }
             var predecessorKey = Descriptor.FromOCI(node);
             foreach (var successor in successors)
