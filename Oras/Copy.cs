@@ -43,7 +43,7 @@ namespace Oras
         private async Task CopyGraphAsync(ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
         {
             // check if node exists in target
-            if (await dst.ExistsAsync(node, cancellationToken))
+            if (!await dst.ExistsAsync(node, cancellationToken))
             {
                 // retrieve child nodes
                 var childNodes = await StorageUtility.SuccessorsAsync(src, node, cancellationToken);
