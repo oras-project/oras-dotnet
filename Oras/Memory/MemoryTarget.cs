@@ -38,21 +38,14 @@ namespace Oras.Memory
         {
 
             var exists = await _storage.ExistsAsync(descriptor, cancellationToken);
-            if (exists)
-            {
-                await _tagResolver.TagAsync(descriptor, reference, cancellationToken);
 
-            }
-            else
+            if (!exists)
             {
                 throw new NotFoundException($"{descriptor.Digest} : {descriptor.MediaType}");
-if (!exists)
-{
-      throw new NotFoundException($"{descriptor.Digest} : {descriptor.MediaType}");
-}
-await _tagResolver.TagAsync(descriptor, reference, cancellationToken);
-
             }
+            await _tagResolver.TagAsync(descriptor, reference, cancellationToken);
+
         }
     }
 }
+
