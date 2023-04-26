@@ -11,7 +11,6 @@ namespace Oras.Memory
     public class MemoryGraph
     {
         private ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>> _predecessors = new ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>>();
-        private ConcurrentDictionary<MinimumDescriptor, object> _indexed = new ConcurrentDictionary<MinimumDescriptor, object>();
 
         public async Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
