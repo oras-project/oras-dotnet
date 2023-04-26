@@ -50,7 +50,7 @@ namespace Oras
                 // obtain data stream
                 var dataStream = new MemoryStream(await StorageUtility.FetchAllAsync(src, node, cancellationToken));
                 // check if the node has children
-                if (childNodes.Count() > 0)
+                if (childNodes != null)
                 {
                     foreach (var childNode in childNodes)
                     {
