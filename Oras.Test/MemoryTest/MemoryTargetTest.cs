@@ -4,7 +4,7 @@ using Oras.Models;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace OrasTest.MemoryTest
+namespace Oras.Test.MemoryTest
 {
     public class MemoryTargetTest
     {
