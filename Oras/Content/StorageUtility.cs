@@ -41,7 +41,7 @@ namespace Oras.Content
             }
             catch (ArgumentOutOfRangeException)
             {
-                throw new InvalidDescriptorSizeException("this descriptor size is less than content size");
+                throw new ArgumentOutOfRangeException("this descriptor size is less than content size");
             }
 
             if (CalculateHash(buffer) != descriptor.Digest)

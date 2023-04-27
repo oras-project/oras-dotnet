@@ -118,5 +118,32 @@ namespace Oras.Tests.MemoryTest
                 await memoryTarget.PushAsync(descriptor, stream, cancellationToken);
             });
         }
+
+        /// <summary>
+        /// This method tests if a MemoryTarget object throws a MismatchedDigestException when trying to push an artifact
+        /// that has a different digest on the descriptor compared to the digest of the content
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task MemoryTarget_ThrowsMismatchedDigestExceptionWhenHashInDigestIsDifferentFromContentDigest()
+        {
+            var content = Encoding.UTF8.GetBytes("Hello World");
+            var wrongContent = Encoding.UTF8.GetBytes("Hello Danny");
+            string hash = StorageUtility.CalculateHash(content);
+            var descriptor = new Descriptor
+            {
+                MediaType = "test",
+                Digest = hash,
+                Size = content.Length
+            };
+
+            var memoryTarget = new MemoryTarget();
+            var cancellationToken = new CancellationToken();
+            var stream = new MemoryStream(wrongContent);
+            await Assert.ThrowsAnyAsync<MismatchedDigestException>(async () =>
+            {
+                await memoryTarget.PushAsync(descriptor, stream, cancellationToken);
+            });
+        }
     }
 }
