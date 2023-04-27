@@ -149,6 +149,10 @@ namespace Oras.Tests.MemoryTest
             });
         }
 
+        /// <summary>
+        /// This method tests if a MemoryTarget object can return the predecesors of a descriptor
+        /// </summary>
+        /// <returns></returns>
         [Fact]
         public async Task MemoryTarget_ShouldReturnPredecessorsOfNodes()
         {
