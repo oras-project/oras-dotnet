@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Oras.Interfaces
 {
-    public interface IFetcher
+    interface IFetcher
     {
         /// <summary>
         /// FetchAsync fetches the content identified by the descriptor.
@@ -14,6 +14,5 @@ namespace Oras.Interfaces
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default);
-
     }
 }

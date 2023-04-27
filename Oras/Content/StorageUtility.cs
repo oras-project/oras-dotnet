@@ -6,10 +6,13 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
+
+[assembly: InternalsVisibleTo("Oras.Tests")]
 namespace Oras.Content
 {
-    public static class StorageUtility
+    internal static class StorageUtility
     {
         public static async Task<Byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
         {

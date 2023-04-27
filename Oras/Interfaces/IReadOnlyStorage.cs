@@ -7,7 +7,7 @@ namespace Oras.Interfaces
     /// <summary>
     /// IReadOnlyStorage represents a read-only Storage.
     /// </summary>
-    public interface IReadOnlyStorage : IFetcher
+    interface IReadOnlyStorage : IFetcher
     {
         /// <summary>
         /// ExistsAsync returns true if the described content exists.

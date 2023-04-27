@@ -8,11 +8,11 @@ using System.Threading.Tasks;
 
 namespace Oras.Memory
 {
-    public class MemoryGraph
+    internal class MemoryGraph
     {
         private ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>> _predecessors = new ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>>();
 
-        public async Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
+        internal async Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
             IList<Descriptor> successors = await GraphUtility.SuccessorsAsync(fetcher, node, cancellationToken);
             Index(node, successors, cancellationToken);

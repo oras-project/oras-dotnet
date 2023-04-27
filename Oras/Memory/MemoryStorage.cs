@@ -13,7 +13,7 @@ namespace Oras.Memory
     {
         private ConcurrentDictionary<MinimumDescriptor, byte[]> _content = new ConcurrentDictionary<MinimumDescriptor, byte[]>();
 
-        public Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
+        public Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken)
         {
             var contentExist = _content.ContainsKey(Descriptor.FromOCI(target));
             return Task.FromResult(contentExist);

@@ -3,7 +3,7 @@
     /// <summary>
     /// IReadOnlyTarget represents a read-only Target.
     /// </summary>
-    public interface IReadOnlyTarget : IReadOnlyStorage, IResolver
+    interface IReadOnlyTarget : IReadOnlyStorage, IResolver
     {
     }
 }

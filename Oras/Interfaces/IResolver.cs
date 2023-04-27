@@ -7,7 +7,7 @@ namespace Oras.Interfaces
     /// <summary>
     /// IResolver resolves reference tags.
     /// </summary>
-    public interface IResolver
+    interface IResolver
     {
         /// <summary>
         /// ResolveAsync resolves the reference to a descriptor.

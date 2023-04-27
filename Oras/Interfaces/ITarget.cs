@@ -3,7 +3,7 @@
     /// <summary>
     /// Target is a CAS with generic tags
     /// </summary>
-    public interface ITarget : IStorage, ITagResolver
+    interface ITarget : IStorage, ITagResolver
     {
     }
 }
