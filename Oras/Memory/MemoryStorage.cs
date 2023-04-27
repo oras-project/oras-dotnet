@@ -1,4 +1,5 @@
-﻿using Oras.Exceptions;
+﻿using Oras.Content;
+using Oras.Exceptions;
 using Oras.Interfaces;
 using Oras.Models;
 using System.Collections.Concurrent;
@@ -31,7 +32,7 @@ namespace Oras.Memory
         }
 
 
-        public Task PushAsync(Descriptor expected, Stream contentStream, CancellationToken cancellationToken = default)
+        public async Task PushAsync(Descriptor expected, Stream contentStream, CancellationToken cancellationToken = default)
         {
             var key = Descriptor.FromOCI(expected);
             var contentExist = _content.TryGetValue(key, out byte[] _);
@@ -39,14 +40,12 @@ namespace Oras.Memory
             {
                 throw new AlreadyExistsException($"{expected.Digest} : {expected.MediaType}");
             }
+            var readBytes = await StorageUtility.ReadAllAsync(contentStream, expected);
 
-            using (var memoryStream = new MemoryStream())
-            {
-                contentStream.CopyTo(memoryStream);
-                var added = _content.TryAdd(key, memoryStream.ToArray());
-                if (!added) throw new AlreadyExistsException($"{key.Digest} : {key.MediaType}");
-            }
-            return Task.CompletedTask;
+            var added = _content.TryAdd(key, readBytes);
+            if (!added) throw new AlreadyExistsException($"{key.Digest} : {key.MediaType}");
+
+            return;
         }
     }
 }
