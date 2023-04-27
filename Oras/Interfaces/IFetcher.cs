@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Oras.Interfaces
 {
-    interface IFetcher
+    public interface IFetcher
     {
         /// <summary>
         /// FetchAsync fetches the content identified by the descriptor.

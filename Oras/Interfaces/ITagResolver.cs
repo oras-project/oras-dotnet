@@ -7,7 +7,7 @@ namespace Oras.Interfaces
     /// <summary>
     /// ITagResolver provides reference tag indexing services.
     /// </summary>
-    interface ITagResolver : IResolver
+    public interface ITagResolver : IResolver
     {
         /// <summary>
         /// TagAsync tags the descriptor with the reference.
