@@ -3,6 +3,7 @@ using Oras.Interfaces;
 using Oras.Models;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,11 +34,7 @@ namespace Oras.Memory
             {
                 return null;
             }
-            var res = new List<Descriptor>();
-            foreach (var predecessor in predecessors)
-            {
-                res.Add(predecessor.Value);
-            }
+            var res = predecessors.Values.ToList();
             return await Task.FromResult(res);
         }
 
