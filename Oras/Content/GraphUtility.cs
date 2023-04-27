@@ -9,7 +9,7 @@ using Index = Oras.Models.Index;
 
 namespace Oras.Content
 {
-    internal static class GraphUtility
+    public static class GraphUtility
     {
         public static async Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {

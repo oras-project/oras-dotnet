@@ -6,13 +6,11 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
 
 
-[assembly: InternalsVisibleTo("Oras.Tests")]
 namespace Oras.Content
 {
-    internal static class StorageUtility
+    public static class StorageUtility
     {
         public static async Task<Byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
         {
@@ -20,7 +18,7 @@ namespace Oras.Content
             return await ReadAllAsync(stream, desc);
         }
 
-        public static string CalculateHash(byte[] content)
+        public static string CalculateDigest(byte[] content)
         {
             using var sha256 = SHA256.Create();
             var hash = sha256.ComputeHash(content);
@@ -44,7 +42,7 @@ namespace Oras.Content
                 throw new ArgumentOutOfRangeException("this descriptor size is less than content size");
             }
 
-            if (CalculateHash(buffer) != descriptor.Digest)
+            if (CalculateDigest(buffer) != descriptor.Digest)
             {
                 throw new MismatchedDigestException("this descriptor digest is different from content digest");
             }

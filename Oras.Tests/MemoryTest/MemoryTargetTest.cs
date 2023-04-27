@@ -17,7 +17,7 @@ namespace Oras.Tests.MemoryTest
         public async Task MemoryTarget_CanStoreData()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
-            string hash = StorageUtility.CalculateHash(content);
+            string hash = StorageUtility.CalculateDigest(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -52,7 +52,7 @@ namespace Oras.Tests.MemoryTest
         public async Task MemoryTarget_ThrowsNotFoundExceptionWhenDataIsNotAvailable()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
-            string hash = StorageUtility.CalculateHash(content);
+            string hash = StorageUtility.CalculateDigest(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -78,7 +78,7 @@ namespace Oras.Tests.MemoryTest
         public async Task MemoryTarget_ThrowsAlreadyExistsExceptionWhenSameDataIsPushedTwice()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
-            string hash = StorageUtility.CalculateHash(content);
+            string hash = StorageUtility.CalculateDigest(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -102,7 +102,7 @@ namespace Oras.Tests.MemoryTest
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             var wrongContent = Encoding.UTF8.GetBytes("Hello World!");
-            string hash = StorageUtility.CalculateHash(content);
+            string hash = StorageUtility.CalculateDigest(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -129,7 +129,7 @@ namespace Oras.Tests.MemoryTest
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             var wrongContent = Encoding.UTF8.GetBytes("Hello Danny");
-            string hash = StorageUtility.CalculateHash(content);
+            string hash = StorageUtility.CalculateDigest(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
