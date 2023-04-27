@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Oras.Models
 {
-    internal class Index
+    public class Index
     {
         [JsonPropertyName("schemaVersion")]
         public int SchemaVersion { get; set; }

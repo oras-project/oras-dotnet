@@ -90,7 +90,7 @@ namespace Oras.Memory
         /// <param name="node"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<IList<Descriptor>> PredecessorsAsync(Descriptor node, CancellationToken cancellationToken = default)
+        public async Task<List<Descriptor>> PredecessorsAsync(Descriptor node, CancellationToken cancellationToken = default)
         {
             return await _graph.PredecessorsAsync(node, cancellationToken);
         }

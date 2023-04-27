@@ -1,9 +1,12 @@
-﻿using Oras.Content;
+﻿using Oras.Constants;
+using Oras.Content;
 using Oras.Exceptions;
 using Oras.Memory;
 using Oras.Models;
 using System.Text;
+using System.Text.Json;
 using Xunit;
+using Index = Oras.Models.Index;
 
 namespace Oras.Tests.MemoryTest
 {
@@ -144,6 +147,82 @@ namespace Oras.Tests.MemoryTest
             {
                 await memoryTarget.PushAsync(descriptor, stream, cancellationToken);
             });
+        }
+
+        [Fact]
+        public async Task MemoryTarget_ShouldReturnPredecessorsOfNodes()
+        {
+            var memoryTarget = new MemoryTarget();
+            var cancellationToken = new CancellationToken();
+            var blobs = new List<byte[]>();
+            var descs = new List<Descriptor>();
+            var appendBlob = (string mediaType, byte[] blob) =>
+            {
+                blobs.Add(blob);
+                var desc = new Descriptor
+                {
+                    MediaType = mediaType,
+                    Digest = StorageUtility.CalculateDigest(blob),
+                    Size = blob.Length
+                };
+                descs.Add(desc);
+            };
+            var generateManifest = (Descriptor config, List<Descriptor> layers) =>
+            {
+                var manifest = new Manifest
+                {
+                    Config = config,
+                    Layers = layers
+                };
+                var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+                appendBlob(OCIMediaTypes.ImageManifest, manifestBytes);
+            };
+
+            var generateIndex = (List<Descriptor> manifests) =>
+            {
+                var index = new Index
+                {
+                    Manifests = manifests
+                };
+                var indexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(index));
+                appendBlob(OCIMediaTypes.ImageIndex, indexBytes);
+            };
+            var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
+            appendBlob(OCIMediaTypes.ImageConfig, getBytes("config"));// blob 0
+            appendBlob(OCIMediaTypes.ImageLayer, getBytes("foo"));// blob 1
+            appendBlob(OCIMediaTypes.ImageLayer, getBytes("bar"));// blob 2
+            appendBlob(OCIMediaTypes.ImageLayer, getBytes("hello"));// blob 3
+            generateManifest(descs[0], descs.GetRange(1, 2));// blob 4
+            generateManifest(descs[0], new() { descs[3] });// blob 5
+            generateManifest(descs[0], descs.GetRange(1, 3));// blob 6
+            generateIndex(descs.GetRange(4, 2));// blob 7
+            generateIndex(new() { descs[6] });// blob 8
+
+            for (var i = 0; i < blobs.Count; i++)
+            {
+                await memoryTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+
+            }
+            var wants = new List<List<Descriptor>>
+            {
+            descs.GetRange(4,3), // blob 0
+            new() { descs[4], descs[6] }, // blob 1
+             new() { descs[4], descs[6] }, // blob 2
+              new() { descs[5], descs[6] }, // blob 3
+              new() {descs[7]},// blob 4
+              new() {descs[7]}, // blob 5
+              new() { descs[8] }, //blob 6
+              null!, // blob 7
+              null!}; // blob 8
+
+            foreach (var (i, want) in wants.Select((v, i) => (i, v)))
+            {
+                var predecessors = await memoryTarget.PredecessorsAsync(descs[i], cancellationToken);
+                if (predecessors is null && want is null) continue;
+                want.Sort((a, b) => (int)b.Size - (int)a.Size);
+                predecessors?.Sort((a, b) => (int)b.Size - (int)a.Size);
+                Assert.Equal(predecessors, want);
+            }
         }
     }
 }

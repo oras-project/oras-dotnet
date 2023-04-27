@@ -27,18 +27,14 @@ namespace Oras.Memory
         /// <param name="node"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        internal async Task<IList<MinimumDescriptor>> PredecessorsAsync(Descriptor node, CancellationToken cancellationToken)
+        internal async Task<List<Descriptor>> PredecessorsAsync(Descriptor node, CancellationToken cancellationToken)
         {
             var minimumDescriptor = Descriptor.FromOCI(node);
             if (!this._predecessors.TryGetValue(minimumDescriptor, out ConcurrentDictionary<MinimumDescriptor, Descriptor> predecessors))
             {
                 return null;
             }
-            var res = new List<MinimumDescriptor>();
-            foreach (var predecessor in predecessors)
-            {
-                res.Add(Descriptor.FromOCI(predecessor.Value));
-            }
+            var res = predecessors.Values.ToList();
             return await Task.FromResult(res);
         }
 
