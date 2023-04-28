@@ -1,11 +1,11 @@
 ﻿using Oras.Constants;
-using static Oras.Content.Content;
 using Oras.Exceptions;
 using Oras.Memory;
 using Oras.Models;
 using System.Text;
 using System.Text.Json;
 using Xunit;
+using static Oras.Content.Content;
 using Index = Oras.Models.Index;
 
 namespace Oras.Tests.MemoryTest
@@ -55,6 +55,7 @@ namespace Oras.Tests.MemoryTest
         public async Task MemoryTarget_ThrowsNotFoundExceptionWhenDataIsNotAvailable()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
+
             string hash = CalculateDigest(content);
             var descriptor = new Descriptor
             {
@@ -68,9 +69,9 @@ namespace Oras.Tests.MemoryTest
             var contentExists = await memoryTarget.ExistsAsync(descriptor, cancellationToken);
             Assert.False(contentExists);
             await Assert.ThrowsAsync<NotFoundException>(async () =>
-             {
-                 await memoryTarget.FetchAsync(descriptor, cancellationToken);
-             });
+            {
+                await memoryTarget.FetchAsync(descriptor, cancellationToken);
+            });
         }
 
         /// <summary>
@@ -201,7 +202,6 @@ namespace Oras.Tests.MemoryTest
             generateManifest(descs[0], descs.GetRange(1, 3)); // blob 6
             generateIndex(descs.GetRange(4, 2)); // blob 7
             generateIndex(new() { descs[6] }); // blob 8
-
 
             for (var i = 0; i < blobs.Count; i++)
             {

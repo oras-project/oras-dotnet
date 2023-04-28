@@ -1,11 +1,11 @@
-﻿using static Oras.Content.Content;
-using Oras.Exceptions;
+﻿using Oras.Exceptions;
 using Oras.Interfaces;
 using Oras.Models;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using static Oras.Content.Content;
 
 namespace Oras.Memory
 {
