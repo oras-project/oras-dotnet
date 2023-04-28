@@ -63,9 +63,14 @@ namespace Oras.Tests
             var gotDesc = await Copy.CopyAsync(sourceTarget, reference, destinationTarget, "", cancellationToken);
             Assert.Equal(gotDesc, root);
 
-            foreach (var des in descs)
+            for (var i = 0; i < descs.Count; i++)
             {
-                Assert.True(await destinationTarget.ExistsAsync(des, cancellationToken));
+                Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
+                var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
+                var memoryStream = new MemoryStream();
+                await fetchContent.CopyToAsync(memoryStream);
+                var bytes = memoryStream.ToArray();
+                Assert.Equal(blobs[i], bytes);
             }
         }
 
@@ -74,7 +79,7 @@ namespace Oras.Tests
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task Copy_Graph()
+        public async Task CopyGraph_CanCopyBetweenMemoryTargets()
         {
             var sourceTarget = new MemoryTarget();
             var cancellationToken = new CancellationToken();
@@ -115,10 +120,15 @@ namespace Oras.Tests
             var root = descs[3];
             var destinationTarget = new MemoryTarget();
             await Copy.CopyGraphAsync(sourceTarget, destinationTarget, root, cancellationToken);
-
-            foreach (var des in descs)
+            for (var i=0; i<descs.Count; i++)
             {
-                Assert.True(await destinationTarget.ExistsAsync(des, cancellationToken));
+                Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
+                var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
+                var memoryStream = new MemoryStream();
+                await fetchContent.CopyToAsync(memoryStream);
+                var bytes = memoryStream.ToArray();
+                Assert.Equal(blobs[i], bytes);
+
             }
         }
     }
