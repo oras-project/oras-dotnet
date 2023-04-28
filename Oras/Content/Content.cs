@@ -72,7 +72,7 @@ namespace Oras.Content
             using var sha256 = SHA256.Create();
             var hash = sha256.ComputeHash(content);
             var output = $"{nameof(SHA256)}:{BitConverter.ToString(hash).Replace("-", "")}";
-            return output;
+            return output.ToLower();
         }
 
         /// <summary>
