@@ -43,7 +43,7 @@ namespace Oras
             await dst.TagAsync(root, dstRef, cancellationToken);
             return root;
         }
-        
+
         public static async Task CopyGraphAsync(ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
         {
             // check if node exists in target
@@ -60,12 +60,8 @@ namespace Oras
                     {
                         await CopyGraphAsync(src, dst, childNode, cancellationToken);
                     }
-                    await dst.PushAsync(node, dataStream, cancellationToken);
                 }
-                else
-                {
-                    await dst.PushAsync(node, dataStream, cancellationToken);
-                }
+                await dst.PushAsync(node, dataStream, cancellationToken);
             }
         }
     }
