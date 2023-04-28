@@ -1,4 +1,4 @@
-﻿using Oras.Content;
+﻿using static Oras.Content.Content;
 using Oras.Interfaces;
 using Oras.Models;
 using System.Collections.Concurrent;
@@ -15,7 +15,7 @@ namespace Oras.Memory
 
         internal async Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
-            IList<Descriptor> successors = await GraphUtility.SuccessorsAsync(fetcher, node, cancellationToken);
+            IList<Descriptor> successors = await SuccessorsAsync(fetcher, node, cancellationToken);
             Index(node, successors, cancellationToken);
         }
 
@@ -29,10 +29,10 @@ namespace Oras.Memory
         /// <returns></returns>
         internal async Task<List<Descriptor>> PredecessorsAsync(Descriptor node, CancellationToken cancellationToken)
         {
-            var minimumDescriptor = Descriptor.FromOCI(node);
-            if (!this._predecessors.TryGetValue(minimumDescriptor, out ConcurrentDictionary<MinimumDescriptor, Descriptor> predecessors))
+            var key = Descriptor.FromOCI(node);
+            if (!this._predecessors.TryGetValue(key, out ConcurrentDictionary<MinimumDescriptor, Descriptor> predecessors))
             {
-                return null;
+                return default;
             }
             var res = predecessors.Values.ToList();
             return await Task.FromResult(res);
@@ -48,7 +48,7 @@ namespace Oras.Memory
         /// <param name="cancellationToken"></param>
         private void Index(Descriptor node, IList<Descriptor> successors, CancellationToken cancellationToken)
         {
-            if (successors is null)
+            if (successors is null || successors.Count == 0)
             {
                 return;
             }

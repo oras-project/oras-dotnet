@@ -1,5 +1,5 @@
 ﻿using Oras.Constants;
-using Oras.Content;
+using static Oras.Content.Content;
 using Oras.Exceptions;
 using Oras.Memory;
 using Oras.Models;
@@ -20,7 +20,7 @@ namespace Oras.Tests.MemoryTest
         public async Task MemoryTarget_CanStoreData()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
-            string hash = StorageUtility.CalculateDigest(content);
+            string hash = CalculateDigest(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -55,7 +55,7 @@ namespace Oras.Tests.MemoryTest
         public async Task MemoryTarget_ThrowsNotFoundExceptionWhenDataIsNotAvailable()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
-            string hash = StorageUtility.CalculateDigest(content);
+            string hash = CalculateDigest(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -81,7 +81,7 @@ namespace Oras.Tests.MemoryTest
         public async Task MemoryTarget_ThrowsAlreadyExistsExceptionWhenSameDataIsPushedTwice()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
-            string hash = StorageUtility.CalculateDigest(content);
+            string hash = CalculateDigest(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -105,7 +105,7 @@ namespace Oras.Tests.MemoryTest
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             var wrongContent = Encoding.UTF8.GetBytes("Hello World!");
-            string hash = StorageUtility.CalculateDigest(content);
+            string hash = CalculateDigest(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -132,7 +132,7 @@ namespace Oras.Tests.MemoryTest
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             var wrongContent = Encoding.UTF8.GetBytes("Hello Danny");
-            string hash = StorageUtility.CalculateDigest(content);
+            string hash = CalculateDigest(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -166,7 +166,7 @@ namespace Oras.Tests.MemoryTest
                 var desc = new Descriptor
                 {
                     MediaType = mediaType,
-                    Digest = StorageUtility.CalculateDigest(blob),
+                    Digest = CalculateDigest(blob),
                     Size = blob.Length
                 };
                 descs.Add(desc);
@@ -192,32 +192,35 @@ namespace Oras.Tests.MemoryTest
                 appendBlob(OCIMediaTypes.ImageIndex, indexBytes);
             };
             var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-            appendBlob(OCIMediaTypes.ImageConfig, getBytes("config"));// blob 0
-            appendBlob(OCIMediaTypes.ImageLayer, getBytes("foo"));// blob 1
-            appendBlob(OCIMediaTypes.ImageLayer, getBytes("bar"));// blob 2
-            appendBlob(OCIMediaTypes.ImageLayer, getBytes("hello"));// blob 3
-            generateManifest(descs[0], descs.GetRange(1, 2));// blob 4
-            generateManifest(descs[0], new() { descs[3] });// blob 5
-            generateManifest(descs[0], descs.GetRange(1, 3));// blob 6
-            generateIndex(descs.GetRange(4, 2));// blob 7
-            generateIndex(new() { descs[6] });// blob 8
+            appendBlob(OCIMediaTypes.ImageConfig, getBytes("config")); // blob 0
+            appendBlob(OCIMediaTypes.ImageLayer, getBytes("foo")); // blob 1
+            appendBlob(OCIMediaTypes.ImageLayer, getBytes("bar")); // blob 2
+            appendBlob(OCIMediaTypes.ImageLayer, getBytes("hello")); // blob 3
+            generateManifest(descs[0], descs.GetRange(1, 2)); // blob 4
+            generateManifest(descs[0], new() { descs[3] }); // blob 5
+            generateManifest(descs[0], descs.GetRange(1, 3)); // blob 6
+            generateIndex(descs.GetRange(4, 2)); // blob 7
+            generateIndex(new() { descs[6] }); // blob 8
+
 
             for (var i = 0; i < blobs.Count; i++)
             {
                 await memoryTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
 
             }
-            var wants = new List<List<Descriptor>>
+            var wants = new List<List<Descriptor>>()
             {
-            descs.GetRange(4,3), // blob 0
-            new() { descs[4], descs[6] }, // blob 1
-             new() { descs[4], descs[6] }, // blob 2
-              new() { descs[5], descs[6] }, // blob 3
-              new() {descs[7]},// blob 4
-              new() {descs[7]}, // blob 5
-              new() { descs[8] }, //blob 6
-              null!, // blob 7
-              null!}; // blob 8
+                descs.GetRange(4, 3), // blob 0
+                new() { descs[4], descs[6] }, // blob 1
+                new() { descs[4], descs[6] }, // blob 2
+                new() { descs[5], descs[6] }, // blob 3
+                new() { descs[7] }, // blob 4
+                new() { descs[7] }, // blob 5
+                new() { descs[8] }, // blob 6
+                null!, // blob 7
+                null! // blob 8
+            };
+
 
             foreach (var (i, want) in wants.Select((v, i) => (i, v)))
             {

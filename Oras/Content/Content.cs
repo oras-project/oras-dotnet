@@ -1,17 +1,46 @@
-﻿using Oras.Exceptions;
+﻿using Oras.Constants;
 using Oras.Interfaces;
 using Oras.Models;
 using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+using System.Threading;
+using Index = Oras.Models.Index;
+using Oras.Exceptions;
 using System.IO;
 using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
-
 
 namespace Oras.Content
 {
-    public static class StorageUtility
+    public static class Content
     {
+        public static async Task<IList<Descriptor>> SuccessorsAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
+        {
+            switch (node.MediaType)
+            {
+                case DockerMediaTypes.Manifest:
+                case OCIMediaTypes.ImageManifest:
+                    {
+                        var content = await FetchAllAsync(fetcher, node, cancellationToken);
+                        var manifest = JsonSerializer.Deserialize<Manifest>(content);
+                        var descriptors = new List<Descriptor>() { manifest.Config };
+                        descriptors.AddRange(manifest.Layers);
+                        return descriptors;
+                    }
+                case DockerMediaTypes.ManifestList:
+                case OCIMediaTypes.ImageIndex:
+                    {
+                        var content = await FetchAllAsync(fetcher, node, cancellationToken);
+                        // docker manifest list and oci index are equivalent for successors.
+                        var index = JsonSerializer.Deserialize<Index>(content);
+                        return index.Manifests;
+                    }
+            }
+            return default;
+        }
+
         public static async Task<Byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
         {
             var stream = await fetcher.FetchAsync(desc, cancellationToken);

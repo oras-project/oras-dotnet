@@ -1,4 +1,4 @@
-﻿using Oras.Content;
+﻿using static Oras.Content.Content;
 using Oras.Exceptions;
 using Oras.Interfaces;
 using Oras.Models;
@@ -40,7 +40,7 @@ namespace Oras.Memory
             {
                 throw new AlreadyExistsException($"{expected.Digest} : {expected.MediaType}");
             }
-            var readBytes = await StorageUtility.ReadAllAsync(contentStream, expected);
+            var readBytes = await ReadAllAsync(contentStream, expected);
 
             var added = _content.TryAdd(key, readBytes);
             if (!added) throw new AlreadyExistsException($"{key.Digest} : {key.MediaType}");

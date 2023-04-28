@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace Oras.Models
 {
-    public class MinimumDescriptor : IEquatable<MinimumDescriptor>
+    internal class MinimumDescriptor : IEquatable<MinimumDescriptor>
     {
         [JsonPropertyName("mediaType")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
