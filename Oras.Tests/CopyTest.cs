@@ -62,7 +62,8 @@ namespace Oras.Tests
             var destinationTarget = new MemoryTarget();
             var gotDesc = await Copy.CopyAsync(sourceTarget, reference, destinationTarget, "", cancellationToken);
             Assert.Equal(gotDesc, root);
-
+            Assert.Equal(await destinationTarget.ResolveAsync(reference, cancellationToken), root);
+            
             for (var i = 0; i < descs.Count; i++)
             {
                 Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
