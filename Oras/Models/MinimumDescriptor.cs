@@ -1,15 +1,10 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 
 namespace Oras.Models
 {
-    internal class MinimumDescriptor
+    internal class MinimumDescriptor : IEquatable<MinimumDescriptor>
     {
         [JsonPropertyName("mediaType")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -20,5 +15,16 @@ namespace Oras.Models
 
         [JsonPropertyName("size")]
         public long Size { get; set; }
+
+        public bool Equals(MinimumDescriptor other)
+        {
+            if (other == null) return false;
+            return this.MediaType == other.MediaType && this.Digest == other.Digest && this.Size == other.Size;
+        }
+
+        public override int GetHashCode()
+        {
+            return (this.MediaType + this.Digest + this.Size.ToString()).GetHashCode();
+        }
     }
 }

@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Text;
+﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 
 namespace Oras.Models
@@ -40,6 +35,17 @@ namespace Oras.Models
         [JsonPropertyName("artifactType")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string ArtifactType { get; set; }
+
+        internal static MinimumDescriptor FromOCI(Descriptor descriptor)
+        {
+            return new MinimumDescriptor
+            {
+                MediaType = descriptor.MediaType,
+                Digest = descriptor.Digest,
+                Size = descriptor.Size
+            };
+        }
+
     }
 
     public class Platform
