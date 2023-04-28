@@ -74,7 +74,7 @@ namespace Oras.Tests
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task Copy_CanCopyBetweenMemoryTargets()
+        public async Task Copy_Graph()
         {
             var sourceTarget = new MemoryTarget();
             var cancellationToken = new CancellationToken();
