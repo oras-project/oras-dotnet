@@ -1,16 +1,15 @@
 ﻿using Oras.Constants;
+using Oras.Exceptions;
 using Oras.Interfaces;
 using Oras.Models;
 using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
-using System.Threading;
-using Index = Oras.Models.Index;
-using Oras.Exceptions;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Index = Oras.Models.Index;
 
 namespace Oras.Content
 {
@@ -47,7 +46,7 @@ namespace Oras.Content
             return await ReadAllAsync(stream, desc);
         }
 
-        public static string CalculateDigest(byte[] content)
+        internal static string CalculateDigest(byte[] content)
         {
             using var sha256 = SHA256.Create();
             var hash = sha256.ComputeHash(content);
