@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
-namespace Oras.Interfaces
+namespace Oras.Interfaces.Registry
 {
     /// <summary>
     /// ITagLister lists tags by the tag service.
     /// </summary>
-    internal interface ITagLister
+    public interface ITagLister
     {
         /// <summary>
         /// Tags lists the tags available in the repository.
@@ -21,13 +22,14 @@ namespace Oras.Interfaces
         /// However, not all registries supports pagination or conforms the
         /// specification.
         /// References:
-        /// - https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#content-discovery
+        /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md
         /// - https://docs.docker.com/registry/spec/api/#tags
         /// See also `Tags()` in this package.
         /// </summary>
         /// <param name="last"></param>
         /// <param name="fn"></param>
+        /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task TagsAsync(string last, Func<string[], Task> fn);
+        Task TagsAsync(string last, Action<string[]> fn, CancellationToken cancellationToken = default);
     }
 }

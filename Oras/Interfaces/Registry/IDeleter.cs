@@ -2,12 +2,12 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Oras.Interfaces
+namespace Oras.Interfaces.Registry
 {
     /// <summary>
     /// IDeleter removes content.
     /// </summary>
-    internal interface IDeleter
+    public interface IDeleter
     {
         /// <summary>
         /// This deletes content Identified by the descriptor

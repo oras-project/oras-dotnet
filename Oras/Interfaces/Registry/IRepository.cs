@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace Oras.Interfaces
+namespace Oras.Interfaces.Registry
 {
     /// <summary>
     /// Repository is an ORAS target and an union of the blob and the manifest CASs.
@@ -14,17 +14,17 @@ namespace Oras.Interfaces
     /// Furthermore, this interface also provides the ability to enforce the
     /// separation of the blob and the manifests CASs.
     /// </summary>
-    internal interface IRepository : ITarget, ITagResolver, IReferenceFetcher, IReferencePusher, IReferrerLister, IDeleter
+    internal interface IRepository : ITarget, IReferenceFetcher, IReferencePusher, IDeleter
     {
         /// <summary>
         /// BlobsAsync provides access to the blob CAS only, which contains config blobs,layers, and other generic blobs.
         /// </summary>
         /// <returns></returns>
-        Task<IBlobTarget> BlobsAsync();
+        Task<IBlobStore> BlobsAsync();
         /// <summary>
         /// ManifestsAsync provides access to the manifest CAS only.
         /// </summary>
         /// <returns></returns>
-        Task<IManifestTarget> ManifestsAsync();
+        Task<IManifestStore> ManifestsAsync();
     }
 }

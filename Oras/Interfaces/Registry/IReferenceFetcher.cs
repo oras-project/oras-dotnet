@@ -3,12 +3,12 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Oras.Interfaces
+namespace Oras.Interfaces.Registry
 {
     /// <summary>
     /// IReferenceFetcher provides advanced fetch with the tag service.
     /// </summary>
-    internal interface IReferenceFetcher
+    public interface IReferenceFetcher
     {
         /// <summary>
         /// FetchReferenceAsync fetches the content identified by the reference.
