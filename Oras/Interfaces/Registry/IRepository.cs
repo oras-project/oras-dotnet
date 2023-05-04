@@ -14,7 +14,7 @@ namespace Oras.Interfaces.Registry
     /// Furthermore, this interface also provides the ability to enforce the
     /// separation of the blob and the manifests CASs.
     /// </summary>
-    internal interface IRepository : ITarget, IReferenceFetcher, IReferencePusher, IDeleter
+    public interface IRepository : ITarget, IReferenceFetcher, IReferencePusher, IDeleter
     {
         /// <summary>
         /// BlobsAsync provides access to the blob CAS only, which contains config blobs,layers, and other generic blobs.

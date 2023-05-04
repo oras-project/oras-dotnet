@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 namespace Oras.Interfaces
 {
     /// <summary>
-    /// ITag tags reference tags
+    /// ITagger tags reference tags
     /// </summary>
-    public interface ITag
+    public interface ITagger
     {
         /// <summary>
         /// TagAsync tags the descriptor with the reference.
