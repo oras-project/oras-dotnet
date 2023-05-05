@@ -16,6 +16,6 @@ namespace Oras.Interfaces.Registry
         /// <param name="reference"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        (Task<Descriptor>, Task<Stream>) FetchReferenceAsync(string reference, CancellationToken cancellationToken = default);
+        Task<(Descriptor, Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default);
     }
 }
