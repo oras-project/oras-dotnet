@@ -10,7 +10,7 @@ namespace Oras.Interfaces.Registry
     public interface ITagLister
     {
         /// <summary>
-        /// Tags lists the tags available in the repository.
+        /// TagsAsync lists the tags available in the repository.
         /// Since the returned tag list may be paginated by the underlying
         /// implementation, a function should be passed in to process the paginated
         /// tag list.
