@@ -3,7 +3,7 @@
     /// <summary>
     /// Repository is an ORAS target and an union of the blob and the manifest CASs.
     /// As specified by https://docs.docker.com/registry/spec/api/, it is natural to
-    /// assume that content.Resolver interface only works for manifests. Tagging a
+    /// assume that IResolver interface only works for manifests. Tagging a
     /// blob may be resulted in an `ErrUnsupported` error. However, this interface
     /// does not restrict tagging blobs.
     /// Since a repository is an union of the blob and the manifest CASs, all
