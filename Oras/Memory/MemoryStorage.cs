@@ -44,7 +44,6 @@ namespace Oras.Memory
 
             var added = _content.TryAdd(key, readBytes);
             if (!added) throw new AlreadyExistsException($"{key.Digest} : {key.MediaType}");
-
             return;
         }
     }

@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.Json;
 using Xunit;
 using static Oras.Content.Content;
-using Index = Oras.Models.Index;
 
 namespace Oras.Tests
 {
@@ -63,7 +62,7 @@ namespace Oras.Tests
             var gotDesc = await Copy.CopyAsync(sourceTarget, reference, destinationTarget, "", cancellationToken);
             Assert.Equal(gotDesc, root);
             Assert.Equal(await destinationTarget.ResolveAsync(reference, cancellationToken), root);
-            
+
             for (var i = 0; i < descs.Count; i++)
             {
                 Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
@@ -121,7 +120,7 @@ namespace Oras.Tests
             var root = descs[3];
             var destinationTarget = new MemoryTarget();
             await Copy.CopyGraphAsync(sourceTarget, destinationTarget, root, cancellationToken);
-            for (var i=0; i<descs.Count; i++)
+            for (var i = 0; i < descs.Count; i++)
             {
                 Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
                 var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
