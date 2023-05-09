@@ -1,59 +1,391 @@
-﻿namespace Oras.Remote
+﻿using Oras.Interfaces.Registry;
+using Oras.Models;
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Oras.Exceptions;
+
+namespace Oras.Remote
 {
+    public class RepositoryOption : IRepositoryOption
+    {
+        public HttpClient Client { get; set; }
+        public ReferenceObj Reference { get; set; }
+        public bool PlainHTTP { get; set; }
+        public string[] ManifestMediaTypes { get; set; }
+        public int TagListPageSize { get; set; }
+        public long MaxMetadataBytes { get; set; }
+    }
     /// <summary>
     /// Repository is an HTTP client to a remote repository
     /// </summary>
-    public class Repository
+    public class Repository : IRepository, IRepositoryOption
+    {
+        /// <summary>
+        /// Client is the underlying HTTP client used to access the remote registry.
+        /// </summary>
+        public HttpClient Client { get; set; }
+
+        /// <summary>
+        /// ReferenceObj references the remote repository.
+        /// </summary>
+        public ReferenceObj Reference { get; set; }
+
+        /// <summary>
+        /// PlainHTTP signals the transport to access the remote repository via HTTP
+        /// instead of HTTPS.
+        /// </summary>
+        public bool PlainHTTP { get; set; }
+
+
+        /// <summary>
+        /// ManifestMediaTypes is used in `Accept` header for resolving manifests
+        /// from references. It is also used in identifying manifests and blobs from
+        /// descriptors. If an empty list is present, default manifest media types
+        /// are used.
+        /// </summary>
+        public string[] ManifestMediaTypes { get; set; }
+
+        /// <summary>
+        /// TagListPageSize specifies the page size when invoking the tag list API.
+        /// If zero, the page size is determined by the remote registry.
+        /// Reference: https://docs.docker.com/registry/spec/api/#tags
+        /// </summary>
+        public int TagListPageSize { get; set; }
+
+        /// <summary>
+        /// MaxMetadataBytes specifies a limit on how many response bytes are allowed
+        /// in the server's response to the metadata APIs, such as catalog list, tag
+        /// list, and referrers list.
+        /// If less than or equal to zero, a default (currently 4MiB) is used.
+        /// </summary>
+        public long MaxMetadataBytes { get; set; }
+
+        /// <summary>
+        /// Creates a client to the remote repository identified by a reference
+        /// Example: localhost:5000/hello-world
+        /// </summary>
+        /// <param name="reference"></param>
+        public Repository(string reference)
+        {
+            var refObj = new ReferenceObj().ParseReference(reference);
+            Reference = refObj;
+        }
+
+        /// <summary>
+        /// This constructor customizes the Properties using the values
+        /// from the RepositoryOptions.
+        /// RepositoryOptions contains unexported state that must not be copied
+        /// to multiple Repositories. To handle this we explicitly copy only the
+        /// fields that we want to reproduce.
+        /// </summary>
+        /// <param name="refObj"></param>
+        /// <param name="option"></param>
+        public Repository(ReferenceObj refObj, RepositoryOption option)
+        {
+            refObj.ValidateRepository();
+            Client = option.Client;
+            Reference = refObj;
+            PlainHTTP = option.PlainHTTP;
+            ManifestMediaTypes = option.ManifestMediaTypes;
+            TagListPageSize = option.TagListPageSize;
+            MaxMetadataBytes = option.MaxMetadataBytes;
+
+        }
+
+        /// <summary>
+        /// client returns an HTTP client used to access the remote repository.
+        /// A default HTTP client is return if the client is not configured.
+        /// </summary>
+        /// <returns></returns>
+        private HttpClient client()
+        {
+            if (Client is null)
+            {
+                var client = new HttpClient();
+                client.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
+                return client;
+            }
+
+            return Client;
+        }
+
+        /// <summary>
+        /// blobStore detects the blob store for the given descriptor.
+        /// </summary>
+        /// <param name="desc"></param>
+        /// <returns></returns>
+        private IBlobStore blobStore(Descriptor desc)
+        {
+            if (ManifestUtil.isManifest(ManifestMediaTypes, desc))
+            {
+                return Manifests();
+            }
+
+            return Blobs();
+        }
+
+
+
+        /// <summary>
+        /// FetchAsync fetches the content identified by the descriptor.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
+        {
+            return await blobStore(target).FetchAsync(target, cancellationToken);
+        }
+
+        /// <summary>
+        /// ExistsAsync returns true if the described content exists.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
+        {
+            return await blobStore(target).ExistsAsync(target, cancellationToken);
+        }
+
+        /// <summary>
+        /// PushAsync pushes the content, matching the expected descriptor.
+        /// </summary>
+        /// <param name="expected"></param>
+        /// <param name="content"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
+        {
+            await blobStore(expected).PushAsync(expected, content, cancellationToken);
+        }
+
+        public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// TagAsync tags a manifest descriptor with a reference string.
+        /// </summary>
+        /// <param name="descriptor"></param>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
+        { 
+            await Manifests().TagAsync(descriptor, reference, cancellationToken);
+        }
+
+        /// <summary>
+        /// FetchReference fetches the manifest identified by the reference.
+        /// The reference can be a tag or digest.
+        /// </summary>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<(Descriptor, Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
+        {
+            return await Manifests().FetchReferenceAsync(reference, cancellationToken);
+        }
+
+        /// <summary>
+        /// PushReference pushes the manifest with a reference tag.
+        /// </summary>
+        /// <param name="descriptor"></param>
+        /// <param name="content"></param>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task PushReferenceAsync(Descriptor descriptor, Stream content, string reference,
+            CancellationToken cancellationToken = default)
+        {
+             await Manifests().FetchReferenceAsync(reference, cancellationToken);
+        }
+
+        /// <summary>
+        /// DeleteAsync removes the content identified by the descriptor.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
+        {
+            await blobStore(target).DeleteAsync(target, cancellationToken);
+        }
+
+        public async Task TagsAsync(string last, Action<string[]> fn, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Blobs provides access to the blob CAS only, which contains
+        /// layers, and other generic blobs.
+        /// </summary>
+        /// <returns></returns>
+        public IBlobStore Blobs()
+        {
+            return new BlobStore(this);
+        }
+
+
+        /// <summary>
+        /// Manifests provides access to the 
+        /// </summary>
+        /// <returns></returns>
+        public IManifestStore Manifests()
+        {
+            return new ManifestStore(this);
+        }
+
+        /// <summary>
+        /// ParseReference resolves a tag or a digest reference to a fully qualified
+        /// reference from a base reference Reference.
+        /// Tag, digest, or fully qualified references are accepted as input.
+        /// If reference is a fully qualified reference, then ParseReference parses it
+        /// and returns the parsed reference. If the parsed reference does not share
+        /// the same base reference with the Repository, ParseReference throws an
+        /// error, InvalidReferenceException.
+        /// </summary>
+        /// <param name="reference"></param>
+        /// <returns></returns>
+        public ReferenceObj ParseReference(string reference)
+        {
+            try
+            {
+                var refObj = new ReferenceObj().ParseReference(reference);
+                if (refObj.Registry != Reference.Registry || refObj.Repository != Reference.Repository)
+                {
+                    throw new InvalidReferenceException(
+                        $"mismatch between received {JsonSerializer.Serialize(refObj)} and expected {JsonSerializer.Serialize(Reference)}");
+                }
+
+                if (refObj.Reference.Length == 0)
+                {
+                    throw new InvalidReferenceException();
+                }
+                return refObj;
+            }
+            catch (Exception)
+            {
+                var refObj = new ReferenceObj
+                {
+                    Registry = Reference.Registry,
+                    Repository = Reference.Repository,
+                    Reference = Reference.Reference
+                };
+                //reference is not a FQDN
+                if (reference.IndexOf("@") is var index && index != 1)
+                {
+                    // `@` implies *digest*, so drop the *tag* (irrespective of what it is).
+                    refObj.Reference = reference.Substring(index + 1);
+                    refObj.ValidateReferenceAsDigest();
+                }
+                else
+                {
+                    refObj.ValidateReference();
+                }
+                return refObj;
+            }
+
+        }
+    }
+
+    public class ManifestStore : IManifestStore
+    {
+        public Repository Repo { get; set; }
+        public ManifestStore(Repository repository)
+        {
+            Repo = repository;
+        }
+
+        public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<(Descriptor, Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task PushReferenceAsync(Descriptor descriptor, Stream content, string reference,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class BlobStore : IBlobStore
     {
 
-        // Client is the underlying HTTP client used to access the remote registry.
-        // If nil, auth.DefaultClient is used.
-        public
-        Client Client
+        public Repository Repo { get; set; }
 
-    // Reference references the remote repository.
-    Reference registry.Reference
+        public BlobStore(Repository repository)
+        {
+            Repo = repository;
+            
+        }
 
-    // PlainHTTP signals the transport to access the remote repository via HTTP
-    // instead of HTTPS.
-    PlainHTTP bool
 
-    // ManifestMediaTypes is used in `Accept` header for resolving manifests
-    // from references. It is also used in identifying manifests and blobs from
-    // descriptors. If an empty list is present, default manifest media types
-    // are used.
-    ManifestMediaTypes []string
+        public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-    // TagListPageSize specifies the page size when invoking the tag list API.
-    // If zero, the page size is determined by the remote registry.
-    // Reference: https://docs.docker.com/registry/spec/api/#tags
-    TagListPageSize int
+        public async Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-    // ReferrerListPageSize specifies the page size when invoking the Referrers
-    // API.
-    // If zero, the page size is determined by the remote registry.
-    // Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#listing-referrers
-    ReferrerListPageSize int
+        public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-    // MaxMetadataBytes specifies a limit on how many response bytes are allowed
-    // in the server's response to the metadata APIs, such as catalog list, tag
-    // list, and referrers list.
-    // If less than or equal to zero, a default (currently 4MiB) is used.
-    MaxMetadataBytes int64
+        public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-    // NOTE: Must keep fields in sync with newRepositoryWithOptions function.
+        public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-    // referrersState represents that if the repository supports Referrers API.
-    // default: referrersStateUnknown
-    referrersState referrersState
-
-    // referrersPingLock locks the pingReferrers() method and allows only
-    // one go-routine to send the request.
-    referrersPingLock sync.Mutex
-
-    // referrersMergePool provides a way to manage concurrent updates to a
-    // referrers index tagged by referrers tag schema.
-    referrersMergePool syncutil.Pool[syncutil.Merge[referrerChange]]
-}
-}
+        public async Task<(Descriptor, Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

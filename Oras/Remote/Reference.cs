@@ -1,4 +1,6 @@
 ﻿using Oras.Exceptions;
+using System;
+using System.Text.RegularExpressions;
 
 namespace Oras.Remote
 {
@@ -42,6 +44,10 @@ namespace Oras.Remote
         /// </summary>
         const string tagRegexp = @"^[\w][\w.-]{0,127}$";
 
+        /// <summary>
+        /// digestRegexp checks the digest.
+        /// </summary>
+        const string digestRegexp = @"^sha256:[0-9a-fA-F]{64}$";
         public ReferenceObj ParseReference(string artifact)
         {
             var parts = artifact.Split("/", 2);
@@ -50,25 +56,121 @@ namespace Oras.Remote
                 throw new InvalidReferenceException($"missing repository");
             }
             (var registry, var path) = (parts[0], parts[1]);
-            bool isTag;
-            string repository;
-            string reference;
-            var index = path.IndexOf("@");
-            if (index != -1)
+            bool isTag = false;
+            string repository = String.Empty;
+            string reference = String.Empty;
+
+            if (path.IndexOf("@") is var index && index != -1)
             {
                 // digest found; Valid From A (if not B)
                 isTag = false;
                 repository = path.Substring(0, index);
                 reference = path.Substring(index + 1);
 
-                if (repository.IndexOf(":") is var colonIndex && colonIndex != -1)
+                if (repository.IndexOf(":") is var indexOfColon && indexOfColon != -1)
                 {
-                    // Valid From B
-                    throw new InvalidReferenceException($"invalid reference format: {artifact}");
+                    // tag found ( and now dropped without validation ) since the
+                    // digest already present; Valid Form B
+                    repository = path.Substring(0, indexOfColon);
                 }
             }
+            else if (path.IndexOf(":") is var indexOfColon && indexOfColon != -1)
+            {
+                // tag found; Valid Form C
+                isTag = true;
+                repository = path.Substring(0, indexOfColon);
+                reference = path.Substring(indexOfColon + 1);
+            }
+            else
+            {
+                // empty `reference`; Valid Form D
+                repository = path;
+            }
+            var refObj = new ReferenceObj
+            {
+                Registry = registry,
+                Repository = repository,
+                Reference = reference
+            };
+            ValidateRegistry();
+            ValidateRepository();
 
-            return default;
+            if (Reference.Length == 0)
+            {
+                return refObj;
+            }
+
+            ValidateReferenceAsDigest();
+            if (isTag)
+            {
+                ValidateReferenceAsTag();
+            }
+            return refObj;
+        }
+
+        /// <summary>
+        /// ValidateReferenceAsDigest validates the reference as a digest.
+        /// </summary>
+        public void ValidateReferenceAsDigest()
+        {
+
+
+            if (!Regex.IsMatch(Reference, digestRegexp))
+            {
+                throw new InvalidReferenceException($"invalid reference format: {Reference}");
+            }
+        }
+
+        /// <summary>
+        /// ValidateRepository checks if the repository name is valid.
+        /// </summary>
+        /// <returns></returns>
+        public void ValidateRepository()
+        {
+            if (!Regex.IsMatch(Reference, repositoryRegexp))
+            {
+                throw new InvalidReferenceException("Invalid Respository");
+            }
+        }
+
+        /// <summary>
+        /// ValidateRegistry checks if the registry path is valid.
+        /// </summary>
+        /// <returns></returns>
+        public void ValidateRegistry()
+        {
+            if (!Uri.IsWellFormedUriString("dummy://" + this.Registry, UriKind.Absolute))
+            {
+                throw new InvalidReferenceException("Invalid Registry");
+            };
+        }
+
+        public void ValidateReferenceAsTag()
+        {
+            if (!Regex.IsMatch(Reference, tagRegexp))
+            {
+                throw new InvalidReferenceException("Invalid Tag");
+            }
+        }
+
+        /// <summary>
+        ///  ValidateReference where the reference is first tried as an ampty string, then
+        ///  as a digest, and if that fails, as a tag.
+        /// </summary>
+        public void ValidateReference()
+        {
+            if (Reference.Length == 0)
+            {
+                return;
+            }
+            if (Reference.IndexOf("@") != -1)
+            {
+                ValidateReferenceAsDigest();
+            }
+            else
+            {
+                ValidateReferenceAsTag();
+            }
         }
     }
 }
