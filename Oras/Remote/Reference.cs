@@ -172,5 +172,18 @@ namespace Oras.Remote
                 ValidateReferenceAsTag();
             }
         }
+
+        /// <summary>
+        /// Host returns the host name of the registry
+        /// </summary>
+        /// <returns></returns>
+        public string Host()
+        {
+            if (Registry == "docker.io")
+            {
+                return "registry-1.docker.io";
+            }
+            return Registry;
+        }
     }
 }
