@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Oras.Remote
+﻿namespace Oras.Remote
 {
-    
+
     internal static class RegistryUtil
     {
         /// <summary>
@@ -12,7 +8,7 @@ namespace Oras.Remote
         /// </summary>
         /// <param name="plainHTTP"></param>
         /// <returns></returns>
-         public static string BuildScheme(bool plainHTTP)
+        public static string BuildScheme(bool plainHTTP)
         {
             if (plainHTTP)
             {
@@ -73,7 +69,45 @@ namespace Oras.Remote
             return $"{BuildScheme(plainHTTP)}://{refObj.Host()}/v2/{refObj.Repository}/tags/list";
         }
 
-        
+        /// <summary>
+        /// BuildRepositoryManifestURL builds the URL for accessing the manifest API.
+        /// Format: <scheme>://<registry>/v2/<repository>/manifests/<digest_or_tag>
+        /// Reference: https://docs.docker.com/registry/spec/api/#manifest
+        /// </summary>
+        /// <param name="plainHTTP"></param>
+        /// <param name="refObj"></param>
+        /// <returns></returns>
+        public static string BuildRepositoryManifestURL(bool plainHTTP, ReferenceObj refObj)
+        {
+            return $"{BuildRepositoryBaseURL(plainHTTP, refObj)}/manifests/{refObj.Reference}";
+        }
+
+        /// <summary>
+        /// BuildRepositoryBlobURL builds the URL for accessing the blob API.
+        /// Format: <scheme>://<registry>/v2/<repository>/blobs/<digest>
+        /// Reference: https://docs.docker.com/registry/spec/api/#blob
+        /// </summary>
+        /// <param name="plainHTTP"></param>
+        /// <param name="refObj"></param>
+        /// <returns></returns>
+        public static string BuildRepositoryBlobURL(bool plainHTTP, ReferenceObj refObj)
+        {
+            return $"{BuildRepositoryBaseURL(plainHTTP, refObj)}/blobs/{refObj.Reference}";
+        }
+
+        /// <summary>
+        /// BuildRepositoryBlobUploadURL builds the URL for accessing the blob upload API.
+        /// Format: <scheme>://<registry>/v2/<repository>/blobs/uploads/
+        /// Reference: https://docs.docker.com/registry/spec/api/#initiate-blob-upload
+
+        /// </summary>
+        /// <param name="plainHTTP"></param>
+        /// <param name="refObj"></param>
+        /// <returns></returns>
+        public static string BuildRepositoryBlobUploadURL(bool plainHTTP, ReferenceObj refObj)
+        {
+            return $"{BuildRepositoryBaseURL(plainHTTP, refObj)}/blobs/uploads/";
+        }
 
     }
 }

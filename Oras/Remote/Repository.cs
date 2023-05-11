@@ -1,12 +1,14 @@
-﻿using Oras.Interfaces.Registry;
+﻿using Oras.Exceptions;
+using Oras.Interfaces.Registry;
 using Oras.Models;
 using System;
 using System.IO;
+using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Oras.Exceptions;
 
 namespace Oras.Remote
 {
@@ -64,6 +66,14 @@ namespace Oras.Remote
         /// </summary>
         public long MaxMetadataBytes { get; set; }
 
+        /// <summary>
+        /// dockerContentDigestHeader - The Docker-Content-Digest header, if present
+        /// on the response, returns the canonical digest of the uploaded blob.
+        /// See https://docs.docker.com/registry/spec/api/#digest-header
+        /// See https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#content-digests
+        /// </summary>
+        public const string dockerContentDigestHeader = "Docker-Content-Digest"
+        
         /// <summary>
         /// Creates a client to the remote repository identified by a reference
         /// Example: localhost:5000/hello-world
@@ -177,7 +187,7 @@ namespace Oras.Remote
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public async Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
-        { 
+        {
             await Manifests().TagAsync(descriptor, reference, cancellationToken);
         }
 
@@ -204,7 +214,7 @@ namespace Oras.Remote
         public async Task PushReferenceAsync(Descriptor descriptor, Stream content, string reference,
             CancellationToken cancellationToken = default)
         {
-             await Manifests().FetchReferenceAsync(reference, cancellationToken);
+            await Manifests().FetchReferenceAsync(reference, cancellationToken);
         }
 
         /// <summary>
@@ -218,10 +228,111 @@ namespace Oras.Remote
             await blobStore(target).DeleteAsync(target, cancellationToken);
         }
 
+        /// <summary>
+        /// TagsAsync lists the tags available in the repository.
+        /// See also `TagListPageSize`.
+        /// If `last` is NOT empty, the entries in the response start after the
+        /// tag specified by `last`. Otherwise, the response starts from the top
+        /// of the Tags list.
+        /// References:
+        /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#content-discovery
+        /// - https://docs.docker.com/registry/spec/api/#tags
+        /// </summary>
+        /// <param name="last"></param>
+        /// <param name="fn"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task TagsAsync(string last, Action<string[]> fn, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var url = RegistryUtil.BuildRepositoryTagListURL(PlainHTTP, Reference);
+                while (true)
+                {
+                    await tagsAsync(last, fn, url, cancellationToken);
+                    last = "";
+                }
+            }
+            catch (Exception e) when (!(e is NoLinkHeaderException))
+            {
+
+                throw e;
+
+            }
+
+        }
+
+        /// <summary>
+        /// tagsAsync returns a single page of tag list with the next link.
+        /// </summary>
+        /// <param name="last"></param>
+        /// <param name="fn"></param>
+        /// <param name="url"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        private async Task<string> tagsAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
+
+        /// <summary>
+        /// deleteAsync removes the content identified by the descriptor in the
+        /// entity blobs or manifests.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="isManifest"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="NotFoundException"></exception>
+        /// <exception cref="Exception"></exception>
+        internal async Task deleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken)
+        {
+            var refObj = Reference;
+            refObj.Reference = target.Digest;
+            Func<bool, ReferenceObj, string> buildURL = RegistryUtil.BuildRepositoryBlobURL;
+            if (isManifest)
+            {
+                buildURL = RegistryUtil.BuildRepositoryManifestURL;
+            }
+
+            var url = buildURL(PlainHTTP, refObj);
+            var resp = await Client.DeleteAsync(url, cancellationToken);
+
+            switch (resp.StatusCode)
+            {
+                case HttpStatusCode.Accepted:
+                    return verifyContentDigest(resp, target.Digest);
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException($"digest {target.Digest} not found");
+                default:
+                    throw new Exception(new
+                    {
+                        Method = resp.RequestMessage.Method,
+                        URL = resp.RequestMessage.RequestUri,
+                        StatusCode = resp.StatusCode
+                    }.ToString());
+            }
+        }
+
+
+        /// <summary>
+        /// verifyContentDigest verifies "Docker-Content-Digest" header if present.
+        /// OCI distribution-spec states the Docker-Content-Digest header is optional.
+        /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#legacy-docker-support-http-headers
+        /// </summary>
+        /// <param name="resp"></param>
+        /// <param name="targetDigest"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void verifyContentDigest(HttpResponseMessage resp, string targetDigest)
+        {
+            var digestStr = resp.Headers.GetValues(dockerContentDigestHeader);
+            if (!digestStr.Any())
+            {
+                return;
+            }
+            var contentDigest = 
+        }
+
 
         /// <summary>
         /// Blobs provides access to the blob CAS only, which contains
@@ -294,6 +405,8 @@ namespace Oras.Remote
             }
 
         }
+
+
     }
 
     public class ManifestStore : IManifestStore
@@ -302,6 +415,7 @@ namespace Oras.Remote
         public ManifestStore(Repository repository)
         {
             Repo = repository;
+
         }
 
         public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
@@ -354,7 +468,7 @@ namespace Oras.Remote
         public BlobStore(Repository repository)
         {
             Repo = repository;
-            
+
         }
 
 
