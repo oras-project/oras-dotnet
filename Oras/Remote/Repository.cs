@@ -399,7 +399,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
 
 
         /// <summary>
-        /// Manifests provides access to the 
+        /// Manifests provides access to the manifest CAS only.
         /// </summary>
         /// <returns></returns>
         public IManifestStore Manifests()
