@@ -35,19 +35,19 @@ namespace Oras.Remote
         /// - https://github.com/distribution/distribution/blob/v2.7.1/reference/regexp.go#L53
         /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
         /// </summary>
-        const string repositoryRegexp = @"^[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*)*$";
+        public static string repositoryRegexp = @"^[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*)*$";
 
         /// <summary>
         /// tagRegexp checks the tag name.
         /// The docker and OCI spec have the same regular expression.
         /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
         /// </summary>
-        const string tagRegexp = @"^[\w][\w.-]{0,127}$";
+        public static string tagRegexp = @"^[\w][\w.-]{0,127}$";
 
         /// <summary>
         /// digestRegexp checks the digest.
         /// </summary>
-        const string digestRegexp = @"^sha256:[0-9a-fA-F]{64}$";
+        public static string digestRegexp = @"^sha256:[0-9a-fA-F]{64}$";
         public ReferenceObj ParseReference(string artifact)
         {
             var parts = artifact.Split("/", 2);
@@ -64,22 +64,22 @@ namespace Oras.Remote
             {
                 // digest found; Valid From A (if not B)
                 isTag = false;
-                repository = path.Substring(0, index);
-                reference = path.Substring(index + 1);
+                repository = path[..index];
+                reference = path[(index + 1)..];
 
                 if (repository.IndexOf(":") is var indexOfColon && indexOfColon != -1)
                 {
                     // tag found ( and now dropped without validation ) since the
                     // digest already present; Valid Form B
-                    repository = path.Substring(0, indexOfColon);
+                    repository = repository[..index];
                 }
             }
             else if (path.IndexOf(":") is var indexOfColon && indexOfColon != -1)
             {
                 // tag found; Valid Form C
                 isTag = true;
-                repository = path.Substring(0, indexOfColon);
-                reference = path.Substring(indexOfColon + 1);
+                repository = path[..index];
+                reference = path[(index + 1)..];
             }
             else
             {
@@ -120,6 +120,7 @@ namespace Oras.Remote
                 throw new InvalidReferenceException($"invalid reference format: {Reference}");
             }
         }
+
 
         /// <summary>
         /// ValidateRepository checks if the repository name is valid.

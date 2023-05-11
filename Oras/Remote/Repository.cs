@@ -2,6 +2,7 @@
 using Oras.Interfaces.Registry;
 using Oras.Models;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -72,8 +73,8 @@ namespace Oras.Remote
         /// See https://docs.docker.com/registry/spec/api/#digest-header
         /// See https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#content-digests
         /// </summary>
-        public const string dockerContentDigestHeader = "Docker-Content-Digest"
-        
+        public const string dockerContentDigestHeader = "Docker-Content-Digest";
+
         /// <summary>
         /// Creates a client to the remote repository identified by a reference
         /// Example: localhost:5000/hello-world
@@ -227,7 +228,18 @@ namespace Oras.Remote
         {
             await blobStore(target).DeleteAsync(target, cancellationToken);
         }
+        public async Task<List<string>> TagsAsync(ITagLister repo, CancellationToken cancellationToken)
+        {
+            var res = new List<string>();
+            await repo.TagsAsync(
+                String.Empty,
+                async (tag) =>
+                {
+                    res.AddRange(tag);
 
+                }, cancellationToken);
+            return res;
+        }
         /// <summary>
         /// TagsAsync lists the tags available in the repository.
         /// See also `TagListPageSize`.
@@ -272,7 +284,29 @@ namespace Oras.Remote
         /// <returns></returns>
         private async Task<string> tagsAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            if (TagListPageSize > 0 || last != "")
+            {
+                if (TagListPageSize > 0)
+                {
+                    url = url + "?n=" + TagListPageSize;
+                }
+                if (last != "")
+                {
+                    url = url + "&last=" + last;
+                }
+            }
+            var resp = await Client.GetAsync(url, cancellationToken);
+            if (resp.StatusCode != HttpStatusCode.OK)
+            {
+                ErrorUtil.ParseErrorResponse(resp);
+
+            }
+
+            var data = await resp.Content.ReadAsStringAsync();
+            var page = JsonSerializer.Deserialize<ResponseTypes.Tags>(data);
+            fn(page.tags);
+            return Utils.ParseLink(resp);
+
         }
 
         /// <summary>
@@ -301,16 +335,14 @@ namespace Oras.Remote
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.Accepted:
-                    return verifyContentDigest(resp, target.Digest);
+                    verifyContentDigest(resp, target.Digest);
+                    break;
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"digest {target.Digest} not found");
+                    break;
                 default:
-                    throw new Exception(new
-                    {
-                        Method = resp.RequestMessage.Method,
-                        URL = resp.RequestMessage.RequestUri,
-                        StatusCode = resp.StatusCode
-                    }.ToString());
+                    ErrorUtil.ParseErrorResponse(resp);
+                    break;
             }
         }
 
@@ -321,16 +353,37 @@ namespace Oras.Remote
         /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#legacy-docker-support-http-headers
         /// </summary>
         /// <param name="resp"></param>
-        /// <param name="targetDigest"></param>
+        /// <param name="expected"></param>
         /// <exception cref="NotImplementedException"></exception>
-        private void verifyContentDigest(HttpResponseMessage resp, string targetDigest)
+        private void verifyContentDigest(HttpResponseMessage resp, string expected)
         {
-            var digestStr = resp.Headers.GetValues(dockerContentDigestHeader);
-            if (!digestStr.Any())
+            var digestStr = resp.Headers.GetValues(dockerContentDigestHeader).FirstOrDefault();
+            if (digestStr != null && !digestStr.Any())
             {
                 return;
             }
-            var contentDigest = 
+
+            string contentDigest;
+            try
+            {
+                contentDigest = DigestUtil.Parse(digestStr);
+
+            }
+            catch (Exception e)
+            {
+                throw new Exception(
+                   $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response header: {dockerContentDigestHeader}: {digestStr}"
+                    );
+            }
+
+            if (contentDigest != expected)
+            {
+                throw new Exception(
+$"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response; digest mismatch in {dockerContentDigestHeader}: received {contentDigest}, while expecting {expected}"
+                    );
+            }
+
+            return;
         }
 
 
