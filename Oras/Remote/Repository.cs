@@ -339,7 +339,6 @@ namespace Oras.Remote
                     break;
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"digest {target.Digest} not found");
-                    break;
                 default:
                     ErrorUtil.ParseErrorResponse(resp);
                     break;
@@ -369,7 +368,7 @@ namespace Oras.Remote
                 contentDigest = DigestUtil.Parse(digestStr);
 
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw new Exception(
                    $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response header: {dockerContentDigestHeader}: {digestStr}"

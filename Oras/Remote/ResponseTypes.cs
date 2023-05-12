@@ -4,7 +4,6 @@
     {
         public class Tags
         {
-
             public string[] tags { get; set; }
         }
     }
