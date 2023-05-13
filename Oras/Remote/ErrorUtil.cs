@@ -9,10 +9,10 @@ namespace Oras.Remote
         /// ParseErrorResponse parses the error returned by the remote registry.
         /// </summary>
         /// <param name="resp"></param>
-        /// <exception cref="Exception"></exception>
-        public static void ParseErrorResponse(HttpResponseMessage resp)
+        /// <returns></returns>
+        public static Exception ParseErrorResponse(HttpResponseMessage resp)
         {
-            throw new Exception(new
+            return new Exception(new
             {
                 resp.RequestMessage.Method,
                 URL = resp.RequestMessage.RequestUri,

@@ -1,5 +1,7 @@
 ﻿using Oras.Exceptions;
 using System;
+using System.Linq;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 
 namespace Oras.Remote
@@ -185,6 +187,48 @@ namespace Oras.Remote
                 return "registry-1.docker.io";
             }
             return Registry;
+        }
+
+        /// <summary>
+        /// Digest returns the reference as a Digest
+        /// </summary>
+        /// <returns></returns>
+        public string Digest()
+        {
+            ValidateReferenceAsDigest();
+            return Reference;
+        }
+
+        public static void VerifyContentDigest(HttpResponseMessage resp, string refDigest)
+        {
+            var digestStr = resp.Headers.GetValues("Docker-Content-Digest").FirstOrDefault();
+            if (String.IsNullOrEmpty(digestStr))
+            {
+                return;
+            }
+
+            string contentDigest = String.Empty;
+            try
+            {
+                contentDigest = ParseDigest(digestStr);
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response header: `Docker-Content-Digest: {digestStr}`");
+            }
+            if (contentDigest != refDigest)
+            {
+                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {refDigest}");
+            }
+        }
+
+        public static string ParseDigest(string digestStr)
+        {
+            if (!Regex.IsMatch(digestStr, digestRegexp))
+            {
+                throw new InvalidReferenceException($"invalid reference format: {Reference}");
+            }
+            return digestStr;
         }
     }
 }

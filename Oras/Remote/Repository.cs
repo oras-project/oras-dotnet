@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -175,9 +176,16 @@ namespace Oras.Remote
             await blobStore(expected).PushAsync(expected, content, cancellationToken);
         }
 
+        /// <summary>
+        /// ResolveAsync resolves a reference to a manifest descriptor
+        /// See all ManifestMediaTypes
+        /// </summary>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return await Manifests().ResolveAsync(reference, cancellationToken);
         }
 
         /// <summary>
@@ -298,7 +306,7 @@ namespace Oras.Remote
             var resp = await Client.GetAsync(url, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.OK)
             {
-                ErrorUtil.ParseErrorResponse(resp);
+              throw  ErrorUtil.ParseErrorResponse(resp);
 
             }
 
@@ -340,7 +348,7 @@ namespace Oras.Remote
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"digest {target.Digest} not found");
                 default:
-                    ErrorUtil.ParseErrorResponse(resp);
+                   throw ErrorUtil.ParseErrorResponse(resp);
                     break;
             }
         }
@@ -526,32 +534,230 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
 
         public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var refObj = Repo.Reference;
+            refObj.Reference = target.Digest;
+            var url = RegistryUtil.BuildRepositoryBlobURL(Repo.PlainHTTP, refObj);
+            var resp = await Repo.Client.GetAsync(url, cancellationToken);
+            switch (resp.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    // server does not support seek as `Range` was ignored.
+                    if (resp.Content.Headers.ContentLength is var size && size != -1 && size != target.Size)
+                    {
+                        throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
+                    }
+
+                    // check server range request capability.
+                    // Docker spec allows range header form of "Range: bytes=<start>-<end>".
+                    // However, the remote server may still not RFC 7233 compliant.
+                    // Reference: https://docs.docker.com/registry/spec/api/#blob
+                    if (resp.Headers.GetValues("Accept-Ranges").FirstOrDefault() == "bytes")
+                    {
+                        var stream = new MemoryStream();
+                        long from = 0;
+                        // make request using ranges until the whole data is read
+                        while (from < target.Size)
+                        {
+                            
+                            var to = from + 1024 * 1024 - 1;
+                            if (to > target.Size)
+                            {
+                                to = target.Size;
+                            }
+                            Repo.Client.DefaultRequestHeaders.Range = new RangeHeaderValue(from, to);
+                            resp = await Repo.Client.GetAsync(url, cancellationToken);
+                            if (resp.StatusCode != HttpStatusCode.PartialContent)
+                            {
+                                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response status code: {resp.StatusCode}");
+                            }
+                            await resp.Content.CopyToAsync(stream);
+                            from = to + 1;
+                        }
+                        stream.Seek(0, SeekOrigin.Begin);
+                        return stream;
+                    }
+
+                    return await resp.Content.ReadAsStreamAsync();
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException($"{target.Digest}: not found");
+                default:
+                 throw ErrorUtil.ParseErrorResponse(resp);
+            }
         }
 
+        /// <summary>
+        /// ExistsAsync returns true if the described content exists.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            try
+            {
+                await ResolveAsync(target.Digest, cancellationToken);
+                return true;
+            }
+            catch (Exception ex) when (ex is NotFoundException)
+            {
+                return false;
+            }
+
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+           
         }
 
+        /// <summary>
+        /// PushAsync pushes the content, matching the expected descriptor.
+        /// Existing content is not checked by PushAsync() to minimize the number of out-going
+        /// requests.
+        /// Push is done by conventional 2-step monolithic upload instead of a single
+        /// `POST` request for better overall performance. It also allows early fail on
+        /// authentication errors.
+        /// References:
+        /// - https://docs.docker.com/registry/spec/api/#pushing-an-image
+        /// - https://docs.docker.com/registry/spec/api/#initiate-blob-upload
+        /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pushing-a-blob-monolithically
+        /// </summary>
+        /// <param name="expected"></param>
+        /// <param name="content"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            
         }
 
+        /// <summary>
+        /// ResolveAsync resolves a reference to a descriptor.
+        /// </summary>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var refObj = Repo.ParseReference(reference);
+            var refDigest = refObj.Digest();
+            var url = RegistryUtil.BuildRepositoryBlobURL(Repo.PlainHTTP, refObj);
+            var resp = await Repo.Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            switch (resp.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    return generateBlobDescriptor(resp, refDigest);
+                    
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException($"{refObj.Reference}: not found");
+                default:
+                    throw ErrorUtil.ParseErrorResponse(resp);
+            }
         }
 
+        /// <summary>
+        /// DeleteAsync deletes the content identified by the given descriptor.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+           await Repo.deleteAsync(target, false, cancellationToken);
         }
 
+        /// <summary>
+        /// FetchReferenceAsync fetches the blob identified by the reference.
+        /// The reference must be a digest.
+        /// </summary>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<(Descriptor, Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var refObj = Repo.ParseReference(reference);
+            var refDigest = refObj.Digest();
+            var url = RegistryUtil.BuildRepositoryBlobURL(Repo.PlainHTTP, refObj);
+            var resp = await Repo.Client.GetAsync(url, cancellationToken);
+            switch (resp.StatusCode)
+            {
+                case HttpStatusCode.Accepted:
+                    // server does not support seek as `Range` was ignored.
+                    Descriptor desc = null;
+                    if (resp.Content.Headers.ContentLength == -1)
+                    {
+                        desc = await ResolveAsync(refDigest, cancellationToken);
+                    }
+                    else
+                    {
+                        desc = generateBlobDescriptor(resp, refDigest);
+                    }
+                    // check server range request capability.
+                    // Docker spec allows range header form of "Range: bytes=<start>-<end>".
+                    // However, the remote server may still not RFC 7233 compliant.
+                    // Reference: https://docs.docker.com/registry/spec/api/#blob
+                    if (resp.Headers.GetValues("Accept-Ranges").FirstOrDefault()  == "bytes")
+                    {
+                        var stream = new MemoryStream();
+                        // make request using ranges until the whole data is read
+                        long from = 0;
+
+                        while (from < desc.Size)
+                        {
+                            var to = from + 1024 * 1024 - 1;
+                            if (to > desc.Size)
+                            {
+                                to = desc.Size;
+                            }
+                            Repo.Client.DefaultRequestHeaders.Range = new RangeHeaderValue(from, to);
+                            resp = await Repo.Client.GetAsync(url, cancellationToken);
+                            if (resp.StatusCode != HttpStatusCode.PartialContent)
+                            {
+                                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response status code: {resp.StatusCode}");
+                            }
+                            await resp.Content.CopyToAsync(stream);
+                            from = to + 1;
+                        }
+                        stream.Seek(0, SeekOrigin.Begin);
+                        return (desc, stream);
+                    }
+                    return (desc, await resp.Content.ReadAsStreamAsync());
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException();
+                default:
+                    throw ErrorUtil.ParseErrorResponse(resp);
+                    
+            }
+        }
+
+        /// <summary>
+        /// generateBlobDescriptor returns a descriptor generated from the response.
+        /// </summary>
+        /// <param name="resp"></param>
+        /// <param name="refDigest"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        private Descriptor generateBlobDescriptor(HttpResponseMessage resp, string refDigest)
+        {
+            var mediaType = resp.Content.Headers.ContentType.MediaType;
+            if (String.IsNullOrEmpty(mediaType))
+            {
+                mediaType = "application/octet-stream";
+            }
+            var size = resp.Content.Headers.ContentLength!.Value;
+            if (size == -1)
+            {
+                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: unknown response Content-Length");
+            }
+
+            ReferenceObj.VerifyContentDigest(resp, refDigest);
+
+            return new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = refDigest,
+                Size = size
+            };
         }
     }
 }
