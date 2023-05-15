@@ -12,7 +12,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-using Oras.Constants;
 
 namespace Oras.Remote
 {
@@ -83,7 +82,7 @@ namespace Oras.Remote
         /// See https://docs.docker.com/registry/spec/api/#digest-header
         /// See https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#content-digests
         /// </summary>
-        public const string dockerContentDigestHeader = "Docker-Content-Digest";
+        public const string DockerContentDigestHeader = "Docker-Content-Digest";
 
         /// <summary>
         /// Creates a client to the remote repository identified by a reference
@@ -105,7 +104,7 @@ namespace Oras.Remote
         /// </summary>
         /// <param name="refObj"></param>
         /// <param name="option"></param>
-        public Repository(ReferenceObj refObj, RepositoryOption option)
+        public Repository(ReferenceObj refObj, IRepositoryOption option)
         {
             refObj.ValidateRepository();
             Client = option.Client;
@@ -249,7 +248,7 @@ namespace Oras.Remote
         {
             var res = new List<string>();
             await repo.TagsAsync(
-                String.Empty,
+                string.Empty,
                 async (tag) =>
                 {
                     res.AddRange(tag);
@@ -315,7 +314,7 @@ namespace Oras.Remote
             var resp = await Client.GetAsync(url, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.OK)
             {
-              throw  ErrorUtil.ParseErrorResponse(resp);
+                throw ErrorUtil.ParseErrorResponse(resp);
 
             }
 
@@ -357,7 +356,7 @@ namespace Oras.Remote
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"digest {target.Digest} not found");
                 default:
-                   throw ErrorUtil.ParseErrorResponse(resp);
+                    throw ErrorUtil.ParseErrorResponse(resp);
                     break;
             }
         }
@@ -373,7 +372,7 @@ namespace Oras.Remote
         /// <exception cref="NotImplementedException"></exception>
         private void verifyContentDigest(HttpResponseMessage resp, string expected)
         {
-            var digestStr = resp.Headers.GetValues(dockerContentDigestHeader).FirstOrDefault();
+            var digestStr = resp.Headers.GetValues(DockerContentDigestHeader).FirstOrDefault();
             if (digestStr != null && !digestStr.Any())
             {
                 return;
@@ -388,14 +387,14 @@ namespace Oras.Remote
             catch (Exception)
             {
                 throw new Exception(
-                   $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response header: {dockerContentDigestHeader}: {digestStr}"
+                   $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response header: {DockerContentDigestHeader}: {digestStr}"
                     );
             }
 
             if (contentDigest != expected)
             {
                 throw new Exception(
-$"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response; digest mismatch in {dockerContentDigestHeader}: received {contentDigest}, while expecting {expected}"
+$"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response; digest mismatch in {DockerContentDigestHeader}: received {contentDigest}, while expecting {expected}"
                     );
             }
 
@@ -503,7 +502,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.Add("Accept", target.MediaType);
             var resp = await Repo.Client.SendAsync(req, cancellationToken);
-        
+
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -559,7 +558,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
         {
-             pushWithIndexing(expected, content, expected.Digest, cancellationToken);
+            await pushWithIndexing(expected, content, expected.Digest, cancellationToken);
         }
 
         /// <summary>
@@ -569,20 +568,20 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <param name="r"></param>
         /// <param name="reference"></param>
         /// <param name="cancellationToken"></param>
-        private void pushWithIndexing(Descriptor expected, Stream r, string reference, CancellationToken cancellationToken)
+        private async Task pushWithIndexing(Descriptor expected, Stream r, string reference, CancellationToken cancellationToken)
         {
-            push(expected, r, reference, cancellationToken);
+            await pushAsync(expected, r, reference, cancellationToken);
             return;
         }
 
         /// <summary>
-        /// push pushes the manifest content, matching the expected descriptor.
+        /// pushAsync pushes the manifest content, matching the expected descriptor.
         /// </summary>
         /// <param name="expected"></param>
         /// <param name="stream"></param>
         /// <param name="reference"></param>
         /// <param name="cancellationToken"></param>
-        private void push(Descriptor expected, Stream stream, string reference, CancellationToken cancellationToken)
+        private async Task pushAsync(Descriptor expected, Stream stream, string reference, CancellationToken cancellationToken)
         {
             var refObj = Repo.Reference;
             refObj.Reference = reference;
@@ -605,7 +604,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             // To prevent double reading, the manifest is read and stored in the memory,
             // and serve from the memory.
             var client = Repo.Client;
-            var resp = client.SendAsync(req, cancellationToken).Result;
+            var resp = await client.SendAsync(req, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.Created)
             {
                 throw ErrorUtil.ParseErrorResponse(resp);
@@ -614,13 +613,13 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         }
 
         /// <summary>
-        /// limitSize returns ErrSizeExceedsLimit if the size of desc exceeds the limit n.
+        /// LimitSize returns ErrSizeExceedsLimit if the size of desc exceeds the limit n.
         /// If n is less than or equal to zero, defaultMaxMetadataBytes is used.
         /// </summary>
         /// <param name="desc"></param>
         /// <param name="n"></param>
         /// <exception cref="SizeExceedsLimitException"></exception>
-        private void limitSize(Descriptor desc, long n)
+        private void LimitSize(Descriptor desc, long n)
         {
             if (n <= 0)
             {
@@ -655,13 +654,22 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             }
         }
 
+        /// <summary>
+        ///  generateDescriptor returns a descriptor generated from the response.
+        /// </summary>
+        /// <param name="res"></param>
+        /// <param name="refObj"></param>
+        /// <param name="httpMethod"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         private Descriptor generateDescriptor(HttpResponseMessage res, ReferenceObj refObj, HttpMethod httpMethod)
         {
+            string mediaType;
             try
             {
-            // 1. Validate Content-Type
-            var mediaType = res.Content.Headers.ContentType.MediaType;
-            MediaTypeHeaderValue.TryParse(mediaType.ToString(), out var parsedMediaType);
+                // 1. Validate Content-Type
+                mediaType = res.Content.Headers.ContentType.MediaType;
+                MediaTypeHeaderValue.TryParse(mediaType.ToString(), out var parsedMediaType);
 
             }
             catch (Exception e)
@@ -685,37 +693,38 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             {
                 try
                 {
-               ReferenceObj.VerifyContentDigest(res,serverHeaderDigest);
+                    ReferenceObj.VerifyContentDigest(res, serverHeaderDigest);
                 }
-                catch(Exception)
+                catch (Exception)
                 {
                     throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: invalid response header value: `Docker-Content-Digest: {serverHeaderDigest}`");
                 }
             }
 
-            // 5. Now, look for specific error conditions; see truth table inmethod docstring
-            var contentDigest = String.Empty;
-            
-            if(serverHeaderDigest.Length == 0)
+            // 5. Now, look for specific error conditions;
+            var contentDigest = string.Empty;
+
+            if (serverHeaderDigest.Length == 0)
             {
                 if (httpMethod == HttpMethod.Head)
                 {
-                    if(refDigest.Length == 0) {
+                    if (refDigest.Length == 0)
+                    {
                         // HEAD without server `Docker-Content-Digest`
                         // immediate fail
                         throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: HTTP {httpMethod} request missing required header {serverHeaderDigest}");
                     }
-                // Otherwise, just trust the client-supplied digest
-                contentDigest = refDigest; 
+                    // Otherwise, just trust the client-supplied digest
+                    contentDigest = refDigest;
                 }
                 else
                 {
                     // GET without server `Docker-Content-Digest header forces the
                     // expensive calculation
-                    var calculatedDigest = String.Empty;
+                    string calculatedDigest;
                     try
                     {
-                      calculatedDigest =  calculateDigestFromResponse(res, Repo.MaxMetadataBytes);
+                        calculatedDigest = calculateDigestFromResponse(res, Repo.MaxMetadataBytes);
                     }
                     catch (Exception e)
                     {
@@ -728,19 +737,18 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             {
                 contentDigest = serverHeaderDigest;
             }
-            if(refDigest.Length > 0 && refDigest != contentDigest)
+            if (refDigest.Length > 0 && refDigest != contentDigest)
             {
-                /*
-                 * 
-                 * return ocispec.Descriptor{}, fmt.Errorf(
-              "%s %q: invalid response; digest mismatch in %s: received %q when expecting %q",
-              resp.Request.Method, resp.Request.URL,
-              dockerContentDigestHeader, contentDigest,
-              refDigest,
-          )
-                 */
-                
+                throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: invalid response; digest mismatch in {serverHeaderDigest}: received {contentDigest} when expecting {refDigest}");
             }
+
+            // 6. Finally, if we made it this far, then all is good; return the descriptor
+            return new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = contentDigest,
+                Size = res.Content.Headers.ContentLength.Value
+            };
         }
 
         /// <summary>
@@ -755,32 +763,96 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             {
                 byte[] content = Utils.LimitReader(res.Content, maxMetadataBytes);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: failed to read response body: {e.Message}");
+                throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: failed to read response body: {ex.Message}");
             }
             return DigestUtil.FromBytes(res.Content);
         }
 
+        /// <summary>
+        /// DeleteAsync removes the manifest content identified by the descriptor.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            deleteWithIndexing(target, cancellationToken);
         }
 
+        /// <summary>
+        ///  deleteWithIndexing removes the manifest content identified by the descriptor.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        private async Task deleteWithIndexing(Descriptor target, CancellationToken cancellationToken)
+        {
+            await Repo.deleteAsync(target, true, cancellationToken);
+        }
+
+        /// <summary>
+        /// FetchReferenceAsync fetches the manifest identified by the reference.
+        /// </summary>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<(Descriptor, Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var refObj = Repo.ParseReference(reference);
+            var url = RegistryUtil.BuildRepositoryManifestURL(Repo.PlainHTTP, refObj);
+            var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Content.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repo.ManifestMediaTypes));
+            var resp = await Repo.Client.SendAsync(req, cancellationToken);
+            switch (resp.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    Descriptor desc;
+                    if (resp.Content.Headers.ContentLength == -1)
+                    {
+                        desc = await ResolveAsync(reference, cancellationToken);
+                    }
+                    else
+                    {
+                        desc = generateDescriptor(resp, refObj, HttpMethod.Get);
+                    }
+                    return (desc, await resp.Content.ReadAsStreamAsync());
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException($"{req.Method} {req.RequestUri}: manifest unknown");
+                default:
+                    throw ErrorUtil.ParseErrorResponse(resp);
+
+            }
         }
 
-        public async Task PushReferenceAsync(Descriptor descriptor, Stream content, string reference,
+        /// <summary>
+        /// PushReferenceASync pushes the manifest with a reference tag.
+        /// </summary>
+        /// <param name="expected"></param>
+        /// <param name="content"></param>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task PushReferenceAsync(Descriptor expected, Stream content, string reference,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var refObj = Repo.ParseReference(reference);
+            await pushWithIndexing(expected, content, refObj.Reference, cancellationToken);
         }
 
+        /// <summary>
+        /// TagAsync tags a manifest descriptor with a reference string.
+        /// </summary>
+        /// <param name="descriptor"></param>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var refObj = Repo.ParseReference(reference);
+            var rc = await FetchAsync(descriptor, cancellationToken);
+            await pushAsync(descriptor, rc, refObj.Reference, cancellationToken);
         }
     }
 
@@ -822,7 +894,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                         // make request using ranges until the whole data is read
                         while (from < target.Size)
                         {
-                            
+
                             var to = from + 1024 * 1024 - 1;
                             if (to > target.Size)
                             {
@@ -845,7 +917,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{target.Digest}: not found");
                 default:
-                 throw ErrorUtil.ParseErrorResponse(resp);
+                    throw ErrorUtil.ParseErrorResponse(resp);
             }
         }
 
@@ -867,11 +939,6 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 return false;
             }
 
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-           
         }
 
         /// <summary>
@@ -969,8 +1036,8 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
-                    return generateBlobDescriptor(resp, refDigest);
-                    
+                    return GenerateBlobDescriptor(resp, refDigest);
+
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{refObj.Reference}: not found");
                 default:
@@ -986,7 +1053,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-           await Repo.deleteAsync(target, false, cancellationToken);
+            await Repo.deleteAsync(target, false, cancellationToken);
         }
 
         /// <summary>
@@ -1013,13 +1080,13 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                     }
                     else
                     {
-                        desc = generateBlobDescriptor(resp, refDigest);
+                        desc = GenerateBlobDescriptor(resp, refDigest);
                     }
                     // check server range request capability.
                     // Docker spec allows range header form of "Range: bytes=<start>-<end>".
                     // However, the remote server may still not RFC 7233 compliant.
                     // Reference: https://docs.docker.com/registry/spec/api/#blob
-                    if (resp.Headers.GetValues("Accept-Ranges").FirstOrDefault()  == "bytes")
+                    if (resp.Headers.GetValues("Accept-Ranges").FirstOrDefault() == "bytes")
                     {
                         var stream = new MemoryStream();
                         // make request using ranges until the whole data is read
@@ -1049,21 +1116,21 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                     throw new NotFoundException();
                 default:
                     throw ErrorUtil.ParseErrorResponse(resp);
-                    
+
             }
         }
 
         /// <summary>
-        /// generateBlobDescriptor returns a descriptor generated from the response.
+        /// GenerateBlobDescriptor returns a descriptor generated from the response.
         /// </summary>
         /// <param name="resp"></param>
         /// <param name="refDigest"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        private Descriptor generateBlobDescriptor(HttpResponseMessage resp, string refDigest)
+        private Descriptor GenerateBlobDescriptor(HttpResponseMessage resp, string refDigest)
         {
             var mediaType = resp.Content.Headers.ContentType.MediaType;
-            if (String.IsNullOrEmpty(mediaType))
+            if (string.IsNullOrEmpty(mediaType))
             {
                 mediaType = "application/octet-stream";
             }

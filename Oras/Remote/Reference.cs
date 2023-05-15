@@ -226,7 +226,7 @@ namespace Oras.Remote
         {
             if (!Regex.IsMatch(digestStr, digestRegexp))
             {
-                throw new InvalidReferenceException($"invalid reference format: {Reference}");
+                throw new InvalidReferenceException($"invalid reference format: {digestStr}");
             }
             return digestStr;
         }
