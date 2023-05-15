@@ -134,6 +134,30 @@ namespace Oras.Remote
         }
 
         /// <summary>
+        /// PingAsync checks whether or not the registry implement Docker Registry API V2 or
+        ///  OCI Distribution Specification.
+        ///  Ping can be used to check authentication when an auth client is configured.
+        ///  References:
+        ///   - https://docs.docker.com/registry/spec/api/#base
+        ///   - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#api
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task PingAsync(CancellationToken cancellationToken)
+        {
+            var url = RegistryUtil.BuildRegistryBaseURL(PlainHTTP, Reference);
+            var resp = await client().GetAsync(url, cancellationToken);
+            switch (resp.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    return;
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException($"Repository {Reference} not found");
+                default:
+                    throw ErrorUtil.ParseErrorResponse(resp);
+            }
+        }
+        /// <summary>
         /// blobStore detects the blob store for the given descriptor.
         /// </summary>
         /// <param name="desc"></param>
