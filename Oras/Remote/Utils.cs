@@ -8,6 +8,12 @@ namespace Oras.Remote
     internal class Utils
     {
         /// <summary>
+        /// defaultMaxMetadataBytes specifies the default limit on how many response
+        // bytes are allowed in the server's response to the metadata APIs.
+        // See also: Repository.MaxMetadataBytes
+        /// </summary>
+        const long defaultMaxMetadataBytes = 4 * 1024 * 1024; // 4 MiB
+        /// <summary>
         /// ParseLink returns the URL of the response's "Link" header, if present.
         /// </summary>
         /// <param name="resp"></param>
@@ -39,6 +45,31 @@ namespace Oras.Remote
             }
 
             return link;
+        }
+
+        /// <summary>
+        /// LimitReader returns a Reader that reads from content but stops after n
+        /// bytes. if n is less than or equal to zero, defaultMaxMetadataBytes is used.
+        /// </summary>
+        /// <param name="content"></param>
+        /// <param name="n"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public static byte[] LimitReader(HttpContent content, long n)
+        {
+            if (n <= 0)
+            {
+                n = defaultMaxMetadataBytes;
+            }
+
+            var bytes = content.ReadAsByteArrayAsync().Result;
+
+            if (bytes.Length > n)
+            {
+                throw new Exception($"response body exceeds the limit of {n} bytes");
+            }
+
+            return bytes;
         }
     }
 }

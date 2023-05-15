@@ -11,6 +11,8 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
+using Oras.Constants;
 
 namespace Oras.Remote
 {
@@ -28,6 +30,13 @@ namespace Oras.Remote
     /// </summary>
     public class Repository : IRepository, IRepositoryOption
     {
+        /// <summary>
+        /// bytes are allowed in the server's response to the metadata APIs.
+        /// defaultMaxMetadataBytes specifies the default limit on how many response
+        /// See also: Repository.MaxMetadataBytes
+        /// </summary>
+        public long defaultMaxMetaBytes = 4 * 1024 * 1024; //4 Mib
+
         /// <summary>
         /// Client is the underlying HTTP client used to access the remote registry.
         /// </summary>
@@ -132,7 +141,7 @@ namespace Oras.Remote
         /// <returns></returns>
         private IBlobStore blobStore(Descriptor desc)
         {
-            if (ManifestUtil.isManifest(ManifestMediaTypes, desc))
+            if (ManifestUtil.IsManifest(ManifestMediaTypes, desc))
             {
                 return Manifests();
             }
@@ -478,24 +487,279 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
 
         }
 
+        /// <summary>
+        /// FetchASync fetches the content identified by the descriptor.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="NotFoundException"></exception>
+        /// <exception cref="Exception"></exception>
         public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var refObj = Repo.Reference;
+            refObj.Reference = target.Digest;
+            var url = RegistryUtil.BuildRepositoryManifestURL(Repo.PlainHTTP, refObj);
+            var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Add("Accept", target.MediaType);
+            var resp = await Repo.Client.SendAsync(req, cancellationToken);
+        
+            switch (resp.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    break;
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException($"digest {target.Digest} not found");
+                default:
+                    throw ErrorUtil.ParseErrorResponse(resp);
+            }
+            var mediaType = resp.Content.Headers.ContentType.MediaType;
+            if (mediaType != target.MediaType)
+            {
+                throw new Exception(
+                    $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch response Content-Type {mediaType}: expect {target.MediaType}");
+            }
+            if (resp.Content.Headers.ContentLength is var size && size != -1 && size != target.Size)
+            {
+                throw new Exception(
+                    $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
+            }
+            ReferenceObj.VerifyContentDigest(resp, target.Digest);
+            return await resp.Content.ReadAsStreamAsync();
         }
 
+        /// <summary>
+        /// ExistsAsync returns true if the described content exists.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            try
+            {
+                await ResolveAsync(target.Digest, cancellationToken);
+                return true;
+            }
+            catch (NotFoundException e)
+            {
+                return false;
+            }
+
+            return false;
+
         }
 
+        /// <summary>
+        /// PushAsync pushes the content, matching the expected descriptor.
+        /// </summary>
+        /// <param name="expected"></param>
+        /// <param name="content"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+             pushWithIndexing(expected, content, expected.Digest, cancellationToken);
+        }
+
+        /// <summary>
+        /// pushWithIndexing pushes the manifest content matching the expected descriptor.
+        /// </summary>
+        /// <param name="expected"></param>
+        /// <param name="r"></param>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        private void pushWithIndexing(Descriptor expected, Stream r, string reference, CancellationToken cancellationToken)
+        {
+            push(expected, r, reference, cancellationToken);
+            return;
+        }
+
+        /// <summary>
+        /// push pushes the manifest content, matching the expected descriptor.
+        /// </summary>
+        /// <param name="expected"></param>
+        /// <param name="stream"></param>
+        /// <param name="reference"></param>
+        /// <param name="cancellationToken"></param>
+        private void push(Descriptor expected, Stream stream, string reference, CancellationToken cancellationToken)
+        {
+            var refObj = Repo.Reference;
+            refObj.Reference = reference;
+            // pushing usually requires both pull and push actions.
+            // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
+            var url = RegistryUtil.BuildRepositoryManifestURL(Repo.PlainHTTP, refObj);
+            var req = new HttpRequestMessage(HttpMethod.Put, url);
+            req.Content = new StreamContent(stream);
+            if (req.Content != null && req.Content.Headers.ContentLength != expected.Size)
+            {
+                // short circuit a size mismatch for built-in types
+                throw new Exception(
+                    $"{req.Method} {req.RequestUri}: mismatch Content-Length: expect {expected.Size}");
+            }
+            req.Content.Headers.ContentLength = expected.Size;
+            req.Content.Headers.Add("Content-Type", expected.MediaType);
+
+            // if the underlying client is an auth client, the content might be read
+            // more than once for obtaining the auth challenge and the actual request.
+            // To prevent double reading, the manifest is read and stored in the memory,
+            // and serve from the memory.
+            var client = Repo.Client;
+            var resp = client.SendAsync(req, cancellationToken).Result;
+            if (resp.StatusCode != HttpStatusCode.Created)
+            {
+                throw ErrorUtil.ParseErrorResponse(resp);
+            }
+            ReferenceObj.VerifyContentDigest(resp, expected.Digest);
+        }
+
+        /// <summary>
+        /// limitSize returns ErrSizeExceedsLimit if the size of desc exceeds the limit n.
+        /// If n is less than or equal to zero, defaultMaxMetadataBytes is used.
+        /// </summary>
+        /// <param name="desc"></param>
+        /// <param name="n"></param>
+        /// <exception cref="SizeExceedsLimitException"></exception>
+        private void limitSize(Descriptor desc, long n)
+        {
+            if (n <= 0)
+            {
+                n = Repo.defaultMaxMetaBytes;
+            }
+
+            if (desc.Size > n)
+            {
+                throw new SizeExceedsLimitException($"content size {desc.Size} exceeds MaxMetadataBytes {n}");
+            }
+
+            return;
         }
 
         public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var refObj = Repo.ParseReference(reference);
+            var url = RegistryUtil.BuildRepositoryManifestURL(Repo.PlainHTTP, refObj);
+            var req = new HttpRequestMessage(HttpMethod.Head, url);
+            req.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repo.ManifestMediaTypes));
+            var res = await Repo.Client.SendAsync(req, cancellationToken);
+
+            switch (res.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    return generateDescriptor(res, refObj, req.Method);
+                    break;
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException($"reference {reference} not found");
+                default:
+                    throw ErrorUtil.ParseErrorResponse(res);
+            }
+        }
+
+        private Descriptor generateDescriptor(HttpResponseMessage res, ReferenceObj refObj, HttpMethod httpMethod)
+        {
+            try
+            {
+            // 1. Validate Content-Type
+            var mediaType = res.Content.Headers.ContentType.MediaType;
+            MediaTypeHeaderValue.TryParse(mediaType.ToString(), out var parsedMediaType);
+
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: invalid response `Content-Type` header; {e.Message}");
+            }
+
+            // 2. Validate Size
+            if (!res.Content.Headers.ContentLength.HasValue)
+            {
+                throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: unknown response Content-Length");
+            }
+
+            // 3. Validate Client Reference
+            var refDigest = refObj.Digest();
+            ReferenceObj.VerifyContentDigest(res, refObj.Digest());
+
+            // 4. Validate Server Digest (if present)
+            var serverHeaderDigest = res.Headers.GetValues("Docker-Content-Digest").FirstOrDefault();
+            if (serverHeaderDigest != null)
+            {
+                try
+                {
+               ReferenceObj.VerifyContentDigest(res,serverHeaderDigest);
+                }
+                catch(Exception)
+                {
+                    throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: invalid response header value: `Docker-Content-Digest: {serverHeaderDigest}`");
+                }
+            }
+
+            // 5. Now, look for specific error conditions; see truth table inmethod docstring
+            var contentDigest = String.Empty;
+            
+            if(serverHeaderDigest.Length == 0)
+            {
+                if (httpMethod == HttpMethod.Head)
+                {
+                    if(refDigest.Length == 0) {
+                        // HEAD without server `Docker-Content-Digest`
+                        // immediate fail
+                        throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: HTTP {httpMethod} request missing required header {serverHeaderDigest}");
+                    }
+                // Otherwise, just trust the client-supplied digest
+                contentDigest = refDigest; 
+                }
+                else
+                {
+                    // GET without server `Docker-Content-Digest header forces the
+                    // expensive calculation
+                    var calculatedDigest = String.Empty;
+                    try
+                    {
+                      calculatedDigest =  calculateDigestFromResponse(res, Repo.MaxMetadataBytes);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new Exception($"failed to calculate digest on response body; {e.Message}");
+                    }
+                    contentDigest = calculatedDigest;
+                }
+            }
+            else
+            {
+                contentDigest = serverHeaderDigest;
+            }
+            if(refDigest.Length > 0 && refDigest != contentDigest)
+            {
+                /*
+                 * 
+                 * return ocispec.Descriptor{}, fmt.Errorf(
+              "%s %q: invalid response; digest mismatch in %s: received %q when expecting %q",
+              resp.Request.Method, resp.Request.URL,
+              dockerContentDigestHeader, contentDigest,
+              refDigest,
+          )
+                 */
+                
+            }
+        }
+
+        /// <summary>
+        /// CalculateDigestFromResponse calculates the actual digest of the response body
+        /// taking care not to destroy it in the process
+        /// </summary>
+        /// <param name="res"></param>
+        /// <param name="maxMetadataBytes"></param>
+        private string calculateDigestFromResponse(HttpResponseMessage res, long maxMetadataBytes)
+        {
+            try
+            {
+                byte[] content = Utils.LimitReader(res.Content, maxMetadataBytes);
+            }
+            catch (Exception)
+            {
+                throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: failed to read response body: {e.Message}");
+            }
+            return DigestUtil.FromBytes(res.Content);
         }
 
         public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
@@ -628,7 +892,66 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
         {
-            
+            var url = RegistryUtil.BuildRepositoryBlobUploadURL(Repo.PlainHTTP, Repo.Reference);
+            var resp = await Repo.Client.PostAsync(url, null, cancellationToken);
+            var reqHostname = resp.RequestMessage.RequestUri.Host;
+            var reqPort = resp.RequestMessage.RequestUri.Port;
+            if (resp.StatusCode != HttpStatusCode.Accepted)
+            {
+                throw ErrorUtil.ParseErrorResponse(resp);
+            }
+
+            // monolithic upload
+            var location = resp.Headers.Location;
+            // work-around solution for https://github.com/oras-project/oras-go/issues/177
+            // For some registries, if the port 443 is explicitly set to the hostname
+            // like registry.wabbit-networks.io:443/myrepo, blob push will fail since
+            // the hostname of the Location header in the response is set to
+            // registry.wabbit-networks.io instead of registry.wabbit-networks.io:443.
+
+            var locationHostname = location.Host;
+            var locationPort = location.Port;
+            // if location port 443 is missing, add it back
+            if (reqPort == 443 && locationHostname == reqHostname && locationPort != reqPort)
+            {
+                location = new Uri($"{locationHostname}:{reqPort}");
+            }
+            url = location.ToString();
+
+            var req = new HttpRequestMessage(HttpMethod.Put, url);
+            req.Headers.Add("Content-Type", "application/octet-stream");
+            req.Headers.Add("Content-Length", content.Length.ToString());
+            req.Content = new StreamContent(content);
+
+            if (req.Content != null && req.Content.Headers.ContentLength is var size && size != expected.Size)
+            {
+                throw new Exception($"mismatch content length {size}: expect {expected.Size}");
+            }
+            req.Content.Headers.ContentLength = expected.Size;
+
+            // the expected media type is ignored as in the API doc.
+            req.Headers.Add("Content-Type", "application/octet-stream");
+            // add digest key to query string with expected digest value
+            var query = HttpUtility.ParseQueryString(location.Query);
+            query.Add("digest", expected.Digest);
+            req.RequestUri = new UriBuilder(location)
+            {
+                Query = query.ToString()
+            }.Uri;
+
+            //reuse credential from previous POST request
+            var auth = resp.Headers.GetValues("Authorization").FirstOrDefault();
+            if (auth != null)
+            {
+                req.Headers.Add("Authorization", auth);
+            }
+            resp = await Repo.Client.SendAsync(req, cancellationToken);
+            if (resp.StatusCode != HttpStatusCode.Created)
+            {
+                throw ErrorUtil.ParseErrorResponse(resp);
+            }
+
+            return;
         }
 
         /// <summary>

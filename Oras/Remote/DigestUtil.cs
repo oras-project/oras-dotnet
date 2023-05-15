@@ -1,4 +1,7 @@
 ﻿using Oras.Exceptions;
+using System;
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
 namespace Oras.Remote
@@ -9,7 +12,6 @@ namespace Oras.Remote
         /// ParseDigest verifies the digest header and throws an exception if it is invalid.
         /// </summary>
         /// <param name="digest"></param>
-        /// <exception cref="InvalidReferenceException"></exception>
         public static string Parse(string digest)
         {
             if (!Regex.IsMatch(digest, ReferenceObj.digestRegexp))
@@ -18,6 +20,22 @@ namespace Oras.Remote
             }
 
             return digest;
+        }
+
+        /// <summary>
+        /// Generates a digest from the content.
+        /// </summary>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        public static string FromBytes(HttpContent content)
+        {
+            var digest = String.Empty;
+            using (var sha256 = SHA256.Create())
+            {
+                var hash = sha256.ComputeHash(content.ReadAsByteArrayAsync().Result);
+                digest = $"sha256:{Convert.ToBase64String(hash)}";
+                return digest;
+            }
         }
     }
 }

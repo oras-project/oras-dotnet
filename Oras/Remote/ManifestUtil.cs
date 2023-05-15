@@ -20,7 +20,7 @@ namespace Oras.Remote
         /// <param name="manifestMediaTypes"></param>
         /// <param name="desc"></param>
         /// <returns></returns>
-        public static bool isManifest(string[] manifestMediaTypes, Descriptor desc)
+        public static bool IsManifest(string[] manifestMediaTypes, Descriptor desc)
         {
             if (manifestMediaTypes.Length == 0)
             {
@@ -33,6 +33,16 @@ namespace Oras.Remote
             }
 
             return false;
+        }
+
+        public static string ManifestAcceptHeader(string[] manifestMediaTypes)
+        {
+            if (manifestMediaTypes.Length == 0)
+            {
+                manifestMediaTypes = DefaultManifestMediaTypes;
+            }
+
+            return string.Join(",", manifestMediaTypes);
         }
     }
 }
