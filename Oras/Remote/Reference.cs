@@ -216,7 +216,7 @@ namespace Oras.Remote
             {
                 contentDigest = ParseDigest(digestStr);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response header: `Docker-Content-Digest: {digestStr}`");
             }
