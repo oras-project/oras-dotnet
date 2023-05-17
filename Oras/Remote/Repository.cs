@@ -273,7 +273,7 @@ namespace Oras.Remote
             var res = new List<string>();
             await repo.TagsAsync(
                 string.Empty,
-                async (tag) =>
+                 (tag) =>
                 {
                     res.AddRange(tag);
 
@@ -381,7 +381,6 @@ namespace Oras.Remote
                     throw new NotFoundException($"digest {target.Digest} not found");
                 default:
                     throw ErrorUtil.ParseErrorResponse(resp);
-                    break;
             }
         }
 
@@ -564,12 +563,10 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 await ResolveAsync(target.Digest, cancellationToken);
                 return true;
             }
-            catch (NotFoundException e)
+            catch (NotFoundException)
             {
                 return false;
             }
-
-            return false;
 
         }
 
@@ -670,7 +667,6 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             {
                 case HttpStatusCode.OK:
                     return generateDescriptor(res, refObj, req.Method);
-                    break;
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"reference {reference} not found");
                 default:
@@ -802,16 +798,16 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            deleteWithIndexing(target, cancellationToken);
+           await deleteWithIndexingAsync(target, cancellationToken);
         }
 
         /// <summary>
-        ///  deleteWithIndexing removes the manifest content identified by the descriptor.
+        ///  deleteWithIndexingAsync removes the manifest content identified by the descriptor.
         /// </summary>
         /// <param name="target"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        private async Task deleteWithIndexing(Descriptor target, CancellationToken cancellationToken)
+        private async Task deleteWithIndexingAsync(Descriptor target, CancellationToken cancellationToken)
         {
             await Repo.deleteAsync(target, true, cancellationToken);
         }

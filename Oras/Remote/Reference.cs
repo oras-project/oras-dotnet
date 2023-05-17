@@ -98,7 +98,7 @@ namespace Oras.Remote
             refObj.ValidateRegistry();
             refObj.ValidateRepository();
 
-            if (reference.Length== 0)
+            if (reference.Length == 0)
             {
                 return refObj;
             }
@@ -109,7 +109,7 @@ namespace Oras.Remote
             }
             else
             {
-            refObj.ValidateReferenceAsDigest();
+                refObj.ValidateReferenceAsDigest();
             }
             return refObj;
         }
@@ -216,7 +216,7 @@ namespace Oras.Remote
             {
                 contentDigest = ParseDigest(digestStr);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response header: `Docker-Content-Digest: {digestStr}`");
             }
