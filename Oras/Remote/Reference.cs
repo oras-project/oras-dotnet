@@ -73,15 +73,15 @@ namespace Oras.Remote
                 {
                     // tag found ( and now dropped without validation ) since the
                     // digest already present; Valid Form B
-                    repository = repository[..index];
+                    repository = repository[..indexOfColon];
                 }
             }
             else if (path.IndexOf(":") is var indexOfColon && indexOfColon != -1)
             {
                 // tag found; Valid Form C
                 isTag = true;
-                repository = path[..index];
-                reference = path[(index + 1)..];
+                repository = path[..indexOfColon];
+                reference = path[(indexOfColon + 1)..];
             }
             else
             {
@@ -94,18 +94,22 @@ namespace Oras.Remote
                 Repository = repository,
                 Reference = reference
             };
-            ValidateRegistry();
-            ValidateRepository();
 
-            if (Reference.Length == 0)
+            refObj.ValidateRegistry();
+            refObj.ValidateRepository();
+
+            if (reference.Length== 0)
             {
                 return refObj;
             }
 
-            ValidateReferenceAsDigest();
             if (isTag)
             {
-                ValidateReferenceAsTag();
+                refObj.ValidateReferenceAsTag();
+            }
+            else
+            {
+            refObj.ValidateReferenceAsDigest();
             }
             return refObj;
         }
@@ -116,7 +120,7 @@ namespace Oras.Remote
         public void ValidateReferenceAsDigest()
         {
 
-
+            Console.WriteLine($"Reference is {Reference} and Digest is {digestRegexp}");
             if (!Regex.IsMatch(Reference, digestRegexp))
             {
                 throw new InvalidReferenceException($"invalid reference format: {Reference}");
@@ -130,7 +134,7 @@ namespace Oras.Remote
         /// <returns></returns>
         public void ValidateRepository()
         {
-            if (!Regex.IsMatch(Reference, repositoryRegexp))
+            if (!Regex.IsMatch(Repository, repositoryRegexp))
             {
                 throw new InvalidReferenceException("Invalid Respository");
             }
