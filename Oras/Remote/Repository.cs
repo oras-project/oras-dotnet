@@ -305,11 +305,9 @@ namespace Oras.Remote
                     last = "";
                 }
             }
-            catch (Exception e) when (!(e is NoLinkHeaderException))
+            catch (NoLinkHeaderException)
             {
-
-                throw e;
-
+                return;
             }
 
         }
