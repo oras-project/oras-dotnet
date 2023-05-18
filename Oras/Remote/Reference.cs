@@ -119,8 +119,6 @@ namespace Oras.Remote
         /// </summary>
         public void ValidateReferenceAsDigest()
         {
-
-            Console.WriteLine($"Reference is {Reference} and Digest is {digestRegexp}");
             if (!Regex.IsMatch(Reference, digestRegexp))
             {
                 throw new InvalidReferenceException($"invalid reference format: {Reference}");
