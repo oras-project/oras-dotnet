@@ -22,7 +22,7 @@ namespace Oras.Remote
         /// <returns></returns>
         public static bool IsManifest(string[] manifestMediaTypes, Descriptor desc)
         {
-            if (manifestMediaTypes.Length == 0)
+            if (manifestMediaTypes == null || manifestMediaTypes.Length == 0)
             {
                 manifestMediaTypes = DefaultManifestMediaTypes;
             }
@@ -37,7 +37,7 @@ namespace Oras.Remote
 
         public static string ManifestAcceptHeader(string[] manifestMediaTypes)
         {
-            if (manifestMediaTypes.Length == 0)
+            if (manifestMediaTypes == null || manifestMediaTypes.Length == 0 )
             {
                 manifestMediaTypes = DefaultManifestMediaTypes;
             }
