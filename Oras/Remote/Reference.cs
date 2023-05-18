@@ -19,7 +19,7 @@ namespace Oras.Remote
         public string Repository { get; set; }
 
         /// <summary>
-        /// Ref is the reference of the object in the repository. This field
+        /// Reference is the reference of the object in the repository. This field
         /// can take any one of the four valid forms (see ParseReference). In the
         /// case where it's the empty string, it necessarily implies valid form D,
         /// and where it is non-empty, then it is either a tag, or a digest

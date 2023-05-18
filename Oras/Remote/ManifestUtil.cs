@@ -35,6 +35,11 @@ namespace Oras.Remote
             return false;
         }
 
+        /// <summary>
+        /// ManifestAcceptHeader returns the accept header for the given manifest media types.
+        /// </summary>
+        /// <param name="manifestMediaTypes"></param>
+        /// <returns></returns>
         public static string ManifestAcceptHeader(string[] manifestMediaTypes)
         {
             if (manifestMediaTypes == null || manifestMediaTypes.Length == 0)

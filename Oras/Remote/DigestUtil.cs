@@ -9,7 +9,7 @@ namespace Oras.Remote
     internal class DigestUtil
     {
         /// <summary>
-        /// ParseDigest verifies the digest header and throws an exception if it is invalid.
+        /// Parse verifies the digest header and throws an exception if it is invalid.
         /// </summary>
         /// <param name="digest"></param>
         public static string Parse(string digest)
@@ -23,7 +23,7 @@ namespace Oras.Remote
         }
 
         /// <summary>
-        /// Generates a digest from the content.
+        /// FromBytes generates a digest from the content.
         /// </summary>
         /// <param name="content"></param>
         /// <returns></returns>

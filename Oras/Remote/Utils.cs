@@ -9,10 +9,11 @@ namespace Oras.Remote
     {
         /// <summary>
         /// defaultMaxMetadataBytes specifies the default limit on how many response
-        // bytes are allowed in the server's response to the metadata APIs.
-        // See also: Repository.MaxMetadataBytes
+        /// bytes are allowed in the server's response to the metadata APIs.
+        /// See also: Repository.MaxMetadataBytes
         /// </summary>
         const long defaultMaxMetadataBytes = 4 * 1024 * 1024; // 4 MiB
+
         /// <summary>
         /// ParseLink returns the URL of the response's "Link" header, if present.
         /// </summary>
