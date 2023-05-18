@@ -307,6 +307,7 @@ namespace Oras.Remote
             }
             catch (NoLinkHeaderException)
             {
+                return;
             }
 
         }
@@ -820,7 +821,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var refObj = Repo.ParseReference(reference);
             var url = RegistryUtil.BuildRepositoryManifestURL(Repo.PlainHTTP, refObj);
             var req = new HttpRequestMessage(HttpMethod.Get, url);
-            req.Content.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repo.ManifestMediaTypes));
+            req.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repo.ManifestMediaTypes));
             var resp = await Repo.Client.SendAsync(req, cancellationToken);
             switch (resp.StatusCode)
             {
@@ -1080,7 +1081,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <param name="reference"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<(Descriptor, Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
+        public async Task<(Descriptor Descriptor, Stream Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
         {
             var refObj = Repo.ParseReference(reference);
             var refDigest = refObj.Digest();
@@ -1088,7 +1089,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var resp = await Repo.Client.GetAsync(url, cancellationToken);
             switch (resp.StatusCode)
             {
-                case HttpStatusCode.Accepted:
+                case HttpStatusCode.OK:
                     // server does not support seek as `Range` was ignored.
                     Descriptor desc = null;
                     if (resp.Content.Headers.ContentLength == -1)
