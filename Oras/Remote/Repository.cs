@@ -796,7 +796,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-           await deleteWithIndexingAsync(target, cancellationToken);
+            await deleteWithIndexingAsync(target, cancellationToken);
         }
 
         /// <summary>
