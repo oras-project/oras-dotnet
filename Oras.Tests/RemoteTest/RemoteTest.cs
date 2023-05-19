@@ -103,7 +103,7 @@ namespace Oras.Tests.RemoteTest
         [Fact]
         public async Task Repository_PushAsync()
         {
-            var blob = Encoding.UTF8.GetBytes("hello world");
+            var blob = @"""hello world"""u8.ToArray();
             var blobDesc = new Descriptor()
             {
                 Digest = CalculateDigest(blob),
@@ -181,6 +181,25 @@ namespace Oras.Tests.RemoteTest
             Assert.Equal(blob, gotBlob);
             await repo.PushAsync(indexDesc, new MemoryStream(index), cancellationToken);
             Assert.Equal(index, gotIndex);
+        }
+
+        public async Task Repository_ExistsAsync()
+        {
+            var blob = @"""hello world"""u8.ToArray();
+            var blobDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(blob),
+                MediaType = "test",
+                Size = (uint)blob.Length
+            };
+            var index = @"""{""manifests"":[]}"""u8.ToArray();
+            var indexDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(index),
+                MediaType = OCIMediaTypes.ImageIndex,
+                Size = index.Length
+            };
+
         }
     }
 }
