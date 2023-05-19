@@ -29,13 +29,10 @@ namespace Oras.Remote
         /// <returns></returns>
         public static string FromBytes(HttpContent content)
         {
-            var digest = String.Empty;
-            using (var sha256 = SHA256.Create())
-            {
-                var hash = sha256.ComputeHash(content.ReadAsByteArrayAsync().Result);
-                digest = $"sha256:{Convert.ToBase64String(hash)}";
-                return digest;
-            }
+            using var sha256 = SHA256.Create();
+            var hash = sha256.ComputeHash(content.ReadAsByteArrayAsync().Result);
+            var digest = $"sha256:{Convert.ToBase64String(hash)}";
+            return digest;
         }
     }
 }

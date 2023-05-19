@@ -393,7 +393,7 @@ namespace Oras.Remote
         /// <exception cref="NotImplementedException"></exception>
         private void verifyContentDigest(HttpResponseMessage resp, string expected)
         {
-            var digestStr = resp.Headers.GetValues(DockerContentDigestHeader).FirstOrDefault();
+            resp.Headers.TryGetValues(DockerContentDigestHeader,out var digestStr);
             if (digestStr != null && !digestStr.Any())
             {
                 return;
@@ -402,7 +402,7 @@ namespace Oras.Remote
             string contentDigest;
             try
             {
-                contentDigest = DigestUtil.Parse(digestStr);
+                contentDigest = DigestUtil.Parse(digestStr.FirstOrDefault());
 
             }
             catch (Exception)
@@ -483,7 +483,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 if (reference.IndexOf("@") is var index && index != 1)
                 {
                     // `@` implies *digest*, so drop the *tag* (irrespective of what it is).
-                    refObj.Reference = reference.Substring(index + 1);
+                    refObj.Reference = reference[(index + 1)..];
                     refObj.ValidateReferenceAsDigest();
                 }
                 else
@@ -661,15 +661,12 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             req.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repo.ManifestMediaTypes));
             var res = await Repo.Client.SendAsync(req, cancellationToken);
 
-            switch (res.StatusCode)
+            return res.StatusCode switch
             {
-                case HttpStatusCode.OK:
-                    return generateDescriptor(res, refObj, req.Method);
-                case HttpStatusCode.NotFound:
-                    throw new NotFoundException($"reference {reference} not found");
-                default:
-                    throw ErrorUtil.ParseErrorResponse(res);
-            }
+                HttpStatusCode.OK => generateDescriptor(res, refObj, req.Method),
+                HttpStatusCode.NotFound => throw new NotFoundException($"reference {reference} not found"),
+                _ => throw ErrorUtil.ParseErrorResponse(res)
+            };
         }
 
         /// <summary>
@@ -706,12 +703,12 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             ReferenceObj.VerifyContentDigest(res, refObj.Digest());
 
             // 4. Validate Server Digest (if present)
-            var serverHeaderDigest = res.Headers.GetValues("Docker-Content-Digest").FirstOrDefault();
+            res.Headers.TryGetValues("Docker-Content-Digest", out var serverHeaderDigest);
             if (serverHeaderDigest != null)
             {
                 try
                 {
-                    ReferenceObj.VerifyContentDigest(res, serverHeaderDigest);
+                    ReferenceObj.VerifyContentDigest(res, serverHeaderDigest.FirstOrDefault());
                 }
                 catch (Exception)
                 {
@@ -720,9 +717,9 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             }
 
             // 5. Now, look for specific error conditions;
-            var contentDigest = string.Empty;
+            string contentDigest;
 
-            if (serverHeaderDigest.Length == 0)
+            if (serverHeaderDigest.FirstOrDefault().Length == 0)
             {
                 if (httpMethod == HttpMethod.Head)
                 {
@@ -753,7 +750,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             }
             else
             {
-                contentDigest = serverHeaderDigest;
+                contentDigest = serverHeaderDigest.FirstOrDefault();
             }
             if (refDigest.Length > 0 && refDigest != contentDigest)
             {
@@ -905,7 +902,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                     // Docker spec allows range header form of "Range: bytes=<start>-<end>".
                     // However, the remote server may still not RFC 7233 compliant.
                     // Reference: https://docs.docker.com/registry/spec/api/#blob
-                    if (resp.Headers.GetValues("Accept-Ranges").FirstOrDefault() == "bytes")
+                    if (resp.Headers.TryGetValues("Accept-Ranges", out var acceptRanges) && acceptRanges.FirstOrDefault() == "bytes")
                     {
                         var stream = new MemoryStream();
                         long from = 0;
@@ -1025,10 +1022,10 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             }.Uri;
 
             //reuse credential from previous POST request
-            var auth = resp.Headers.GetValues("Authorization").FirstOrDefault();
+            resp.Headers.TryGetValues("Authorization", out var auth);
             if (auth != null)
             {
-                req.Headers.Add("Authorization", auth);
+                req.Headers.Add("Authorization", auth.FirstOrDefault());
             }
             resp = await Repo.Client.SendAsync(req, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.Created)
@@ -1051,16 +1048,12 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var refDigest = refObj.Digest();
             var url = RegistryUtil.BuildRepositoryBlobURL(Repo.PlainHTTP, refObj);
             var resp = await Repo.Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            switch (resp.StatusCode)
+            return resp.StatusCode switch
             {
-                case HttpStatusCode.OK:
-                    return GenerateBlobDescriptor(resp, refDigest);
-
-                case HttpStatusCode.NotFound:
-                    throw new NotFoundException($"{refObj.Reference}: not found");
-                default:
-                    throw ErrorUtil.ParseErrorResponse(resp);
-            }
+                HttpStatusCode.OK => GenerateBlobDescriptor(resp, refDigest),
+                HttpStatusCode.NotFound => throw new NotFoundException($"{refObj.Reference}: not found"),
+                _ => throw ErrorUtil.ParseErrorResponse(resp)
+            };
         }
 
         /// <summary>
@@ -1091,7 +1084,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             {
                 case HttpStatusCode.OK:
                     // server does not support seek as `Range` was ignored.
-                    Descriptor desc = null;
+                    Descriptor desc;
                     if (resp.Content.Headers.ContentLength == -1)
                     {
                         desc = await ResolveAsync(refDigest, cancellationToken);
@@ -1104,7 +1097,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                     // Docker spec allows range header form of "Range: bytes=<start>-<end>".
                     // However, the remote server may still not RFC 7233 compliant.
                     // Reference: https://docs.docker.com/registry/spec/api/#blob
-                    if (resp.Headers.GetValues("Accept-Ranges").FirstOrDefault() == "bytes")
+                    if (resp.Headers.TryGetValues("Accept-Ranges", out var acceptRanges) && acceptRanges.FirstOrDefault() == "bytes")
                     {
                         var stream = new MemoryStream();
                         // make request using ranges until the whole data is read

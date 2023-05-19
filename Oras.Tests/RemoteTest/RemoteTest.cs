@@ -18,7 +18,7 @@ namespace Oras.Tests.RemoteTest
 {
     public class RemoteTest
     {
-        public HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
+        public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
         {
             var moqHandler = new Mock<DelegatingHandler>();
             moqHandler.Protected().Setup<Task<HttpResponseMessage>>(
@@ -57,14 +57,14 @@ namespace Oras.Tests.RemoteTest
                 }
 
                 var path = req.RequestUri!.AbsolutePath;
-                if (path == "v2/test/blobs/" + blobDesc.Digest)
+                if (path == "/v2/test/blobs/" + blobDesc.Digest)
                 {
-                    resp.Headers.Add("Content-Type", "application/octet-stream");
-                    resp.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    resp.Content.Headers.Add("Content-Type", "application/octet-stream");
+                    resp.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     resp.Content = new ByteArrayContent(blob);
                     return resp;
                 }
-                else if (path == "v2/test/manifests/" + indexDesc.Digest)
+                else if (path == "/v2/test/manifests/" + indexDesc.Digest)
                 {
                     if (!req.Headers.Accept.Contains(new MediaTypeWithQualityHeaderValue(OCIMediaTypes.ImageIndex)))
                     {
@@ -87,13 +87,13 @@ namespace Oras.Tests.RemoteTest
                 }
 
             };
-            var repo = new Repository("http://localhost:5000/test");
+            var repo = new Repository("localhost:5000/test");
             repo.Client = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var stream = await repo.FetchAsync(blobDesc,cancellationToken);
             var buf = new byte[stream.Length];
-            await stream.ReadAsync(buf, 0, (int)stream.Length, cancellationToken);
+            await stream.ReadAsync(buf, cancellationToken);
             Assert.Equal(blob, buf);
 
 

@@ -53,7 +53,7 @@
         /// <returns></returns>
         public static string BuildRepositoryBaseURL(bool plainHTTP, ReferenceObj refObj)
         {
-            return $"{BuildScheme(plainHTTP)}://{refObj.Host()}/v2/{refObj.Repository}/";
+            return $"{BuildScheme(plainHTTP)}://{refObj.Host()}/v2/{refObj.Repository}";
         }
 
         /// <summary>

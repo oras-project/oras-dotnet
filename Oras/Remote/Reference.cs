@@ -209,7 +209,7 @@ namespace Oras.Remote
                 return;
             }
 
-            string contentDigest = String.Empty;
+            string contentDigest;
             try
             {
                 contentDigest = ParseDigest(digestStr);
