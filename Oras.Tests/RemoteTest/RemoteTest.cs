@@ -183,6 +183,11 @@ namespace Oras.Tests.RemoteTest
             Assert.Equal(index, gotIndex);
         }
 
+        /// <summary>
+        /// Repository_ExistsAsync tests the ExistsAsync method of the Repository
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
         public async Task Repository_ExistsAsync()
         {
             var blob = @"""hello world"""u8.ToArray();
@@ -199,7 +204,94 @@ namespace Oras.Tests.RemoteTest
                 MediaType = OCIMediaTypes.ImageIndex,
                 Size = index.Length
             };
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                if (req.Method != HttpMethod.Head)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                }
+                if (req.RequestUri!.AbsolutePath == "/v2/test/blobs/" + blobDesc.Digest)
+                {
+                    res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                    res.Content.Headers.Add("Content-Length", blobDesc.Size.ToString());
+                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    return res;
+                }
+                if (req.RequestUri!.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
+                {
+                    if (req.Headers.TryGetValues("Accept", out var values) && !values.Contains(OCIMediaTypes.ImageIndex))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.NotAcceptable);
+                    }
+                    res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
+                    res.Content.Headers.Add("Content-Length", indexDesc.Size.ToString());
+                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    return res;
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+            var exists = await repo.ExistsAsync(blobDesc, cancellationToken);
+            Assert.True(exists);
+            exists = await repo.ExistsAsync(indexDesc, cancellationToken);
+            Assert.True(exists);
+        }
 
+        [Fact]
+        public async Task Repository_DeleteAsync()
+        {
+            var blob = @"""hello world"""u8.ToArray();
+            var blobDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(blob),
+                MediaType = "test",
+                Size = (uint)blob.Length
+            };
+            var blobDeleted = false;
+            var index = @"""{""manifests"":[]}"""u8.ToArray();
+            var indexDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(index),
+                MediaType = OCIMediaTypes.ImageIndex,
+                Size = index.Length
+            };
+            var indexDeleted = false;
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method != HttpMethod.Delete)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                }
+                if (req.RequestUri!.AbsolutePath == "/v2/test/blobs/" + blobDesc.Digest)
+                {
+                    blobDeleted = true;
+                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.StatusCode = HttpStatusCode.Accepted;
+                    return res;
+                }
+                if (req.RequestUri!.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
+                {
+                    indexDeleted = true;
+                    // no "Docker-Content-Digest" header for manifest deletion
+                    res.StatusCode = HttpStatusCode.Accepted;
+                    return res;
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+            await repo.DeleteAsync(blobDesc, cancellationToken);
+            Assert.True(blobDeleted);
+            await repo.DeleteAsync(indexDesc, cancellationToken);
+            Assert.True(indexDeleted);
         }
     }
 }

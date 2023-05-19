@@ -393,8 +393,8 @@ namespace Oras.Remote
         /// <exception cref="NotImplementedException"></exception>
         private void verifyContentDigest(HttpResponseMessage resp, string expected)
         {
-            resp.Headers.TryGetValues(DockerContentDigestHeader, out var digestStr);
-            if (digestStr != null && !digestStr.Any())
+            resp.Content.Headers.TryGetValues(DockerContentDigestHeader, out var digestStr);
+            if (digestStr == null || !digestStr.Any())
             {
                 return;
             }
@@ -403,7 +403,6 @@ namespace Oras.Remote
             try
             {
                 contentDigest = DigestUtil.Parse(digestStr.FirstOrDefault());
-
             }
             catch (Exception)
             {
@@ -418,7 +417,6 @@ namespace Oras.Remote
 $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response; digest mismatch in {DockerContentDigestHeader}: received {contentDigest}, while expecting {expected}"
                     );
             }
-
             return;
         }
 
@@ -703,7 +701,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             ReferenceObj.VerifyContentDigest(res, refObj.Digest());
 
             // 4. Validate Server Digest (if present)
-            res.Headers.TryGetValues("Docker-Content-Digest", out var serverHeaderDigest);
+            res.Content.Headers.TryGetValues("Docker-Content-Digest", out var serverHeaderDigest);
             if (serverHeaderDigest != null)
             {
                 try
@@ -1042,7 +1040,8 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var refObj = Repo.ParseReference(reference);
             var refDigest = refObj.Digest();
             var url = RegistryUtil.BuildRepositoryBlobURL(Repo.PlainHTTP, refObj);
-            var resp = await Repo.Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
+            var resp = await Repo.Client.SendAsync(requestMessage, cancellationToken);
             return resp.StatusCode switch
             {
                 HttpStatusCode.OK => GenerateBlobDescriptor(resp, refDigest),
