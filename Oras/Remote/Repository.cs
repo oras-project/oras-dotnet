@@ -393,7 +393,7 @@ namespace Oras.Remote
         /// <exception cref="NotImplementedException"></exception>
         private void verifyContentDigest(HttpResponseMessage resp, string expected)
         {
-            resp.Headers.TryGetValues(DockerContentDigestHeader,out var digestStr);
+            resp.Headers.TryGetValues(DockerContentDigestHeader, out var digestStr);
             if (digestStr != null && !digestStr.Any())
             {
                 return;
@@ -1001,10 +1001,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             url = location.ToString();
 
             var req = new HttpRequestMessage(HttpMethod.Put, url);
-            req.Headers.Add("Content-Type", "application/octet-stream");
-            req.Headers.Add("Content-Length", content.Length.ToString());
             req.Content = new StreamContent(content);
-
             if (req.Content != null && req.Content.Headers.ContentLength is var size && size != expected.Size)
             {
                 throw new Exception($"mismatch content length {size}: expect {expected.Size}");
@@ -1012,14 +1009,12 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             req.Content.Headers.ContentLength = expected.Size;
 
             // the expected media type is ignored as in the API doc.
-            req.Headers.Add("Content-Type", "application/octet-stream");
+            req.Content.Headers.Add("Content-Type", "application/octet-stream");
+
             // add digest key to query string with expected digest value
             var query = HttpUtility.ParseQueryString(location.Query);
             query.Add("digest", expected.Digest);
-            req.RequestUri = new UriBuilder(location)
-            {
-                Query = query.ToString()
-            }.Uri;
+            req.RequestUri = new Uri($"{req.RequestUri}?digest={expected.Digest}");
 
             //reuse credential from previous POST request
             resp.Headers.TryGetValues("Authorization", out var auth);
