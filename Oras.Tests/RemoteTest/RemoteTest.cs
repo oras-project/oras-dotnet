@@ -59,9 +59,9 @@ namespace Oras.Tests.RemoteTest
                 var path = req.RequestUri!.AbsolutePath;
                 if (path == "/v2/test/blobs/" + blobDesc.Digest)
                 {
+                    resp.Content = new ByteArrayContent(blob);
                     resp.Content.Headers.Add("Content-Type", "application/octet-stream");
                     resp.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
-                    resp.Content = new ByteArrayContent(blob);
                     return resp;
                 }
                 else if (path == "/v2/test/manifests/" + indexDesc.Digest)
@@ -73,9 +73,9 @@ namespace Oras.Tests.RemoteTest
                         return resp;
                     }
                    
-                    resp.Headers.Add("Content-Type", indexDesc.MediaType);
-                    resp.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     resp.Content = new ByteArrayContent(index);
+                    resp.Content.Headers.Add("Content-Type", indexDesc.MediaType);
+                    resp.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     return resp;
                    
                 }
@@ -95,7 +95,10 @@ namespace Oras.Tests.RemoteTest
             var buf = new byte[stream.Length];
             await stream.ReadAsync(buf, cancellationToken);
             Assert.Equal(blob, buf);
-
+            stream = await repo.FetchAsync(indexDesc, cancellationToken);
+            buf = new byte[stream.Length];
+            await stream.ReadAsync(buf, cancellationToken);
+            Assert.Equal(index, buf);
 
         }
     }

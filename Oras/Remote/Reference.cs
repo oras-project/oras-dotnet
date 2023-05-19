@@ -203,7 +203,7 @@ namespace Oras.Remote
 
         public static void VerifyContentDigest(HttpResponseMessage resp, string refDigest)
         {
-            var digestStr = resp.Headers.GetValues("Docker-Content-Digest").FirstOrDefault();
+            var digestStr = resp.Content.Headers.GetValues("Docker-Content-Digest").FirstOrDefault();
             if (String.IsNullOrEmpty(digestStr))
             {
                 return;

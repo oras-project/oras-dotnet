@@ -533,13 +533,13 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 default:
                     throw ErrorUtil.ParseErrorResponse(resp);
             }
-            var mediaType = resp.Content.Headers.ContentType.MediaType;
+            var mediaType = resp.Content.Headers?.ContentType.MediaType;
             if (mediaType != target.MediaType)
             {
                 throw new Exception(
                     $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch response Content-Type {mediaType}: expect {target.MediaType}");
             }
-            if (resp.Content.Headers.ContentLength is var size && size != -1 && size != target.Size)
+            if (resp.Content.Headers!.ContentLength is var size && size != -1 && size != target.Size)
             {
                 throw new Exception(
                     $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
