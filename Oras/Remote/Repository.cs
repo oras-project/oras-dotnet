@@ -239,7 +239,7 @@ namespace Oras.Remote
         /// <param name="reference"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<(Descriptor, Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
+        public async Task<(Descriptor Descriptor, Stream Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
         {
             return await Manifests().FetchReferenceAsync(reference, cancellationToken);
         }
@@ -255,7 +255,7 @@ namespace Oras.Remote
         public async Task PushReferenceAsync(Descriptor descriptor, Stream content, string reference,
             CancellationToken cancellationToken = default)
         {
-            await Manifests().FetchReferenceAsync(reference, cancellationToken);
+            await Manifests().PushReferenceAsync(descriptor, content, reference, cancellationToken);
         }
 
         /// <summary>
@@ -475,10 +475,10 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 {
                     Registry = Reference.Registry,
                     Repository = Reference.Repository,
-                    Reference = Reference.Reference
+                    Reference = reference
                 };
                 //reference is not a FQDN
-                if (reference.IndexOf("@") is var index && index != 1)
+                if (reference.IndexOf("@") is var index && index != -1)
                 {
                     // `@` implies *digest*, so drop the *tag* (irrespective of what it is).
                     refObj.Reference = reference[(index + 1)..];
@@ -697,8 +697,14 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             }
 
             // 3. Validate Client Reference
-            var refDigest = refObj.Digest();
-            ReferenceObj.VerifyContentDigest(res, refObj.Digest());
+            string refDigest = string.Empty;
+            try
+            {
+                refDigest = refObj.Digest();
+            }
+            catch (Exception e)
+            {
+            }
 
             // 4. Validate Server Digest (if present)
             res.Content.Headers.TryGetValues("Docker-Content-Digest", out var serverHeaderDigest);

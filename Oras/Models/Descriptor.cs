@@ -1,10 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 
 namespace Oras.Models
 {
-    public class Descriptor
+    public class Descriptor : IEquatable<Descriptor>
     {
         [JsonPropertyName("mediaType")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -46,6 +47,18 @@ namespace Oras.Models
             };
         }
 
+        public bool Equals(Descriptor other)
+        {
+            if (other == null) return false;
+            return this.MediaType == other.MediaType && this.Digest == other.Digest && this.Size == other.Size;
+        }
+
+
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(MediaType, Digest, Size, URLs, Annotations, Data, Platform, ArtifactType);
+        }
     }
 
     public class Platform

@@ -168,9 +168,10 @@ namespace Oras.Remote
             {
                 return;
             }
-            if (Reference.IndexOf("@") != -1)
+            if (Reference.IndexOf(":") != -1)
             {
                 ValidateReferenceAsDigest();
+                return;
             }
             else
             {

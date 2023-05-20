@@ -1,6 +1,7 @@
 ﻿using Moq;
 using Moq.Protected;
 using Oras.Constants;
+using Oras.Exceptions;
 using Oras.Models;
 using Oras.Remote;
 using System.Diagnostics;
@@ -49,6 +50,7 @@ namespace Oras.Tests.RemoteTest
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var resp = new HttpResponseMessage();
+                resp.RequestMessage = req;
                 if (req.Method != HttpMethod.Get)
                 {
                     Debug.WriteLine("Expected GET request");
@@ -207,6 +209,7 @@ namespace Oras.Tests.RemoteTest
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var res = new HttpResponseMessage();
+                res.RequestMessage = req;
                 if (req.Method != HttpMethod.Head)
                 {
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -241,6 +244,10 @@ namespace Oras.Tests.RemoteTest
             Assert.True(exists);
         }
 
+        /// <summary>
+        /// Repository_DeleteAsync tests the DeleteAsync method of the Repository
+        /// </summary>
+        /// <returns></returns>
         [Fact]
         public async Task Repository_DeleteAsync()
         {
@@ -293,6 +300,313 @@ namespace Oras.Tests.RemoteTest
             await repo.DeleteAsync(indexDesc, cancellationToken);
             Assert.True(indexDeleted);
         }
+
+        /// <summary>
+        /// Repository_ResolveAsync tests the ResolveAsync method of the Repository
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task Repository_ResolveAsync()
+        {
+            var blob = @"""hello world"""u8.ToArray();
+            var blobDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(blob),
+                MediaType = "test",
+                Size = (uint)blob.Length
+            };
+            var index = @"""{""manifests"":[]}"""u8.ToArray();
+            var indexDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(index),
+                MediaType = OCIMediaTypes.ImageIndex,
+                Size = index.Length
+            };
+            var reference = "foobar";
+
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method != HttpMethod.Head)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                }
+                if (req.RequestUri!.AbsolutePath == "/v2/test/manifests/" + blobDesc.Digest)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.NotFound);
+                }
+                if (req.RequestUri!.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest
+                    || req.RequestUri!.AbsolutePath == "/v2/test/manifests/" + reference)
+
+                {
+                    if (req.Headers.TryGetValues("Accept", out var values) && !values.Contains(OCIMediaTypes.ImageIndex))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
+                    res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
+                    res.Content.Headers.Add("Content-Length", indexDesc.Size.ToString());
+                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    return res;
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+            await Assert.ThrowsAsync<NotFoundException>(async () => await repo.ResolveAsync(blobDesc.Digest, cancellationToken));
+            // await repo.ResolveAsync(blobDesc.Digest, cancellationToken);
+            var got = await repo.ResolveAsync(indexDesc.Digest, cancellationToken);
+            Assert.Equal(indexDesc, got);
+            got = await repo.ResolveAsync(reference, cancellationToken);
+            Assert.Equal(indexDesc, got);
+            var tagDigestRef = "whatever" + "@" + indexDesc.Digest;
+            got = await repo.ResolveAsync(tagDigestRef, cancellationToken);
+            Assert.Equal(indexDesc, got);
+            var fqdnRef = "localhost:5000/test" + ":" + tagDigestRef;
+            got = await repo.ResolveAsync(fqdnRef, cancellationToken);
+            Assert.Equal(indexDesc, got);
+        }
+
+        /// <summary>
+        /// Repository_ResolveAsync tests the ResolveAsync method of the Repository
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task Repository_TagAsync()
+        {
+            var blob = """hello"""u8.ToArray();
+            var blobDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(blob),
+                MediaType = "test",
+                Size = (uint)blob.Length
+            };
+            var index = @"""{""manifests"":[]}"""u8.ToArray();
+            var indexDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(index),
+                MediaType = OCIMediaTypes.ImageIndex,
+                Size = index.Length
+            };
+            var gotIndex = new byte[indexDesc.Size];
+            var reference = "foobar";
+
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method == HttpMethod.Get &&
+                    req.RequestUri.AbsolutePath == "/v2/test/manifests/" + blobDesc.Digest)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.Found);
+                }
+                if (req.Method == HttpMethod.Get && req.RequestUri.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
+                {
+                    if (req.Headers.TryGetValues("Accept", out var values) && !values.Contains(OCIMediaTypes.ImageIndex))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
+
+                    res.Content = new ByteArrayContent(index);
+                    res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
+                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    return res;
+                }
+                if (req.Method == HttpMethod.Put && req.RequestUri.AbsolutePath == "/v2/test/manifests/" + reference
+                    || req.RequestUri.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
+
+                {
+                    if (req.Headers.TryGetValues("Content-Type", out var values) && !values.Contains(OCIMediaTypes.ImageIndex))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
+                    gotIndex = req.Content.ReadAsByteArrayAsync().Result;
+                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    res.StatusCode = HttpStatusCode.Created;
+                    return res;
+                }
+                return new HttpResponseMessage(HttpStatusCode.Forbidden);
+            };
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+           await Assert.ThrowsAnyAsync<Exception>(
+async () => await repo.TagAsync(blobDesc, reference, cancellationToken));
+            await repo.TagAsync(indexDesc, reference, cancellationToken);
+            Assert.Equal(index, gotIndex);
+            await repo.TagAsync(indexDesc, indexDesc.Digest, cancellationToken);
+            Assert.Equal(index, gotIndex);
+        }
+
+        /// <summary>
+        /// Repository_PushReferenceAsync tests the PushReferenceAsync method of the Repository
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task Repository_PushReferenceAsync()
+        {
+            var index = @"""{""manifests"":[]}"""u8.ToArray();
+            var indexDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(index),
+                MediaType = OCIMediaTypes.ImageIndex,
+                Size = index.Length
+            };
+            var gotIndex = new byte[indexDesc.Size];
+            var reference = "foobar";
+
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method == HttpMethod.Put && req.RequestUri.AbsolutePath == "/v2/test/manifests/" + reference)
+                {
+                    if (req.Headers.TryGetValues("Content-Type", out var values) && !values.Contains(OCIMediaTypes.ImageIndex))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
+                    gotIndex = req.Content.ReadAsByteArrayAsync().Result;
+                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    res.StatusCode = HttpStatusCode.Created;
+                    return res;
+                }
+                return new HttpResponseMessage(HttpStatusCode.Forbidden);
+            };
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+            var streamContent = new MemoryStream(index);
+            await repo.PushReferenceAsync(indexDesc, streamContent, reference, cancellationToken);
+            Assert.Equal(index, gotIndex);
+        }
+
+        /// <summary>
+        /// Repository_FetchReferenceAsync tests the FetchReferenceAsync method of the Repository
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task Repository_FetchReferenceAsyc()
+        {
+            var blob = """hello"""u8.ToArray();
+            var blobDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(blob),
+                MediaType = "test",
+                Size = (uint)blob.Length
+            };
+            var index = @"""{""manifests"":[]}"""u8.ToArray();
+            var indexDesc = new Descriptor()
+            {
+                Digest = CalculateDigest(index),
+                MediaType = OCIMediaTypes.ImageIndex,
+                Size = index.Length
+            };
+            var reference = "foobar";
+
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method != HttpMethod.Get)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                }
+
+                if (req.RequestUri.AbsolutePath == "/v2/test/manifests/" + blobDesc.Digest)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.NotFound);
+                }
+
+                if (req.RequestUri.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest
+                    || req.RequestUri.AbsolutePath == "/v2/test/manifests/" + reference)
+                {
+                    if (req.Headers.TryGetValues("Accept", out var values) &&
+                        !values.Contains(OCIMediaTypes.ImageIndex))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
+
+                    res.Content = new ByteArrayContent(index);
+                    res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
+                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    return res;
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.Found);
+            };
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+
+            // test with blob digest
+           await Assert.ThrowsAsync<NotFoundException>(
+                async () => await repo.FetchReferenceAsync(blobDesc.Digest, cancellationToken));
+
+            // test with manifest digest
+            var data = await repo.FetchReferenceAsync(indexDesc.Digest, cancellationToken);
+            Assert.Equal(indexDesc, data.Descriptor);
+
+            var buf = new byte[data.Stream.Length];
+            await data.Stream.ReadAsync(buf, cancellationToken);
+            Assert.Equal(index, buf);
+
+            // test with manifest tag
+            data = await repo.FetchReferenceAsync(reference, cancellationToken);
+            Assert.Equal(indexDesc, data.Descriptor);
+
+            buf = new byte[data.Stream.Length];
+            await data.Stream.ReadAsync(buf, cancellationToken);
+            Assert.Equal(index, buf);
+
+            // test with manifest tag@digest
+            var tagDigestRef = "whatever" + "@" + indexDesc.Digest;
+            data = await repo.FetchReferenceAsync(tagDigestRef, cancellationToken);
+            Assert.Equal(indexDesc, data.Descriptor);
+
+            buf = new byte[data.Stream.Length];
+            await data.Stream.ReadAsync(buf, cancellationToken);
+            Assert.Equal(index, buf);
+
+            // test with manifest FQDN
+            var fqdnRef = "localhost:5000/test" + ":" + tagDigestRef;
+            data = await repo.FetchReferenceAsync(fqdnRef, cancellationToken);
+            Assert.Equal(indexDesc, data.Descriptor);
+
+            buf = new byte[data.Stream.Length];
+            await data.Stream.ReadAsync(buf, cancellationToken);
+            Assert.Equal(index, buf);
+        }
+
+        [Fact]
+        public async Task Repository_TagsAsync()
+        {
+            var tagSet = new List<List<string>>()
+            {
+                new(){"the", "quick", "brown", "fox"},
+                new(){"jumps", "over", "the", "lazy"},
+                new(){"dog"}
+            };
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method != HttpMethod.Get)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                }
+                var q = req.RequestUri.Query;
+                return new HttpResponseMessage(HttpStatusCode.Found);
+            };
+        }
     }
 }
+
+
+
 
