@@ -1,10 +1,10 @@
 ﻿namespace Oras.Remote
 {
-    internal class ResponseTypes
+    internal static class ResponseTypes
     {
-        public class Tags
+        public  class Tags
         {
-            public string[] tags { get; set; }
+            public  string[] tags { get; set; }
         }
     }
 }

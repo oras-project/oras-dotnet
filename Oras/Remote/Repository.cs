@@ -301,7 +301,7 @@ namespace Oras.Remote
                 var url = RegistryUtil.BuildRepositoryTagListURL(PlainHTTP, Reference);
                 while (true)
                 {
-                    await tagsAsync(last, fn, url, cancellationToken);
+                  url =  await tagsAsync(last, fn, url, cancellationToken);
                     last = "";
                 }
             }
@@ -322,29 +322,47 @@ namespace Oras.Remote
         /// <returns></returns>
         private async Task<string> tagsAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
+            if (PlainHTTP)
+            {
+                if (!url.Contains("http"))
+                {
+                    url = "http://" + url;
+                }
+            }
+            else
+            {
+                if (!url.Contains("https"))
+                {
+                    url = "https://" + url;
+                }
+            }
+            var uri = new UriBuilder(url);
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
             if (TagListPageSize > 0 || last != "")
             {
                 if (TagListPageSize > 0)
                 {
-                    url = url + "?n=" + TagListPageSize;
+                    query["n"] = TagListPageSize.ToString();
+                   
+                    
                 }
                 if (last != "")
                 {
-                    url = url + "&last=" + last;
+                    query["last"] = last;
                 }
             }
-            var resp = await Client.GetAsync(url, cancellationToken);
+
+            uri.Query = query.ToString();
+            var resp = await Client.GetAsync(uri.ToString(), cancellationToken);
             if (resp.StatusCode != HttpStatusCode.OK)
             {
                 throw ErrorUtil.ParseErrorResponse(resp);
 
             }
-
             var data = await resp.Content.ReadAsStringAsync();
             var page = JsonSerializer.Deserialize<ResponseTypes.Tags>(data);
             fn(page.tags);
             return Utils.ParseLink(resp);
-
         }
 
         /// <summary>

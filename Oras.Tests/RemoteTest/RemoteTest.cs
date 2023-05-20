@@ -8,6 +8,9 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
+using Oras.Remote;
+using System.Text.RegularExpressions;
 using Xunit;
 using static Oras.Content.Content;
 
@@ -583,6 +586,12 @@ async () => await repo.TagAsync(blobDesc, reference, cancellationToken));
             Assert.Equal(index, buf);
         }
 
+        /// <summary>
+        /// Repository_TagsAsync tests the TagsAsync method of the Repository
+        /// to check if the tags are returned correctly
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         [Fact]
         public async Task Repository_TagsAsync()
         {
@@ -596,13 +605,69 @@ async () => await repo.TagAsync(blobDesc, reference, cancellationToken));
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
-                if (req.Method != HttpMethod.Get)
+                if (req.Method != HttpMethod.Get ||
+                    req.RequestUri.AbsolutePath != "/v2/test/tags/list"
+                    )
                 {
-                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                    return new HttpResponseMessage(HttpStatusCode.NotFound);
                 }
+
                 var q = req.RequestUri.Query;
-                return new HttpResponseMessage(HttpStatusCode.Found);
+                try
+                {
+                    var n = int.Parse(Regex.Match(q, @"(?<=n=)\d+").Value);
+                    if (n != 4) throw new Exception();
+                }
+                catch (Exception e)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+
+                var tags = new List<string>();
+                var serverUrl = "http://localhost:5000";
+                var matched = Regex.Match(q, @"(?<=test=)\w+").Value;
+                switch (matched)
+                {
+                    case "foo":
+                        tags = tagSet[1];
+                        res.Headers.Add("Link", $"<{serverUrl}/v2/test/tags/list?n=4&test=bar>; rel=\"next\"");
+                        break;
+                    case "bar":
+                        tags = tagSet[2];
+                        break;
+                    default:
+                        tags = tagSet[0];
+                        res.Headers.Add("Link", $"</v2/test/tags/list?n=4&test=foo>; rel=\"next\"");
+                        break;
+                }
+                var tagObj = new ResponseTypes.Tags()
+                {
+                    tags = tags.ToArray()
+                };
+                res.Content = new StringContent(JsonSerializer.Serialize(tagObj));
+                return res;
+
             };
+
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            repo.TagListPageSize = 4;
+
+            var cancellationToken = new CancellationToken();
+
+            var index = 0;
+            await repo.TagsAsync("", async (string[] got) =>
+            {
+                if (index > 2)
+                {
+                    throw new Exception($"Error out of range: {index}");
+                }
+
+                var tags = tagSet[index];
+                index++;
+                Assert.Equal(got, tags);
+            }, cancellationToken);
         }
     }
 }

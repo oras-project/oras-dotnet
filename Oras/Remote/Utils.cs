@@ -21,11 +21,16 @@ namespace Oras.Remote
         /// <returns></returns>
         public static string ParseLink(HttpResponseMessage resp)
         {
-            var link = resp.Headers.GetValues("Link").FirstOrDefault();
-            if (String.IsNullOrEmpty(link))
+            var link = String.Empty;
+            if (resp.Headers.TryGetValues("Link", out var values))
+            {
+                link = values.FirstOrDefault();
+            }
+            else 
             {
                 throw new NoLinkHeaderException();
             }
+
 
             if (link[0] != '<')
             {
@@ -40,12 +45,17 @@ namespace Oras.Remote
                 link = link[1..index];
             }
 
-            if (!Uri.IsWellFormedUriString(link, UriKind.Absolute))
+            if (!Uri.IsWellFormedUriString(link, UriKind.RelativeOrAbsolute))
             {
-                throw new Exception($"invalid next link {link}: not an absolute URL");
+                throw new Exception($"invalid next link {link}");
             }
 
-            return link;
+            var scheme = resp.RequestMessage.RequestUri.Scheme;
+            var authority = resp.RequestMessage.RequestUri.Authority;
+            Uri baseUri = new Uri(scheme+"://"+authority);
+            Uri resolvedUri = new Uri(baseUri, link);
+
+            return resolvedUri.AbsoluteUri;
         }
 
         /// <summary>
