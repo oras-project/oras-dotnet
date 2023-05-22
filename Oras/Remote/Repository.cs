@@ -1006,21 +1006,22 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             }
 
             // monolithic upload
-            var location = resp.Headers.Location;
+            var location = resp.RequestMessage.RequestUri.Scheme+"://"+ resp.RequestMessage.RequestUri.Authority + resp.Headers.Location;
             // work-around solution for https://github.com/oras-project/oras-go/issues/177
-            // For some registries, if the port 443 is explicitly set to the hostname
+            // For some registries, if the port 443 is explicitly set to the hostname                                                                                                                                                        plicitly set to the hostname
             // like registry.wabbit-networks.io:443/myrepo, blob push will fail since
             // the hostname of the Location header in the response is set to
             // registry.wabbit-networks.io instead of registry.wabbit-networks.io:443.
-
-            var locationHostname = location.Host;
-            var locationPort = location.Port;
+            var uri = new Uri(location);
+            var locationHostname = uri.Host ;
+            var locationPort = uri.Port;
             // if location port 443 is missing, add it back
             if (reqPort == 443 && locationHostname == reqHostname && locationPort != reqPort)
             {
-                location = new Uri($"{locationHostname}:{reqPort}");
+                location = new Uri($"{locationHostname}:{reqPort}").ToString();
             }
-            url = location.ToString();
+            
+            url = location;
 
             var req = new HttpRequestMessage(HttpMethod.Put, url);
             req.Content = new StreamContent(content);
@@ -1034,7 +1035,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             req.Content.Headers.Add("Content-Type", "application/octet-stream");
 
             // add digest key to query string with expected digest value
-            var query = HttpUtility.ParseQueryString(location.Query);
+            var query = HttpUtility.ParseQueryString(new Uri(location).Query);
             query.Add("digest", expected.Digest);
             req.RequestUri = new Uri($"{req.RequestUri}?digest={expected.Digest}");
 
