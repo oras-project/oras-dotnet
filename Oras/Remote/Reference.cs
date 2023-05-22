@@ -49,7 +49,7 @@ namespace Oras.Remote
         /// <summary>
         /// digestRegexp checks the digest.
         /// </summary>
-        public static string digestRegexp = @"^sha256:[0-9a-fA-F]{64}$";
+        public static string digestRegexp = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
         public ReferenceObj ParseReference(string artifact)
         {
             var parts = artifact.Split("/", 2);

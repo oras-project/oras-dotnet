@@ -154,7 +154,7 @@ namespace Oras.Remote
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"Repository {Reference} not found");
                 default:
-                    throw ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtil.ParseErrorResponse(resp);
             }
         }
         /// <summary>
@@ -356,7 +356,7 @@ namespace Oras.Remote
             var resp = await Client.GetAsync(uri.ToString(), cancellationToken);
             if (resp.StatusCode != HttpStatusCode.OK)
             {
-                throw ErrorUtil.ParseErrorResponse(resp);
+                throw await ErrorUtil.ParseErrorResponse(resp);
 
             }
             var data = await resp.Content.ReadAsStringAsync();
@@ -396,7 +396,7 @@ namespace Oras.Remote
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"digest {target.Digest} not found");
                 default:
-                    throw ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtil.ParseErrorResponse(resp);
             }
         }
 
@@ -512,6 +512,36 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         }
 
 
+        /// <summary>
+        /// GenerateBlobDescriptor returns a descriptor generated from the response.
+        /// </summary>
+        /// <param name="resp"></param>
+        /// <param name="refDigest"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public static Descriptor GenerateBlobDescriptor(HttpResponseMessage resp, string refDigest)
+        {
+            var mediaType = resp.Content.Headers.ContentType.MediaType;
+            if (string.IsNullOrEmpty(mediaType))
+            {
+                mediaType = "application/octet-stream";
+            }
+            var size = resp.Content.Headers.ContentLength!.Value;
+            if (size == -1)
+            {
+                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: unknown response Content-Length");
+            }
+
+            ReferenceObj.VerifyContentDigest(resp, refDigest);
+
+            return new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = refDigest,
+                Size = size
+            };
+        }
+
     }
 
     public class ManifestStore : IManifestStore
@@ -547,7 +577,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"digest {target.Digest} not found");
                 default:
-                    throw ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtil.ParseErrorResponse(resp);
             }
             var mediaType = resp.Content.Headers?.ContentType.MediaType;
             if (mediaType != target.MediaType)
@@ -642,7 +672,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var resp = await client.SendAsync(req, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.Created)
             {
-                throw ErrorUtil.ParseErrorResponse(resp);
+                throw await ErrorUtil.ParseErrorResponse(resp);
             }
             ReferenceObj.VerifyContentDigest(resp, expected.Digest);
         }
@@ -681,7 +711,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             {
                 HttpStatusCode.OK => generateDescriptor(res, refObj, req.Method),
                 HttpStatusCode.NotFound => throw new NotFoundException($"reference {reference} not found"),
-                _ => throw ErrorUtil.ParseErrorResponse(res)
+                _ => throw await ErrorUtil.ParseErrorResponse(res)
             };
         }
 
@@ -858,7 +888,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{req.Method} {req.RequestUri}: manifest unknown");
                 default:
-                    throw ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtil.ParseErrorResponse(resp);
 
             }
         }
@@ -954,7 +984,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{target.Digest}: not found");
                 default:
-                    throw ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtil.ParseErrorResponse(resp);
             }
         }
 
@@ -1002,11 +1032,19 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var reqPort = resp.RequestMessage.RequestUri.Port;
             if (resp.StatusCode != HttpStatusCode.Accepted)
             {
-                throw ErrorUtil.ParseErrorResponse(resp);
+                throw await ErrorUtil.ParseErrorResponse(resp);
             }
 
+            string location = String.Empty;
             // monolithic upload
-            var location = resp.RequestMessage.RequestUri.Scheme+"://"+ resp.RequestMessage.RequestUri.Authority + resp.Headers.Location;
+            if (!resp.Headers.Location.IsAbsoluteUri)
+            {
+             location = resp.RequestMessage.RequestUri.Scheme+"://"+ resp.RequestMessage.RequestUri.Authority + resp.Headers.Location;
+            }
+            else
+            {
+                location = resp.Headers.Location.ToString();
+            }
             // work-around solution for https://github.com/oras-project/oras-go/issues/177
             // For some registries, if the port 443 is explicitly set to the hostname                                                                                                                                                        plicitly set to the hostname
             // like registry.wabbit-networks.io:443/myrepo, blob push will fail since
@@ -1048,7 +1086,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             resp = await Repo.Client.SendAsync(req, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.Created)
             {
-                throw ErrorUtil.ParseErrorResponse(resp);
+                throw await ErrorUtil.ParseErrorResponse(resp);
             }
 
             return;
@@ -1069,9 +1107,9 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var resp = await Repo.Client.SendAsync(requestMessage, cancellationToken);
             return resp.StatusCode switch
             {
-                HttpStatusCode.OK => GenerateBlobDescriptor(resp, refDigest),
+                HttpStatusCode.OK => Repository.GenerateBlobDescriptor(resp, refDigest),
                 HttpStatusCode.NotFound => throw new NotFoundException($"{refObj.Reference}: not found"),
-                _ => throw ErrorUtil.ParseErrorResponse(resp)
+                _ => throw await ErrorUtil.ParseErrorResponse(resp)
             };
         }
 
@@ -1110,7 +1148,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                     }
                     else
                     {
-                        desc = GenerateBlobDescriptor(resp, refDigest);
+                        desc = Repository.GenerateBlobDescriptor(resp, refDigest);
                     }
                     // check server range request capability.
                     // Docker spec allows range header form of "Range: bytes=<start>-<end>".
@@ -1145,39 +1183,12 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException();
                 default:
-                    throw ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtil.ParseErrorResponse(resp);
 
             }
         }
 
-        /// <summary>
-        /// GenerateBlobDescriptor returns a descriptor generated from the response.
-        /// </summary>
-        /// <param name="resp"></param>
-        /// <param name="refDigest"></param>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
-        private Descriptor GenerateBlobDescriptor(HttpResponseMessage resp, string refDigest)
-        {
-            var mediaType = resp.Content.Headers.ContentType.MediaType;
-            if (string.IsNullOrEmpty(mediaType))
-            {
-                mediaType = "application/octet-stream";
-            }
-            var size = resp.Content.Headers.ContentLength!.Value;
-            if (size == -1)
-            {
-                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: unknown response Content-Length");
-            }
-
-            ReferenceObj.VerifyContentDigest(resp, refDigest);
-
-            return new Descriptor
-            {
-                MediaType = mediaType,
-                Digest = refDigest,
-                Size = size
-            };
-        }
+       
     }
+
 }

@@ -1,4 +1,5 @@
-﻿using Moq;
+﻿using System.Collections.Immutable;
+using Moq;
 using Moq.Protected;
 using Oras.Constants;
 using Oras.Exceptions;
@@ -14,11 +15,102 @@ using System.Text.RegularExpressions;
 using Xunit;
 using static Oras.Content.Content;
 using System.Web;
+using Xunit.Abstractions;
 
 namespace Oras.Tests.RemoteTest
 {
     public class RemoteTest
     {
+        public struct TestIOStruct
+        {
+            public bool isTag;
+            public bool errExpectedOnHEAD;
+            public string serverCalculatedDigest;
+            public string clientSuppliedReference;
+            public bool errExpectedOnGET;
+        }
+
+        private  byte[] theAmazingBanClan = "Ban Gu, Ban Chao, Ban Zhao"u8.ToArray();
+        private const string theAmazingBanDigest = "b526a4f2be963a2f9b0990c001255669eab8a254ab1a6e3f84f1820212ac7078";
+
+        private const string dockerContentDigestHeader = "Docker-Content-Digest";
+        // The following truth table aims to cover the expected GET/HEAD request outcome
+        // for all possible permutations of the client/server "containing a digest", for
+        // both Manifests and Blobs.  Where the results between the two differ, the index
+        // of the first column has an exclamation mark.
+        //
+        // The client is said to "contain a digest" if the user-supplied reference string
+        // is of the form that contains a digest rather than a tag.  The server, on the
+        // other hand, is said to "contain a digest" if the server responded with the
+        // special header `Docker-Content-Digest`.
+        //
+        // In this table, anything denoted with an asterisk indicates that the true
+        // response should actually be the opposite of what's expected; for example,
+        // `*PASS` means we will get a `PASS`, even though the true answer would be its
+        // diametric opposite--a `FAIL`. This may seem odd, and deserves an explanation.
+        // This function has blind-spots, and while it can expend power to gain sight,
+        // i.e., perform the expensive validation, we chose not to.  The reason is two-
+        // fold: a) we "know" that even if we say "!PASS", it will eventually fail later
+        // when checks are performed, and with that assumption, we have the luxury for
+        // the second point, which is b) performance.
+        //
+        //	 _______________________________________________________________________________________________________________
+        //	| ID | CLIENT          | SERVER           | Manifest.GET          | Blob.GET  | Manifest.HEAD       | Blob.HEAD |
+        //	|----+-----------------+------------------+-----------------------+-----------+---------------------+-----------+
+        //	| 1  | tag             | missing          | CALCULATE,PASS        | n/a       | FAIL                | n/a       |
+        //	| 2  | tag             | presentCorrect   | TRUST,PASS            | n/a       | TRUST,PASS          | n/a       |
+        //	| 3  | tag             | presentIncorrect | TRUST,*PASS           | n/a       | TRUST,*PASS         | n/a       |
+        //	| 4  | correctDigest   | missing          | TRUST,PASS            | PASS      | TRUST,PASS          | PASS      |
+        //	| 5  | correctDigest   | presentCorrect   | TRUST,COMPARE,PASS    | PASS      | TRUST,COMPARE,PASS  | PASS      |
+        //	| 6  | correctDigest   | presentIncorrect | TRUST,COMPARE,FAIL    | FAIL      | TRUST,COMPARE,FAIL  | FAIL      |
+        //	 ---------------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// GetTestIOStructMapForGetDescriptorClass returns a map of test cases for different
+        /// GET/HEAD request outcome for all possible permutations of the client/server "containing a digest", for
+        /// both Manifests and Blobs. 
+        /// </summary>
+        /// <returns></returns>
+        public static Dictionary<string, TestIOStruct> GetTestIOStructMapForGetDescriptorClass()
+        {
+            string correctDigest = $"sha256:{theAmazingBanDigest}";
+            string incorrectDigest = $"sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+            return new Dictionary<string, TestIOStruct>
+            {
+                ["1. Client:Tag & Server:DigestMissing"] = new TestIOStruct
+                {
+                    isTag = true,
+                    errExpectedOnHEAD = true
+                },
+                ["2. Client:Tag & Server:DigestValid"] = new TestIOStruct
+                {
+                    isTag = true,
+                    serverCalculatedDigest = correctDigest
+                },
+                ["3. Client:Tag & Server:DigestWrongButSyntacticallyValid"] = new TestIOStruct
+                {
+                    isTag = true,
+                    serverCalculatedDigest = incorrectDigest
+                },
+                ["4. Client:DigestValid & Server:DigestMissing"] = new TestIOStruct
+                {
+                    clientSuppliedReference = correctDigest
+                },
+                ["5. Client:DigestValid & Server:DigestValid"] = new TestIOStruct
+                {
+                    clientSuppliedReference = correctDigest,
+                    serverCalculatedDigest = correctDigest
+                },
+                ["6. Client:DigestValid & Server:DigestWrongButSyntacticallyValid"] = new TestIOStruct
+                {
+                    clientSuppliedReference = correctDigest,
+                    serverCalculatedDigest = incorrectDigest,
+                    errExpectedOnHEAD = true,
+                    errExpectedOnGET = true
+                }
+            };
+        }
         public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
         {
             var moqHandler = new Mock<DelegatingHandler>();
@@ -932,7 +1024,8 @@ namespace Oras.Tests.RemoteTest
 
                 if (req.Method == HttpMethod.Put && req.RequestUri.AbsolutePath == "/v2/test/blobs/uploads/" + uuid)
                 {
-                    if (req.Headers.TryGetValues("Content-Type", out var contentType) && contentType.FirstOrDefault() != "application/octet-stream")
+                    if (req.Headers.TryGetValues("Content-Type", out var contentType) &&
+                        contentType.FirstOrDefault() != "application/octet-stream")
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -941,6 +1034,7 @@ namespace Oras.Tests.RemoteTest
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
+
                     var buf = new byte[req.Content.Headers.ContentLength.Value];
                     // read content into buffer
                     var stream = req.Content!.ReadAsStream(cancellationToken);
@@ -986,11 +1080,12 @@ namespace Oras.Tests.RemoteTest
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
-                if (req.Method != HttpMethod.Head) 
+                if (req.Method != HttpMethod.Head)
                 {
                     res.StatusCode = HttpStatusCode.MethodNotAllowed;
                     return res;
                 }
+
                 if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
@@ -1036,6 +1131,7 @@ namespace Oras.Tests.RemoteTest
                     res.StatusCode = HttpStatusCode.MethodNotAllowed;
                     return res;
                 }
+
                 if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     blobDeleted = true;
@@ -1088,6 +1184,7 @@ namespace Oras.Tests.RemoteTest
                     res.StatusCode = HttpStatusCode.MethodNotAllowed;
                     return res;
                 }
+
                 if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
@@ -1105,7 +1202,7 @@ namespace Oras.Tests.RemoteTest
             var store = new BlobStore(repo);
             var got = await store.ResolveAsync(blobDesc.Digest, cancellationToken);
             Assert.Equal(blobDesc.Digest, got.Digest);
-            Assert.Equal(blobDesc.Size,got.Size);
+            Assert.Equal(blobDesc.Size, got.Size);
 
             var fqdnRef = $"localhost:5000/test@{blobDesc.Digest}";
             got = await store.ResolveAsync(fqdnRef, cancellationToken);
@@ -1118,7 +1215,8 @@ namespace Oras.Tests.RemoteTest
                 Digest = CalculateDigest(content),
                 Size = content.Length
             };
-            await Assert.ThrowsAsync<NotFoundException>(async () => await store.ResolveAsync(contentDesc.Digest, cancellationToken));
+            await Assert.ThrowsAsync<NotFoundException>(async () =>
+                await store.ResolveAsync(contentDesc.Digest, cancellationToken));
         }
 
         /// <summary>
@@ -1145,6 +1243,7 @@ namespace Oras.Tests.RemoteTest
                     res.StatusCode = HttpStatusCode.MethodNotAllowed;
                     return res;
                 }
+
                 if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     res.Content = new ByteArrayContent(blob);
@@ -1152,6 +1251,7 @@ namespace Oras.Tests.RemoteTest
                     res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     return res;
                 }
+
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
 
@@ -1167,7 +1267,7 @@ namespace Oras.Tests.RemoteTest
             Assert.Equal(blobDesc.Size, gotDesc.Descriptor.Size);
 
             var buf = new byte[gotDesc.Descriptor.Size];
-            await gotDesc.Stream.ReadAsync(buf,cancellationToken);
+            await gotDesc.Stream.ReadAsync(buf, cancellationToken);
             Assert.Equal(blob, buf);
 
             // test with FQDN reference
@@ -1184,10 +1284,211 @@ namespace Oras.Tests.RemoteTest
                 Size = content.Length
             };
             // test with other digest
-            await Assert.ThrowsAsync<NotFoundException>(async () => await store.FetchReferenceAsync(contentDesc.Digest, cancellationToken));
+            await Assert.ThrowsAsync<NotFoundException>(async () =>
+                await store.FetchReferenceAsync(contentDesc.Digest, cancellationToken));
         }
+
+        /// <summary>
+        /// BlobStore_FetchAsyncReferenceAsync_Seek tests the FetchAsync method of BlobStore with seek.
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task BlobStore_FetchReferenceAsync_Seek()
+        {
+            var blob = "hello world"u8.ToArray();
+            var blobDesc = new Descriptor()
+            {
+                MediaType = "test",
+                Digest = CalculateDigest(blob),
+                Size = blob.Length
+            };
+            var seekable = false;
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method != HttpMethod.Get)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                }
+
+                if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+                {
+                    if (seekable)
+                    {
+                        res.Headers.AcceptRanges.Add("bytes");
+                    }
+
+                    IEnumerable<string> rangeHeader;
+                    if (req.Headers.TryGetValues("Range", out rangeHeader))
+                    {
+                    }
+
+
+                    if (!seekable || rangeHeader == null || rangeHeader.FirstOrDefault() == "")
+                    {
+                        res.StatusCode = HttpStatusCode.OK;
+                        res.Content = new ByteArrayContent(blob);
+                        res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                        res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                        return res;
+                    }
+
+
+                    long start = 0;
+                    try
+                    {
+                        start = req.Headers.Range.Ranges.First().From.Value;
+                    }
+                    catch (Exception e)
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable);
+                    }
+
+                    if (start < 0 || start >= blobDesc.Size)
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable);
+                    }
+
+                    res.StatusCode = HttpStatusCode.PartialContent;
+                    res.Content = new ByteArrayContent(blob[(int) start..]);
+                    res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    return res;
+                }
+
+                res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.StatusCode = HttpStatusCode.NotFound;
+                return res;
+            };
+
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+
+            var store = new BlobStore(repo);
+
+            // test non-seekable content
+
+            var data = await store.FetchReferenceAsync(blobDesc.Digest, cancellationToken);
+
+            Assert.Equal(data.Descriptor.Digest, blobDesc.Digest);
+            Assert.Equal(data.Descriptor.Size, blobDesc.Size);
+
+            var buf = new byte[data.Descriptor.Size];
+            await data.Stream.ReadAsync(buf, cancellationToken);
+            Assert.Equal(blob, buf);
+
+            // test seekable content
+            seekable = true;
+            data = await store.FetchReferenceAsync(blobDesc.Digest, cancellationToken);
+            Assert.Equal(data.Descriptor.Digest, blobDesc.Digest);
+            Assert.Equal(data.Descriptor.Size, blobDesc.Size);
+
+            data.Stream.Seek(3, SeekOrigin.Begin);
+            buf = new byte[data.Descriptor.Size - 3];
+            await data.Stream.ReadAsync(buf, cancellationToken);
+            Assert.Equal(blob[3..], buf);
+        }
+
+
+        /// <summary>
+        /// GenerateBlobDescriptor_WithVariusDockerContentDigestHeaders tests the GenerateBlobDescriptor method of BlobStore with various Docker-Content-Digest headers.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        [Fact]
+        public async Task GenerateBlobDescriptor_WithVariousDockerContentDigestHeaders()
+        {
+            var reference = new ReferenceObj()
+            {
+                Registry = "eastern.haan.com",
+                Reference = "<calculate>",
+                Repository = "from25to220ce"
+            };
+            var tests = GetTestIOStructMapForGetDescriptorClass();
+            foreach ((string testName, TestIOStruct dcdIOStruct) in tests)
+            {
+                if (dcdIOStruct.isTag)
+                {
+                    continue;
+                }
+                HttpMethod[] methods = new HttpMethod[] { HttpMethod.Get, HttpMethod.Head };
+                foreach ((int i, HttpMethod method) in methods.Select((value, i) => (i, value)))
+                {
+                    reference.Reference = dcdIOStruct.clientSuppliedReference;
+                    var resp = new HttpResponseMessage();
+                    if (method == HttpMethod.Get)
+                    {
+                        resp.Content = new ByteArrayContent(theAmazingBanClan);
+                        resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
+                        resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                    }
+                    if (!resp.Content.Headers.TryGetValues(dockerContentDigestHeader, out IEnumerable<string> values))
+                    {
+                        resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
+                        resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                        resp.RequestMessage = new HttpRequestMessage()
+                        {
+                            Method = method
+                        };
+               
+                    }
+                    else
+                    {
+                        resp.RequestMessage = new HttpRequestMessage()
+                        {
+                            Method = method
+                        };
+                    }
+
+                    var d = string.Empty;
+                    try
+                    {
+                         d = reference.Digest();
+                    }
+                    catch (Exception e)
+                    {
+                        throw new Exception(
+                            $"[Blob.{method}] {testName}; got digest from a tag reference unexpectedly");
+                    }
+
+                    var errExpected = new bool[] { dcdIOStruct.errExpectedOnGET, dcdIOStruct.errExpectedOnHEAD }[i];
+                    if (d.Length == 0)
+                    {
+                        // To avoid an otherwise impossible scenario in the tested code
+                        // path, we set d so that verifyContentDigest does not break.
+                        d = dcdIOStruct.serverCalculatedDigest;
+                    }
+
+                    var err = false;
+                    try
+                    {
+                        Repository.GenerateBlobDescriptor(resp, d);
+                       
+                    }
+                    catch (Exception e)
+                    {
+                        err = true;
+                        if (!errExpected)
+                        {
+                            throw new Exception(
+                                $"[Blob.{method}] {testName}; expected no error for request, but got err; {e.Message}");
+                        }
+                        
+                    }
+
+                    if (errExpected && !err)
+                    {
+                        throw new Exception($"[Blob.{method}] {testName}; expected error for request, but got none");
+                    }
+                }
+            }
+            
+        }
+        
+        
     }
 }
-
-
-
