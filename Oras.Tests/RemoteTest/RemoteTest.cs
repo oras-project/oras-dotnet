@@ -1064,6 +1064,10 @@ namespace Oras.Tests.RemoteTest
             Assert.ThrowsAsync<NotFoundException>(async () => await store.DeleteAsync(contentDesc, cancellationToken));
         }
 
+        /// <summary>
+        /// BlobStore_ResolveAsync tests the ResolveAsync method of the BlobStore.
+        /// </summary>
+        /// <returns></returns>
         [Fact]
         public async Task BlobStore_ResolveAsync()
         {
@@ -1094,7 +1098,6 @@ namespace Oras.Tests.RemoteTest
 
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
-
             var repo = new Repository("localhost:5000/test");
             repo.Client = CustomClient(func);
             repo.PlainHTTP = true;
@@ -1103,6 +1106,85 @@ namespace Oras.Tests.RemoteTest
             var got = await store.ResolveAsync(blobDesc.Digest, cancellationToken);
             Assert.Equal(blobDesc.Digest, got.Digest);
             Assert.Equal(blobDesc.Size,got.Size);
+
+            var fqdnRef = $"localhost:5000/test@{blobDesc.Digest}";
+            got = await store.ResolveAsync(fqdnRef, cancellationToken);
+            Assert.Equal(blobDesc.Digest, got.Digest);
+
+            var content = "foobar"u8.ToArray();
+            var contentDesc = new Descriptor()
+            {
+                MediaType = "test",
+                Digest = CalculateDigest(content),
+                Size = content.Length
+            };
+            await Assert.ThrowsAsync<NotFoundException>(async () => await store.ResolveAsync(contentDesc.Digest, cancellationToken));
+        }
+
+        /// <summary>
+        /// BlobStore_FetchReferenceAsync tests the FetchReferenceAsync method of BlobStore
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task BlobStore_FetchReferenceAsync()
+        {
+            var blob = "hello world"u8.ToArray();
+            var blobDesc = new Descriptor()
+            {
+                MediaType = "test",
+                Digest = CalculateDigest(blob),
+                Size = blob.Length
+            };
+            var reference = "foobar";
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method != HttpMethod.Get)
+                {
+                    res.StatusCode = HttpStatusCode.MethodNotAllowed;
+                    return res;
+                }
+                if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+                {
+                    res.Content = new ByteArrayContent(blob);
+                    res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    return res;
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+            var store = new BlobStore(repo);
+
+            // test with digest
+            var gotDesc = await store.FetchReferenceAsync(blobDesc.Digest, cancellationToken);
+            Assert.Equal(blobDesc.Digest, gotDesc.Descriptor.Digest);
+            Assert.Equal(blobDesc.Size, gotDesc.Descriptor.Size);
+
+            var buf = new byte[gotDesc.Descriptor.Size];
+            await gotDesc.Stream.ReadAsync(buf,cancellationToken);
+            Assert.Equal(blob, buf);
+
+            // test with FQDN reference
+            var fqdnRef = $"localhost:5000/test@{blobDesc.Digest}";
+            gotDesc = await store.FetchReferenceAsync(fqdnRef, cancellationToken);
+            Assert.Equal(blobDesc.Digest, gotDesc.Descriptor.Digest);
+            Assert.Equal(blobDesc.Size, gotDesc.Descriptor.Size);
+
+            var content = "foobar"u8.ToArray();
+            var contentDesc = new Descriptor()
+            {
+                MediaType = "test",
+                Digest = CalculateDigest(content),
+                Size = content.Length
+            };
+            // test with other digest
+            await Assert.ThrowsAsync<NotFoundException>(async () => await store.FetchReferenceAsync(contentDesc.Digest, cancellationToken));
         }
     }
 }
