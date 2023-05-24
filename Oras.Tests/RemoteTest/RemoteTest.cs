@@ -16,6 +16,7 @@ using Xunit;
 using static Oras.Content.Content;
 using System.Web;
 using Xunit.Abstractions;
+using System;
 
 namespace Oras.Tests.RemoteTest
 {
@@ -1488,7 +1489,170 @@ namespace Oras.Tests.RemoteTest
             }
             
         }
-        
-        
+
+
+        /// <summary>
+        /// ManifestStore_FetchAsync tests the FetchAsync method of ManifestStore.
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task ManifestStore_FetchAsync()
+        {
+            var manifest = """{"layers":[]}"""u8.ToArray();
+            var manifestDesc = new Descriptor
+            {
+                MediaType = OCIMediaTypes.ImageManifest,
+                Digest = CalculateDigest(manifest),
+                Size = manifest.Length
+            };
+
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method != HttpMethod.Get)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                }
+                if (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+                {
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string> values)  && !values.Contains(OCIMediaTypes.ImageManifest))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
+                    res.Content = new ByteArrayContent(manifest);
+                    res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
+                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                    return res;
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+            var store = new ManifestStore(repo);
+            var data = await store.FetchAsync(manifestDesc, cancellationToken);
+            var buf = new byte[data.Length];
+            await data.ReadAsync(buf, cancellationToken);
+            Assert.Equal(manifest, buf);
+            
+            var content = """{"manifests":[]}"""u8.ToArray();
+            var contentDesc = new Descriptor
+            {
+                MediaType = OCIMediaTypes.ImageIndex,
+                Digest = CalculateDigest(content),
+                Size = content.Length
+            };
+            Assert.ThrowsAsync<NotFoundException>(async () => await store.FetchAsync(contentDesc, cancellationToken));
+        }
+
+        /// <summary>
+        /// ManifestStore_PushAsync tests the PushAsync method of ManifestStore.
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task ManifestStore_PushAsync()
+        {
+            var manifest = """{"layers":[]}"""u8.ToArray();
+            var manifestDesc = new Descriptor
+            {
+                MediaType = OCIMediaTypes.ImageManifest,
+                Digest = CalculateDigest(manifest),
+                Size = manifest.Length
+            };
+            byte[] gotManifest = null;
+
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method == HttpMethod.Put && req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+                {
+                    if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string> values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
+
+                    var buf = new byte[req.Content.Headers.ContentLength.Value];
+                    req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
+                    gotManifest = buf;
+                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                    res.StatusCode = HttpStatusCode.Created;
+                    return res;
+                }
+                else
+                {
+                    return new HttpResponseMessage(HttpStatusCode.Forbidden);
+                }
+            };
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+            var store = new ManifestStore(repo);
+            await store.PushAsync(manifestDesc, new MemoryStream(manifest), cancellationToken);
+            Assert.Equal(manifest, gotManifest);
+        }
+
+        /// <summary>
+        /// ManifestStore_ExistAsync tests the ExistAsync method of ManifestStore.
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task ManifestStore_ExistAsync()
+        {
+            var manifest = """{"layers":[]}"""u8.ToArray();
+            var manifestDesc = new Descriptor
+            {
+                MediaType = OCIMediaTypes.ImageManifest,
+                Digest = CalculateDigest(manifest),
+                Size = manifest.Length
+            };
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage();
+                res.RequestMessage = req;
+                if (req.Method != HttpMethod.Head)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                }
+                if (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+                {
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string> values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
+                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                    res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
+                    res.Content.Headers.Add("Content-Length", new string[] { manifest.Length.ToString() });
+                    return res;
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+            var repo = new Repository("localhost:5000/test");
+            repo.Client = CustomClient(func);
+            repo.PlainHTTP = true;
+            var cancellationToken = new CancellationToken();
+            var store = new ManifestStore(repo);
+            var exist = await store.ExistsAsync(manifestDesc, cancellationToken);
+            Assert.True(exist);
+
+            var content = """{"manifests":[]}"""u8.ToArray();
+            var contentDesc = new Descriptor
+            {
+                MediaType = OCIMediaTypes.ImageIndex,
+                Digest = CalculateDigest(content),
+                Size = content.Length
+            };
+            exist = await store.ExistsAsync(contentDesc, cancellationToken);
+            Assert.False(exist);
+        }
+
+        [Fact]
+        public async Task ManifestStore_DeleteAsync()
+        {
+            var 
+        }
     }
 }
