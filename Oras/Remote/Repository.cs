@@ -709,7 +709,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
 
             return res.StatusCode switch
             {
-                HttpStatusCode.OK => generateDescriptor(res, refObj, req.Method),
+                HttpStatusCode.OK => GenerateDescriptor(res, refObj, req.Method),
                 HttpStatusCode.NotFound => throw new NotFoundException($"reference {reference} not found"),
                 _ => throw await ErrorUtil.ParseErrorResponse(res)
             };
@@ -723,14 +723,14 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <param name="httpMethod"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        private Descriptor generateDescriptor(HttpResponseMessage res, ReferenceObj refObj, HttpMethod httpMethod)
+        public Descriptor GenerateDescriptor(HttpResponseMessage res, ReferenceObj refObj, HttpMethod httpMethod)
         {
             string mediaType;
             try
             {
                 // 1. Validate Content-Type
                 mediaType = res.Content.Headers.ContentType.MediaType;
-                MediaTypeHeaderValue.TryParse(mediaType.ToString(), out var parsedMediaType);
+                MediaTypeHeaderValue.Parse(mediaType);
 
             }
             catch (Exception e)
@@ -756,7 +756,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
 
             // 4. Validate Server Digest (if present)
             res.Content.Headers.TryGetValues("Docker-Content-Digest", out var serverHeaderDigest);
-            if (serverHeaderDigest != null)
+            if (!string.IsNullOrEmpty(serverHeaderDigest.First()))
             {
                 try
                 {
@@ -771,7 +771,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             // 5. Now, look for specific error conditions;
             string contentDigest;
 
-            if (serverHeaderDigest.FirstOrDefault().Length == 0)
+            if (serverHeaderDigest.First().Length == 0)
             {
                 if (httpMethod == HttpMethod.Head)
                 {
@@ -826,15 +826,16 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <param name="maxMetadataBytes"></param>
         private string calculateDigestFromResponse(HttpResponseMessage res, long maxMetadataBytes)
         {
+            byte[] content = null;
             try
             {
-                byte[] content = Utils.LimitReader(res.Content, maxMetadataBytes);
+               content = Utils.LimitReader(res.Content, maxMetadataBytes);
             }
             catch (Exception ex)
             {
                 throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: failed to read response body: {ex.Message}");
             }
-            return DigestUtil.FromBytes(res.Content);
+            return DigestUtil.FromBytes(content);
         }
 
         /// <summary>
@@ -865,7 +866,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <param name="reference"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<(Descriptor, Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
+        public async Task<(Descriptor Descriptor, Stream Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
         {
             var refObj = Repo.ParseReference(reference);
             var url = RegistryUtil.BuildRepositoryManifestURL(Repo.PlainHTTP, refObj);
@@ -882,7 +883,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                     }
                     else
                     {
-                        desc = generateDescriptor(resp, refObj, HttpMethod.Get);
+                        desc = GenerateDescriptor(resp, refObj, HttpMethod.Get);
                     }
                     return (desc, await resp.Content.ReadAsStreamAsync());
                 case HttpStatusCode.NotFound:

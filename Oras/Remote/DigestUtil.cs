@@ -23,14 +23,14 @@ namespace Oras.Remote
         }
 
         /// <summary>
-        /// FromBytes generates a digest from the content.
+        /// FromBytes generates a digest from a byte.
         /// </summary>
         /// <param name="content"></param>
         /// <returns></returns>
-        public static string FromBytes(HttpContent content)
+        public static string FromBytes(byte[] content)
         {
             using var sha256 = SHA256.Create();
-            var hash = sha256.ComputeHash(content.ReadAsByteArrayAsync().Result);
+            var hash = sha256.ComputeHash(content);
             var digest = $"sha256:{Convert.ToBase64String(hash)}";
             return digest;
         }
