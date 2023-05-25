@@ -1,12 +1,13 @@
 ﻿using Oras.Exceptions;
+using Oras.Remote;
 using System;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
-namespace Oras.Remote
+namespace Oras.Utils
 {
-    internal class DigestUtil
+    internal class DigestUtility
     {
         /// <summary>
         /// Parse verifies the digest header and throws an exception if it is invalid.
@@ -14,7 +15,7 @@ namespace Oras.Remote
         /// <param name="digest"></param>
         public static string Parse(string digest)
         {
-            if (!Regex.IsMatch(digest, ReferenceObj.digestRegexp))
+            if (!Regex.IsMatch(digest, RemoteReference.digestRegexp))
             {
                 throw new InvalidReferenceException($"invalid reference format: {digest}");
             }

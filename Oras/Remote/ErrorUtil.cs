@@ -9,16 +9,16 @@ namespace Oras.Remote
         /// <summary>
         /// ParseErrorResponse parses the error returned by the remote registry.
         /// </summary>
-        /// <param name="resp"></param>
+        /// <param name="response"></param>
         /// <returns></returns>
-        public static async Task<Exception> ParseErrorResponse(HttpResponseMessage resp)
+        internal static async Task<Exception> ParseErrorResponse(HttpResponseMessage response)
         {
-            var body = await resp.Content.ReadAsStringAsync();
+            var body = await response.Content.ReadAsStringAsync();
             return  new Exception( new
             {
-                resp.RequestMessage.Method,
-                URL = resp.RequestMessage.RequestUri,
-                resp.StatusCode,
+                response.RequestMessage.Method,
+                URL = response.RequestMessage.RequestUri,
+                response.StatusCode,
                 Errors = body
             }.ToString());
         }

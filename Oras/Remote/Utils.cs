@@ -59,7 +59,7 @@ namespace Oras.Remote
         }
 
         /// <summary>
-        /// LimitReader returns a Reader that reads from content but stops after n
+        /// LimitReader ensures that the read byte does not exceed n
         /// bytes. if n is less than or equal to zero, defaultMaxMetadataBytes is used.
         /// </summary>
         /// <param name="content"></param>
@@ -81,6 +81,26 @@ namespace Oras.Remote
             }
 
             return bytes;
+        }
+
+        /// <summary>
+        /// NoLinkHeaderException is thrown when a link header is missing.
+        /// </summary>
+        public class NoLinkHeaderException : Exception
+        {
+            public NoLinkHeaderException()
+            {
+            }
+
+            public NoLinkHeaderException(string message)
+                : base(message)
+            {
+            }
+
+            public NoLinkHeaderException(string message, Exception inner)
+                : base(message, inner)
+            {
+            }
         }
     }
 }

@@ -1,14 +1,14 @@
 ﻿namespace Oras.Remote
 {
 
-    internal static class RegistryUtil
+    internal static class URLUtiliity
     {
         /// <summary>
         /// BuildScheme returns HTTP scheme used to access the remote registry.
         /// </summary>
         /// <param name="plainHTTP"></param>
         /// <returns></returns>
-        public static string BuildScheme(bool plainHTTP)
+        internal static string BuildScheme(bool plainHTTP)
         {
             if (plainHTTP)
             {
@@ -24,11 +24,11 @@
         /// Reference: https://docs.docker.com/registry/spec/api/#base
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="refObj"></param>
+        /// <param name="ref"></param>
         /// <returns></returns>
-        public static string BuildRegistryBaseURL(bool plainHTTP, ReferenceObj refObj)
+        internal static string BuildRegistryBaseURL(bool plainHTTP, RemoteReference @ref)
         {
-            return $"{BuildScheme(plainHTTP)}://{refObj.Host()}/v2/";
+            return $"{BuildScheme(plainHTTP)}://{@ref.Host()}/v2/";
         }
 
         /// <summary>
@@ -37,11 +37,11 @@
         /// Reference: https://docs.docker.com/registry/spec/api/#catalog
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="refObj"></param>
+        /// <param name="ref"></param>
         /// <returns></returns>
-        public static string BuildRegistryCatalogURL(bool plainHTTP, ReferenceObj refObj)
+        internal static string BuildRegistryCatalogURL(bool plainHTTP, RemoteReference @ref)
         {
-            return $"{BuildScheme(plainHTTP)}://{refObj.Host()}/v2/_catalog";
+            return $"{BuildScheme(plainHTTP)}://{@ref.Host()}/v2/_catalog";
         }
 
         /// <summary>
@@ -49,11 +49,11 @@
         /// Format: <scheme>://<registry>/v2/<repository>
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="refObj"></param>
+        /// <param name="ref"></param>
         /// <returns></returns>
-        public static string BuildRepositoryBaseURL(bool plainHTTP, ReferenceObj refObj)
+        internal static string BuildRepositoryBaseURL(bool plainHTTP, RemoteReference @ref)
         {
-            return $"{BuildScheme(plainHTTP)}://{refObj.Host()}/v2/{refObj.Repository}";
+            return $"{BuildScheme(plainHTTP)}://{@ref.Host()}/v2/{@ref.Repository}";
         }
 
         /// <summary>
@@ -62,11 +62,11 @@
         /// Reference: https://docs.docker.com/registry/spec/api/#tags
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="refObj"></param>
+        /// <param name="ref"></param>
         /// <returns></returns>
-        public static string BuildRepositoryTagListURL(bool plainHTTP, ReferenceObj refObj)
+        internal static string BuildRepositoryTagListURL(bool plainHTTP, RemoteReference @ref)
         {
-            return $"{BuildScheme(plainHTTP)}://{refObj.Host()}/v2/{refObj.Repository}/tags/list";
+            return $"{BuildScheme(plainHTTP)}://{@ref.Host()}/v2/{@ref.Repository}/tags/list";
         }
 
         /// <summary>
@@ -75,11 +75,11 @@
         /// Reference: https://docs.docker.com/registry/spec/api/#manifest
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="refObj"></param>
+        /// <param name="ref"></param>
         /// <returns></returns>
-        public static string BuildRepositoryManifestURL(bool plainHTTP, ReferenceObj refObj)
+        internal static string BuildRepositoryManifestURL(bool plainHTTP, RemoteReference @ref)
         {
-            return $"{BuildRepositoryBaseURL(plainHTTP, refObj)}/manifests/{refObj.Reference}";
+            return $"{BuildRepositoryBaseURL(plainHTTP, @ref)}/manifests/{@ref.Reference}";
         }
 
         /// <summary>
@@ -88,11 +88,11 @@
         /// Reference: https://docs.docker.com/registry/spec/api/#blob
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="refObj"></param>
+        /// <param name="ref"></param>
         /// <returns></returns>
-        public static string BuildRepositoryBlobURL(bool plainHTTP, ReferenceObj refObj)
+        internal static string BuildRepositoryBlobURL(bool plainHTTP, RemoteReference @ref)
         {
-            return $"{BuildRepositoryBaseURL(plainHTTP, refObj)}/blobs/{refObj.Reference}";
+            return $"{BuildRepositoryBaseURL(plainHTTP, @ref)}/blobs/{@ref.Reference}";
         }
 
         /// <summary>
@@ -102,11 +102,11 @@
 
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="refObj"></param>
+        /// <param name="ref"></param>
         /// <returns></returns>
-        public static string BuildRepositoryBlobUploadURL(bool plainHTTP, ReferenceObj refObj)
+        internal static string BuildRepositoryBlobUploadURL(bool plainHTTP, RemoteReference @ref)
         {
-            return $"{BuildRepositoryBaseURL(plainHTTP, refObj)}/blobs/uploads/";
+            return $"{BuildRepositoryBaseURL(plainHTTP, @ref)}/blobs/uploads/";
         }
 
     }

@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace Oras.Remote
 {
-    public class ReferenceObj
+    public class RemoteReference
     {
         /// <summary>
         /// Registry is the name of the registry. It is usually the domain name of the registry optionally with a port.
@@ -50,9 +50,9 @@ namespace Oras.Remote
         /// digestRegexp checks the digest.
         /// </summary>
         public static string digestRegexp = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
-        public ReferenceObj ParseReference(string artifact)
+        public RemoteReference ParseReference(string artifact)
         {
-            var parts = artifact.Split("/", 2);
+            var parts = artifact.Split('/', 2);
             if (parts.Length == 1)
             {
                 throw new InvalidReferenceException($"missing repository");
@@ -62,21 +62,21 @@ namespace Oras.Remote
             string repository = String.Empty;
             string reference = String.Empty;
 
-            if (path.IndexOf("@") is var index && index != -1)
+            if (path.IndexOf('@') is var index && index != -1)
             {
                 // digest found; Valid From A (if not B)
                 isTag = false;
                 repository = path[..index];
                 reference = path[(index + 1)..];
 
-                if (repository.IndexOf(":") is var indexOfColon && indexOfColon != -1)
+                if (repository.IndexOf(':') is var indexOfColon && indexOfColon != -1)
                 {
                     // tag found ( and now dropped without validation ) since the
                     // digest already present; Valid Form B
                     repository = repository[..indexOfColon];
                 }
             }
-            else if (path.IndexOf(":") is var indexOfColon && indexOfColon != -1)
+            else if (path.IndexOf(':') is var indexOfColon && indexOfColon != -1)
             {
                 // tag found; Valid Form C
                 isTag = true;
@@ -88,7 +88,7 @@ namespace Oras.Remote
                 // empty `reference`; Valid Form D
                 repository = path;
             }
-            var refObj = new ReferenceObj
+            var refObj = new RemoteReference
             {
                 Registry = registry,
                 Repository = repository,
@@ -168,7 +168,7 @@ namespace Oras.Remote
             {
                 return;
             }
-            if (Reference.IndexOf(":") != -1)
+            if (Reference.IndexOf(':') != -1)
             {
                 ValidateReferenceAsDigest();
                 return;
@@ -202,7 +202,13 @@ namespace Oras.Remote
             return Reference;
         }
 
-        public static void VerifyContentDigest(HttpResponseMessage resp, string refDigest)
+        /// <summary>
+        /// VerifyContentDigest verifies the content digest of the artifact.
+        /// </summary>
+        /// <param name="resp"></param>
+        /// <param name="refDigest"></param>
+        /// <exception cref="Exception"></exception>
+        internal static void VerifyContentDigest(HttpResponseMessage resp, string refDigest)
         {
             var digestStr = resp.Content.Headers.GetValues("Docker-Content-Digest").FirstOrDefault();
             if (String.IsNullOrEmpty(digestStr))

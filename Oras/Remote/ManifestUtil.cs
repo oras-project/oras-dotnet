@@ -4,9 +4,9 @@ using System.Linq;
 
 namespace Oras.Remote
 {
-    static class ManifestUtil
+    internal static class ManifestUtil
     {
-        public static string[] DefaultManifestMediaTypes = new[]
+        internal static string[] DefaultManifestMediaTypes = new[]
         {
             DockerMediaTypes.Manifest,
             DockerMediaTypes.ManifestList,

@@ -184,7 +184,7 @@ namespace Oras.Tests.RemoteTest
                 return resp;
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var stream = await repo.FetchAsync(blobDesc, cancellationToken);
@@ -281,7 +281,7 @@ namespace Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             await repo.PushAsync(blobDesc, new MemoryStream(blob), cancellationToken);
@@ -345,7 +345,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var exists = await repo.ExistsAsync(blobDesc, cancellationToken);
@@ -405,7 +405,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             await repo.DeleteAsync(blobDesc, cancellationToken);
@@ -470,7 +470,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             await Assert.ThrowsAsync<NotFoundException>(async () =>
@@ -556,7 +556,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.Forbidden);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             await Assert.ThrowsAnyAsync<Exception>(
@@ -605,7 +605,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.Forbidden);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var streamContent = new MemoryStream(index);
@@ -668,7 +668,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.Found);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
 
@@ -765,18 +765,13 @@ namespace Oras.Tests.RemoteTest
                         res.Headers.Add("Link", $"</v2/test/tags/list?n=4&test=foo>; rel=\"next\"");
                         break;
                 }
-
-                var tagObj = new ResponseTypes.Tags()
-                {
-                    tags = tags.ToArray()
-                };
-                res.Content = new StringContent(JsonSerializer.Serialize(tagObj));
+                res.Content = new StringContent(JsonSerializer.Serialize(tags));
                 return res;
 
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             repo.TagListPageSize = 4;
 
@@ -831,7 +826,7 @@ namespace Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
@@ -925,7 +920,7 @@ namespace Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
@@ -986,7 +981,7 @@ namespace Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
@@ -1048,7 +1043,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.Forbidden);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
@@ -1098,7 +1093,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
@@ -1144,7 +1139,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
@@ -1197,7 +1192,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
@@ -1257,7 +1252,7 @@ namespace Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
@@ -1365,7 +1360,7 @@ namespace Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
 
@@ -1403,7 +1398,7 @@ namespace Oras.Tests.RemoteTest
         [Fact]
         public async Task GenerateBlobDescriptor_WithVariousDockerContentDigestHeaders()
         {
-            var reference = new ReferenceObj()
+            var reference = new RemoteReference()
             {
                 Registry = "eastern.haan.com",
                 Reference = "<calculate>",
@@ -1527,7 +1522,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
@@ -1586,7 +1581,7 @@ namespace Oras.Tests.RemoteTest
                 }
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
@@ -1630,7 +1625,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
@@ -1691,7 +1686,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
@@ -1745,7 +1740,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
@@ -1810,7 +1805,7 @@ namespace Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
@@ -1916,7 +1911,7 @@ namespace Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
@@ -1971,7 +1966,7 @@ namespace Oras.Tests.RemoteTest
                 return res;
             };
             var repo = new Repository("localhost:5000/test");
-            repo.Client = CustomClient(func);
+            repo.HttpClient = CustomClient(func);
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
@@ -1982,7 +1977,7 @@ namespace Oras.Tests.RemoteTest
        
         public async Task ManifestStore_generateDescriptorWithVariousDockerContentDigestHeaders()
         {
-            var reference = new ReferenceObj()
+            var reference = new RemoteReference()
             {
                 Registry = "eastern.haan.com",
                 Reference = "<calculate>",

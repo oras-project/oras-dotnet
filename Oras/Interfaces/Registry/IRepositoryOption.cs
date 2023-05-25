@@ -11,12 +11,12 @@ namespace Oras.Interfaces.Registry
         /// <summary>
         /// Client is the underlying HTTP client used to access the remote registry.
         /// </summary>
-        public HttpClient Client { get; set; }
+        public HttpClient HttpClient { get; set; }
 
         /// <summary>
         /// Reference references the remote repository.
         /// </summary>
-        public ReferenceObj Reference { get; set; }
+        public RemoteReference RemoteReference { get; set; }
 
         /// <summary>
         /// PlainHTTP signals the transport to access the remote repository via HTTP

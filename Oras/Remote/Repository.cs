@@ -1,24 +1,25 @@
 ﻿using Oras.Exceptions;
 using Oras.Interfaces.Registry;
 using Oras.Models;
+using Oras.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using static System.Web.HttpUtility;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-
 namespace Oras.Remote
 {
     public class RepositoryOption : IRepositoryOption
     {
-        public HttpClient Client { get; set; }
-        public ReferenceObj Reference { get; set; }
+        public HttpClient HttpClient { get; set; }
+        public RemoteReference RemoteReference { get; set; }
         public bool PlainHTTP { get; set; }
         public string[] ManifestMediaTypes { get; set; }
         public int TagListPageSize { get; set; }
@@ -37,14 +38,14 @@ namespace Oras.Remote
         public long defaultMaxMetaBytes = 4 * 1024 * 1024; //4 Mib
 
         /// <summary>
-        /// Client is the underlying HTTP client used to access the remote registry.
+        /// HttpClient is the underlying HTTP client used to access the remote registry.
         /// </summary>
-        public HttpClient Client { get; set; }
+        public HttpClient HttpClient { get; set; }
 
         /// <summary>
         /// ReferenceObj references the remote repository.
         /// </summary>
-        public ReferenceObj Reference { get; set; }
+        public RemoteReference RemoteReference { get; set; }
 
         /// <summary>
         /// PlainHTTP signals the transport to access the remote repository via HTTP
@@ -91,8 +92,8 @@ namespace Oras.Remote
         /// <param name="reference"></param>
         public Repository(string reference)
         {
-            var refObj = new ReferenceObj().ParseReference(reference);
-            Reference = refObj;
+            var refObj = new RemoteReference().ParseReference(reference);
+            RemoteReference = refObj;
         }
 
         /// <summary>
@@ -102,13 +103,13 @@ namespace Oras.Remote
         /// to multiple Repositories. To handle this we explicitly copy only the
         /// fields that we want to reproduce.
         /// </summary>
-        /// <param name="refObj"></param>
+        /// <param name="ref"></param>
         /// <param name="option"></param>
-        public Repository(ReferenceObj refObj, IRepositoryOption option)
+        public Repository(RemoteReference @ref, IRepositoryOption option)
         {
-            refObj.ValidateRepository();
-            Client = option.Client;
-            Reference = refObj;
+            @ref.ValidateRepository();
+            HttpClient = option.HttpClient;
+            RemoteReference = @ref;
             PlainHTTP = option.PlainHTTP;
             ManifestMediaTypes = option.ManifestMediaTypes;
             TagListPageSize = option.TagListPageSize;
@@ -117,46 +118,23 @@ namespace Oras.Remote
         }
 
         /// <summary>
-        /// client returns an HTTP client used to access the remote repository.
+        /// Client returns an HTTP client used to access the remote repository.
         /// A default HTTP client is return if the client is not configured.
         /// </summary>
         /// <returns></returns>
-        private HttpClient client()
+        private HttpClient Client()
         {
-            if (Client is null)
+            if (HttpClient is null)
             {
                 var client = new HttpClient();
                 client.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
                 return client;
             }
 
-            return Client;
+            return HttpClient;
         }
 
-        /// <summary>
-        /// PingAsync checks whether or not the registry implement Docker Registry API V2 or
-        ///  OCI Distribution Specification.
-        ///  Ping can be used to check authentication when an auth client is configured.
-        ///  References:
-        ///   - https://docs.docker.com/registry/spec/api/#base
-        ///   - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#api
-        /// </summary>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public async Task PingAsync(CancellationToken cancellationToken)
-        {
-            var url = RegistryUtil.BuildRegistryBaseURL(PlainHTTP, Reference);
-            var resp = await client().GetAsync(url, cancellationToken);
-            switch (resp.StatusCode)
-            {
-                case HttpStatusCode.OK:
-                    return;
-                case HttpStatusCode.NotFound:
-                    throw new NotFoundException($"Repository {Reference} not found");
-                default:
-                    throw await ErrorUtil.ParseErrorResponse(resp);
-            }
-        }
+        
         /// <summary>
         /// blobStore detects the blob store for the given descriptor.
         /// </summary>
@@ -273,9 +251,9 @@ namespace Oras.Remote
             var res = new List<string>();
             await repo.TagsAsync(
                 string.Empty,
-                 (tag) =>
+                 (tags) =>
                 {
-                    res.AddRange(tag);
+                    res.AddRange(tags);
 
                 }, cancellationToken);
             return res;
@@ -298,14 +276,14 @@ namespace Oras.Remote
         {
             try
             {
-                var url = RegistryUtil.BuildRepositoryTagListURL(PlainHTTP, Reference);
+                var url = URLUtiliity.BuildRepositoryTagListURL(PlainHTTP, RemoteReference);
                 while (true)
                 {
-                  url =  await tagsAsync(last, fn, url, cancellationToken);
-                    last = "";
+                  url =  await TagsPageAsync(last, fn, url, cancellationToken);
+                  last = "";
                 }
             }
-            catch (NoLinkHeaderException)
+            catch (Utils.NoLinkHeaderException)
             {
                 return;
             }
@@ -313,14 +291,14 @@ namespace Oras.Remote
         }
 
         /// <summary>
-        /// tagsAsync returns a single page of tag list with the next link.
+        /// TagsPageAsync returns a single page of tag list with the next link.
         /// </summary>
         /// <param name="last"></param>
         /// <param name="fn"></param>
         /// <param name="url"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        private async Task<string> tagsAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
+        private async Task<string> TagsPageAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
             if (PlainHTTP)
             {
@@ -336,8 +314,8 @@ namespace Oras.Remote
                     url = "https://" + url;
                 }
             }
-            var uri = new UriBuilder(url);
-            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            var uriBuilder = new UriBuilder(url);
+            var query = ParseQueryString(uriBuilder.Query);
             if (TagListPageSize > 0 || last != "")
             {
                 if (TagListPageSize > 0)
@@ -352,21 +330,21 @@ namespace Oras.Remote
                 }
             }
 
-            uri.Query = query.ToString();
-            var resp = await Client.GetAsync(uri.ToString(), cancellationToken);
+            uriBuilder.Query = query.ToString();
+            var resp = await HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
             if (resp.StatusCode != HttpStatusCode.OK)
             {
                 throw await ErrorUtil.ParseErrorResponse(resp);
 
             }
             var data = await resp.Content.ReadAsStringAsync();
-            var page = JsonSerializer.Deserialize<ResponseTypes.Tags>(data);
-            fn(page.tags);
+            var tags = JsonSerializer.Deserialize <string[]>(data);
+            fn(tags);
             return Utils.ParseLink(resp);
         }
 
         /// <summary>
-        /// deleteAsync removes the content identified by the descriptor in the
+        /// DeleteAsync removes the content identified by the descriptor in the
         /// entity blobs or manifests.
         /// </summary>
         /// <param name="target"></param>
@@ -375,23 +353,23 @@ namespace Oras.Remote
         /// <returns></returns>
         /// <exception cref="NotFoundException"></exception>
         /// <exception cref="Exception"></exception>
-        internal async Task deleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken)
+        internal async Task DeleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken)
         {
-            var refObj = Reference;
+            var refObj = RemoteReference;
             refObj.Reference = target.Digest;
-            Func<bool, ReferenceObj, string> buildURL = RegistryUtil.BuildRepositoryBlobURL;
+            Func<bool, RemoteReference, string> buildURL = URLUtiliity.BuildRepositoryBlobURL;
             if (isManifest)
             {
-                buildURL = RegistryUtil.BuildRepositoryManifestURL;
+                buildURL = URLUtiliity.BuildRepositoryManifestURL;
             }
 
             var url = buildURL(PlainHTTP, refObj);
-            var resp = await Client.DeleteAsync(url, cancellationToken);
+            var resp = await HttpClient.DeleteAsync(url, cancellationToken);
 
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.Accepted:
-                    verifyContentDigest(resp, target.Digest);
+                    VerifyContentDigest(resp, target.Digest);
                     break;
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"digest {target.Digest} not found");
@@ -402,14 +380,14 @@ namespace Oras.Remote
 
 
         /// <summary>
-        /// verifyContentDigest verifies "Docker-Content-Digest" header if present.
+        /// VerifyContentDigest verifies "Docker-Content-Digest" header if present.
         /// OCI distribution-spec states the Docker-Content-Digest header is optional.
         /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#legacy-docker-support-http-headers
         /// </summary>
         /// <param name="resp"></param>
         /// <param name="expected"></param>
         /// <exception cref="NotImplementedException"></exception>
-        private void verifyContentDigest(HttpResponseMessage resp, string expected)
+        private void VerifyContentDigest(HttpResponseMessage resp, string expected)
         {
             resp.Content.Headers.TryGetValues(DockerContentDigestHeader, out var digestStr);
             if (digestStr == null || !digestStr.Any())
@@ -420,7 +398,7 @@ namespace Oras.Remote
             string contentDigest;
             try
             {
-                contentDigest = DigestUtil.Parse(digestStr.FirstOrDefault());
+                contentDigest = DigestUtility.Parse(digestStr.FirstOrDefault());
             }
             catch (Exception)
             {
@@ -470,18 +448,18 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// </summary>
         /// <param name="reference"></param>
         /// <returns></returns>
-        public ReferenceObj ParseReference(string reference)
+        public RemoteReference ParseReference(string reference)
         {
             try
             {
-                var refObj = new ReferenceObj().ParseReference(reference);
-                if (refObj.Registry != Reference.Registry || refObj.Repository != Reference.Repository)
+                var refObj = new RemoteReference().ParseReference(reference);
+                if (refObj.Registry != RemoteReference.Registry || refObj.Repository != RemoteReference.Repository)
                 {
                     throw new InvalidReferenceException(
-                        $"mismatch between received {JsonSerializer.Serialize(refObj)} and expected {JsonSerializer.Serialize(Reference)}");
+                        $"mismatch between received {JsonSerializer.Serialize(refObj)} and expected {JsonSerializer.Serialize(RemoteReference)}");
                 }
 
-                if (refObj.Reference.Length == 0)
+                if (string.IsNullOrEmpty(refObj.Reference))
                 {
                     throw new InvalidReferenceException();
                 }
@@ -489,10 +467,10 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             }
             catch (Exception)
             {
-                var refObj = new ReferenceObj
+                var refObj = new RemoteReference
                 {
-                    Registry = Reference.Registry,
-                    Repository = Reference.Repository,
+                    Registry = RemoteReference.Registry,
+                    Repository = RemoteReference.Repository,
                     Reference = reference
                 };
                 //reference is not a FQDN
@@ -532,7 +510,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: unknown response Content-Length");
             }
 
-            ReferenceObj.VerifyContentDigest(resp, refDigest);
+            RemoteReference.VerifyContentDigest(resp, refDigest);
 
             return new Descriptor
             {
@@ -546,10 +524,10 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
 
     public class ManifestStore : IManifestStore
     {
-        public Repository Repo { get; set; }
+        public Repository Repository { get; set; }
         public ManifestStore(Repository repository)
         {
-            Repo = repository;
+            Repository = repository;
 
         }
 
@@ -563,12 +541,12 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <exception cref="Exception"></exception>
         public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            var refObj = Repo.Reference;
+            var refObj = Repository.RemoteReference;
             refObj.Reference = target.Digest;
-            var url = RegistryUtil.BuildRepositoryManifestURL(Repo.PlainHTTP, refObj);
+            var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, refObj);
             var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.Add("Accept", target.MediaType);
-            var resp = await Repo.Client.SendAsync(req, cancellationToken);
+            var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
 
             switch (resp.StatusCode)
             {
@@ -590,7 +568,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 throw new Exception(
                     $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
             }
-            ReferenceObj.VerifyContentDigest(resp, target.Digest);
+            RemoteReference.VerifyContentDigest(resp, target.Digest);
             return await resp.Content.ReadAsStreamAsync();
         }
 
@@ -623,89 +601,42 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
         {
-            await pushWithIndexing(expected, content, expected.Digest, cancellationToken);
+            await PushAsync(expected, content, expected.Digest, cancellationToken);
         }
 
-        /// <summary>
-        /// pushWithIndexing pushes the manifest content matching the expected descriptor.
-        /// </summary>
-        /// <param name="expected"></param>
-        /// <param name="r"></param>
-        /// <param name="reference"></param>
-        /// <param name="cancellationToken"></param>
-        private async Task pushWithIndexing(Descriptor expected, Stream r, string reference, CancellationToken cancellationToken)
-        {
-            await pushAsync(expected, r, reference, cancellationToken);
-            return;
-        }
 
         /// <summary>
-        /// pushAsync pushes the manifest content, matching the expected descriptor.
+        /// PushAsync pushes the manifest content, matching the expected descriptor.
         /// </summary>
         /// <param name="expected"></param>
         /// <param name="stream"></param>
         /// <param name="reference"></param>
         /// <param name="cancellationToken"></param>
-        private async Task pushAsync(Descriptor expected, Stream stream, string reference, CancellationToken cancellationToken)
+        private async Task PushAsync(Descriptor expected, Stream stream, string reference, CancellationToken cancellationToken)
         {
-            var refObj = Repo.Reference;
+            var refObj = Repository.RemoteReference;
             refObj.Reference = reference;
-            // pushing usually requires both pull and push actions.
-            // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
-            var url = RegistryUtil.BuildRepositoryManifestURL(Repo.PlainHTTP, refObj);
+            var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, refObj);
             var req = new HttpRequestMessage(HttpMethod.Put, url);
             req.Content = new StreamContent(stream);
-            if (req.Content != null && req.Content.Headers.ContentLength != expected.Size)
-            {
-                // short circuit a size mismatch for built-in types
-                throw new Exception(
-                    $"{req.Method} {req.RequestUri}: mismatch Content-Length: expect {expected.Size}");
-            }
             req.Content.Headers.ContentLength = expected.Size;
             req.Content.Headers.Add("Content-Type", expected.MediaType);
-
-            // if the underlying client is an auth client, the content might be read
-            // more than once for obtaining the auth challenge and the actual request.
-            // To prevent double reading, the manifest is read and stored in the memory,
-            // and serve from the memory.
-            var client = Repo.Client;
+            var client = Repository.HttpClient;
             var resp = await client.SendAsync(req, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.Created)
             {
                 throw await ErrorUtil.ParseErrorResponse(resp);
             }
-            ReferenceObj.VerifyContentDigest(resp, expected.Digest);
-        }
-
-        /// <summary>
-        /// LimitSize returns ErrSizeExceedsLimit if the size of desc exceeds the limit n.
-        /// If n is less than or equal to zero, defaultMaxMetadataBytes is used.
-        /// </summary>
-        /// <param name="desc"></param>
-        /// <param name="n"></param>
-        /// <exception cref="SizeExceedsLimitException"></exception>
-        private void LimitSize(Descriptor desc, long n)
-        {
-            if (n <= 0)
-            {
-                n = Repo.defaultMaxMetaBytes;
-            }
-
-            if (desc.Size > n)
-            {
-                throw new SizeExceedsLimitException($"content size {desc.Size} exceeds MaxMetadataBytes {n}");
-            }
-
-            return;
+            RemoteReference.VerifyContentDigest(resp, expected.Digest);
         }
 
         public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         {
-            var refObj = Repo.ParseReference(reference);
-            var url = RegistryUtil.BuildRepositoryManifestURL(Repo.PlainHTTP, refObj);
+            var refObj = Repository.ParseReference(reference);
+            var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, refObj);
             var req = new HttpRequestMessage(HttpMethod.Head, url);
-            req.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repo.ManifestMediaTypes));
-            var res = await Repo.Client.SendAsync(req, cancellationToken);
+            req.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repository.ManifestMediaTypes));
+            var res = await Repository.HttpClient.SendAsync(req, cancellationToken);
 
             return res.StatusCode switch
             {
@@ -716,14 +647,14 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         }
 
         /// <summary>
-        ///  generateDescriptor returns a descriptor generated from the response.
+        /// GenerateDescriptor returns a descriptor generated from the response.
         /// </summary>
         /// <param name="res"></param>
-        /// <param name="refObj"></param>
+        /// <param name="ref"></param>
         /// <param name="httpMethod"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public Descriptor GenerateDescriptor(HttpResponseMessage res, ReferenceObj refObj, HttpMethod httpMethod)
+        public Descriptor GenerateDescriptor(HttpResponseMessage res, RemoteReference @ref, HttpMethod httpMethod)
         {
             string mediaType;
             try
@@ -731,7 +662,6 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 // 1. Validate Content-Type
                 mediaType = res.Content.Headers.ContentType.MediaType;
                 MediaTypeHeaderValue.Parse(mediaType);
-
             }
             catch (Exception e)
             {
@@ -748,19 +678,20 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             string refDigest = string.Empty;
             try
             {
-                refDigest = refObj.Digest();
+                refDigest = @ref.Digest();
             }
-            catch (Exception e)
+            catch (Exception)
             {
             }
 
             // 4. Validate Server Digest (if present)
             res.Content.Headers.TryGetValues("Docker-Content-Digest", out var serverHeaderDigest);
-            if (!string.IsNullOrEmpty(serverHeaderDigest.First()))
+            var serverDigest = serverHeaderDigest.First();
+            if (!string.IsNullOrEmpty(serverDigest))
             {
                 try
                 {
-                    ReferenceObj.VerifyContentDigest(res, serverHeaderDigest.FirstOrDefault());
+                    RemoteReference.VerifyContentDigest(res, serverDigest);
                 }
                 catch (Exception)
                 {
@@ -771,11 +702,11 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             // 5. Now, look for specific error conditions;
             string contentDigest;
 
-            if (serverHeaderDigest.First().Length == 0)
+            if (string.IsNullOrEmpty(serverDigest))
             {
                 if (httpMethod == HttpMethod.Head)
                 {
-                    if (refDigest.Length == 0)
+                    if (string.IsNullOrEmpty(refDigest))
                     {
                         // HEAD without server `Docker-Content-Digest`
                         // immediate fail
@@ -791,7 +722,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                     string calculatedDigest;
                     try
                     {
-                        calculatedDigest = calculateDigestFromResponse(res, Repo.MaxMetadataBytes);
+                        calculatedDigest = calculateDigestFromResponse(res, Repository.MaxMetadataBytes);
                     }
                     catch (Exception e)
                     {
@@ -802,7 +733,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             }
             else
             {
-                contentDigest = serverHeaderDigest.FirstOrDefault();
+                contentDigest = serverDigest;
             }
             if (refDigest.Length > 0 && refDigest != contentDigest)
             {
@@ -835,7 +766,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             {
                 throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: failed to read response body: {ex.Message}");
             }
-            return DigestUtil.FromBytes(content);
+            return DigestUtility.FromBytes(content);
         }
 
         /// <summary>
@@ -846,19 +777,9 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            await deleteWithIndexingAsync(target, cancellationToken);
+            await Repository.DeleteAsync(target, true, cancellationToken);
         }
-
-        /// <summary>
-        ///  deleteWithIndexingAsync removes the manifest content identified by the descriptor.
-        /// </summary>
-        /// <param name="target"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        private async Task deleteWithIndexingAsync(Descriptor target, CancellationToken cancellationToken)
-        {
-            await Repo.deleteAsync(target, true, cancellationToken);
-        }
+        
 
         /// <summary>
         /// FetchReferenceAsync fetches the manifest identified by the reference.
@@ -868,11 +789,11 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task<(Descriptor Descriptor, Stream Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
         {
-            var refObj = Repo.ParseReference(reference);
-            var url = RegistryUtil.BuildRepositoryManifestURL(Repo.PlainHTTP, refObj);
+            var refObj = Repository.ParseReference(reference);
+            var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, refObj);
             var req = new HttpRequestMessage(HttpMethod.Get, url);
-            req.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repo.ManifestMediaTypes));
-            var resp = await Repo.Client.SendAsync(req, cancellationToken);
+            req.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repository.ManifestMediaTypes));
+            var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -905,8 +826,8 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         public async Task PushReferenceAsync(Descriptor expected, Stream content, string reference,
             CancellationToken cancellationToken = default)
         {
-            var refObj = Repo.ParseReference(reference);
-            await pushWithIndexing(expected, content, refObj.Reference, cancellationToken);
+            var refObj = Repository.ParseReference(reference);
+            await PushAsync(expected, content, refObj.Reference, cancellationToken);
         }
 
         /// <summary>
@@ -918,30 +839,31 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
         {
-            var refObj = Repo.ParseReference(reference);
+            var refObj = Repository.ParseReference(reference);
             var rc = await FetchAsync(descriptor, cancellationToken);
-            await pushAsync(descriptor, rc, refObj.Reference, cancellationToken);
+            await PushAsync(descriptor, rc, refObj.Reference, cancellationToken);
         }
     }
 
-    public class BlobStore : IBlobStore
+    internal class BlobStore : IBlobStore
     {
 
-        public Repository Repo { get; set; }
+        public Repository Repository { get; set; }
 
         public BlobStore(Repository repository)
         {
-            Repo = repository;
+            Repository = repository;
 
         }
 
 
         public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            var refObj = Repo.Reference;
+            var refObj = Repository.RemoteReference;
+            DigestUtility.Parse(target.Digest);
             refObj.Reference = target.Digest;
-            var url = RegistryUtil.BuildRepositoryBlobURL(Repo.PlainHTTP, refObj);
-            var resp = await Repo.Client.GetAsync(url, cancellationToken);
+            var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, refObj);
+            var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -968,8 +890,8 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                             {
                                 to = target.Size;
                             }
-                            Repo.Client.DefaultRequestHeaders.Range = new RangeHeaderValue(from, to);
-                            resp = await Repo.Client.GetAsync(url, cancellationToken);
+                            Repository.HttpClient.DefaultRequestHeaders.Range = new RangeHeaderValue(from, to);
+                            resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
                             if (resp.StatusCode != HttpStatusCode.PartialContent)
                             {
                                 throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response status code: {resp.StatusCode}");
@@ -1027,8 +949,8 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
         {
-            var url = RegistryUtil.BuildRepositoryBlobUploadURL(Repo.PlainHTTP, Repo.Reference);
-            var resp = await Repo.Client.PostAsync(url, null, cancellationToken);
+            var url = URLUtiliity.BuildRepositoryBlobUploadURL(Repository.PlainHTTP, Repository.RemoteReference);
+            var resp = await Repository.HttpClient.PostAsync(url, null, cancellationToken);
             var reqHostname = resp.RequestMessage.RequestUri.Host;
             var reqPort = resp.RequestMessage.RequestUri.Port;
             if (resp.StatusCode != HttpStatusCode.Accepted)
@@ -1074,7 +996,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             req.Content.Headers.Add("Content-Type", "application/octet-stream");
 
             // add digest key to query string with expected digest value
-            var query = HttpUtility.ParseQueryString(new Uri(location).Query);
+            var query = ParseQueryString(new Uri(location).Query);
             query.Add("digest", expected.Digest);
             req.RequestUri = new Uri($"{req.RequestUri}?digest={expected.Digest}");
 
@@ -1084,7 +1006,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             {
                 req.Headers.Add("Authorization", auth.FirstOrDefault());
             }
-            resp = await Repo.Client.SendAsync(req, cancellationToken);
+            resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.Created)
             {
                 throw await ErrorUtil.ParseErrorResponse(resp);
@@ -1101,11 +1023,11 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         {
-            var refObj = Repo.ParseReference(reference);
+            var refObj = Repository.ParseReference(reference);
             var refDigest = refObj.Digest();
-            var url = RegistryUtil.BuildRepositoryBlobURL(Repo.PlainHTTP, refObj);
+            var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, refObj);
             var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
-            var resp = await Repo.Client.SendAsync(requestMessage, cancellationToken);
+            var resp = await Repository.HttpClient.SendAsync(requestMessage, cancellationToken);
             return resp.StatusCode switch
             {
                 HttpStatusCode.OK => Repository.GenerateBlobDescriptor(resp, refDigest),
@@ -1122,7 +1044,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            await Repo.deleteAsync(target, false, cancellationToken);
+            await Repository.DeleteAsync(target, false, cancellationToken);
         }
 
         /// <summary>
@@ -1134,10 +1056,10 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <returns></returns>
         public async Task<(Descriptor Descriptor, Stream Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
         {
-            var refObj = Repo.ParseReference(reference);
+            var refObj = Repository.ParseReference(reference);
             var refDigest = refObj.Digest();
-            var url = RegistryUtil.BuildRepositoryBlobURL(Repo.PlainHTTP, refObj);
-            var resp = await Repo.Client.GetAsync(url, cancellationToken);
+            var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, refObj);
+            var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -1168,8 +1090,8 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                             {
                                 to = desc.Size;
                             }
-                            Repo.Client.DefaultRequestHeaders.Range = new RangeHeaderValue(from, to);
-                            resp = await Repo.Client.GetAsync(url, cancellationToken);
+                            Repository.HttpClient.DefaultRequestHeaders.Range = new RangeHeaderValue(from, to);
+                            resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
                             if (resp.StatusCode != HttpStatusCode.PartialContent)
                             {
                                 throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response status code: {resp.StatusCode}");
