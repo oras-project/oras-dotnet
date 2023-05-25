@@ -37,6 +37,16 @@ namespace Oras.Remote
             return HttpClient;
         }
 
+        public Registry(string name)
+        {
+            var reference = new RemoteReference
+            {
+                Registry = name,
+            };
+            reference.ValidateRegistry();
+            RemoteReference = reference;
+        }
+
         /// <summary>
         /// PingAsync checks whether or not the registry implement Docker Registry API V2 or
         ///  OCI Distribution Specification.
