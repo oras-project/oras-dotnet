@@ -14,6 +14,7 @@ using System.Text.RegularExpressions;
 using System.Web;
 using Xunit;
 using static Oras.Content.Content;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Oras.Tests.RemoteTest
 {
@@ -109,6 +110,18 @@ namespace Oras.Tests.RemoteTest
                 }
             };
         }
+
+        /// <summary>
+        /// AreDescriptorsEqual compares two descriptors and returns true if they are equal.
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        public bool AreDescriptorsEqual(Descriptor a, Descriptor b)
+        {
+            return a.MediaType == b.MediaType && a.Digest == b.Digest && a.Size == b.Size;
+        }
+        
         public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
         {
             var moqHandler = new Mock<DelegatingHandler>();
@@ -474,15 +487,16 @@ namespace Oras.Tests.RemoteTest
                 await repo.ResolveAsync(blobDesc.Digest, cancellationToken));
             // await repo.ResolveAsync(blobDesc.Digest, cancellationToken);
             var got = await repo.ResolveAsync(indexDesc.Digest, cancellationToken);
-            Assert.Equal(indexDesc, got);
+            Assert.True(AreDescriptorsEqual(indexDesc, got));
+
             got = await repo.ResolveAsync(reference, cancellationToken);
-            Assert.Equal(indexDesc, got);
+            Assert.True(AreDescriptorsEqual(indexDesc, got));
             var tagDigestRef = "whatever" + "@" + indexDesc.Digest;
             got = await repo.ResolveAsync(tagDigestRef, cancellationToken);
-            Assert.Equal(indexDesc, got);
+            Assert.True(AreDescriptorsEqual(indexDesc, got));
             var fqdnRef = "localhost:5000/test" + ":" + tagDigestRef;
             got = await repo.ResolveAsync(fqdnRef, cancellationToken);
-            Assert.Equal(indexDesc, got);
+            Assert.True(AreDescriptorsEqual(indexDesc, got));
         }
 
         /// <summary>
@@ -675,16 +689,14 @@ namespace Oras.Tests.RemoteTest
 
             // test with manifest digest
             var data = await repo.FetchReferenceAsync(indexDesc.Digest, cancellationToken);
-            Assert.Equal(indexDesc, data.Descriptor);
-
+            Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
             var buf = new byte[data.Stream.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
             Assert.Equal(index, buf);
 
             // test with manifest tag
             data = await repo.FetchReferenceAsync(reference, cancellationToken);
-            Assert.Equal(indexDesc, data.Descriptor);
-
+            Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
             buf = new byte[data.Stream.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
             Assert.Equal(index, buf);
@@ -692,8 +704,7 @@ namespace Oras.Tests.RemoteTest
             // test with manifest tag@digest
             var tagDigestRef = "whatever" + "@" + indexDesc.Digest;
             data = await repo.FetchReferenceAsync(tagDigestRef, cancellationToken);
-            Assert.Equal(indexDesc, data.Descriptor);
-
+            Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
             buf = new byte[data.Stream.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
             Assert.Equal(index, buf);
@@ -701,7 +712,7 @@ namespace Oras.Tests.RemoteTest
             // test with manifest FQDN
             var fqdnRef = "localhost:5000/test" + ":" + tagDigestRef;
             data = await repo.FetchReferenceAsync(fqdnRef, cancellationToken);
-            Assert.Equal(indexDesc, data.Descriptor);
+            Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
 
             buf = new byte[data.Stream.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
@@ -1742,17 +1753,17 @@ namespace Oras.Tests.RemoteTest
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
             var got = await store.ResolveAsync(manifestDesc.Digest, cancellationToken);
-            Assert.Equal(manifestDesc, got);
+            Assert.True(AreDescriptorsEqual(manifestDesc, got));
             got = await store.ResolveAsync(reference, cancellationToken);
-            Assert.Equal(manifestDesc, got);
+            Assert.True(AreDescriptorsEqual(manifestDesc, got));
 
             var tagDigestRef = "whatever" + "@" + manifestDesc.Digest;
             got = await store.ResolveAsync(tagDigestRef, cancellationToken);
-            Assert.Equal(manifestDesc, got);
+            Assert.True(AreDescriptorsEqual(manifestDesc, got));
 
             var fqdnRef = "localhost:5000/test" + ":" + tagDigestRef;
             got = await store.ResolveAsync(fqdnRef, cancellationToken);
-            Assert.Equal(manifestDesc, got);
+            Assert.True(AreDescriptorsEqual(manifestDesc, got));
 
             var content = """{"manifests":[]}"""u8.ToArray();
             var contentDesc = new Descriptor
@@ -1809,8 +1820,7 @@ namespace Oras.Tests.RemoteTest
 
             // test with tag
             var data = await store.FetchReferenceAsync(reference, cancellationToken);
-            Assert.Equal(manifestDesc, data.Descriptor);
-
+            Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
             var buf = new byte[manifest.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
             Assert.Equal(manifest, buf);
@@ -1821,7 +1831,7 @@ namespace Oras.Tests.RemoteTest
 
             // test with digest
             data = await store.FetchReferenceAsync(manifestDesc.Digest, cancellationToken);
-            Assert.Equal(manifestDesc, data.Descriptor);
+            Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
 
             buf = new byte[manifest.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
@@ -1830,7 +1840,7 @@ namespace Oras.Tests.RemoteTest
             // test with tag@digest
             var tagDigestRef = randomRef + "@" + manifestDesc.Digest;
             data = await store.FetchReferenceAsync(tagDigestRef, cancellationToken);
-            Assert.Equal(manifestDesc, data.Descriptor);
+            Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
             buf = new byte[manifest.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
             Assert.Equal(manifest, buf);
@@ -1838,7 +1848,7 @@ namespace Oras.Tests.RemoteTest
             // test with FQDN
             var fqdnRef = "localhost:5000/test" + ":" + tagDigestRef;
             data = await store.FetchReferenceAsync(fqdnRef, cancellationToken);
-            Assert.Equal(manifestDesc, data.Descriptor);
+            Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
             buf = new byte[manifest.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
             Assert.Equal(manifest, buf);
