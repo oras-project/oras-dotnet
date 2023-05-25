@@ -1,11 +1,8 @@
 ﻿using Oras.Exceptions;
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
+using System.Net.Http;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Oras.Remote
 {
@@ -18,7 +15,7 @@ namespace Oras.Remote
         public string[] ManifestMediaTypes { get; set; }
         public int TagListPageSize { get; set; }
         public long MaxMetadataBytes { get; set; }
-        
+
         /// <summary>
         /// Client returns an HTTP client used to access the remote repository.
         /// A default HTTP client is return if the client is not configured.

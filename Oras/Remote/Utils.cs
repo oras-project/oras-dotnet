@@ -1,5 +1,4 @@
-﻿using Oras.Exceptions;
-using System;
+﻿using System;
 using System.Linq;
 using System.Net.Http;
 
@@ -26,7 +25,7 @@ namespace Oras.Remote
             {
                 link = values.FirstOrDefault();
             }
-            else 
+            else
             {
                 throw new NoLinkHeaderException();
             }
@@ -52,7 +51,7 @@ namespace Oras.Remote
 
             var scheme = resp.RequestMessage.RequestUri.Scheme;
             var authority = resp.RequestMessage.RequestUri.Authority;
-            Uri baseUri = new Uri(scheme+"://"+authority);
+            Uri baseUri = new Uri(scheme + "://" + authority);
             Uri resolvedUri = new Uri(baseUri, link);
 
             return resolvedUri.AbsoluteUri;

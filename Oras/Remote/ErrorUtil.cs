@@ -14,7 +14,7 @@ namespace Oras.Remote
         internal static async Task<Exception> ParseErrorResponse(HttpResponseMessage response)
         {
             var body = await response.Content.ReadAsStringAsync();
-            return  new Exception( new
+            return new Exception(new
             {
                 response.RequestMessage.Method,
                 URL = response.RequestMessage.RequestUri,

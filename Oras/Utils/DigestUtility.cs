@@ -1,7 +1,6 @@
 ﻿using Oras.Exceptions;
 using Oras.Remote;
 using System;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 

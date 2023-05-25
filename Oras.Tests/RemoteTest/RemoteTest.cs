@@ -1,22 +1,19 @@
-﻿using System.Collections.Immutable;
-using Moq;
+﻿using Moq;
 using Moq.Protected;
 using Oras.Constants;
 using Oras.Exceptions;
 using Oras.Models;
 using Oras.Remote;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using Oras.Remote;
 using System.Text.RegularExpressions;
+using System.Web;
 using Xunit;
 using static Oras.Content.Content;
-using System.Web;
-using Xunit.Abstractions;
-using System;
 
 namespace Oras.Tests.RemoteTest
 {
@@ -31,7 +28,7 @@ namespace Oras.Tests.RemoteTest
             public bool errExpectedOnGET;
         }
 
-        private  byte[] theAmazingBanClan = "Ban Gu, Ban Chao, Ban Zhao"u8.ToArray();
+        private byte[] theAmazingBanClan = "Ban Gu, Ban Chao, Ban Zhao"u8.ToArray();
         private const string theAmazingBanDigest = "b526a4f2be963a2f9b0990c001255669eab8a254ab1a6e3f84f1820212ac7078";
 
         private const string dockerContentDigestHeader = "Docker-Content-Digest";
@@ -135,7 +132,7 @@ namespace Oras.Tests.RemoteTest
             {
                 Digest = CalculateDigest(blob),
                 MediaType = "test",
-                Size = (uint) blob.Length
+                Size = (uint)blob.Length
             };
             var index = """{"manifests":[]}"""u8.ToArray();
             var indexDesc = new Descriptor()
@@ -210,7 +207,7 @@ namespace Oras.Tests.RemoteTest
             {
                 Digest = CalculateDigest(blob),
                 MediaType = "test",
-                Size = (uint) blob.Length
+                Size = (uint)blob.Length
             };
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
@@ -302,7 +299,7 @@ namespace Oras.Tests.RemoteTest
             {
                 Digest = CalculateDigest(blob),
                 MediaType = "test",
-                Size = (uint) blob.Length
+                Size = (uint)blob.Length
             };
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
@@ -366,7 +363,7 @@ namespace Oras.Tests.RemoteTest
             {
                 Digest = CalculateDigest(blob),
                 MediaType = "test",
-                Size = (uint) blob.Length
+                Size = (uint)blob.Length
             };
             var blobDeleted = false;
             var index = @"{""manifests"":[]}"u8.ToArray();
@@ -426,7 +423,7 @@ namespace Oras.Tests.RemoteTest
             {
                 Digest = CalculateDigest(blob),
                 MediaType = "test",
-                Size = (uint) blob.Length
+                Size = (uint)blob.Length
             };
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
@@ -500,7 +497,7 @@ namespace Oras.Tests.RemoteTest
             {
                 Digest = CalculateDigest(blob),
                 MediaType = "test",
-                Size = (uint) blob.Length
+                Size = (uint)blob.Length
             };
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
@@ -625,7 +622,7 @@ namespace Oras.Tests.RemoteTest
             {
                 Digest = CalculateDigest(blob),
                 MediaType = "test",
-                Size = (uint) blob.Length
+                Size = (uint)blob.Length
             };
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
@@ -907,7 +904,7 @@ namespace Oras.Tests.RemoteTest
                     }
 
                     res.StatusCode = HttpStatusCode.PartialContent;
-                    res.Content = new ByteArrayContent(blob[(int) start..(int) end]);
+                    res.Content = new ByteArrayContent(blob[(int)start..(int)end]);
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
                     res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     return res;
@@ -1347,7 +1344,7 @@ namespace Oras.Tests.RemoteTest
                     }
 
                     res.StatusCode = HttpStatusCode.PartialContent;
-                    res.Content = new ByteArrayContent(blob[(int) start..]);
+                    res.Content = new ByteArrayContent(blob[(int)start..]);
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
                     res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     return res;
@@ -1430,7 +1427,7 @@ namespace Oras.Tests.RemoteTest
                         {
                             Method = method
                         };
-               
+
                     }
                     else
                     {
@@ -1443,7 +1440,7 @@ namespace Oras.Tests.RemoteTest
                     var d = string.Empty;
                     try
                     {
-                         d = reference.Digest();
+                        d = reference.Digest();
                     }
                     catch (Exception e)
                     {
@@ -1463,7 +1460,7 @@ namespace Oras.Tests.RemoteTest
                     try
                     {
                         Repository.GenerateBlobDescriptor(resp, d);
-                       
+
                     }
                     catch (Exception e)
                     {
@@ -1473,7 +1470,7 @@ namespace Oras.Tests.RemoteTest
                             throw new Exception(
                                 $"[Blob.{method}] {testName}; expected no error for request, but got err; {e.Message}");
                         }
-                        
+
                     }
 
                     if (errExpected && !err)
@@ -1510,7 +1507,7 @@ namespace Oras.Tests.RemoteTest
                 }
                 if (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string> values)  && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string> values) && !values.Contains(OCIMediaTypes.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -1530,7 +1527,7 @@ namespace Oras.Tests.RemoteTest
             var buf = new byte[data.Length];
             await data.ReadAsync(buf, cancellationToken);
             Assert.Equal(manifest, buf);
-            
+
             var content = """{"manifests":[]}"""u8.ToArray();
             var contentDesc = new Descriptor
             {
@@ -1915,7 +1912,7 @@ namespace Oras.Tests.RemoteTest
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
-           
+
             Assert.ThrowsAnyAsync<Exception>(async () => await store.TagAsync(blobDesc, reference, cancellationToken));
 
             await store.TagAsync(indexDesc, reference, cancellationToken);
@@ -1974,7 +1971,7 @@ namespace Oras.Tests.RemoteTest
             Assert.Equal(index, gotIndex);
         }
 
-       
+
         public async Task ManifestStore_generateDescriptorWithVariousDockerContentDigestHeaders()
         {
             var reference = new RemoteReference()
@@ -1986,7 +1983,7 @@ namespace Oras.Tests.RemoteTest
             var tests = GetTestIOStructMapForGetDescriptorClass();
             foreach ((string testName, TestIOStruct dcdIOStruct) in tests)
             {
-                var repo = new Repository(reference.Repository+"/"+reference.Repository);
+                var repo = new Repository(reference.Repository + "/" + reference.Repository);
                 HttpMethod[] methods = new HttpMethod[] { HttpMethod.Get, HttpMethod.Head };
                 var s = new ManifestStore(repo);
                 foreach ((int i, HttpMethod method) in methods.Select((value, i) => (i, value)))
@@ -2014,7 +2011,7 @@ namespace Oras.Tests.RemoteTest
                     var err = false;
                     try
                     {
-                        s.GenerateDescriptor(resp, reference,method);
+                        s.GenerateDescriptor(resp, reference, method);
                     }
                     catch (Exception e)
                     {

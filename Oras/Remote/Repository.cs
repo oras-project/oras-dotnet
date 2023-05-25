@@ -7,13 +7,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using static System.Web.HttpUtility;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
+using static System.Web.HttpUtility;
 namespace Oras.Remote
 {
     public class RepositoryOption : IRepositoryOption
@@ -134,7 +133,7 @@ namespace Oras.Remote
             return HttpClient;
         }
 
-        
+
         /// <summary>
         /// blobStore detects the blob store for the given descriptor.
         /// </summary>
@@ -279,8 +278,8 @@ namespace Oras.Remote
                 var url = URLUtiliity.BuildRepositoryTagListURL(PlainHTTP, RemoteReference);
                 while (true)
                 {
-                  url =  await TagsPageAsync(last, fn, url, cancellationToken);
-                  last = "";
+                    url = await TagsPageAsync(last, fn, url, cancellationToken);
+                    last = "";
                 }
             }
             catch (Utils.NoLinkHeaderException)
@@ -321,8 +320,8 @@ namespace Oras.Remote
                 if (TagListPageSize > 0)
                 {
                     query["n"] = TagListPageSize.ToString();
-                   
-                    
+
+
                 }
                 if (last != "")
                 {
@@ -338,7 +337,7 @@ namespace Oras.Remote
 
             }
             var data = await resp.Content.ReadAsStringAsync();
-            var tags = JsonSerializer.Deserialize <string[]>(data);
+            var tags = JsonSerializer.Deserialize<string[]>(data);
             fn(tags);
             return Utils.ParseLink(resp);
         }
@@ -760,7 +759,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             byte[] content = null;
             try
             {
-               content = Utils.LimitReader(res.Content, maxMetadataBytes);
+                content = Utils.LimitReader(res.Content, maxMetadataBytes);
             }
             catch (Exception ex)
             {
@@ -779,7 +778,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         {
             await Repository.DeleteAsync(target, true, cancellationToken);
         }
-        
+
 
         /// <summary>
         /// FetchReferenceAsync fetches the manifest identified by the reference.
@@ -873,36 +872,6 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                         throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
                     }
 
-                    // check server range request capability.
-                    // Docker spec allows range header form of "Range: bytes=<start>-<end>".
-                    // However, the remote server may still not RFC 7233 compliant.
-                    // Reference: https://docs.docker.com/registry/spec/api/#blob
-                    if (resp.Headers.TryGetValues("Accept-Ranges", out var acceptRanges) && acceptRanges.FirstOrDefault() == "bytes")
-                    {
-                        var stream = new MemoryStream();
-                        long from = 0;
-                        // make request using ranges until the whole data is read
-                        while (from < target.Size)
-                        {
-
-                            var to = from + 1024 * 1024 - 1;
-                            if (to > target.Size)
-                            {
-                                to = target.Size;
-                            }
-                            Repository.HttpClient.DefaultRequestHeaders.Range = new RangeHeaderValue(from, to);
-                            resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
-                            if (resp.StatusCode != HttpStatusCode.PartialContent)
-                            {
-                                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response status code: {resp.StatusCode}");
-                            }
-                            await resp.Content.CopyToAsync(stream);
-                            from = to + 1;
-                        }
-                        stream.Seek(0, SeekOrigin.Begin);
-                        return stream;
-                    }
-
                     return await resp.Content.ReadAsStreamAsync();
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{target.Digest}: not found");
@@ -924,7 +893,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 await ResolveAsync(target.Digest, cancellationToken);
                 return true;
             }
-            catch (Exception ex) when (ex is NotFoundException)
+            catch (NotFoundException)
             {
                 return false;
             }
@@ -958,11 +927,11 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 throw await ErrorUtil.ParseErrorResponse(resp);
             }
 
-            string location = String.Empty;
+            string location;
             // monolithic upload
             if (!resp.Headers.Location.IsAbsoluteUri)
             {
-             location = resp.RequestMessage.RequestUri.Scheme+"://"+ resp.RequestMessage.RequestUri.Authority + resp.Headers.Location;
+                location = resp.RequestMessage.RequestUri.Scheme + "://" + resp.RequestMessage.RequestUri.Authority + resp.Headers.Location;
             }
             else
             {
@@ -974,14 +943,14 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             // the hostname of the Location header in the response is set to
             // registry.wabbit-networks.io instead of registry.wabbit-networks.io:443.
             var uri = new Uri(location);
-            var locationHostname = uri.Host ;
+            var locationHostname = uri.Host;
             var locationPort = uri.Port;
             // if location port 443 is missing, add it back
             if (reqPort == 443 && locationHostname == reqHostname && locationPort != reqPort)
             {
                 location = new Uri($"{locationHostname}:{reqPort}").ToString();
             }
-            
+
             url = location;
 
             var req = new HttpRequestMessage(HttpMethod.Put, url);
@@ -1073,45 +1042,15 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                     {
                         desc = Repository.GenerateBlobDescriptor(resp, refDigest);
                     }
-                    // check server range request capability.
-                    // Docker spec allows range header form of "Range: bytes=<start>-<end>".
-                    // However, the remote server may still not RFC 7233 compliant.
-                    // Reference: https://docs.docker.com/registry/spec/api/#blob
-                    if (resp.Headers.TryGetValues("Accept-Ranges", out var acceptRanges) && acceptRanges.FirstOrDefault() == "bytes")
-                    {
-                        var stream = new MemoryStream();
-                        // make request using ranges until the whole data is read
-                        long from = 0;
 
-                        while (from < desc.Size)
-                        {
-                            var to = from + 1024 * 1024 - 1;
-                            if (to > desc.Size)
-                            {
-                                to = desc.Size;
-                            }
-                            Repository.HttpClient.DefaultRequestHeaders.Range = new RangeHeaderValue(from, to);
-                            resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
-                            if (resp.StatusCode != HttpStatusCode.PartialContent)
-                            {
-                                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response status code: {resp.StatusCode}");
-                            }
-                            await resp.Content.CopyToAsync(stream);
-                            from = to + 1;
-                        }
-                        stream.Seek(0, SeekOrigin.Begin);
-                        return (desc, stream);
-                    }
                     return (desc, await resp.Content.ReadAsStreamAsync());
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException();
                 default:
                     throw await ErrorUtil.ParseErrorResponse(resp);
-
             }
         }
 
-       
     }
 
 }
