@@ -37,7 +37,7 @@ namespace Oras.Models
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string ArtifactType { get; set; }
 
-        internal static MinimumDescriptor FromOCI(Descriptor descriptor)
+        internal static MinimumDescriptor GetMinimum(Descriptor descriptor)
         {
             return new MinimumDescriptor
             {
