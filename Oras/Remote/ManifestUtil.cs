@@ -47,7 +47,7 @@ namespace Oras.Remote
                 manifestMediaTypes = DefaultManifestMediaTypes;
             }
 
-            return string.Join(",", manifestMediaTypes);
+            return string.Join(',', manifestMediaTypes);
         }
     }
 }
