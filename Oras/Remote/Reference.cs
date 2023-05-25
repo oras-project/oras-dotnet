@@ -3,6 +3,8 @@ using System;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using Oras.Content;
+using static Oras.Content.DigestUtility;
 
 namespace Oras.Remote
 {
@@ -59,7 +61,7 @@ namespace Oras.Remote
             }
             (var registry, var path) = (parts[0], parts[1]);
             bool isTag = false;
-            string repository = String.Empty;
+            string repository;
             string reference = String.Empty;
 
             if (path.IndexOf('@') is var index && index != -1)
@@ -88,30 +90,30 @@ namespace Oras.Remote
                 // empty `reference`; Valid Form D
                 repository = path;
             }
-            var refObj = new RemoteReference
+            var remoteReference = new RemoteReference
             {
                 Registry = registry,
                 Repository = repository,
                 Reference = reference
             };
 
-            refObj.ValidateRegistry();
-            refObj.ValidateRepository();
+            remoteReference.ValidateRegistry();
+            remoteReference.ValidateRepository();
 
             if (reference.Length == 0)
             {
-                return refObj;
+                return remoteReference;
             }
 
             if (isTag)
             {
-                refObj.ValidateReferenceAsTag();
+                remoteReference.ValidateReferenceAsTag();
             }
             else
             {
-                refObj.ValidateReferenceAsDigest();
+                remoteReference.ValidateReferenceAsDigest();
             }
-            return refObj;
+            return remoteReference;
         }
 
         /// <summary>
@@ -144,10 +146,12 @@ namespace Oras.Remote
         /// <returns></returns>
         public void ValidateRegistry()
         {
-            if (!Uri.IsWellFormedUriString("dummy://" + this.Registry, UriKind.Absolute))
+            var url = "dummy://" + this.Registry;
+            if (!Uri.IsWellFormedUriString(url, UriKind.Absolute) || new Uri(url).Authority != Registry)
             {
                 throw new InvalidReferenceException("Invalid Registry");
             };
+            
         }
 
         public void ValidateReferenceAsTag()
@@ -164,7 +168,7 @@ namespace Oras.Remote
         /// </summary>
         public void ValidateReference()
         {
-            if (Reference.Length == 0)
+            if (string.IsNullOrEmpty(Reference))
             {
                 return;
             }
@@ -231,13 +235,14 @@ namespace Oras.Remote
             }
         }
 
+        /// <summary>
+        /// ParseDigest parses the digest from the string.
+        /// </summary>
+        /// <param name="digestStr"></param>
+        /// <returns></returns>
         public static string ParseDigest(string digestStr)
         {
-            if (!Regex.IsMatch(digestStr, digestRegexp))
-            {
-                throw new InvalidReferenceException($"invalid reference format: {digestStr}");
-            }
-            return digestStr;
+            return ParseDigest(digestStr);
         }
     }
 }

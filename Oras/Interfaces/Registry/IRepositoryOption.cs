@@ -39,14 +39,6 @@ namespace Oras.Interfaces.Registry
         /// Reference: https://docs.docker.com/registry/spec/api/#tags
         /// </summary>
         public int TagListPageSize { get; set; }
-
-        /// <summary>
-        /// MaxMetadataBytes specifies a limit on how many response bytes are allowed
-        /// in the server's response to the metadata APIs, such as catalog list, tag
-        /// list, and referrers list.
-        /// If less than or equal to zero, a default (currently 4MiB) is used.
-        /// </summary>
-        public long MaxMetadataBytes { get; set; }
-
+        
     }
 }

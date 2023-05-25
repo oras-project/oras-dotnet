@@ -1,12 +1,17 @@
-﻿using Oras.Exceptions;
+﻿using System.Collections.Generic;
+using Oras.Exceptions;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Oras.Interfaces.Registry;
+using System;
+using System.Text.Json;
+using static System.Web.HttpUtility;
 
 namespace Oras.Remote
 {
-    public class Registry
+    public class Registry : IRepositoryOption
     {
 
         public HttpClient HttpClient { get; set; }
@@ -14,7 +19,6 @@ namespace Oras.Remote
         public bool PlainHTTP { get; set; }
         public string[] ManifestMediaTypes { get; set; }
         public int TagListPageSize { get; set; }
-        public long MaxMetadataBytes { get; set; }
 
         /// <summary>
         /// Client returns an HTTP client used to access the remote repository.
@@ -54,8 +58,85 @@ namespace Oras.Remote
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"Repository {RemoteReference} not found");
                 default:
-                    throw await ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtility.ParseErrorResponse(resp);
             }
+        }
+
+        /// <summary>
+        /// ListRepositoriesAsync returns a list of repositories from the remote registry.
+        /// </summary>
+        /// <param name="last"></param>
+        /// <param name="fn"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task ListRepositoriesAsync(string last, Action<string[]> fn, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var url = URLUtiliity.BuildRegistryCatalogURL(PlainHTTP, RemoteReference);
+                while (true)
+                {
+                    url = await RepositoryPageAsync(last, fn, url, cancellationToken);
+                    last = "";
+                }
+            }
+            catch (Utils.NoLinkHeaderException)
+            {
+                return;
+            }
+        }
+
+        /// <summary>
+        /// RepositoryPageAsync returns a returns a single page of repositories list with the next link
+        /// </summary>
+        /// <param name="last"></param>
+        /// <param name="fn"></param>
+        /// <param name="url"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        private async Task<string> RepositoryPageAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
+        {
+            if (PlainHTTP)
+            {
+                if (!url.Contains("http"))
+                {
+                    url = "http://" + url;
+                }
+            }
+            else
+            {
+                if (!url.Contains("https"))
+                {
+                    url = "https://" + url;
+                }
+            }
+            var uriBuilder = new UriBuilder(url);
+            var query = ParseQueryString(uriBuilder.Query);
+            if (TagListPageSize > 0 || last != "")
+            {
+                if (TagListPageSize > 0)
+                {
+                    query["n"] = TagListPageSize.ToString();
+
+
+                }
+                if (last != "")
+                {
+                    query["last"] = last;
+                }
+            }
+
+            uriBuilder.Query = query.ToString();
+            var response = await HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                throw await ErrorUtility.ParseErrorResponse(response);
+
+            }
+            var data = await response.Content.ReadAsStringAsync();
+            var repositories = JsonSerializer.Deserialize<string[]>(data);
+            fn(repositories);
+            return Utils.ParseLink(response);
         }
     }
 }

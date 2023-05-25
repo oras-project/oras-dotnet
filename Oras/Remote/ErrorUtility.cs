@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace Oras.Remote
 {
-    internal class ErrorUtil
+    internal class ErrorUtility
     {
         /// <summary>
         /// ParseErrorResponse parses the error returned by the remote registry.

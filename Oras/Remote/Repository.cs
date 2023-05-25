@@ -1,7 +1,7 @@
-﻿using Oras.Exceptions;
+﻿using Oras.Content;
+using Oras.Exceptions;
 using Oras.Interfaces.Registry;
 using Oras.Models;
-using Oras.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,7 +22,6 @@ namespace Oras.Remote
         public bool PlainHTTP { get; set; }
         public string[] ManifestMediaTypes { get; set; }
         public int TagListPageSize { get; set; }
-        public long MaxMetadataBytes { get; set; }
     }
     /// <summary>
     /// Repository is an HTTP client to a remote repository
@@ -69,14 +68,6 @@ namespace Oras.Remote
         public int TagListPageSize { get; set; }
 
         /// <summary>
-        /// MaxMetadataBytes specifies a limit on how many response bytes are allowed
-        /// in the server's response to the metadata APIs, such as catalog list, tag
-        /// list, and referrers list.
-        /// If less than or equal to zero, a default (currently 4MiB) is used.
-        /// </summary>
-        public long MaxMetadataBytes { get; set; }
-
-        /// <summary>
         /// dockerContentDigestHeader - The Docker-Content-Digest header, if present
         /// on the response, returns the canonical digest of the uploaded blob.
         /// See https://docs.docker.com/registry/spec/api/#digest-header
@@ -112,8 +103,6 @@ namespace Oras.Remote
             PlainHTTP = option.PlainHTTP;
             ManifestMediaTypes = option.ManifestMediaTypes;
             TagListPageSize = option.TagListPageSize;
-            MaxMetadataBytes = option.MaxMetadataBytes;
-
         }
 
         /// <summary>
@@ -141,7 +130,7 @@ namespace Oras.Remote
         /// <returns></returns>
         private IBlobStore blobStore(Descriptor desc)
         {
-            if (ManifestUtil.IsManifest(ManifestMediaTypes, desc))
+            if (ManifestUtility.IsManifest(ManifestMediaTypes, desc))
             {
                 return Manifests();
             }
@@ -333,7 +322,7 @@ namespace Oras.Remote
             var resp = await HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
             if (resp.StatusCode != HttpStatusCode.OK)
             {
-                throw await ErrorUtil.ParseErrorResponse(resp);
+                throw await ErrorUtility.ParseErrorResponse(resp);
 
             }
             var data = await resp.Content.ReadAsStringAsync();
@@ -373,7 +362,7 @@ namespace Oras.Remote
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"digest {target.Digest} not found");
                 default:
-                    throw await ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtility.ParseErrorResponse(resp);
             }
         }
 
@@ -554,7 +543,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"digest {target.Digest} not found");
                 default:
-                    throw await ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtility.ParseErrorResponse(resp);
             }
             var mediaType = resp.Content.Headers?.ContentType.MediaType;
             if (mediaType != target.MediaType)
@@ -624,7 +613,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var resp = await client.SendAsync(req, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.Created)
             {
-                throw await ErrorUtil.ParseErrorResponse(resp);
+                throw await ErrorUtility.ParseErrorResponse(resp);
             }
             RemoteReference.VerifyContentDigest(resp, expected.Digest);
         }
@@ -634,14 +623,14 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var refObj = Repository.ParseReference(reference);
             var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, refObj);
             var req = new HttpRequestMessage(HttpMethod.Head, url);
-            req.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repository.ManifestMediaTypes));
+            req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository.ManifestMediaTypes));
             var res = await Repository.HttpClient.SendAsync(req, cancellationToken);
 
             return res.StatusCode switch
             {
-                HttpStatusCode.OK => GenerateDescriptor(res, refObj, req.Method),
+                HttpStatusCode.OK => await GenerateDescriptor(res, refObj, req.Method),
                 HttpStatusCode.NotFound => throw new NotFoundException($"reference {reference} not found"),
-                _ => throw await ErrorUtil.ParseErrorResponse(res)
+                _ => throw await ErrorUtility.ParseErrorResponse(res)
             };
         }
 
@@ -653,7 +642,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// <param name="httpMethod"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public Descriptor GenerateDescriptor(HttpResponseMessage res, RemoteReference @ref, HttpMethod httpMethod)
+        public async Task<Descriptor> GenerateDescriptor(HttpResponseMessage res, RemoteReference @ref, HttpMethod httpMethod)
         {
             string mediaType;
             try
@@ -721,7 +710,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                     string calculatedDigest;
                     try
                     {
-                        calculatedDigest = calculateDigestFromResponse(res, Repository.MaxMetadataBytes);
+                        calculatedDigest = await CalculateDigestFromResponse(res);
                     }
                     catch (Exception e)
                     {
@@ -753,19 +742,10 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// taking care not to destroy it in the process
         /// </summary>
         /// <param name="res"></param>
-        /// <param name="maxMetadataBytes"></param>
-        private string calculateDigestFromResponse(HttpResponseMessage res, long maxMetadataBytes)
+        private async Task<string> CalculateDigestFromResponse(HttpResponseMessage res)
         {
-            byte[] content = null;
-            try
-            {
-                content = Utils.LimitReader(res.Content, maxMetadataBytes);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"{res.RequestMessage.Method} {res.RequestMessage.RequestUri}: failed to read response body: {ex.Message}");
-            }
-            return DigestUtility.FromBytes(content);
+            var bytes = await res.Content.ReadAsByteArrayAsync();
+            return DigestUtility.CalculateSHA256DigestFromBytes(bytes);
         }
 
         /// <summary>
@@ -791,7 +771,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var refObj = Repository.ParseReference(reference);
             var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, refObj);
             var req = new HttpRequestMessage(HttpMethod.Get, url);
-            req.Headers.Add("Accept", ManifestUtil.ManifestAcceptHeader(Repository.ManifestMediaTypes));
+            req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository.ManifestMediaTypes));
             var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
             switch (resp.StatusCode)
             {
@@ -803,13 +783,13 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                     }
                     else
                     {
-                        desc = GenerateDescriptor(resp, refObj, HttpMethod.Get);
+                        desc = await GenerateDescriptor(resp, refObj, HttpMethod.Get);
                     }
                     return (desc, await resp.Content.ReadAsStreamAsync());
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{req.Method} {req.RequestUri}: manifest unknown");
                 default:
-                    throw await ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtility.ParseErrorResponse(resp);
 
             }
         }
@@ -876,7 +856,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{target.Digest}: not found");
                 default:
-                    throw await ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtility.ParseErrorResponse(resp);
             }
         }
 
@@ -924,7 +904,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             var reqPort = resp.RequestMessage.RequestUri.Port;
             if (resp.StatusCode != HttpStatusCode.Accepted)
             {
-                throw await ErrorUtil.ParseErrorResponse(resp);
+                throw await ErrorUtility.ParseErrorResponse(resp);
             }
 
             string location;
@@ -978,7 +958,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.Created)
             {
-                throw await ErrorUtil.ParseErrorResponse(resp);
+                throw await ErrorUtility.ParseErrorResponse(resp);
             }
 
             return;
@@ -1001,7 +981,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             {
                 HttpStatusCode.OK => Repository.GenerateBlobDescriptor(resp, refDigest),
                 HttpStatusCode.NotFound => throw new NotFoundException($"{refObj.Reference}: not found"),
-                _ => throw await ErrorUtil.ParseErrorResponse(resp)
+                _ => throw await ErrorUtility.ParseErrorResponse(resp)
             };
         }
 
@@ -1047,7 +1027,7 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException();
                 default:
-                    throw await ErrorUtil.ParseErrorResponse(resp);
+                    throw await ErrorUtility.ParseErrorResponse(resp);
             }
         }
 

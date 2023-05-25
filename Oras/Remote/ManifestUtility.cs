@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Oras.Remote
 {
-    internal static class ManifestUtil
+    internal static class ManifestUtility
     {
         internal static string[] DefaultManifestMediaTypes = new[]
         {
@@ -20,7 +20,7 @@ namespace Oras.Remote
         /// <param name="manifestMediaTypes"></param>
         /// <param name="desc"></param>
         /// <returns></returns>
-        public static bool IsManifest(string[] manifestMediaTypes, Descriptor desc)
+        internal static bool IsManifest(string[] manifestMediaTypes, Descriptor desc)
         {
             if (manifestMediaTypes == null || manifestMediaTypes.Length == 0)
             {
@@ -40,7 +40,7 @@ namespace Oras.Remote
         /// </summary>
         /// <param name="manifestMediaTypes"></param>
         /// <returns></returns>
-        public static string ManifestAcceptHeader(string[] manifestMediaTypes)
+        internal static string ManifestAcceptHeader(string[] manifestMediaTypes)
         {
             if (manifestMediaTypes == null || manifestMediaTypes.Length == 0)
             {

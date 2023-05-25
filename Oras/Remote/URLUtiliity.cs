@@ -24,11 +24,11 @@
         /// Reference: https://docs.docker.com/registry/spec/api/#base
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="ref"></param>
+        /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRegistryBaseURL(bool plainHTTP, RemoteReference @ref)
+        internal static string BuildRegistryBaseURL(bool plainHTTP, RemoteReference reference)
         {
-            return $"{BuildScheme(plainHTTP)}://{@ref.Host()}/v2/";
+            return $"{BuildScheme(plainHTTP)}://{reference.Host()}/v2/";
         }
 
         /// <summary>
@@ -37,11 +37,11 @@
         /// Reference: https://docs.docker.com/registry/spec/api/#catalog
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="ref"></param>
+        /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRegistryCatalogURL(bool plainHTTP, RemoteReference @ref)
+        internal static string BuildRegistryCatalogURL(bool plainHTTP, RemoteReference reference)
         {
-            return $"{BuildScheme(plainHTTP)}://{@ref.Host()}/v2/_catalog";
+            return $"{BuildScheme(plainHTTP)}://{reference.Host()}/v2/_catalog";
         }
 
         /// <summary>
@@ -49,11 +49,11 @@
         /// Format: <scheme>://<registry>/v2/<repository>
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="ref"></param>
+        /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRepositoryBaseURL(bool plainHTTP, RemoteReference @ref)
+        internal static string BuildRepositoryBaseURL(bool plainHTTP, RemoteReference reference)
         {
-            return $"{BuildScheme(plainHTTP)}://{@ref.Host()}/v2/{@ref.Repository}";
+            return $"{BuildScheme(plainHTTP)}://{reference.Host()}/v2/{reference.Repository}";
         }
 
         /// <summary>
@@ -62,11 +62,11 @@
         /// Reference: https://docs.docker.com/registry/spec/api/#tags
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="ref"></param>
+        /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRepositoryTagListURL(bool plainHTTP, RemoteReference @ref)
+        internal static string BuildRepositoryTagListURL(bool plainHTTP, RemoteReference reference)
         {
-            return $"{BuildScheme(plainHTTP)}://{@ref.Host()}/v2/{@ref.Repository}/tags/list";
+            return $"{BuildRepositoryBaseURL(plainHTTP, reference)}/tags/list";
         }
 
         /// <summary>
@@ -75,11 +75,11 @@
         /// Reference: https://docs.docker.com/registry/spec/api/#manifest
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="ref"></param>
+        /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRepositoryManifestURL(bool plainHTTP, RemoteReference @ref)
+        internal static string BuildRepositoryManifestURL(bool plainHTTP, RemoteReference reference)
         {
-            return $"{BuildRepositoryBaseURL(plainHTTP, @ref)}/manifests/{@ref.Reference}";
+            return $"{BuildRepositoryBaseURL(plainHTTP, reference)}/manifests/{reference.Reference}";
         }
 
         /// <summary>
@@ -88,11 +88,11 @@
         /// Reference: https://docs.docker.com/registry/spec/api/#blob
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="ref"></param>
+        /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRepositoryBlobURL(bool plainHTTP, RemoteReference @ref)
+        internal static string BuildRepositoryBlobURL(bool plainHTTP, RemoteReference reference)
         {
-            return $"{BuildRepositoryBaseURL(plainHTTP, @ref)}/blobs/{@ref.Reference}";
+            return $"{BuildRepositoryBaseURL(plainHTTP, reference)}/blobs/{reference.Reference}";
         }
 
         /// <summary>
@@ -102,11 +102,11 @@
 
         /// </summary>
         /// <param name="plainHTTP"></param>
-        /// <param name="ref"></param>
+        /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRepositoryBlobUploadURL(bool plainHTTP, RemoteReference @ref)
+        internal static string BuildRepositoryBlobUploadURL(bool plainHTTP, RemoteReference reference)
         {
-            return $"{BuildRepositoryBaseURL(plainHTTP, @ref)}/blobs/uploads/";
+            return $"{BuildRepositoryBaseURL(plainHTTP, reference)}/blobs/uploads/";
         }
 
     }
