@@ -242,7 +242,7 @@ namespace Oras.Remote
         /// <returns></returns>
         public static string ParseDigest(string digestStr)
         {
-            return ParseDigest(digestStr);
+            return DigestUtility.Parse(digestStr);
         }
     }
 }
