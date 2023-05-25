@@ -29,7 +29,7 @@ namespace Oras.Memory
         /// <returns></returns>
         internal async Task<List<Descriptor>> PredecessorsAsync(Descriptor node, CancellationToken cancellationToken)
         {
-            var key = Descriptor.GetMinimum(node);
+            var key = node.GetMinimum();
             if (!this._predecessors.TryGetValue(key, out ConcurrentDictionary<MinimumDescriptor, Descriptor> predecessors))
             {
                 return default;
@@ -52,10 +52,11 @@ namespace Oras.Memory
             {
                 return;
             }
-            var predecessorKey = Descriptor.GetMinimum(node);
+
+            var predecessorKey = node.GetMinimum();
             foreach (var successor in successors)
             {
-                var successorKey = Descriptor.GetMinimum(successor);
+                var successorKey = successor.GetMinimum();
                 var predecessors = this._predecessors.GetOrAdd(successorKey, new ConcurrentDictionary<MinimumDescriptor, Descriptor>());
                 predecessors.TryAdd(predecessorKey, node);
             }
