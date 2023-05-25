@@ -39,6 +39,6 @@ namespace Oras.Interfaces.Registry
         /// Reference: https://docs.docker.com/registry/spec/api/#tags
         /// </summary>
         public int TagListPageSize { get; set; }
-        
+
     }
 }

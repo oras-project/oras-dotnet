@@ -14,7 +14,6 @@ using System.Text.RegularExpressions;
 using System.Web;
 using Xunit;
 using static Oras.Content.Content;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Oras.Tests.RemoteTest
 {
@@ -121,7 +120,7 @@ namespace Oras.Tests.RemoteTest
         {
             return a.MediaType == b.MediaType && a.Digest == b.Digest && a.Size == b.Size;
         }
-        
+
         public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
         {
             var moqHandler = new Mock<DelegatingHandler>();

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 
@@ -37,7 +36,7 @@ namespace Oras.Models
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string ArtifactType { get; set; }
 
-        internal  MinimumDescriptor GetMinimum()
+        internal MinimumDescriptor GetMinimum()
         {
             return new MinimumDescriptor
             {

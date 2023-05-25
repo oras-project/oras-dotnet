@@ -1,15 +1,9 @@
-﻿using Moq.Protected;
-using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Moq;
+using Moq.Protected;
 using System.Net;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using Xunit;
-using Oras.Remote;
 using System.Text.RegularExpressions;
+using Xunit;
 
 namespace Oras.Tests.RemoteTest
 {
@@ -131,7 +125,7 @@ namespace Oras.Tests.RemoteTest
             var cancellationToken = new CancellationToken();
             registry.TagListPageSize = 4;
 
-          
+
 
             var index = 0;
             await registry.ListRepositoriesAsync("", async (string[] got) =>

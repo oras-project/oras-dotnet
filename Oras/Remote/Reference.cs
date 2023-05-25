@@ -1,10 +1,9 @@
-﻿using Oras.Exceptions;
+﻿using Oras.Content;
+using Oras.Exceptions;
 using System;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
-using Oras.Content;
-using static Oras.Content.DigestUtility;
 
 namespace Oras.Remote
 {
@@ -151,7 +150,7 @@ namespace Oras.Remote
             {
                 throw new InvalidReferenceException("Invalid Registry");
             };
-            
+
         }
 
         public void ValidateReferenceAsTag()

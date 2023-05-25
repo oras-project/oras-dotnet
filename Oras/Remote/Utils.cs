@@ -48,7 +48,7 @@ namespace Oras.Remote
 
             return resolvedUri.AbsoluteUri;
         }
-        
+
 
         /// <summary>
         /// NoLinkHeaderException is thrown when a link header is missing.

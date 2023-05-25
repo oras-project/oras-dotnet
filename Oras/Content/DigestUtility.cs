@@ -1,5 +1,4 @@
 ﻿using Oras.Exceptions;
-using Oras.Remote;
 using System;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
@@ -13,7 +12,7 @@ namespace Oras.Content
         /// digestRegexp checks the digest.
         /// </summary>
         public static string digestRegexp = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
-        
+
         /// <summary>
         /// Parse verifies the digest header and throws an exception if it is invalid.
         /// </summary>

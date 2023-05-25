@@ -1,12 +1,11 @@
-﻿using System.Collections.Generic;
-using Oras.Exceptions;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using Oras.Exceptions;
 using Oras.Interfaces.Registry;
 using System;
+using System.Net;
+using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using static System.Web.HttpUtility;
 
 namespace Oras.Remote
