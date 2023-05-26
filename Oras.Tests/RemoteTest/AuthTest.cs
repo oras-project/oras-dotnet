@@ -1,6 +1,7 @@
 ﻿using Moq;
 using Moq.Protected;
 using Oras.Remote;
+using Oras.Remote.Auth;
 using System.Net;
 using System.Text;
 using Xunit;
@@ -18,7 +19,7 @@ namespace Oras.Tests.RemoteTest
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             ).ReturnsAsync(func);
-            return new CustomHttpBasicAuthClient(username, password, moqHandler.Object);
+            return new HttpClientWithBasicAuth(username, password, moqHandler.Object);
         }
 
         /// <summary>
