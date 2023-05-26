@@ -15,7 +15,7 @@ namespace Oras.Interfaces.Registry
         /// <param name="name"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task<Repository> Repository(string name, CancellationToken cancellationToken);
+        Task<IRepository> Repository(string name, CancellationToken cancellationToken);
 
         /// <summary>
         /// Repositories lists the name of repositories available in the registry.

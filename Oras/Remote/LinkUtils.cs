@@ -4,14 +4,14 @@ using System.Net.Http;
 
 namespace Oras.Remote
 {
-    internal class Utils
+    internal class LinkUtils
     {
         /// <summary>
         /// ParseLink returns the URL of the response's "Link" header, if present.
         /// </summary>
         /// <param name="resp"></param>
         /// <returns></returns>
-        public static string ParseLink(HttpResponseMessage resp)
+        internal static string ParseLink(HttpResponseMessage resp)
         {
             string link;
             if (resp.Headers.TryGetValues("Link", out var values))
@@ -49,6 +49,31 @@ namespace Oras.Remote
             return resolvedUri.AbsoluteUri;
         }
 
+        /// <summary>
+        /// ObtainUrl returns the link with a scheme and authority.
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="plainHttp"></param>
+        /// <returns></returns>
+        internal static string ObtainUrl(string url, bool plainHttp)
+        {
+            if (plainHttp)
+            {
+                if (!url.Contains("http"))
+                {
+                    url = "http://" + url;
+                }
+            }
+            else
+            {
+                if (!url.Contains("https"))
+                {
+                    url = "https://" + url;
+                }
+            }
+
+            return url;
+        }
 
         /// <summary>
         /// NoLinkHeaderException is thrown when a link header is missing.

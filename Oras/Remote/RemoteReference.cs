@@ -38,20 +38,16 @@ namespace Oras.Remote
         /// - https://github.com/distribution/distribution/blob/v2.7.1/reference/regexp.go#L53
         /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
         /// </summary>
-        public static string repositoryRegexp = @"^[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*)*$";
+        private static string repositoryRegexp = @"^[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*)*$";
 
         /// <summary>
         /// tagRegexp checks the tag name.
         /// The docker and OCI spec have the same regular expression.
         /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
         /// </summary>
-        public static string tagRegexp = @"^[\w][\w.-]{0,127}$";
+        private static string tagRegexp = @"^[\w][\w.-]{0,127}$";
 
-        /// <summary>
-        /// digestRegexp checks the digest.
-        /// </summary>
-        public static string digestRegexp = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
-        public RemoteReference ParseReference(string artifact)
+        public static RemoteReference ParseReference(string artifact)
         {
             var parts = artifact.Split('/', 2);
             if (parts.Length == 1)
@@ -99,7 +95,7 @@ namespace Oras.Remote
             remoteReference.ValidateRegistry();
             remoteReference.ValidateRepository();
 
-            if (reference.Length == 0)
+            if (string.IsNullOrEmpty(reference))
             {
                 return remoteReference;
             }
@@ -120,10 +116,7 @@ namespace Oras.Remote
         /// </summary>
         public void ValidateReferenceAsDigest()
         {
-            if (!Regex.IsMatch(Reference, digestRegexp))
-            {
-                throw new InvalidReferenceException($"invalid reference format: {Reference}");
-            }
+            DigestUtility.ParseDigest(Reference);
         }
 
 
@@ -205,43 +198,5 @@ namespace Oras.Remote
             return Reference;
         }
 
-        /// <summary>
-        /// VerifyContentDigest verifies the content digest of the artifact.
-        /// </summary>
-        /// <param name="resp"></param>
-        /// <param name="refDigest"></param>
-        /// <exception cref="Exception"></exception>
-        internal static void VerifyContentDigest(HttpResponseMessage resp, string refDigest)
-        {
-            var digestStr = resp.Content.Headers.GetValues("Docker-Content-Digest").FirstOrDefault();
-            if (String.IsNullOrEmpty(digestStr))
-            {
-                return;
-            }
-
-            string contentDigest;
-            try
-            {
-                contentDigest = ParseDigest(digestStr);
-            }
-            catch (Exception)
-            {
-                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response header: `Docker-Content-Digest: {digestStr}`");
-            }
-            if (contentDigest != refDigest)
-            {
-                throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {refDigest}");
-            }
-        }
-
-        /// <summary>
-        /// ParseDigest parses the digest from the string.
-        /// </summary>
-        /// <param name="digestStr"></param>
-        /// <returns></returns>
-        public static string ParseDigest(string digestStr)
-        {
-            return DigestUtility.Parse(digestStr);
-        }
     }
 }

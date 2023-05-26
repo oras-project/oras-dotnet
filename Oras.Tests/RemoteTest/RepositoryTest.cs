@@ -17,7 +17,7 @@ using static Oras.Content.Content;
 
 namespace Oras.Tests.RemoteTest
 {
-    public class RemoteTest
+    public class RepositoryTest
     {
         public struct TestIOStruct
         {
@@ -772,7 +772,12 @@ namespace Oras.Tests.RemoteTest
                         res.Headers.Add("Link", $"</v2/test/tags/list?n=4&test=foo>; rel=\"next\"");
                         break;
                 }
-                res.Content = new StringContent(JsonSerializer.Serialize(tags));
+
+                var listOfTags =  new ResponseTypes.TagList
+                {
+                    Tags = tags.ToArray()
+                };
+                res.Content = new StringContent(JsonSerializer.Serialize(listOfTags));
                 return res;
 
             };

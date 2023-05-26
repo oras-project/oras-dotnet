@@ -3,6 +3,7 @@ using Moq.Protected;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Oras.Remote;
 using Xunit;
 
 namespace Oras.Tests.RemoteTest
@@ -114,7 +115,12 @@ namespace Oras.Tests.RemoteTest
                         res.Headers.Add("Link", $"</v2/_catalog?n=4&test=foo>; rel=\"next\"");
                         break;
                 }
-                res.Content = new StringContent(JsonSerializer.Serialize(repos));
+
+                var repositoryList = new ResponseTypes.RepositoryList
+                {
+                    Repositories = repos.ToArray()
+                };
+                res.Content = new StringContent(JsonSerializer.Serialize(repositoryList));
                 return res;
 
             };
