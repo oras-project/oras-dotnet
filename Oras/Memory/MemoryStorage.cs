@@ -15,7 +15,7 @@ namespace Oras.Memory
 
         public Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken)
         {
-            var contentExist = _content.ContainsKey(target.GetMinimum());
+            var contentExist = _content.ContainsKey(target.GetMinimumDescriptor());
             return Task.FromResult(contentExist);
         }
 
@@ -23,7 +23,7 @@ namespace Oras.Memory
 
         public Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            var contentExist = this._content.TryGetValue(target.GetMinimum(), out byte[] content);
+            var contentExist = this._content.TryGetValue(target.GetMinimumDescriptor(), out byte[] content);
             if (!contentExist)
             {
                 throw new NotFoundException($"{target.Digest} : {target.MediaType}");
@@ -34,7 +34,7 @@ namespace Oras.Memory
 
         public async Task PushAsync(Descriptor expected, Stream contentStream, CancellationToken cancellationToken = default)
         {
-            var key = expected.GetMinimum();
+            var key = expected.GetMinimumDescriptor();
             var contentExist = _content.TryGetValue(key, out byte[] _);
             if (contentExist)
             {

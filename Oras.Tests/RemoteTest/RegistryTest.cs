@@ -3,6 +3,7 @@ using Moq.Protected;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Oras.Remote;
 using Xunit;
 
 namespace Oras.Tests.RemoteTest
@@ -62,12 +63,12 @@ namespace Oras.Tests.RemoteTest
         }
 
         /// <summary>
-        /// TestRegistry_ListRepositoriesAsync tests the ListRepositoriesAsync method of the Registry class.
+        /// TestRegistry_Repositories tests the ListRepositoriesAsync method of the Registry class.
         /// </summary>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
         [Fact]
-        public async Task TestRegistry_ListRepositoriesAsync()
+        public async Task TestRegistry_Repositories()
         {
             var repoSet = new List<List<string>>()
             {
@@ -114,7 +115,12 @@ namespace Oras.Tests.RemoteTest
                         res.Headers.Add("Link", $"</v2/_catalog?n=4&test=foo>; rel=\"next\"");
                         break;
                 }
-                res.Content = new StringContent(JsonSerializer.Serialize(repos));
+
+                var repositoryList = new ResponseTypes.RepositoryList
+                {
+                    Repositories = repos.ToArray()
+                };
+                res.Content = new StringContent(JsonSerializer.Serialize(repositoryList));
                 return res;
 
             };
@@ -128,7 +134,7 @@ namespace Oras.Tests.RemoteTest
 
 
             var index = 0;
-            await registry.ListRepositoriesAsync("", async (string[] got) =>
+            await registry.Repositories("", async (string[] got) =>
             {
                 if (index > 2)
                 {

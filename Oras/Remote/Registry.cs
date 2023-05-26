@@ -5,12 +5,13 @@ using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
+using Oras.Remote;
 using System.Threading.Tasks;
 using static System.Web.HttpUtility;
 
 namespace Oras.Remote
 {
-    public class Registry : IRepositoryOption
+    public class Registry : IRegistry
     {
 
         public HttpClient HttpClient { get; set; }
@@ -19,22 +20,7 @@ namespace Oras.Remote
         public string[] ManifestMediaTypes { get; set; }
         public int TagListPageSize { get; set; }
 
-        /// <summary>
-        /// Client returns an HTTP client used to access the remote repository.
-        /// A default HTTP client is return if the client is not configured.
-        /// </summary>
-        /// <returns></returns>
-        private HttpClient Client()
-        {
-            if (HttpClient is null)
-            {
-                var client = new HttpClient();
-                client.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
-                return client;
-            }
-
-            return HttpClient;
-        }
+       
 
         public Registry(string name)
         {
@@ -44,6 +30,8 @@ namespace Oras.Remote
             };
             reference.ValidateRegistry();
             RemoteReference = reference;
+            HttpClient = new HttpClient();
+            HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
         }
 
         /// <summary>
@@ -59,7 +47,7 @@ namespace Oras.Remote
         public async Task PingAsync(CancellationToken cancellationToken)
         {
             var url = URLUtiliity.BuildRegistryBaseURL(PlainHTTP, RemoteReference);
-            var resp = await Client().GetAsync(url, cancellationToken);
+            using var resp = await HttpClient.GetAsync(url, cancellationToken);
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -72,13 +60,50 @@ namespace Oras.Remote
         }
 
         /// <summary>
-        /// ListRepositoriesAsync returns a list of repositories from the remote registry.
+        /// Repository returns a repository object for the given repository name.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<IRepository> Repository(string name, CancellationToken cancellationToken)
+        {
+            var reference = new RemoteReference
+            {
+                Registry = RemoteReference.Registry,
+                Repository = name,
+            };
+            return new Repository(reference,HttpClient);
+        }
+
+
+        /// <summary>
+        /// Repository returns a repository object for the given repository name.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<Repository> Repository(string name,HttpClient httpClient, CancellationToken cancellationToken)
+        {
+            var reference = new RemoteReference
+            {
+                Registry = RemoteReference.Registry,
+                Repository = name,
+            };
+            HttpClient = httpClient;
+            HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
+
+            return new Repository(reference, HttpClient);
+        }
+
+
+        /// <summary>
+        /// Repositories returns a list of repositories from the remote registry.
         /// </summary>
         /// <param name="last"></param>
         /// <param name="fn"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task ListRepositoriesAsync(string last, Action<string[]> fn, CancellationToken cancellationToken)
+        public async Task Repositories(string last, Action<string[]> fn, CancellationToken cancellationToken)
         {
             try
             {
@@ -89,7 +114,7 @@ namespace Oras.Remote
                     last = "";
                 }
             }
-            catch (Utils.NoLinkHeaderException)
+            catch (LinkUtils.NoLinkHeaderException)
             {
                 return;
             }
@@ -105,20 +130,8 @@ namespace Oras.Remote
         /// <returns></returns>
         private async Task<string> RepositoryPageAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
-            if (PlainHTTP)
-            {
-                if (!url.Contains("http"))
-                {
-                    url = "http://" + url;
-                }
-            }
-            else
-            {
-                if (!url.Contains("https"))
-                {
-                    url = "https://" + url;
-                }
-            }
+            
+            url = LinkUtils.ObtainUrl(url,PlainHTTP);
             var uriBuilder = new UriBuilder(url);
             var query = ParseQueryString(uriBuilder.Query);
             if (TagListPageSize > 0 || last != "")
@@ -129,23 +142,25 @@ namespace Oras.Remote
 
 
                 }
-                if (last != "")
+                if (!string.IsNullOrEmpty(last))
                 {
                     query["last"] = last;
                 }
             }
 
             uriBuilder.Query = query.ToString();
-            var response = await HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
+            using var response = await HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
             if (response.StatusCode != HttpStatusCode.OK)
             {
                 throw await ErrorUtility.ParseErrorResponse(response);
 
             }
             var data = await response.Content.ReadAsStringAsync();
-            var repositories = JsonSerializer.Deserialize<string[]>(data);
-            fn(repositories);
-            return Utils.ParseLink(response);
+            var repositories = JsonSerializer.Deserialize<ResponseTypes.RepositoryList>(data);
+            fn(repositories.Repositories);
+            return LinkUtils.ParseLink(response);
         }
+
+       
     }
 }

@@ -5,34 +5,34 @@ using System.Text.RegularExpressions;
 
 namespace Oras.Content
 {
-    internal class DigestUtility
+    internal static class DigestUtility
     {
 
         /// <summary>
         /// digestRegexp checks the digest.
         /// </summary>
-        public static string digestRegexp = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
+        private static string digestRegexp = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
 
         /// <summary>
-        /// Parse verifies the digest header and throws an exception if it is invalid.
+        /// ParseDigest verifies the digest header and throws an exception if it is invalid.
         /// </summary>
         /// <param name="digest"></param>
-        public static string Parse(string digest)
+        internal static string ParseDigest(string digest)
         {
             if (!Regex.IsMatch(digest, digestRegexp))
             {
-                throw new InvalidReferenceException($"invalid reference format: {digest}");
+                throw new InvalidReferenceException($"Invalid digest: {digest}");
             }
 
             return digest;
         }
 
         /// <summary>
-        /// CalculateSHA256DigestFromBytes generates a digest from a byte.
+        /// CalculateSHA256DigestFromBytes generates a SHA256 digest from a byte array.
         /// </summary>
         /// <param name="content"></param>
         /// <returns></returns>
-        public static string CalculateSHA256DigestFromBytes(byte[] content)
+        internal static string CalculateSHA256DigestFromBytes(byte[] content)
         {
             using var sha256 = SHA256.Create();
             var hash = sha256.ComputeHash(content);
