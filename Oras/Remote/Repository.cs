@@ -29,13 +29,6 @@ namespace Oras.Remote
     public class Repository : IRepository, IRepositoryOption
     {
         /// <summary>
-        /// bytes are allowed in the server's response to the metadata APIs.
-        /// defaultMaxMetadataBytes specifies the default limit on how many response
-        /// See also: Repository.MaxMetadataBytes
-        /// </summary>
-        public long defaultMaxMetaBytes = 4 * 1024 * 1024; //4 Mib
-
-        /// <summary>
         /// HttpClient is the underlying HTTP client used to access the remote registry.
         /// </summary>
         public HttpClient HttpClient { get; set; }
@@ -638,11 +631,11 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
         /// GenerateDescriptor returns a descriptor generated from the response.
         /// </summary>
         /// <param name="res"></param>
-        /// <param name="ref"></param>
+        /// <param name="reference"></param>
         /// <param name="httpMethod"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public async Task<Descriptor> GenerateDescriptor(HttpResponseMessage res, RemoteReference @ref, HttpMethod httpMethod)
+        public async Task<Descriptor> GenerateDescriptor(HttpResponseMessage res, RemoteReference reference, HttpMethod httpMethod)
         {
             string mediaType;
             try
@@ -666,14 +659,15 @@ $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid respons
             string refDigest = string.Empty;
             try
             {
-                refDigest = @ref.Digest();
+                refDigest = reference.Digest();
             }
             catch (Exception)
             {
             }
 
+            
             // 4. Validate Server Digest (if present)
-            res.Content.Headers.TryGetValues("Docker-Content-Digest", out var serverHeaderDigest);
+            var serverHeaderDigest = res.Content.Headers.GetValues("Docker-Content-Digest");
             var serverDigest = serverHeaderDigest.First();
             if (!string.IsNullOrEmpty(serverDigest))
             {
