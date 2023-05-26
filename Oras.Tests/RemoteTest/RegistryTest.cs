@@ -1,9 +1,9 @@
 ﻿using Moq;
 using Moq.Protected;
+using Oras.Remote;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Oras.Remote;
 using Xunit;
 
 namespace Oras.Tests.RemoteTest

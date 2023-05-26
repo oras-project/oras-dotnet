@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 using static System.Web.HttpUtility;
 namespace Oras.Remote
 {
-   
+
     /// <summary>
     /// Repository is an HTTP client to a remote repository
     /// </summary>
@@ -60,7 +60,9 @@ namespace Oras.Remote
         /// <param name="reference"></param>
         public Repository(string reference)
         {
-            RemoteReference = RemoteReference.ParseReference(reference); ;
+            RemoteReference = RemoteReference.ParseReference(reference);
+            HttpClient = new HttpClient();
+            HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
         }
 
         /// <summary>
@@ -73,26 +75,9 @@ namespace Oras.Remote
         {
             reference.ValidateRepository();
             HttpClient = httpClient;
+            HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
             RemoteReference = reference;
         }
-
-        /// <summary>
-        /// Client returns an HTTP client used to access the remote repository.
-        /// A default HTTP client is return if the client is not configured.
-        /// </summary>
-        /// <returns></returns>
-        private HttpClient Client()
-        {
-            if (HttpClient is null)
-            {
-                var client = new HttpClient();
-                client.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
-                return client;
-            }
-
-            return HttpClient;
-        }
-
 
         /// <summary>
         /// blobStore detects the blob store for the given descriptor.
@@ -205,7 +190,7 @@ namespace Oras.Remote
         {
             await blobStore(target).DeleteAsync(target, cancellationToken);
         }
-        
+
         /// <summary>
         /// TagsAsync returns a list of tags in a repository
         /// </summary>
@@ -284,7 +269,7 @@ namespace Oras.Remote
             }
 
             uriBuilder.Query = query.ToString();
-            var resp = await HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
+            using var resp = await HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
             if (resp.StatusCode != HttpStatusCode.OK)
             {
                 throw await ErrorUtility.ParseErrorResponse(resp);
@@ -320,7 +305,7 @@ namespace Oras.Remote
                 url = URLUtiliity.BuildRepositoryBlobURL(PlainHTTP, remoteReference);
             }
 
-            var resp = await HttpClient.DeleteAsync(url, cancellationToken);
+            using var resp = await HttpClient.DeleteAsync(url, cancellationToken);
 
             switch (resp.StatusCode)
             {
@@ -345,7 +330,7 @@ namespace Oras.Remote
         /// <exception cref="NotImplementedException"></exception>
         internal static void VerifyContentDigest(HttpResponseMessage resp, string expected)
         {
-            if (resp.Content.Headers.TryGetValues("Docker-Content-Digest", out var digestValues)  is var gotValues && !gotValues) return;
+            if (resp.Content.Headers.TryGetValues("Docker-Content-Digest", out var digestValues) is var gotValues && !gotValues) return;
             var digestStr = digestValues.FirstOrDefault();
             if (string.IsNullOrEmpty(digestStr))
             {
@@ -404,11 +389,11 @@ namespace Oras.Remote
             RemoteReference remoteReference;
             try
             {
-                 remoteReference =  RemoteReference.ParseReference(reference);
+                remoteReference = RemoteReference.ParseReference(reference);
             }
             catch (Exception)
             {
-                 remoteReference = new RemoteReference
+                remoteReference = new RemoteReference
                 {
                     Registry = RemoteReference.Registry,
                     Repository = RemoteReference.Repository,
@@ -425,9 +410,9 @@ namespace Oras.Remote
                 {
                     remoteReference.ValidateReference();
                 }
-               
+
             }
-            
+
             if (remoteReference.Registry != RemoteReference.Registry || remoteReference.Repository != RemoteReference.Repository)
             {
                 throw new InvalidReferenceException(
@@ -499,7 +484,7 @@ namespace Oras.Remote
             var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
             var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.Add("Accept", target.MediaType);
-            var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
+            using var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
 
             switch (resp.StatusCode)
             {
@@ -522,8 +507,10 @@ namespace Oras.Remote
                     $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
             }
             Repository.VerifyContentDigest(resp, target.Digest);
-            
-            return await resp.Content.ReadAsStreamAsync();
+            var returnedStream = new MemoryStream();
+            await resp.Content.CopyToAsync(returnedStream);
+            returnedStream.Seek(0, SeekOrigin.Begin);
+            return returnedStream;
         }
 
         /// <summary>
@@ -576,7 +563,7 @@ namespace Oras.Remote
             req.Content.Headers.ContentLength = expected.Size;
             req.Content.Headers.Add("Content-Type", expected.MediaType);
             var client = Repository.HttpClient;
-            var resp = await client.SendAsync(req, cancellationToken);
+            using var resp = await client.SendAsync(req, cancellationToken);
             if (resp.StatusCode != HttpStatusCode.Created)
             {
                 throw await ErrorUtility.ParseErrorResponse(resp);
@@ -590,7 +577,7 @@ namespace Oras.Remote
             var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
             var req = new HttpRequestMessage(HttpMethod.Head, url);
             req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository.ManifestMediaTypes));
-            var res = await Repository.HttpClient.SendAsync(req, cancellationToken);
+            using var res = await Repository.HttpClient.SendAsync(req, cancellationToken);
 
             return res.StatusCode switch
             {
@@ -638,7 +625,7 @@ namespace Oras.Remote
             {
             }
 
-            
+
             // 4. Validate Server Digest (if present)
             var serverHeaderDigest = res.Content.Headers.GetValues("Docker-Content-Digest");
             var serverDigest = serverHeaderDigest.First();
@@ -646,7 +633,7 @@ namespace Oras.Remote
             {
                 try
                 {
-                   Repository.VerifyContentDigest(res, serverDigest);
+                    Repository.VerifyContentDigest(res, serverDigest);
                 }
                 catch (Exception)
                 {
@@ -739,7 +726,7 @@ namespace Oras.Remote
             var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
             var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository.ManifestMediaTypes));
-            var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
+            using var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -752,7 +739,10 @@ namespace Oras.Remote
                     {
                         desc = await GenerateDescriptor(resp, remoteReference, HttpMethod.Get);
                     }
-                    return (desc, await resp.Content.ReadAsStreamAsync());
+                    var returnedStream = new MemoryStream();
+                    await resp.Content.CopyToAsync(returnedStream);
+                    returnedStream.Seek(0, SeekOrigin.Begin);
+                    return (desc, returnedStream);
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{req.Method} {req.RequestUri}: manifest unknown");
                 default:
@@ -809,7 +799,7 @@ namespace Oras.Remote
             DigestUtility.ParseDigest(target.Digest);
             remoteReference.Reference = target.Digest;
             var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
-            var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
+            using var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -818,8 +808,10 @@ namespace Oras.Remote
                     {
                         throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
                     }
-
-                    return await resp.Content.ReadAsStreamAsync();
+                    var returnedStream = new MemoryStream();
+                    await resp.Content.CopyToAsync(returnedStream);
+                    returnedStream.Seek(0, SeekOrigin.Begin);
+                    return returnedStream;
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{target.Digest}: not found");
                 default:
@@ -866,7 +858,7 @@ namespace Oras.Remote
         public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
         {
             var url = URLUtiliity.BuildRepositoryBlobUploadURL(Repository.PlainHTTP, Repository.RemoteReference);
-            var resp = await Repository.HttpClient.PostAsync(url, null, cancellationToken);
+            using var resp = await Repository.HttpClient.PostAsync(url, null, cancellationToken);
             var reqHostname = resp.RequestMessage.RequestUri.Host;
             var reqPort = resp.RequestMessage.RequestUri.Port;
             if (resp.StatusCode != HttpStatusCode.Accepted)
@@ -918,10 +910,10 @@ namespace Oras.Remote
             {
                 req.Headers.Add("Authorization", auth.FirstOrDefault());
             }
-            resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
-            if (resp.StatusCode != HttpStatusCode.Created)
+            using var resp2 = await Repository.HttpClient.SendAsync(req, cancellationToken);
+            if (resp2.StatusCode != HttpStatusCode.Created)
             {
-                throw await ErrorUtility.ParseErrorResponse(resp);
+                throw await ErrorUtility.ParseErrorResponse(resp2);
             }
 
             return;
@@ -939,7 +931,7 @@ namespace Oras.Remote
             var refDigest = remoteReference.Digest();
             var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
             var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
-            var resp = await Repository.HttpClient.SendAsync(requestMessage, cancellationToken);
+            using var resp = await Repository.HttpClient.SendAsync(requestMessage, cancellationToken);
             return resp.StatusCode switch
             {
                 HttpStatusCode.OK => Repository.GenerateBlobDescriptor(resp, refDigest),
@@ -971,7 +963,7 @@ namespace Oras.Remote
             var remoteReference = Repository.ParseReference(reference);
             var refDigest = remoteReference.Digest();
             var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
-            var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
+            using var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -985,15 +977,15 @@ namespace Oras.Remote
                     {
                         desc = Repository.GenerateBlobDescriptor(resp, refDigest);
                     }
-
-                    return (desc, await resp.Content.ReadAsStreamAsync());
+                    var returnedStream = new MemoryStream();
+                    await resp.Content.CopyToAsync(returnedStream);
+                    returnedStream.Seek(0, SeekOrigin.Begin);
+                    return (desc, returnedStream);
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException();
                 default:
                     throw await ErrorUtility.ParseErrorResponse(resp);
             }
         }
-
     }
-
 }

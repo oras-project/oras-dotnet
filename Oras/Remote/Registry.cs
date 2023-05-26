@@ -5,7 +5,6 @@ using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
-using Oras.Remote;
 using System.Threading.Tasks;
 using static System.Web.HttpUtility;
 
@@ -20,7 +19,7 @@ namespace Oras.Remote
         public string[] ManifestMediaTypes { get; set; }
         public int TagListPageSize { get; set; }
 
-       
+
 
         public Registry(string name)
         {
@@ -72,7 +71,7 @@ namespace Oras.Remote
                 Registry = RemoteReference.Registry,
                 Repository = name,
             };
-            return new Repository(reference,HttpClient);
+            return new Repository(reference, HttpClient);
         }
 
 
@@ -82,7 +81,7 @@ namespace Oras.Remote
         /// <param name="name"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<Repository> Repository(string name,HttpClient httpClient, CancellationToken cancellationToken)
+        public async Task<Repository> Repository(string name, HttpClient httpClient, CancellationToken cancellationToken)
         {
             var reference = new RemoteReference
             {
@@ -130,8 +129,8 @@ namespace Oras.Remote
         /// <returns></returns>
         private async Task<string> RepositoryPageAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
-            
-            url = LinkUtils.ObtainUrl(url,PlainHTTP);
+
+            url = LinkUtils.ObtainUrl(url, PlainHTTP);
             var uriBuilder = new UriBuilder(url);
             var query = ParseQueryString(uriBuilder.Query);
             if (TagListPageSize > 0 || last != "")
@@ -161,6 +160,6 @@ namespace Oras.Remote
             return LinkUtils.ParseLink(response);
         }
 
-       
+
     }
 }
