@@ -86,13 +86,13 @@ namespace Oras.Remote
         /// to multiple Repositories. To handle this we explicitly copy only the
         /// fields that we want to reproduce.
         /// </summary>
-        /// <param name="ref"></param>
+        /// <param name="reference"></param>
         /// <param name="option"></param>
-        public Repository(RemoteReference @ref, IRepositoryOption option)
+        public Repository(RemoteReference reference, IRepositoryOption option)
         {
-            @ref.ValidateRepository();
+            reference.ValidateRepository();
             HttpClient = option.HttpClient;
-            RemoteReference = @ref;
+            RemoteReference = reference;
             PlainHTTP = option.PlainHTTP;
             ManifestMediaTypes = option.ManifestMediaTypes;
             TagListPageSize = option.TagListPageSize;

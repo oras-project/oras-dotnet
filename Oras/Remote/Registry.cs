@@ -10,7 +10,7 @@ using static System.Web.HttpUtility;
 
 namespace Oras.Remote
 {
-    public class Registry : IRepositoryOption
+    public class Registry : IRegistry
     {
 
         public HttpClient HttpClient { get; set; }
@@ -72,13 +72,30 @@ namespace Oras.Remote
         }
 
         /// <summary>
-        /// ListRepositoriesAsync returns a list of repositories from the remote registry.
+        /// Repository returns a repository object for the given repository name.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public async Task<Repository> Repository(string name, CancellationToken cancellationToken)
+        {
+            var reference = new RemoteReference
+            {
+                Registry = RemoteReference.Registry,
+                Repository = name,
+            };
+            return new Repository(reference, new RepositoryOption());
+        }
+        
+        
+        /// <summary>
+        /// Repositories returns a list of repositories from the remote registry.
         /// </summary>
         /// <param name="last"></param>
         /// <param name="fn"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task ListRepositoriesAsync(string last, Action<string[]> fn, CancellationToken cancellationToken)
+        public async Task Repositories(string last, Action<string[]> fn, CancellationToken cancellationToken)
         {
             try
             {
