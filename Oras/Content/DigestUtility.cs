@@ -36,8 +36,8 @@ namespace Oras.Content
         {
             using var sha256 = SHA256.Create();
             var hash = sha256.ComputeHash(content);
-            var digest = $"sha256:{Convert.ToBase64String(hash)}";
-            return digest;
+            var output = $"{nameof(SHA256)}:{BitConverter.ToString(hash).Replace("-", "")}";
+            return output.ToLower();
         }
     }
 }

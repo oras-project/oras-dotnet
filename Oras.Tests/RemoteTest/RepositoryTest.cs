@@ -773,7 +773,7 @@ namespace Oras.Tests.RemoteTest
                         break;
                 }
 
-                var listOfTags =  new ResponseTypes.TagList
+                var listOfTags = new ResponseTypes.TagList
                 {
                     Tags = tags.ToArray()
                 };

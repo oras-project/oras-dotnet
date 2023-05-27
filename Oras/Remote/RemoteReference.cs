@@ -1,8 +1,6 @@
 ﻿using Oras.Content;
 using Oras.Exceptions;
 using System;
-using System.Linq;
-using System.Net.Http;
 using System.Text.RegularExpressions;
 
 namespace Oras.Remote
