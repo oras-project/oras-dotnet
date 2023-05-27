@@ -19,7 +19,7 @@ namespace Oras.Remote
     /// <summary>
     /// Repository is an HTTP client to a remote repository
     /// </summary>
-    public class Repository : IRepository
+    public class Repository : IRepository, IRepositoryOption
     {
         /// <summary>
         /// HttpClient is the underlying HTTP client used to access the remote registry.
