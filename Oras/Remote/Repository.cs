@@ -80,11 +80,11 @@ namespace Oras.Remote
         }
 
         /// <summary>
-        /// blobStore detects the blob store for the given descriptor.
+        /// BlobStore detects the blob store for the given descriptor.
         /// </summary>
         /// <param name="desc"></param>
         /// <returns></returns>
-        private IBlobStore blobStore(Descriptor desc)
+        private IBlobStore BlobStore(Descriptor desc)
         {
             if (ManifestUtility.IsManifest(ManifestMediaTypes, desc))
             {
@@ -104,7 +104,7 @@ namespace Oras.Remote
         /// <returns></returns>
         public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            return await blobStore(target).FetchAsync(target, cancellationToken);
+            return await BlobStore(target).FetchAsync(target, cancellationToken);
         }
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace Oras.Remote
         /// <returns></returns>
         public async Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            return await blobStore(target).ExistsAsync(target, cancellationToken);
+            return await BlobStore(target).ExistsAsync(target, cancellationToken);
         }
 
         /// <summary>
@@ -127,7 +127,7 @@ namespace Oras.Remote
         /// <returns></returns>
         public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
         {
-            await blobStore(expected).PushAsync(expected, content, cancellationToken);
+            await BlobStore(expected).PushAsync(expected, content, cancellationToken);
         }
 
         /// <summary>
@@ -188,7 +188,7 @@ namespace Oras.Remote
         /// <returns></returns>
         public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
-            await blobStore(target).DeleteAsync(target, cancellationToken);
+            await BlobStore(target).DeleteAsync(target, cancellationToken);
         }
 
         /// <summary>

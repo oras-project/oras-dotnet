@@ -10,7 +10,7 @@ using static System.Web.HttpUtility;
 
 namespace Oras.Remote
 {
-    public class Registry : IRegistry
+    public class Registry : IRegistry, IRepositoryOption
     {
 
         public HttpClient HttpClient { get; set; }
