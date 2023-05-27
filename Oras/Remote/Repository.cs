@@ -413,7 +413,6 @@ namespace Oras.Remote
 
             }
 
-
             if (string.IsNullOrEmpty(remoteReference.Reference))
             {
                 throw new InvalidReferenceException();
@@ -691,7 +690,7 @@ namespace Oras.Remote
         /// taking care not to destroy it in the process
         /// </summary>
         /// <param name="res"></param>
-        private async Task<string> CalculateDigestFromResponse(HttpResponseMessage res)
+        static async Task<string> CalculateDigestFromResponse(HttpResponseMessage res)
         {
             var bytes = await res.Content.ReadAsByteArrayAsync();
             return DigestUtility.CalculateSHA256DigestFromBytes(bytes);
