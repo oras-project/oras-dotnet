@@ -36,16 +36,15 @@ namespace Oras.Models
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string ArtifactType { get; set; }
 
-        internal static MinimumDescriptor FromOCI(Descriptor descriptor)
+        internal MinimumDescriptor GetMinimumDescriptor()
         {
             return new MinimumDescriptor
             {
-                MediaType = descriptor.MediaType,
-                Digest = descriptor.Digest,
-                Size = descriptor.Size
+                MediaType = this.MediaType,
+                Digest = this.Digest,
+                Size = this.Size
             };
         }
-
     }
 
     public class Platform

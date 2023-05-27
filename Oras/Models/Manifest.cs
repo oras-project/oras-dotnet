@@ -20,7 +20,6 @@ namespace Oras.Models
 
         [JsonPropertyName("annotations")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-
         public Dictionary<string, string> Annotations { get; set; }
     }
 }
