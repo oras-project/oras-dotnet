@@ -64,19 +64,32 @@ namespace Oras.Remote
             HttpClient = new HttpClient();
             HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
         }
+        
+        /// <summary>
+        /// Creates a client to the remote repository using a reference and a HttpClient
+        /// </summary>
+        /// <param name="reference"></param>
+        /// <param name="httpClient"></param>
+        public Repository(string reference, HttpClient httpClient)
+        {
+            RemoteReference = RemoteReference.ParseReference(reference);
+            HttpClient = httpClient;
+        }
 
         /// <summary>
         /// This constructor customizes the HttpClient and sets the properties
         /// using values from the parameter.
         /// </summary>
         /// <param name="reference"></param>
-        /// <param name="httpClient"></param>
-        public Repository(RemoteReference reference, HttpClient httpClient)
+        /// <param name="option"></param>
+        internal Repository(RemoteReference reference, IRepositoryOption option)
         {
             reference.ValidateRepository();
-            HttpClient = httpClient;
-            HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
+            HttpClient = option.HttpClient;
             RemoteReference = reference;
+            ManifestMediaTypes = option.ManifestMediaTypes;
+            PlainHTTP = option.PlainHTTP;
+            TagListPageSize = option.TagListPageSize;
         }
 
         /// <summary>
@@ -384,12 +397,14 @@ namespace Oras.Remote
         public RemoteReference ParseReference(string reference)
         {
             RemoteReference remoteReference;
+            var hasError = false;
             try
             {
                 remoteReference = RemoteReference.ParseReference(reference);
             }
             catch (Exception)
             {
+                hasError = true;
                 remoteReference = new RemoteReference
                 {
                     Registry = RemoteReference.Registry,
@@ -410,6 +425,15 @@ namespace Oras.Remote
 
             }
 
+            if (!hasError)
+            {
+                if (remoteReference.Registry != RemoteReference.Registry ||
+                    remoteReference.Repository != RemoteReference.Repository)
+                {
+                    throw new InvalidReferenceException(
+                        $"mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(RemoteReference)}");
+                }
+            }
             if (string.IsNullOrEmpty(remoteReference.Reference))
             {
                 throw new InvalidReferenceException();
