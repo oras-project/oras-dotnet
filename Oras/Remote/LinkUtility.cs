@@ -49,31 +49,6 @@ namespace Oras.Remote
             return resolvedUri.AbsoluteUri;
         }
 
-        /// <summary>
-        /// ObtainUrl returns the link with a scheme and authority.
-        /// </summary>
-        /// <param name="url"></param>
-        /// <param name="plainHttp"></param>
-        /// <returns></returns>
-        internal static string ObtainUrl(string url, bool plainHttp)
-        {
-            if (plainHttp)
-            {
-                if (!url.Contains("http"))
-                {
-                    url = "http://" + url;
-                }
-            }
-            else
-            {
-                if (!url.Contains("https"))
-                {
-                    url = "https://" + url;
-                }
-            }
-
-            return url;
-        }
 
         /// <summary>
         /// NoLinkHeaderException is thrown when a link header is missing.
