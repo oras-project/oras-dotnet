@@ -1,12 +1,10 @@
 ﻿using Moq;
 using Moq.Protected;
 using Oras.Constants;
-using Oras.Interfaces;
 using Oras.Memory;
 using Oras.Models;
 using Oras.Remote;
 using System.Net;
-using System.Text.Json;
 using Xunit;
 using static Oras.Content.DigestUtility;
 
@@ -120,29 +118,5 @@ namespace Oras.Tests
             var desc = await Copy.CopyAsync(src, tagName, dst, tagName, CancellationToken.None);
             Console.WriteLine(desc.Digest);
         }
-
-        private async Task<Descriptor> PushBlob(string mediaType, byte[] blob, ITarget target, CancellationToken cancellationToken = default)
-        {
-            var desc = new Descriptor
-            {
-                MediaType = mediaType,
-                Digest = CalculateSHA256DigestFromBytes(blob),
-                Size = blob.Length
-            };
-            await target.PushAsync(desc, new MemoryStream(blob), cancellationToken);
-            return desc;
-        }
-
-        private byte[] GenerateManifestContent(Descriptor config, List<Descriptor> layers)
-        {
-            var content = new Manifest
-            {
-                Config = config,
-                Layers = layers,
-                SchemaVersion = 2
-            };
-            return JsonSerializer.SerializeToUtf8Bytes(content);
-        }
-
     }
 }
