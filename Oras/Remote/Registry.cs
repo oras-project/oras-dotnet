@@ -113,7 +113,7 @@ namespace Oras.Remote
                     last = "";
                 }
             }
-            catch (LinkUtils.NoLinkHeaderException)
+            catch (LinkUtility.NoLinkHeaderException)
             {
                 return;
             }
@@ -130,7 +130,7 @@ namespace Oras.Remote
         private async Task<string> RepositoryPageAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
 
-            url = LinkUtils.ObtainUrl(url, PlainHTTP);
+            url = LinkUtility.ObtainUrl(url, PlainHTTP);
             var uriBuilder = new UriBuilder(url);
             var query = ParseQueryString(uriBuilder.Query);
             if (TagListPageSize > 0 || last != "")
@@ -157,7 +157,7 @@ namespace Oras.Remote
             var data = await response.Content.ReadAsStringAsync();
             var repositories = JsonSerializer.Deserialize<ResponseTypes.RepositoryList>(data);
             fn(repositories.Repositories);
-            return LinkUtils.ParseLink(response);
+            return LinkUtility.ParseLink(response);
         }
 
 

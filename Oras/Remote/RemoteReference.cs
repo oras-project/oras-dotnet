@@ -36,14 +36,14 @@ namespace Oras.Remote
         /// - https://github.com/distribution/distribution/blob/v2.7.1/reference/regexp.go#L53
         /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
         /// </summary>
-        private static string repositoryRegexp = @"^[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*)*$";
+        private const string repositoryRegexp = @"^[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*)*$";
 
         /// <summary>
         /// tagRegexp checks the tag name.
         /// The docker and OCI spec have the same regular expression.
         /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
         /// </summary>
-        private static string tagRegexp = @"^[\w][\w.-]{0,127}$";
+        private const string tagRegexp = @"^[\w][\w.-]{0,127}$";
 
         public static RemoteReference ParseReference(string artifact)
         {
