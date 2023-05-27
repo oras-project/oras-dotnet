@@ -19,8 +19,6 @@ namespace Oras.Remote
         public string[] ManifestMediaTypes { get; set; }
         public int TagListPageSize { get; set; }
 
-
-
         public Registry(string name)
         {
             var reference = new RemoteReference
