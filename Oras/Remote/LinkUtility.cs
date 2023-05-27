@@ -4,7 +4,7 @@ using System.Net.Http;
 
 namespace Oras.Remote
 {
-    internal class LinkUtils
+    internal class LinkUtility
     {
         /// <summary>
         /// ParseLink returns the URL of the response's "Link" header, if present.

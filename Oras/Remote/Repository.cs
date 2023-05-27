@@ -234,7 +234,7 @@ namespace Oras.Remote
                     last = "";
                 }
             }
-            catch (LinkUtils.NoLinkHeaderException)
+            catch (LinkUtility.NoLinkHeaderException)
             {
                 return;
             }
@@ -251,7 +251,7 @@ namespace Oras.Remote
         /// <returns></returns>
         private async Task<string> TagsPageAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
-            url = LinkUtils.ObtainUrl(url, PlainHTTP);
+            url = LinkUtility.ObtainUrl(url, PlainHTTP);
             var uriBuilder = new UriBuilder(url);
             var query = ParseQueryString(uriBuilder.Query);
             if (TagListPageSize > 0 || last != "")
@@ -278,7 +278,7 @@ namespace Oras.Remote
             var data = await resp.Content.ReadAsStringAsync();
             var tagList = JsonSerializer.Deserialize<ResponseTypes.TagList>(data);
             fn(tagList.Tags);
-            return LinkUtils.ParseLink(resp);
+            return LinkUtility.ParseLink(resp);
         }
 
         /// <summary>

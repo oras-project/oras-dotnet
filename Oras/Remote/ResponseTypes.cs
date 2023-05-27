@@ -4,13 +4,13 @@ namespace Oras.Remote
 {
     internal static class ResponseTypes
     {
-        internal class RepositoryList
+        internal struct RepositoryList
         {
             [JsonPropertyName("repositories")]
             public string[] Repositories { get; set; }
         }
 
-        internal class TagList
+        internal struct TagList
         {
             [JsonPropertyName("tags")]
             public string[] Tags { get; set; }
