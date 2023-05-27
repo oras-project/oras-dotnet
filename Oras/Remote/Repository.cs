@@ -251,7 +251,6 @@ namespace Oras.Remote
         /// <returns></returns>
         private async Task<string> TagsPageAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
-            url = LinkUtility.ObtainUrl(url, PlainHTTP);
             var uriBuilder = new UriBuilder(url);
             var query = ParseQueryString(uriBuilder.Query);
             if (TagListPageSize > 0 || last != "")
@@ -728,7 +727,7 @@ namespace Oras.Remote
                     {
                         desc = await GenerateDescriptor(resp, remoteReference, HttpMethod.Get);
                     }
-                    
+
                     return (desc, await resp.Content.ReadAsStreamAsync());
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{req.Method} {req.RequestUri}: manifest unknown");
@@ -959,7 +958,7 @@ namespace Oras.Remote
                     {
                         desc = Repository.GenerateBlobDescriptor(resp, refDigest);
                     }
-                   
+
                     return (desc, await resp.Content.ReadAsStreamAsync());
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException();

@@ -127,8 +127,6 @@ namespace Oras.Remote
         /// <returns></returns>
         private async Task<string> RepositoryPageAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
-
-            url = LinkUtility.ObtainUrl(url, PlainHTTP);
             var uriBuilder = new UriBuilder(url);
             var query = ParseQueryString(uriBuilder.Query);
             if (TagListPageSize > 0 || last != "")
@@ -157,7 +155,5 @@ namespace Oras.Remote
             fn(repositories.Repositories);
             return LinkUtility.ParseLink(response);
         }
-
-
     }
 }
