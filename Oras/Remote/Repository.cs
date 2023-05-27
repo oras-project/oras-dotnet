@@ -259,8 +259,6 @@ namespace Oras.Remote
                 if (TagListPageSize > 0)
                 {
                     query["n"] = TagListPageSize.ToString();
-
-
                 }
                 if (last != "")
                 {
@@ -478,7 +476,7 @@ namespace Oras.Remote
             var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
             var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.Add("Accept", target.MediaType);
-            using var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
+            var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
 
             switch (resp.StatusCode)
             {
@@ -501,10 +499,7 @@ namespace Oras.Remote
                     $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
             }
             Repository.VerifyContentDigest(resp, target.Digest);
-            var returnedStream = new MemoryStream();
-            await resp.Content.CopyToAsync(returnedStream);
-            returnedStream.Seek(0, SeekOrigin.Begin);
-            return returnedStream;
+            return await resp.Content.ReadAsStreamAsync();
         }
 
         /// <summary>
@@ -720,7 +715,7 @@ namespace Oras.Remote
             var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
             var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository.ManifestMediaTypes));
-            using var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
+            var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -733,10 +728,8 @@ namespace Oras.Remote
                     {
                         desc = await GenerateDescriptor(resp, remoteReference, HttpMethod.Get);
                     }
-                    var returnedStream = new MemoryStream();
-                    await resp.Content.CopyToAsync(returnedStream);
-                    returnedStream.Seek(0, SeekOrigin.Begin);
-                    return (desc, returnedStream);
+                    
+                    return (desc, await resp.Content.ReadAsStreamAsync());
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{req.Method} {req.RequestUri}: manifest unknown");
                 default:
@@ -793,7 +786,7 @@ namespace Oras.Remote
             DigestUtility.ParseDigest(target.Digest);
             remoteReference.Reference = target.Digest;
             var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
-            using var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
+            var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -802,10 +795,7 @@ namespace Oras.Remote
                     {
                         throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
                     }
-                    var returnedStream = new MemoryStream();
-                    await resp.Content.CopyToAsync(returnedStream);
-                    returnedStream.Seek(0, SeekOrigin.Begin);
-                    return returnedStream;
+                    return await resp.Content.ReadAsStreamAsync();
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{target.Digest}: not found");
                 default:
@@ -894,9 +884,7 @@ namespace Oras.Remote
             req.Content.Headers.Add("Content-Type", "application/octet-stream");
 
             // add digest key to query string with expected digest value
-            var query = ParseQueryString(new UriBuilder(location).Query);
-            query.Add("digest", expected.Digest);
-            req.RequestUri = new Uri($"{req.RequestUri}?digest={expected.Digest}");
+            req.RequestUri = new UriBuilder($"{req.RequestUri}?digest={expected.Digest}").Uri;
 
             //reuse credential from previous POST request
             resp.Headers.TryGetValues("Authorization", out var auth);
@@ -957,7 +945,7 @@ namespace Oras.Remote
             var remoteReference = Repository.ParseReference(reference);
             var refDigest = remoteReference.Digest();
             var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
-            using var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
+            var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
             switch (resp.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -971,10 +959,8 @@ namespace Oras.Remote
                     {
                         desc = Repository.GenerateBlobDescriptor(resp, refDigest);
                     }
-                    var returnedStream = new MemoryStream();
-                    await resp.Content.CopyToAsync(returnedStream);
-                    returnedStream.Seek(0, SeekOrigin.Begin);
-                    return (desc, returnedStream);
+                   
+                    return (desc, await resp.Content.ReadAsStreamAsync());
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException();
                 default:
