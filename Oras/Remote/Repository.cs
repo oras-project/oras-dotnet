@@ -413,11 +413,6 @@ namespace Oras.Remote
 
             }
 
-            if (remoteReference.Registry != RemoteReference.Registry || remoteReference.Repository != RemoteReference.Repository)
-            {
-                throw new InvalidReferenceException(
-                    $"mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(RemoteReference)}");
-            }
 
             if (string.IsNullOrEmpty(remoteReference.Reference))
             {
