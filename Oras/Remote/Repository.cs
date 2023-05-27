@@ -384,12 +384,14 @@ namespace Oras.Remote
         public RemoteReference ParseReference(string reference)
         {
             RemoteReference remoteReference;
+            var hasError = false;
             try
             {
                 remoteReference = RemoteReference.ParseReference(reference);
             }
             catch (Exception)
             {
+                hasError = true;
                 remoteReference = new RemoteReference
                 {
                     Registry = RemoteReference.Registry,
@@ -410,6 +412,15 @@ namespace Oras.Remote
 
             }
 
+            if (!hasError)
+            {
+                if (remoteReference.Registry != RemoteReference.Registry ||
+                    remoteReference.Repository != RemoteReference.Repository)
+                {
+                    throw new InvalidReferenceException(
+                        $"mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(RemoteReference)}");
+                }
+            }
             if (string.IsNullOrEmpty(remoteReference.Reference))
             {
                 throw new InvalidReferenceException();
