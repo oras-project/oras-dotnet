@@ -21,7 +21,7 @@ namespace Oras.Content
         {
             if (!Regex.IsMatch(digest, digestRegexp))
             {
-                throw new InvalidReferenceException($"Invalid digest: {digest}");
+                throw new InvalidDigestException($"Invalid digest: {digest}");
             }
 
             return digest;
