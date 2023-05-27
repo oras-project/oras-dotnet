@@ -330,7 +330,7 @@ namespace Oras.Remote
         /// <exception cref="NotImplementedException"></exception>
         internal static void VerifyContentDigest(HttpResponseMessage resp, string expected)
         {
-            if (resp.Content.Headers.TryGetValues("Docker-Content-Digest", out var digestValues) is var gotValues && !gotValues) return;
+            if (!resp.Content.Headers.TryGetValues("Docker-Content-Digest", out var digestValues))
             var digestStr = digestValues.FirstOrDefault();
             if (string.IsNullOrEmpty(digestStr))
             {
