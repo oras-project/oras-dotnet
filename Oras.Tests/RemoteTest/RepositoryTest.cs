@@ -2075,8 +2075,9 @@ namespace Oras.Tests.RemoteTest
             };
 
             var reg = new Registry("localhost:5000");
-
-            var src = await reg.Repository("source", CustomClient(func), CancellationToken.None);
+            reg.HttpClient = CustomClient(func);
+            var src = await reg.Repository("source", CancellationToken.None);
+            
             var dst = new MemoryTarget();
             var tagName = "latest";
             var desc = await Copy.CopyAsync(src, tagName, dst, tagName, CancellationToken.None);

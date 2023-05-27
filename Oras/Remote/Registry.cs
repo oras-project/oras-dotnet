@@ -31,6 +31,17 @@ namespace Oras.Remote
             HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
         }
 
+        public Registry(string name, HttpClient httpClient)
+        {
+             var reference = new RemoteReference
+            {
+                Registry = name,
+            };
+            reference.ValidateRegistry();
+            RemoteReference = reference;
+            HttpClient = httpClient;
+        }
+
         /// <summary>
         /// PingAsync checks whether or not the registry implement Docker Registry API V2 or
         ///  OCI Distribution Specification.
@@ -69,27 +80,8 @@ namespace Oras.Remote
                 Registry = RemoteReference.Registry,
                 Repository = name,
             };
-            return new Repository(reference, HttpClient);
-        }
-
-
-        /// <summary>
-        /// Repository returns a repository object for the given repository name.
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public async Task<Repository> Repository(string name, HttpClient httpClient, CancellationToken cancellationToken)
-        {
-            var reference = new RemoteReference
-            {
-                Registry = RemoteReference.Registry,
-                Repository = name,
-            };
-            HttpClient = httpClient;
-            HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
-
-            return new Repository(reference, HttpClient);
+            
+            return new Repository(reference, this);
         }
 
 
