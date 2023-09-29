@@ -639,8 +639,7 @@ namespace Oras.Remote
 
 
             // 4. Validate Server Digest (if present)
-            IEnumerable<string> serverHeaderDigest;
-            res.Content.Headers.TryGetValues("Docker-Content-Digest", out serverHeaderDigest);
+            var serverHeaderDigest = res.Content.Headers.GetValues("Docker-Content-Digest");
             var serverDigest = serverHeaderDigest.First();
             if (!string.IsNullOrEmpty(serverDigest))
             {
