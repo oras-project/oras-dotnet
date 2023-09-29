@@ -36,7 +36,7 @@ By default, when pushing artifacts using ORAS, the `config.mediaType` field is s
 
 Authors of new OCI Artifacts are thus encouraged to define their own media types specific to their artifact, which their custom client(s) know how to operate on.
 
-If you wish to start publishing OCI Artifacts right away, take a look at the [ORAS CLI](https://oras.land/oras-cli). Developers who wish to provide their own user experience should use one of the [ORAS client libraries](https://oras.land/oras-client-libraries).
+If you wish to start publishing OCI Artifacts right away, take a look at the [ORAS Website](https://oras.land).
 
 ## API Documentation
 
