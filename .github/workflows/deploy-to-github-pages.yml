@@ -10,9 +10,6 @@ jobs:
         pages: write
         id-token: write
         contents: read
-    environment:
-        name: gh-pages
-        url : ${{ steps.deployment.outputs.url }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
