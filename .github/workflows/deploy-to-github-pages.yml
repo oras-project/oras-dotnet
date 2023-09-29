@@ -6,9 +6,16 @@ name: Deploy DocFX Documentation
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+        pages: write
+        id-token: write
+        contents: read
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+        
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v1
         with:
@@ -21,28 +28,15 @@ jobs:
         run: |
           cd documentation
           docfx build
-         
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v1
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v2
         with:
-          name: mydocs
-          path: documentation/_site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    env: 
-        ACTIONS_RUNNER_DEBUG: true
-    permissions:
-        pages: write
-        id-token: write
-    environment:
-      name: github-pages
-      url: '${{ steps.deployment.outputs.page_url }}'
-    steps:
+            # upload entire directory
+            path: './documentation/'
+            name: mydocs
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v1
-        with:
-          token: '${{ github.token }}'
-          artifact_name: mydocs
+        uses: actions/deploy-pages@v2
+        
+            
+  
