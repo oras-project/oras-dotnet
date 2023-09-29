@@ -9,6 +9,9 @@ jobs:
     environment:
         name: github-pages
         url: ${{steps.deployment.outputs.page_url}}
+    permissions:
+        id-token: write
+        contents: read
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
