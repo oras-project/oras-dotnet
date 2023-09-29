@@ -23,7 +23,7 @@ jobs:
           docfx build
          
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v1
         with:
           name: mydocs
           path: documentation/_site
