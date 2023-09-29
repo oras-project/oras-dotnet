@@ -2,14 +2,13 @@ name: Deploy DocFX Documentation
 'on':
   push:
     branches:
-      - main
+      - add-docs
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-      contents: read
+    environment:
+        name: github-pages
+        url: ${{steps.deployment.outputs.page_url}}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
