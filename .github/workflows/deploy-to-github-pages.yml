@@ -31,6 +31,8 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    env: 
+        ACTIONS_RUNNER_DEBUG: true
     permissions:
         pages: write
         id-token: write
