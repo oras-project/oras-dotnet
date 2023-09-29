@@ -13,8 +13,7 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
+ 
         
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v1
