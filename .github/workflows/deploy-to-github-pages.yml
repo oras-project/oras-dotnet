@@ -6,9 +6,6 @@ name: Deploy DocFX Documentation
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-        pages: write
-        id-token: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -25,10 +22,26 @@ jobs:
           cd documentation
           docfx build
          
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: mydocs
+          path: documentation/_site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+        pages: write
+        id-token: write
+    environment:
+      name: github-pages
+      url: '${{ steps.deployment.outputs.page_url }}'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/deploy-pages@v1
         with:
-            path: ./documentation/_site/
-            name: mydocs
-  
+          token: '${{ github.token }}'
+          artifact_name: mydocs
