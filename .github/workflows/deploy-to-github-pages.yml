@@ -1,35 +1,43 @@
 name: Deploy DocFX Documentation
-
-on:
+'on':
   push:
     branches:
       - add-docs
-
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
-
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 6.x  # Adjust as needed
-
+          dotnet-version: 7.x
       - name: Install DocFX
         run: |
           dotnet tool update -g docfx
           export PATH="$PATH:$HOME/.dotnet/tools"
-
       - name: Build Documentation
         run: |
           cd documentation
           docfx build
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: _site  # Adjust to match your DocFX output directory
+          name: mydocs
+          path: ./
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: '${{ steps.deployment.outputs.page_url }}'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+        with:
+          token: '${{ github.token }}'
+          artifact_name: mydocs
