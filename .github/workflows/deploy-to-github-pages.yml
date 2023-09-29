@@ -4,7 +4,7 @@ name: Deploy DocFX Documentation
     branches:
       - add-docs
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
         pages: write
@@ -45,7 +45,7 @@ jobs:
 
       - name: Output the Documentation URL
         run: |
-             echo "The Documentation URL is ${{steps.deployment.outputs.page_url}}">> $GITHUB_STEP_SUMMARY
+             echo "The link to the docs can be found here >>  ${{steps.deployment.outputs.page_url}}">> $GITHUB_STEP_SUMMARY
 
             
   
