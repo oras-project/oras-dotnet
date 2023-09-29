@@ -29,6 +29,6 @@ jobs:
         id: deployment
         uses: actions/upload-pages-artifact@v1
         with:
-            path: ./documentation/_site
+            path: ./documentation/_site/
             name: mydocs
   
