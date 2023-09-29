@@ -10,6 +10,9 @@ jobs:
         pages: write
         id-token: write
         contents: read
+    environment:
+        name: gh-pages
+        url : ${{ steps.deployment.outputs.url }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -23,7 +26,6 @@ jobs:
       - name: Install DocFX
         run: |
           dotnet tool update -g docfx
-          export PATH="$PATH:$HOME/.dotnet/tools"
       - name: Build Documentation
         run: |
           cd documentation
@@ -31,7 +33,6 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v2
         with:
-            # upload entire directory
             path: './documentation/_site'
             name: mydocs
       - name: Deploy to GitHub Pages
