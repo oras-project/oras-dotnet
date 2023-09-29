@@ -41,6 +41,7 @@ jobs:
         uses: actions/deploy-pages@v2
         with:
             artifact_name: mydocs
+            preview: true
 
       - name: Output the Documentation URL
         run: |
