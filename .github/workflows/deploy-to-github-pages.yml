@@ -3,6 +3,7 @@ name: Deploy DocFX Documentation
   push:
     branches:
       - testy
+      
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
