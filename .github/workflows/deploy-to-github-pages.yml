@@ -2,7 +2,7 @@ name: Deploy DocFX Documentation
 'on':
   push:
     branches:
-      - add-docs
+      - main
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
