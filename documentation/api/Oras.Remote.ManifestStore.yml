@@ -1,0 +1,1772 @@
+### YamlMime:ManagedReference
+items:
+- uid: Oras.Remote.ManifestStore
+  commentId: T:Oras.Remote.ManifestStore
+  id: ManifestStore
+  parent: Oras.Remote
+  children:
+  - Oras.Remote.ManifestStore.#ctor(Oras.Remote.Repository)
+  - Oras.Remote.ManifestStore.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - Oras.Remote.ManifestStore.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - Oras.Remote.ManifestStore.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - Oras.Remote.ManifestStore.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  - Oras.Remote.ManifestStore.GenerateDescriptor(System.Net.Http.HttpResponseMessage,Oras.Remote.RemoteReference,System.Net.Http.HttpMethod)
+  - Oras.Remote.ManifestStore.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  - Oras.Remote.ManifestStore.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  - Oras.Remote.ManifestStore.Repository
+  - Oras.Remote.ManifestStore.ResolveAsync(System.String,System.Threading.CancellationToken)
+  - Oras.Remote.ManifestStore.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  langs:
+  - csharp
+  - vb
+  name: ManifestStore
+  nameWithType: ManifestStore
+  fullName: Oras.Remote.ManifestStore
+  type: Class
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: ManifestStore
+    path: ../Oras/Remote/Repository.cs
+    startLine: 477
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  syntax:
+    content: 'public class ManifestStore : IManifestStore, IBlobStore, IStorage, IReadOnlyStorage, IFetcher, IResolver, IDeleter, IReferenceFetcher, IReferencePusher, ITagger'
+    content.vb: Public Class ManifestStore Implements IManifestStore, IBlobStore, IStorage, IReadOnlyStorage, IFetcher, IResolver, IDeleter, IReferenceFetcher, IReferencePusher, ITagger
+  inheritance:
+  - System.Object
+  implements:
+  - Oras.Interfaces.Registry.IManifestStore
+  - Oras.Interfaces.Registry.IBlobStore
+  - Oras.Interfaces.IStorage
+  - Oras.Interfaces.IReadOnlyStorage
+  - Oras.Interfaces.IFetcher
+  - Oras.Interfaces.IResolver
+  - Oras.Interfaces.IDeleter
+  - Oras.Interfaces.Registry.IReferenceFetcher
+  - Oras.Interfaces.Registry.IReferencePusher
+  - Oras.Interfaces.ITagger
+  inheritedMembers:
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.MemberwiseClone
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+- uid: Oras.Remote.ManifestStore.Repository
+  commentId: P:Oras.Remote.ManifestStore.Repository
+  id: Repository
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: Repository
+  nameWithType: ManifestStore.Repository
+  fullName: Oras.Remote.ManifestStore.Repository
+  type: Property
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: Repository
+    path: ../Oras/Remote/Repository.cs
+    startLine: 479
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  syntax:
+    content: public Repository Repository { get; set; }
+    parameters: []
+    return:
+      type: Oras.Remote.Repository
+    content.vb: Public Property Repository As Repository
+  overload: Oras.Remote.ManifestStore.Repository*
+- uid: Oras.Remote.ManifestStore.#ctor(Oras.Remote.Repository)
+  commentId: M:Oras.Remote.ManifestStore.#ctor(Oras.Remote.Repository)
+  id: '#ctor(Oras.Remote.Repository)'
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: ManifestStore(Repository)
+  nameWithType: ManifestStore.ManifestStore(Repository)
+  fullName: Oras.Remote.ManifestStore.ManifestStore(Oras.Remote.Repository)
+  type: Constructor
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: .ctor
+    path: ../Oras/Remote/Repository.cs
+    startLine: 480
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  syntax:
+    content: public ManifestStore(Repository repository)
+    parameters:
+    - id: repository
+      type: Oras.Remote.Repository
+    content.vb: Public Sub New(repository As Repository)
+  overload: Oras.Remote.ManifestStore.#ctor*
+  nameWithType.vb: ManifestStore.New(Repository)
+  fullName.vb: Oras.Remote.ManifestStore.New(Oras.Remote.Repository)
+  name.vb: New(Repository)
+- uid: Oras.Remote.ManifestStore.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  commentId: M:Oras.Remote.ManifestStore.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  id: FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: FetchAsync(Descriptor, CancellationToken)
+  nameWithType: ManifestStore.FetchAsync(Descriptor, CancellationToken)
+  fullName: Oras.Remote.ManifestStore.FetchAsync(Oras.Models.Descriptor, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: FetchAsync
+    path: ../Oras/Remote/Repository.cs
+    startLine: 494
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  summary: FetchASync fetches the content identified by the descriptor.
+  example: []
+  syntax:
+    content: public Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
+    parameters:
+    - id: target
+      type: Oras.Models.Descriptor
+      description: ''
+    - id: cancellationToken
+      type: System.Threading.CancellationToken
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task{System.IO.Stream}
+      description: ''
+    content.vb: Public Function FetchAsync(target As Descriptor, cancellationToken As CancellationToken = Nothing) As Task(Of Stream)
+  overload: Oras.Remote.ManifestStore.FetchAsync*
+  exceptions:
+  - type: Oras.Exceptions.NotFoundException
+    commentId: T:Oras.Exceptions.NotFoundException
+    description: ''
+  - type: System.Exception
+    commentId: T:System.Exception
+    description: ''
+  implements:
+  - Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+- uid: Oras.Remote.ManifestStore.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  commentId: M:Oras.Remote.ManifestStore.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  id: ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: ExistsAsync(Descriptor, CancellationToken)
+  nameWithType: ManifestStore.ExistsAsync(Descriptor, CancellationToken)
+  fullName: Oras.Remote.ManifestStore.ExistsAsync(Oras.Models.Descriptor, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: ExistsAsync
+    path: ../Oras/Remote/Repository.cs
+    startLine: 533
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  summary: ExistsAsync returns true if the described content exists.
+  example: []
+  syntax:
+    content: public Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
+    parameters:
+    - id: target
+      type: Oras.Models.Descriptor
+      description: ''
+    - id: cancellationToken
+      type: System.Threading.CancellationToken
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task{System.Boolean}
+      description: ''
+    content.vb: Public Function ExistsAsync(target As Descriptor, cancellationToken As CancellationToken = Nothing) As Task(Of Boolean)
+  overload: Oras.Remote.ManifestStore.ExistsAsync*
+  implements:
+  - Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+- uid: Oras.Remote.ManifestStore.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  commentId: M:Oras.Remote.ManifestStore.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  id: PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: PushAsync(Descriptor, Stream, CancellationToken)
+  nameWithType: ManifestStore.PushAsync(Descriptor, Stream, CancellationToken)
+  fullName: Oras.Remote.ManifestStore.PushAsync(Oras.Models.Descriptor, System.IO.Stream, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: PushAsync
+    path: ../Oras/Remote/Repository.cs
+    startLine: 554
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  summary: PushAsync pushes the content, matching the expected descriptor.
+  example: []
+  syntax:
+    content: public Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
+    parameters:
+    - id: expected
+      type: Oras.Models.Descriptor
+      description: ''
+    - id: content
+      type: System.IO.Stream
+      description: ''
+    - id: cancellationToken
+      type: System.Threading.CancellationToken
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task
+      description: ''
+    content.vb: Public Function PushAsync(expected As Descriptor, content As Stream, cancellationToken As CancellationToken = Nothing) As Task
+  overload: Oras.Remote.ManifestStore.PushAsync*
+  implements:
+  - Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+- uid: Oras.Remote.ManifestStore.ResolveAsync(System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Remote.ManifestStore.ResolveAsync(System.String,System.Threading.CancellationToken)
+  id: ResolveAsync(System.String,System.Threading.CancellationToken)
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: ResolveAsync(string, CancellationToken)
+  nameWithType: ManifestStore.ResolveAsync(string, CancellationToken)
+  fullName: Oras.Remote.ManifestStore.ResolveAsync(string, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: ResolveAsync
+    path: ../Oras/Remote/Repository.cs
+    startLine: 585
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  summary: ResolveAsync resolves the reference to a descriptor.
+  example: []
+  syntax:
+    content: public Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
+    parameters:
+    - id: reference
+      type: System.String
+      description: ''
+    - id: cancellationToken
+      type: System.Threading.CancellationToken
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task{Oras.Models.Descriptor}
+      description: ''
+    content.vb: Public Function ResolveAsync(reference As String, cancellationToken As CancellationToken = Nothing) As Task(Of Descriptor)
+  overload: Oras.Remote.ManifestStore.ResolveAsync*
+  implements:
+  - Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  nameWithType.vb: ManifestStore.ResolveAsync(String, CancellationToken)
+  fullName.vb: Oras.Remote.ManifestStore.ResolveAsync(String, System.Threading.CancellationToken)
+  name.vb: ResolveAsync(String, CancellationToken)
+- uid: Oras.Remote.ManifestStore.GenerateDescriptor(System.Net.Http.HttpResponseMessage,Oras.Remote.RemoteReference,System.Net.Http.HttpMethod)
+  commentId: M:Oras.Remote.ManifestStore.GenerateDescriptor(System.Net.Http.HttpResponseMessage,Oras.Remote.RemoteReference,System.Net.Http.HttpMethod)
+  id: GenerateDescriptor(System.Net.Http.HttpResponseMessage,Oras.Remote.RemoteReference,System.Net.Http.HttpMethod)
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: GenerateDescriptor(HttpResponseMessage, RemoteReference, HttpMethod)
+  nameWithType: ManifestStore.GenerateDescriptor(HttpResponseMessage, RemoteReference, HttpMethod)
+  fullName: Oras.Remote.ManifestStore.GenerateDescriptor(System.Net.Http.HttpResponseMessage, Oras.Remote.RemoteReference, System.Net.Http.HttpMethod)
+  type: Method
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: GenerateDescriptor
+    path: ../Oras/Remote/Repository.cs
+    startLine: 609
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  summary: GenerateDescriptor returns a descriptor generated from the response.
+  example: []
+  syntax:
+    content: public Task<Descriptor> GenerateDescriptor(HttpResponseMessage res, RemoteReference reference, HttpMethod httpMethod)
+    parameters:
+    - id: res
+      type: System.Net.Http.HttpResponseMessage
+      description: ''
+    - id: reference
+      type: Oras.Remote.RemoteReference
+      description: ''
+    - id: httpMethod
+      type: System.Net.Http.HttpMethod
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task{Oras.Models.Descriptor}
+      description: ''
+    content.vb: Public Function GenerateDescriptor(res As HttpResponseMessage, reference As RemoteReference, httpMethod As HttpMethod) As Task(Of Descriptor)
+  overload: Oras.Remote.ManifestStore.GenerateDescriptor*
+  exceptions:
+  - type: System.Exception
+    commentId: T:System.Exception
+    description: ''
+- uid: Oras.Remote.ManifestStore.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  commentId: M:Oras.Remote.ManifestStore.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  id: DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: DeleteAsync(Descriptor, CancellationToken)
+  nameWithType: ManifestStore.DeleteAsync(Descriptor, CancellationToken)
+  fullName: Oras.Remote.ManifestStore.DeleteAsync(Oras.Models.Descriptor, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: DeleteAsync
+    path: ../Oras/Remote/Repository.cs
+    startLine: 722
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  summary: DeleteAsync removes the manifest content identified by the descriptor.
+  example: []
+  syntax:
+    content: public Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
+    parameters:
+    - id: target
+      type: Oras.Models.Descriptor
+      description: ''
+    - id: cancellationToken
+      type: System.Threading.CancellationToken
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task
+      description: ''
+    content.vb: Public Function DeleteAsync(target As Descriptor, cancellationToken As CancellationToken = Nothing) As Task
+  overload: Oras.Remote.ManifestStore.DeleteAsync*
+  implements:
+  - Oras.Interfaces.IDeleter.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+- uid: Oras.Remote.ManifestStore.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Remote.ManifestStore.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  id: FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: FetchReferenceAsync(string, CancellationToken)
+  nameWithType: ManifestStore.FetchReferenceAsync(string, CancellationToken)
+  fullName: Oras.Remote.ManifestStore.FetchReferenceAsync(string, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: FetchReferenceAsync
+    path: ../Oras/Remote/Repository.cs
+    startLine: 734
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  summary: FetchReferenceAsync fetches the manifest identified by the reference.
+  example: []
+  syntax:
+    content: public Task<(Descriptor Descriptor, Stream Stream)> FetchReferenceAsync(string reference, CancellationToken cancellationToken = default)
+    parameters:
+    - id: reference
+      type: System.String
+      description: ''
+    - id: cancellationToken
+      type: System.Threading.CancellationToken
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task{System.ValueTuple{Oras.Models.Descriptor,System.IO.Stream}}
+      description: ''
+    content.vb: Public Function FetchReferenceAsync(reference As String, cancellationToken As CancellationToken = Nothing) As Task(Of (Descriptor As Descriptor, Stream As Stream))
+  overload: Oras.Remote.ManifestStore.FetchReferenceAsync*
+  implements:
+  - Oras.Interfaces.Registry.IReferenceFetcher.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  nameWithType.vb: ManifestStore.FetchReferenceAsync(String, CancellationToken)
+  fullName.vb: Oras.Remote.ManifestStore.FetchReferenceAsync(String, System.Threading.CancellationToken)
+  name.vb: FetchReferenceAsync(String, CancellationToken)
+- uid: Oras.Remote.ManifestStore.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Remote.ManifestStore.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  id: PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: PushReferenceAsync(Descriptor, Stream, string, CancellationToken)
+  nameWithType: ManifestStore.PushReferenceAsync(Descriptor, Stream, string, CancellationToken)
+  fullName: Oras.Remote.ManifestStore.PushReferenceAsync(Oras.Models.Descriptor, System.IO.Stream, string, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: PushReferenceAsync
+    path: ../Oras/Remote/Repository.cs
+    startLine: 771
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  summary: PushReferenceASync pushes the manifest with a reference tag.
+  example: []
+  syntax:
+    content: public Task PushReferenceAsync(Descriptor expected, Stream content, string reference, CancellationToken cancellationToken = default)
+    parameters:
+    - id: expected
+      type: Oras.Models.Descriptor
+      description: ''
+    - id: content
+      type: System.IO.Stream
+      description: ''
+    - id: reference
+      type: System.String
+      description: ''
+    - id: cancellationToken
+      type: System.Threading.CancellationToken
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task
+      description: ''
+    content.vb: Public Function PushReferenceAsync(expected As Descriptor, content As Stream, reference As String, cancellationToken As CancellationToken = Nothing) As Task
+  overload: Oras.Remote.ManifestStore.PushReferenceAsync*
+  implements:
+  - Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  nameWithType.vb: ManifestStore.PushReferenceAsync(Descriptor, Stream, String, CancellationToken)
+  fullName.vb: Oras.Remote.ManifestStore.PushReferenceAsync(Oras.Models.Descriptor, System.IO.Stream, String, System.Threading.CancellationToken)
+  name.vb: PushReferenceAsync(Descriptor, Stream, String, CancellationToken)
+- uid: Oras.Remote.ManifestStore.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Remote.ManifestStore.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  id: TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  parent: Oras.Remote.ManifestStore
+  langs:
+  - csharp
+  - vb
+  name: TagAsync(Descriptor, string, CancellationToken)
+  nameWithType: ManifestStore.TagAsync(Descriptor, string, CancellationToken)
+  fullName: Oras.Remote.ManifestStore.TagAsync(Oras.Models.Descriptor, string, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: Oras/Remote/Repository.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: TagAsync
+    path: ../Oras/Remote/Repository.cs
+    startLine: 785
+  assemblies:
+  - Oras
+  namespace: Oras.Remote
+  summary: TagAsync tags a manifest descriptor with a reference string.
+  example: []
+  syntax:
+    content: public Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
+    parameters:
+    - id: descriptor
+      type: Oras.Models.Descriptor
+      description: ''
+    - id: reference
+      type: System.String
+      description: ''
+    - id: cancellationToken
+      type: System.Threading.CancellationToken
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task
+      description: ''
+    content.vb: Public Function TagAsync(descriptor As Descriptor, reference As String, cancellationToken As CancellationToken = Nothing) As Task
+  overload: Oras.Remote.ManifestStore.TagAsync*
+  implements:
+  - Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  nameWithType.vb: ManifestStore.TagAsync(Descriptor, String, CancellationToken)
+  fullName.vb: Oras.Remote.ManifestStore.TagAsync(Oras.Models.Descriptor, String, System.Threading.CancellationToken)
+  name.vb: TagAsync(Descriptor, String, CancellationToken)
+references:
+- uid: Oras.Remote
+  commentId: N:Oras.Remote
+  href: Oras.html
+  name: Oras.Remote
+  nameWithType: Oras.Remote
+  fullName: Oras.Remote
+  spec.csharp:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Remote
+    name: Remote
+    href: Oras.Remote.html
+  spec.vb:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Remote
+    name: Remote
+    href: Oras.Remote.html
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: Oras.Interfaces.Registry.IManifestStore
+  commentId: T:Oras.Interfaces.Registry.IManifestStore
+  parent: Oras.Interfaces.Registry
+  href: Oras.Interfaces.Registry.IManifestStore.html
+  name: IManifestStore
+  nameWithType: IManifestStore
+  fullName: Oras.Interfaces.Registry.IManifestStore
+- uid: Oras.Interfaces.Registry.IBlobStore
+  commentId: T:Oras.Interfaces.Registry.IBlobStore
+  parent: Oras.Interfaces.Registry
+  href: Oras.Interfaces.Registry.IBlobStore.html
+  name: IBlobStore
+  nameWithType: IBlobStore
+  fullName: Oras.Interfaces.Registry.IBlobStore
+- uid: Oras.Interfaces.IStorage
+  commentId: T:Oras.Interfaces.IStorage
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IStorage.html
+  name: IStorage
+  nameWithType: IStorage
+  fullName: Oras.Interfaces.IStorage
+- uid: Oras.Interfaces.IReadOnlyStorage
+  commentId: T:Oras.Interfaces.IReadOnlyStorage
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IReadOnlyStorage.html
+  name: IReadOnlyStorage
+  nameWithType: IReadOnlyStorage
+  fullName: Oras.Interfaces.IReadOnlyStorage
+- uid: Oras.Interfaces.IFetcher
+  commentId: T:Oras.Interfaces.IFetcher
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IFetcher.html
+  name: IFetcher
+  nameWithType: IFetcher
+  fullName: Oras.Interfaces.IFetcher
+- uid: Oras.Interfaces.IResolver
+  commentId: T:Oras.Interfaces.IResolver
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IResolver.html
+  name: IResolver
+  nameWithType: IResolver
+  fullName: Oras.Interfaces.IResolver
+- uid: Oras.Interfaces.IDeleter
+  commentId: T:Oras.Interfaces.IDeleter
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IDeleter.html
+  name: IDeleter
+  nameWithType: IDeleter
+  fullName: Oras.Interfaces.IDeleter
+- uid: Oras.Interfaces.Registry.IReferenceFetcher
+  commentId: T:Oras.Interfaces.Registry.IReferenceFetcher
+  parent: Oras.Interfaces.Registry
+  href: Oras.Interfaces.Registry.IReferenceFetcher.html
+  name: IReferenceFetcher
+  nameWithType: IReferenceFetcher
+  fullName: Oras.Interfaces.Registry.IReferenceFetcher
+- uid: Oras.Interfaces.Registry.IReferencePusher
+  commentId: T:Oras.Interfaces.Registry.IReferencePusher
+  parent: Oras.Interfaces.Registry
+  href: Oras.Interfaces.Registry.IReferencePusher.html
+  name: IReferencePusher
+  nameWithType: IReferencePusher
+  fullName: Oras.Interfaces.Registry.IReferencePusher
+- uid: Oras.Interfaces.ITagger
+  commentId: T:Oras.Interfaces.ITagger
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.ITagger.html
+  name: ITagger
+  nameWithType: ITagger
+  fullName: Oras.Interfaces.ITagger
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.MemberwiseClone
+  commentId: M:System.Object.MemberwiseClone
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  name: MemberwiseClone()
+  nameWithType: object.MemberwiseClone()
+  fullName: object.MemberwiseClone()
+  nameWithType.vb: Object.MemberwiseClone()
+  fullName.vb: Object.MemberwiseClone()
+  spec.csharp:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: Oras.Interfaces.Registry
+  commentId: N:Oras.Interfaces.Registry
+  href: Oras.html
+  name: Oras.Interfaces.Registry
+  nameWithType: Oras.Interfaces.Registry
+  fullName: Oras.Interfaces.Registry
+  spec.csharp:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+  - name: .
+  - uid: Oras.Interfaces.Registry
+    name: Registry
+    href: Oras.Interfaces.Registry.html
+  spec.vb:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+  - name: .
+  - uid: Oras.Interfaces.Registry
+    name: Registry
+    href: Oras.Interfaces.Registry.html
+- uid: Oras.Interfaces
+  commentId: N:Oras.Interfaces
+  href: Oras.html
+  name: Oras.Interfaces
+  nameWithType: Oras.Interfaces
+  fullName: Oras.Interfaces
+  spec.csharp:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+  spec.vb:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+- uid: Oras.Remote.ManifestStore.Repository*
+  commentId: Overload:Oras.Remote.ManifestStore.Repository
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.Repository
+  name: Repository
+  nameWithType: ManifestStore.Repository
+  fullName: Oras.Remote.ManifestStore.Repository
+- uid: Oras.Remote.Repository
+  commentId: T:Oras.Remote.Repository
+  parent: Oras.Remote
+  href: Oras.Remote.Repository.html
+  name: Repository
+  nameWithType: Repository
+  fullName: Oras.Remote.Repository
+- uid: Oras.Remote.ManifestStore.#ctor*
+  commentId: Overload:Oras.Remote.ManifestStore.#ctor
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.#ctor(Oras.Remote.Repository)
+  name: ManifestStore
+  nameWithType: ManifestStore.ManifestStore
+  fullName: Oras.Remote.ManifestStore.ManifestStore
+  nameWithType.vb: ManifestStore.New
+  fullName.vb: Oras.Remote.ManifestStore.New
+  name.vb: New
+- uid: Oras.Exceptions.NotFoundException
+  commentId: T:Oras.Exceptions.NotFoundException
+  href: Oras.Exceptions.NotFoundException.html
+  name: NotFoundException
+  nameWithType: NotFoundException
+  fullName: Oras.Exceptions.NotFoundException
+- uid: System.Exception
+  commentId: T:System.Exception
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.exception
+  name: Exception
+  nameWithType: Exception
+  fullName: System.Exception
+- uid: Oras.Remote.ManifestStore.FetchAsync*
+  commentId: Overload:Oras.Remote.ManifestStore.FetchAsync
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  name: FetchAsync
+  nameWithType: ManifestStore.FetchAsync
+  fullName: Oras.Remote.ManifestStore.FetchAsync
+- uid: Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.IFetcher
+  isExternal: true
+  href: Oras.Interfaces.IFetcher.html#Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  name: FetchAsync(Descriptor, CancellationToken)
+  nameWithType: IFetcher.FetchAsync(Descriptor, CancellationToken)
+  fullName: Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor, System.Threading.CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+    name: FetchAsync
+    href: Oras.Interfaces.IFetcher.html#Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+    name: FetchAsync
+    href: Oras.Interfaces.IFetcher.html#Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: Oras.Models.Descriptor
+  commentId: T:Oras.Models.Descriptor
+  parent: Oras.Models
+  href: Oras.Models.Descriptor.html
+  name: Descriptor
+  nameWithType: Descriptor
+  fullName: Oras.Models.Descriptor
+- uid: System.Threading.CancellationToken
+  commentId: T:System.Threading.CancellationToken
+  parent: System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  name: CancellationToken
+  nameWithType: CancellationToken
+  fullName: System.Threading.CancellationToken
+- uid: System.Threading.Tasks.Task{System.IO.Stream}
+  commentId: T:System.Threading.Tasks.Task{System.IO.Stream}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<Stream>
+  nameWithType: Task<Stream>
+  fullName: System.Threading.Tasks.Task<System.IO.Stream>
+  nameWithType.vb: Task(Of Stream)
+  fullName.vb: System.Threading.Tasks.Task(Of System.IO.Stream)
+  name.vb: Task(Of Stream)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: System.IO.Stream
+    name: Stream
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.IO.Stream
+    name: Stream
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  - name: )
+- uid: Oras.Models
+  commentId: N:Oras.Models
+  href: Oras.html
+  name: Oras.Models
+  nameWithType: Oras.Models
+  fullName: Oras.Models
+  spec.csharp:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Models
+    name: Models
+    href: Oras.Models.html
+  spec.vb:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Models
+    name: Models
+    href: Oras.Models.html
+- uid: System.Threading
+  commentId: N:System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading
+  nameWithType: System.Threading
+  fullName: System.Threading
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+- uid: System.Threading.Tasks.Task`1
+  commentId: T:System.Threading.Tasks.Task`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<TResult>
+  nameWithType: Task<TResult>
+  fullName: System.Threading.Tasks.Task<TResult>
+  nameWithType.vb: Task(Of TResult)
+  fullName.vb: System.Threading.Tasks.Task(Of TResult)
+  name.vb: Task(Of TResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TResult
+  - name: )
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+- uid: Oras.Remote.ManifestStore.ExistsAsync*
+  commentId: Overload:Oras.Remote.ManifestStore.ExistsAsync
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  name: ExistsAsync
+  nameWithType: ManifestStore.ExistsAsync
+  fullName: Oras.Remote.ManifestStore.ExistsAsync
+- uid: Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.IReadOnlyStorage
+  isExternal: true
+  href: Oras.Interfaces.IReadOnlyStorage.html#Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  name: ExistsAsync(Descriptor, CancellationToken)
+  nameWithType: IReadOnlyStorage.ExistsAsync(Descriptor, CancellationToken)
+  fullName: Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor, System.Threading.CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+    name: ExistsAsync
+    href: Oras.Interfaces.IReadOnlyStorage.html#Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+    name: ExistsAsync
+    href: Oras.Interfaces.IReadOnlyStorage.html#Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.Threading.Tasks.Task{System.Boolean}
+  commentId: T:System.Threading.Tasks.Task{System.Boolean}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<bool>
+  nameWithType: Task<bool>
+  fullName: System.Threading.Tasks.Task<bool>
+  nameWithType.vb: Task(Of Boolean)
+  fullName.vb: System.Threading.Tasks.Task(Of Boolean)
+  name.vb: Task(Of Boolean)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: System.Boolean
+    name: bool
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.Boolean
+    name: Boolean
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: )
+- uid: Oras.Remote.ManifestStore.PushAsync*
+  commentId: Overload:Oras.Remote.ManifestStore.PushAsync
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  name: PushAsync
+  nameWithType: ManifestStore.PushAsync
+  fullName: Oras.Remote.ManifestStore.PushAsync
+- uid: Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.IStorage
+  isExternal: true
+  href: Oras.Interfaces.IStorage.html#Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  name: PushAsync(Descriptor, Stream, CancellationToken)
+  nameWithType: IStorage.PushAsync(Descriptor, Stream, CancellationToken)
+  fullName: Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor, System.IO.Stream, System.Threading.CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+    name: PushAsync
+    href: Oras.Interfaces.IStorage.html#Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.IO.Stream
+    name: Stream
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+    name: PushAsync
+    href: Oras.Interfaces.IStorage.html#Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.IO.Stream
+    name: Stream
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.IO.Stream
+  commentId: T:System.IO.Stream
+  parent: System.IO
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  name: Stream
+  nameWithType: Stream
+  fullName: System.IO.Stream
+- uid: System.Threading.Tasks.Task
+  commentId: T:System.Threading.Tasks.Task
+  parent: System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task
+  name: Task
+  nameWithType: Task
+  fullName: System.Threading.Tasks.Task
+- uid: System.IO
+  commentId: N:System.IO
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.IO
+  nameWithType: System.IO
+  fullName: System.IO
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.IO
+    name: IO
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.IO
+    name: IO
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io
+- uid: Oras.Remote.ManifestStore.ResolveAsync*
+  commentId: Overload:Oras.Remote.ManifestStore.ResolveAsync
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.ResolveAsync(System.String,System.Threading.CancellationToken)
+  name: ResolveAsync
+  nameWithType: ManifestStore.ResolveAsync
+  fullName: Oras.Remote.ManifestStore.ResolveAsync
+- uid: Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.IResolver
+  isExternal: true
+  href: Oras.Interfaces.IResolver.html#Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  name: ResolveAsync(string, CancellationToken)
+  nameWithType: IResolver.ResolveAsync(string, CancellationToken)
+  fullName: Oras.Interfaces.IResolver.ResolveAsync(string, System.Threading.CancellationToken)
+  nameWithType.vb: IResolver.ResolveAsync(String, CancellationToken)
+  fullName.vb: Oras.Interfaces.IResolver.ResolveAsync(String, System.Threading.CancellationToken)
+  name.vb: ResolveAsync(String, CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+    name: ResolveAsync
+    href: Oras.Interfaces.IResolver.html#Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+    name: ResolveAsync
+    href: Oras.Interfaces.IResolver.html#Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.Threading.Tasks.Task{Oras.Models.Descriptor}
+  commentId: T:System.Threading.Tasks.Task{Oras.Models.Descriptor}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<Descriptor>
+  nameWithType: Task<Descriptor>
+  fullName: System.Threading.Tasks.Task<Oras.Models.Descriptor>
+  nameWithType.vb: Task(Of Descriptor)
+  fullName.vb: System.Threading.Tasks.Task(Of Oras.Models.Descriptor)
+  name.vb: Task(Of Descriptor)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: )
+- uid: Oras.Remote.ManifestStore.GenerateDescriptor*
+  commentId: Overload:Oras.Remote.ManifestStore.GenerateDescriptor
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.GenerateDescriptor(System.Net.Http.HttpResponseMessage,Oras.Remote.RemoteReference,System.Net.Http.HttpMethod)
+  name: GenerateDescriptor
+  nameWithType: ManifestStore.GenerateDescriptor
+  fullName: Oras.Remote.ManifestStore.GenerateDescriptor
+- uid: System.Net.Http.HttpResponseMessage
+  commentId: T:System.Net.Http.HttpResponseMessage
+  parent: System.Net.Http
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.net.http.httpresponsemessage
+  name: HttpResponseMessage
+  nameWithType: HttpResponseMessage
+  fullName: System.Net.Http.HttpResponseMessage
+- uid: Oras.Remote.RemoteReference
+  commentId: T:Oras.Remote.RemoteReference
+  parent: Oras.Remote
+  href: Oras.Remote.RemoteReference.html
+  name: RemoteReference
+  nameWithType: RemoteReference
+  fullName: Oras.Remote.RemoteReference
+- uid: System.Net.Http.HttpMethod
+  commentId: T:System.Net.Http.HttpMethod
+  parent: System.Net.Http
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.net.http.httpmethod
+  name: HttpMethod
+  nameWithType: HttpMethod
+  fullName: System.Net.Http.HttpMethod
+- uid: System.Net.Http
+  commentId: N:System.Net.Http
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Net.Http
+  nameWithType: System.Net.Http
+  fullName: System.Net.Http
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Net
+    name: Net
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.net
+  - name: .
+  - uid: System.Net.Http
+    name: Http
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.net.http
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Net
+    name: Net
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.net
+  - name: .
+  - uid: System.Net.Http
+    name: Http
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.net.http
+- uid: Oras.Remote.ManifestStore.DeleteAsync*
+  commentId: Overload:Oras.Remote.ManifestStore.DeleteAsync
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  name: DeleteAsync
+  nameWithType: ManifestStore.DeleteAsync
+  fullName: Oras.Remote.ManifestStore.DeleteAsync
+- uid: Oras.Interfaces.IDeleter.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.IDeleter.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.IDeleter
+  isExternal: true
+  href: Oras.Interfaces.IDeleter.html#Oras.Interfaces.IDeleter.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  name: DeleteAsync(Descriptor, CancellationToken)
+  nameWithType: IDeleter.DeleteAsync(Descriptor, CancellationToken)
+  fullName: Oras.Interfaces.IDeleter.DeleteAsync(Oras.Models.Descriptor, System.Threading.CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.IDeleter.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+    name: DeleteAsync
+    href: Oras.Interfaces.IDeleter.html#Oras.Interfaces.IDeleter.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.IDeleter.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+    name: DeleteAsync
+    href: Oras.Interfaces.IDeleter.html#Oras.Interfaces.IDeleter.DeleteAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: Oras.Remote.ManifestStore.FetchReferenceAsync*
+  commentId: Overload:Oras.Remote.ManifestStore.FetchReferenceAsync
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  name: FetchReferenceAsync
+  nameWithType: ManifestStore.FetchReferenceAsync
+  fullName: Oras.Remote.ManifestStore.FetchReferenceAsync
+- uid: Oras.Interfaces.Registry.IReferenceFetcher.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.Registry.IReferenceFetcher.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.Registry.IReferenceFetcher
+  isExternal: true
+  href: Oras.Interfaces.Registry.IReferenceFetcher.html#Oras.Interfaces.Registry.IReferenceFetcher.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  name: FetchReferenceAsync(string, CancellationToken)
+  nameWithType: IReferenceFetcher.FetchReferenceAsync(string, CancellationToken)
+  fullName: Oras.Interfaces.Registry.IReferenceFetcher.FetchReferenceAsync(string, System.Threading.CancellationToken)
+  nameWithType.vb: IReferenceFetcher.FetchReferenceAsync(String, CancellationToken)
+  fullName.vb: Oras.Interfaces.Registry.IReferenceFetcher.FetchReferenceAsync(String, System.Threading.CancellationToken)
+  name.vb: FetchReferenceAsync(String, CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.Registry.IReferenceFetcher.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+    name: FetchReferenceAsync
+    href: Oras.Interfaces.Registry.IReferenceFetcher.html#Oras.Interfaces.Registry.IReferenceFetcher.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.Registry.IReferenceFetcher.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+    name: FetchReferenceAsync
+    href: Oras.Interfaces.Registry.IReferenceFetcher.html#Oras.Interfaces.Registry.IReferenceFetcher.FetchReferenceAsync(System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.Threading.Tasks.Task{System.ValueTuple{Oras.Models.Descriptor,System.IO.Stream}}
+  commentId: T:System.Threading.Tasks.Task{System.ValueTuple{Oras.Models.Descriptor,System.IO.Stream}}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<(Descriptor Descriptor, Stream Stream)>
+  nameWithType: Task<(Descriptor Descriptor, Stream Stream)>
+  fullName: System.Threading.Tasks.Task<(Oras.Models.Descriptor Descriptor, System.IO.Stream Stream)>
+  nameWithType.vb: Task(Of (Descriptor As Descriptor, Stream As Stream))
+  fullName.vb: System.Threading.Tasks.Task(Of (Descriptor As Oras.Models.Descriptor, Stream As System.IO.Stream))
+  name.vb: Task(Of (Descriptor As Descriptor, Stream As Stream))
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: " "
+  - uid: System.ValueTuple{Oras.Models.Descriptor,System.IO.Stream}.Descriptor
+    name: Descriptor
+    href: https://learn.microsoft.com/dotnet/api/system.valuetuple-oras.models.descriptor,system.io.stream-.descriptor
+  - name: ','
+  - name: " "
+  - uid: System.IO.Stream
+    name: Stream
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  - name: " "
+  - uid: System.ValueTuple{Oras.Models.Descriptor,System.IO.Stream}.Stream
+    name: Stream
+    href: https://learn.microsoft.com/dotnet/api/system.valuetuple-oras.models.descriptor,system.io.stream-.stream
+  - name: )
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - uid: System.ValueTuple{Oras.Models.Descriptor,System.IO.Stream}.Descriptor
+    name: Descriptor
+    href: https://learn.microsoft.com/dotnet/api/system.valuetuple-oras.models.descriptor,system.io.stream-.descriptor
+  - name: " "
+  - name: As
+  - name: " "
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.ValueTuple{Oras.Models.Descriptor,System.IO.Stream}.Stream
+    name: Stream
+    href: https://learn.microsoft.com/dotnet/api/system.valuetuple-oras.models.descriptor,system.io.stream-.stream
+  - name: " "
+  - name: As
+  - name: " "
+  - uid: System.IO.Stream
+    name: Stream
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  - name: )
+  - name: )
+- uid: Oras.Remote.ManifestStore.PushReferenceAsync*
+  commentId: Overload:Oras.Remote.ManifestStore.PushReferenceAsync
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  name: PushReferenceAsync
+  nameWithType: ManifestStore.PushReferenceAsync
+  fullName: Oras.Remote.ManifestStore.PushReferenceAsync
+- uid: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.Registry.IReferencePusher
+  isExternal: true
+  href: Oras.Interfaces.Registry.IReferencePusher.html#Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  name: PushReferenceAsync(Descriptor, Stream, string, CancellationToken)
+  nameWithType: IReferencePusher.PushReferenceAsync(Descriptor, Stream, string, CancellationToken)
+  fullName: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor, System.IO.Stream, string, System.Threading.CancellationToken)
+  nameWithType.vb: IReferencePusher.PushReferenceAsync(Descriptor, Stream, String, CancellationToken)
+  fullName.vb: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor, System.IO.Stream, String, System.Threading.CancellationToken)
+  name.vb: PushReferenceAsync(Descriptor, Stream, String, CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+    name: PushReferenceAsync
+    href: Oras.Interfaces.Registry.IReferencePusher.html#Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.IO.Stream
+    name: Stream
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+    name: PushReferenceAsync
+    href: Oras.Interfaces.Registry.IReferencePusher.html#Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.IO.Stream
+    name: Stream
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: Oras.Remote.ManifestStore.TagAsync*
+  commentId: Overload:Oras.Remote.ManifestStore.TagAsync
+  href: Oras.Remote.ManifestStore.html#Oras.Remote.ManifestStore.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  name: TagAsync
+  nameWithType: ManifestStore.TagAsync
+  fullName: Oras.Remote.ManifestStore.TagAsync
+- uid: Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.ITagger
+  isExternal: true
+  href: Oras.Interfaces.ITagger.html#Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  name: TagAsync(Descriptor, string, CancellationToken)
+  nameWithType: ITagger.TagAsync(Descriptor, string, CancellationToken)
+  fullName: Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor, string, System.Threading.CancellationToken)
+  nameWithType.vb: ITagger.TagAsync(Descriptor, String, CancellationToken)
+  fullName.vb: Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor, String, System.Threading.CancellationToken)
+  name.vb: TagAsync(Descriptor, String, CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+    name: TagAsync
+    href: Oras.Interfaces.ITagger.html#Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+    name: TagAsync
+    href: Oras.Interfaces.ITagger.html#Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )

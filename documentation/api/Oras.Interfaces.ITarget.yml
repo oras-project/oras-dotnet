@@ -1,0 +1,316 @@
+### YamlMime:ManagedReference
+items:
+- uid: Oras.Interfaces.ITarget
+  commentId: T:Oras.Interfaces.ITarget
+  id: ITarget
+  parent: Oras.Interfaces
+  children: []
+  langs:
+  - csharp
+  - vb
+  name: ITarget
+  nameWithType: ITarget
+  fullName: Oras.Interfaces.ITarget
+  type: Interface
+  source:
+    remote:
+      path: Oras/Interfaces/ITarget.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: ITarget
+    path: ../Oras/Interfaces/ITarget.cs
+    startLine: 5
+  assemblies:
+  - Oras
+  namespace: Oras.Interfaces
+  summary: Target is a CAS with generic tags
+  example: []
+  syntax:
+    content: 'public interface ITarget : IStorage, IReadOnlyStorage, IFetcher, ITagResolver, IResolver, ITagger'
+    content.vb: Public Interface ITarget Inherits IStorage, IReadOnlyStorage, IFetcher, ITagResolver, IResolver, ITagger
+  inheritedMembers:
+  - Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  - Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  - Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+references:
+- uid: Oras.Interfaces
+  commentId: N:Oras.Interfaces
+  href: Oras.html
+  name: Oras.Interfaces
+  nameWithType: Oras.Interfaces
+  fullName: Oras.Interfaces
+  spec.csharp:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+  spec.vb:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+- uid: Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.IStorage
+  isExternal: true
+  href: Oras.Interfaces.IStorage.html#Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  name: PushAsync(Descriptor, Stream, CancellationToken)
+  nameWithType: IStorage.PushAsync(Descriptor, Stream, CancellationToken)
+  fullName: Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor, System.IO.Stream, System.Threading.CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+    name: PushAsync
+    href: Oras.Interfaces.IStorage.html#Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.IO.Stream
+    name: Stream
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+    name: PushAsync
+    href: Oras.Interfaces.IStorage.html#Oras.Interfaces.IStorage.PushAsync(Oras.Models.Descriptor,System.IO.Stream,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.IO.Stream
+    name: Stream
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.IReadOnlyStorage
+  isExternal: true
+  href: Oras.Interfaces.IReadOnlyStorage.html#Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  name: ExistsAsync(Descriptor, CancellationToken)
+  nameWithType: IReadOnlyStorage.ExistsAsync(Descriptor, CancellationToken)
+  fullName: Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor, System.Threading.CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+    name: ExistsAsync
+    href: Oras.Interfaces.IReadOnlyStorage.html#Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+    name: ExistsAsync
+    href: Oras.Interfaces.IReadOnlyStorage.html#Oras.Interfaces.IReadOnlyStorage.ExistsAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.IFetcher
+  isExternal: true
+  href: Oras.Interfaces.IFetcher.html#Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  name: FetchAsync(Descriptor, CancellationToken)
+  nameWithType: IFetcher.FetchAsync(Descriptor, CancellationToken)
+  fullName: Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor, System.Threading.CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+    name: FetchAsync
+    href: Oras.Interfaces.IFetcher.html#Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+    name: FetchAsync
+    href: Oras.Interfaces.IFetcher.html#Oras.Interfaces.IFetcher.FetchAsync(Oras.Models.Descriptor,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.IResolver
+  isExternal: true
+  href: Oras.Interfaces.IResolver.html#Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  name: ResolveAsync(string, CancellationToken)
+  nameWithType: IResolver.ResolveAsync(string, CancellationToken)
+  fullName: Oras.Interfaces.IResolver.ResolveAsync(string, System.Threading.CancellationToken)
+  nameWithType.vb: IResolver.ResolveAsync(String, CancellationToken)
+  fullName.vb: Oras.Interfaces.IResolver.ResolveAsync(String, System.Threading.CancellationToken)
+  name.vb: ResolveAsync(String, CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+    name: ResolveAsync
+    href: Oras.Interfaces.IResolver.html#Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+    name: ResolveAsync
+    href: Oras.Interfaces.IResolver.html#Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.ITagger
+  isExternal: true
+  href: Oras.Interfaces.ITagger.html#Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  name: TagAsync(Descriptor, string, CancellationToken)
+  nameWithType: ITagger.TagAsync(Descriptor, string, CancellationToken)
+  fullName: Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor, string, System.Threading.CancellationToken)
+  nameWithType.vb: ITagger.TagAsync(Descriptor, String, CancellationToken)
+  fullName.vb: Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor, String, System.Threading.CancellationToken)
+  name.vb: TagAsync(Descriptor, String, CancellationToken)
+  spec.csharp:
+  - uid: Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+    name: TagAsync
+    href: Oras.Interfaces.ITagger.html#Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+    name: TagAsync
+    href: Oras.Interfaces.ITagger.html#Oras.Interfaces.ITagger.TagAsync(Oras.Models.Descriptor,System.String,System.Threading.CancellationToken)
+  - name: (
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: Oras.Interfaces.IStorage
+  commentId: T:Oras.Interfaces.IStorage
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IStorage.html
+  name: IStorage
+  nameWithType: IStorage
+  fullName: Oras.Interfaces.IStorage
+- uid: Oras.Interfaces.IReadOnlyStorage
+  commentId: T:Oras.Interfaces.IReadOnlyStorage
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IReadOnlyStorage.html
+  name: IReadOnlyStorage
+  nameWithType: IReadOnlyStorage
+  fullName: Oras.Interfaces.IReadOnlyStorage
+- uid: Oras.Interfaces.IFetcher
+  commentId: T:Oras.Interfaces.IFetcher
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IFetcher.html
+  name: IFetcher
+  nameWithType: IFetcher
+  fullName: Oras.Interfaces.IFetcher
+- uid: Oras.Interfaces.IResolver
+  commentId: T:Oras.Interfaces.IResolver
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IResolver.html
+  name: IResolver
+  nameWithType: IResolver
+  fullName: Oras.Interfaces.IResolver
+- uid: Oras.Interfaces.ITagger
+  commentId: T:Oras.Interfaces.ITagger
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.ITagger.html
+  name: ITagger
+  nameWithType: ITagger
+  fullName: Oras.Interfaces.ITagger

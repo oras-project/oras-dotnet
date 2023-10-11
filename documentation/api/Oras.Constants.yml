@@ -1,0 +1,30 @@
+### YamlMime:ManagedReference
+items:
+- uid: Oras.Constants
+  commentId: N:Oras.Constants
+  id: Oras.Constants
+  children:
+  - Oras.Constants.DockerMediaTypes
+  - Oras.Constants.OCIMediaTypes
+  langs:
+  - csharp
+  - vb
+  name: Oras.Constants
+  nameWithType: Oras.Constants
+  fullName: Oras.Constants
+  type: Namespace
+  assemblies:
+  - Oras
+references:
+- uid: Oras.Constants.DockerMediaTypes
+  commentId: T:Oras.Constants.DockerMediaTypes
+  href: Oras.Constants.DockerMediaTypes.html
+  name: DockerMediaTypes
+  nameWithType: DockerMediaTypes
+  fullName: Oras.Constants.DockerMediaTypes
+- uid: Oras.Constants.OCIMediaTypes
+  commentId: T:Oras.Constants.OCIMediaTypes
+  href: Oras.Constants.OCIMediaTypes.html
+  name: OCIMediaTypes
+  nameWithType: OCIMediaTypes
+  fullName: Oras.Constants.OCIMediaTypes

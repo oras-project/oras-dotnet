@@ -1,0 +1,277 @@
+### YamlMime:ManagedReference
+items:
+- uid: Oras.Interfaces.Registry.IReferencePusher
+  commentId: T:Oras.Interfaces.Registry.IReferencePusher
+  id: IReferencePusher
+  parent: Oras.Interfaces.Registry
+  children:
+  - Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  langs:
+  - csharp
+  - vb
+  name: IReferencePusher
+  nameWithType: IReferencePusher
+  fullName: Oras.Interfaces.Registry.IReferencePusher
+  type: Interface
+  source:
+    remote:
+      path: Oras/Interfaces/Registry/IReferencePusher.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: IReferencePusher
+    path: ../Oras/Interfaces/Registry/IReferencePusher.cs
+    startLine: 10
+  assemblies:
+  - Oras
+  namespace: Oras.Interfaces.Registry
+  summary: IReferencePusher provides advanced push with the tag service.
+  example: []
+  syntax:
+    content: public interface IReferencePusher
+    content.vb: Public Interface IReferencePusher
+- uid: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  id: PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.Registry.IReferencePusher
+  langs:
+  - csharp
+  - vb
+  name: PushReferenceAsync(Descriptor, Stream, string, CancellationToken)
+  nameWithType: IReferencePusher.PushReferenceAsync(Descriptor, Stream, string, CancellationToken)
+  fullName: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor, System.IO.Stream, string, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: Oras/Interfaces/Registry/IReferencePusher.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: PushReferenceAsync
+    path: ../Oras/Interfaces/Registry/IReferencePusher.cs
+    startLine: 20
+  assemblies:
+  - Oras
+  namespace: Oras.Interfaces.Registry
+  summary: PushReferenceAsync pushes the manifest with a reference tag.
+  example: []
+  syntax:
+    content: Task PushReferenceAsync(Descriptor descriptor, Stream content, string reference, CancellationToken cancellationToken = default)
+    parameters:
+    - id: descriptor
+      type: Oras.Models.Descriptor
+      description: ''
+    - id: content
+      type: System.IO.Stream
+      description: ''
+    - id: reference
+      type: System.String
+      description: ''
+    - id: cancellationToken
+      type: System.Threading.CancellationToken
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task
+      description: ''
+    content.vb: Function PushReferenceAsync(descriptor As Descriptor, content As Stream, reference As String, cancellationToken As CancellationToken = Nothing) As Task
+  overload: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync*
+  nameWithType.vb: IReferencePusher.PushReferenceAsync(Descriptor, Stream, String, CancellationToken)
+  fullName.vb: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor, System.IO.Stream, String, System.Threading.CancellationToken)
+  name.vb: PushReferenceAsync(Descriptor, Stream, String, CancellationToken)
+references:
+- uid: Oras.Interfaces.Registry
+  commentId: N:Oras.Interfaces.Registry
+  href: Oras.html
+  name: Oras.Interfaces.Registry
+  nameWithType: Oras.Interfaces.Registry
+  fullName: Oras.Interfaces.Registry
+  spec.csharp:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+  - name: .
+  - uid: Oras.Interfaces.Registry
+    name: Registry
+    href: Oras.Interfaces.Registry.html
+  spec.vb:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+  - name: .
+  - uid: Oras.Interfaces.Registry
+    name: Registry
+    href: Oras.Interfaces.Registry.html
+- uid: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync*
+  commentId: Overload:Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync
+  href: Oras.Interfaces.Registry.IReferencePusher.html#Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync(Oras.Models.Descriptor,System.IO.Stream,System.String,System.Threading.CancellationToken)
+  name: PushReferenceAsync
+  nameWithType: IReferencePusher.PushReferenceAsync
+  fullName: Oras.Interfaces.Registry.IReferencePusher.PushReferenceAsync
+- uid: Oras.Models.Descriptor
+  commentId: T:Oras.Models.Descriptor
+  parent: Oras.Models
+  href: Oras.Models.Descriptor.html
+  name: Descriptor
+  nameWithType: Descriptor
+  fullName: Oras.Models.Descriptor
+- uid: System.IO.Stream
+  commentId: T:System.IO.Stream
+  parent: System.IO
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.io.stream
+  name: Stream
+  nameWithType: Stream
+  fullName: System.IO.Stream
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.Threading.CancellationToken
+  commentId: T:System.Threading.CancellationToken
+  parent: System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  name: CancellationToken
+  nameWithType: CancellationToken
+  fullName: System.Threading.CancellationToken
+- uid: System.Threading.Tasks.Task
+  commentId: T:System.Threading.Tasks.Task
+  parent: System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task
+  name: Task
+  nameWithType: Task
+  fullName: System.Threading.Tasks.Task
+- uid: Oras.Models
+  commentId: N:Oras.Models
+  href: Oras.html
+  name: Oras.Models
+  nameWithType: Oras.Models
+  fullName: Oras.Models
+  spec.csharp:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Models
+    name: Models
+    href: Oras.Models.html
+  spec.vb:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Models
+    name: Models
+    href: Oras.Models.html
+- uid: System.IO
+  commentId: N:System.IO
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.IO
+  nameWithType: System.IO
+  fullName: System.IO
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.IO
+    name: IO
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.IO
+    name: IO
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.io
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.Threading
+  commentId: N:System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading
+  nameWithType: System.Threading
+  fullName: System.Threading
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks

@@ -1,0 +1,109 @@
+### YamlMime:ManagedReference
+items:
+- uid: Oras.Interfaces
+  commentId: N:Oras.Interfaces
+  id: Oras.Interfaces
+  children:
+  - Oras.Interfaces.IDeleter
+  - Oras.Interfaces.IFetcher
+  - Oras.Interfaces.IReadOnlyStorage
+  - Oras.Interfaces.IReadOnlyTarget
+  - Oras.Interfaces.IResolver
+  - Oras.Interfaces.IStorage
+  - Oras.Interfaces.ITagResolver
+  - Oras.Interfaces.ITagger
+  - Oras.Interfaces.ITarget
+  langs:
+  - csharp
+  - vb
+  name: Oras.Interfaces
+  nameWithType: Oras.Interfaces
+  fullName: Oras.Interfaces
+  type: Namespace
+  assemblies:
+  - Oras
+references:
+- uid: Oras.Interfaces.IDeleter
+  commentId: T:Oras.Interfaces.IDeleter
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IDeleter.html
+  name: IDeleter
+  nameWithType: IDeleter
+  fullName: Oras.Interfaces.IDeleter
+- uid: Oras.Interfaces.IFetcher
+  commentId: T:Oras.Interfaces.IFetcher
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IFetcher.html
+  name: IFetcher
+  nameWithType: IFetcher
+  fullName: Oras.Interfaces.IFetcher
+- uid: Oras.Interfaces.IReadOnlyStorage
+  commentId: T:Oras.Interfaces.IReadOnlyStorage
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IReadOnlyStorage.html
+  name: IReadOnlyStorage
+  nameWithType: IReadOnlyStorage
+  fullName: Oras.Interfaces.IReadOnlyStorage
+- uid: Oras.Interfaces.IReadOnlyTarget
+  commentId: T:Oras.Interfaces.IReadOnlyTarget
+  href: Oras.Interfaces.IReadOnlyTarget.html
+  name: IReadOnlyTarget
+  nameWithType: IReadOnlyTarget
+  fullName: Oras.Interfaces.IReadOnlyTarget
+- uid: Oras.Interfaces.IResolver
+  commentId: T:Oras.Interfaces.IResolver
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IResolver.html
+  name: IResolver
+  nameWithType: IResolver
+  fullName: Oras.Interfaces.IResolver
+- uid: Oras.Interfaces.IStorage
+  commentId: T:Oras.Interfaces.IStorage
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.IStorage.html
+  name: IStorage
+  nameWithType: IStorage
+  fullName: Oras.Interfaces.IStorage
+- uid: Oras.Interfaces.ITagger
+  commentId: T:Oras.Interfaces.ITagger
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.ITagger.html
+  name: ITagger
+  nameWithType: ITagger
+  fullName: Oras.Interfaces.ITagger
+- uid: Oras.Interfaces.ITagResolver
+  commentId: T:Oras.Interfaces.ITagResolver
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.ITagResolver.html
+  name: ITagResolver
+  nameWithType: ITagResolver
+  fullName: Oras.Interfaces.ITagResolver
+- uid: Oras.Interfaces.ITarget
+  commentId: T:Oras.Interfaces.ITarget
+  parent: Oras.Interfaces
+  href: Oras.Interfaces.ITarget.html
+  name: ITarget
+  nameWithType: ITarget
+  fullName: Oras.Interfaces.ITarget
+- uid: Oras.Interfaces
+  commentId: N:Oras.Interfaces
+  href: Oras.html
+  name: Oras.Interfaces
+  nameWithType: Oras.Interfaces
+  fullName: Oras.Interfaces
+  spec.csharp:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+  spec.vb:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html

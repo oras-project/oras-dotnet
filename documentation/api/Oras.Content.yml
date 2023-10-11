@@ -1,0 +1,23 @@
+### YamlMime:ManagedReference
+items:
+- uid: Oras.Content
+  commentId: N:Oras.Content
+  id: Oras.Content
+  children:
+  - Oras.Content.Content
+  langs:
+  - csharp
+  - vb
+  name: Oras.Content
+  nameWithType: Oras.Content
+  fullName: Oras.Content
+  type: Namespace
+  assemblies:
+  - Oras
+references:
+- uid: Oras.Content.Content
+  commentId: T:Oras.Content.Content
+  href: Oras.Content.Content.html
+  name: Content
+  nameWithType: Content
+  fullName: Oras.Content.Content
