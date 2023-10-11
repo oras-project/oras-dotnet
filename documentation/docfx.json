@@ -9,7 +9,7 @@
           "src": "../Oras"
         }
       ],
-      "dest": "api",
+      "dest": "oras-dotnet/api",
       "includePrivateMembers": false,
       "disableGitFeatures": false,
       "disableDefaultFilter": false,
