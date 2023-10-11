@@ -2,5 +2,6 @@
   href: /oras-dotnet
 - name: Documentation
   href: /oras-dotnet/api/
-  homepage: api-homepage.md
+  homepage: api-homepage.html
+
 
