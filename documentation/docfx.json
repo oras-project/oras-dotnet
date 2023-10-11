@@ -29,6 +29,11 @@
         ]
       },
       {
+        "files": "api-homepage.md",
+        "src": "./",
+        "dest":"api"
+      },
+      {
         "files": [
           "articles/**.md",
           "articles/**/toc.yml",
