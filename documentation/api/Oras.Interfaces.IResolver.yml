@@ -1,0 +1,252 @@
+### YamlMime:ManagedReference
+items:
+- uid: Oras.Interfaces.IResolver
+  commentId: T:Oras.Interfaces.IResolver
+  id: IResolver
+  parent: Oras.Interfaces
+  children:
+  - Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  langs:
+  - csharp
+  - vb
+  name: IResolver
+  nameWithType: IResolver
+  fullName: Oras.Interfaces.IResolver
+  type: Interface
+  source:
+    remote:
+      path: Oras/Interfaces/IResolver.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: IResolver
+    path: ../Oras/Interfaces/IResolver.cs
+    startLine: 9
+  assemblies:
+  - Oras
+  namespace: Oras.Interfaces
+  summary: IResolver resolves reference tags.
+  example: []
+  syntax:
+    content: public interface IResolver
+    content.vb: Public Interface IResolver
+- uid: Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  commentId: M:Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  id: ResolveAsync(System.String,System.Threading.CancellationToken)
+  parent: Oras.Interfaces.IResolver
+  langs:
+  - csharp
+  - vb
+  name: ResolveAsync(string, CancellationToken)
+  nameWithType: IResolver.ResolveAsync(string, CancellationToken)
+  fullName: Oras.Interfaces.IResolver.ResolveAsync(string, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: Oras/Interfaces/IResolver.cs
+      branch: add-docs
+      repo: https://github.com/sammychinedu2ky/oras-dotnet.git
+    id: ResolveAsync
+    path: ../Oras/Interfaces/IResolver.cs
+    startLine: 17
+  assemblies:
+  - Oras
+  namespace: Oras.Interfaces
+  summary: ResolveAsync resolves the reference to a descriptor.
+  example: []
+  syntax:
+    content: Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
+    parameters:
+    - id: reference
+      type: System.String
+      description: ''
+    - id: cancellationToken
+      type: System.Threading.CancellationToken
+      description: ''
+    return:
+      type: System.Threading.Tasks.Task{Oras.Models.Descriptor}
+      description: ''
+    content.vb: Function ResolveAsync(reference As String, cancellationToken As CancellationToken = Nothing) As Task(Of Descriptor)
+  overload: Oras.Interfaces.IResolver.ResolveAsync*
+  nameWithType.vb: IResolver.ResolveAsync(String, CancellationToken)
+  fullName.vb: Oras.Interfaces.IResolver.ResolveAsync(String, System.Threading.CancellationToken)
+  name.vb: ResolveAsync(String, CancellationToken)
+references:
+- uid: Oras.Interfaces
+  commentId: N:Oras.Interfaces
+  href: Oras.html
+  name: Oras.Interfaces
+  nameWithType: Oras.Interfaces
+  fullName: Oras.Interfaces
+  spec.csharp:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+  spec.vb:
+  - uid: Oras
+    name: Oras
+    href: Oras.html
+  - name: .
+  - uid: Oras.Interfaces
+    name: Interfaces
+    href: Oras.Interfaces.html
+- uid: Oras.Interfaces.IResolver.ResolveAsync*
+  commentId: Overload:Oras.Interfaces.IResolver.ResolveAsync
+  href: Oras.Interfaces.IResolver.html#Oras.Interfaces.IResolver.ResolveAsync(System.String,System.Threading.CancellationToken)
+  name: ResolveAsync
+  nameWithType: IResolver.ResolveAsync
+  fullName: Oras.Interfaces.IResolver.ResolveAsync
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.Threading.CancellationToken
+  commentId: T:System.Threading.CancellationToken
+  parent: System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  name: CancellationToken
+  nameWithType: CancellationToken
+  fullName: System.Threading.CancellationToken
+- uid: System.Threading.Tasks.Task{Oras.Models.Descriptor}
+  commentId: T:System.Threading.Tasks.Task{Oras.Models.Descriptor}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<Descriptor>
+  nameWithType: Task<Descriptor>
+  fullName: System.Threading.Tasks.Task<Oras.Models.Descriptor>
+  nameWithType.vb: Task(Of Descriptor)
+  fullName.vb: System.Threading.Tasks.Task(Of Oras.Models.Descriptor)
+  name.vb: Task(Of Descriptor)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+    href: Oras.Models.Descriptor.html
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.Threading
+  commentId: N:System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading
+  nameWithType: System.Threading
+  fullName: System.Threading
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+- uid: System.Threading.Tasks.Task`1
+  commentId: T:System.Threading.Tasks.Task`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<TResult>
+  nameWithType: Task<TResult>
+  fullName: System.Threading.Tasks.Task<TResult>
+  nameWithType.vb: Task(Of TResult)
+  fullName.vb: System.Threading.Tasks.Task(Of TResult)
+  name.vb: Task(Of TResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TResult
+  - name: )
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks

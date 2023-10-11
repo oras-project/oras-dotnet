@@ -1,0 +1,115 @@
+### YamlMime:TableOfContent
+items:
+- uid: Oras
+  name: Oras
+  items:
+  - uid: Oras.Copy
+    name: Copy
+- uid: Oras.Constants
+  name: Oras.Constants
+  items:
+  - uid: Oras.Constants.DockerMediaTypes
+    name: DockerMediaTypes
+  - uid: Oras.Constants.OCIMediaTypes
+    name: OCIMediaTypes
+- uid: Oras.Content
+  name: Oras.Content
+  items:
+  - uid: Oras.Content.Content
+    name: Content
+- uid: Oras.Exceptions
+  name: Oras.Exceptions
+  items:
+  - uid: Oras.Exceptions.AlreadyExistsException
+    name: AlreadyExistsException
+  - uid: Oras.Exceptions.InvalidDescriptorSizeException
+    name: InvalidDescriptorSizeException
+  - uid: Oras.Exceptions.InvalidDigestException
+    name: InvalidDigestException
+  - uid: Oras.Exceptions.InvalidReferenceException
+    name: InvalidReferenceException
+  - uid: Oras.Exceptions.MismatchedDigestException
+    name: MismatchedDigestException
+  - uid: Oras.Exceptions.MissingReferenceException
+    name: MissingReferenceException
+  - uid: Oras.Exceptions.NotFoundException
+    name: NotFoundException
+  - uid: Oras.Exceptions.SizeExceedsLimitException
+    name: SizeExceedsLimitException
+  - uid: Oras.Exceptions.UnsupportedException
+    name: UnsupportedException
+  - uid: Oras.Exceptions.UnsupportedVersionException
+    name: UnsupportedVersionException
+- uid: Oras.Interfaces
+  name: Oras.Interfaces
+  items:
+  - uid: Oras.Interfaces.IDeleter
+    name: IDeleter
+  - uid: Oras.Interfaces.IFetcher
+    name: IFetcher
+  - uid: Oras.Interfaces.IReadOnlyStorage
+    name: IReadOnlyStorage
+  - uid: Oras.Interfaces.IReadOnlyTarget
+    name: IReadOnlyTarget
+  - uid: Oras.Interfaces.IResolver
+    name: IResolver
+  - uid: Oras.Interfaces.IStorage
+    name: IStorage
+  - uid: Oras.Interfaces.ITagResolver
+    name: ITagResolver
+  - uid: Oras.Interfaces.ITagger
+    name: ITagger
+  - uid: Oras.Interfaces.ITarget
+    name: ITarget
+- uid: Oras.Interfaces.Registry
+  name: Oras.Interfaces.Registry
+  items:
+  - uid: Oras.Interfaces.Registry.IBlobStore
+    name: IBlobStore
+  - uid: Oras.Interfaces.Registry.IManifestStore
+    name: IManifestStore
+  - uid: Oras.Interfaces.Registry.IReferenceFetcher
+    name: IReferenceFetcher
+  - uid: Oras.Interfaces.Registry.IReferencePusher
+    name: IReferencePusher
+  - uid: Oras.Interfaces.Registry.IRegistry
+    name: IRegistry
+  - uid: Oras.Interfaces.Registry.IRepository
+    name: IRepository
+  - uid: Oras.Interfaces.Registry.IRepositoryOption
+    name: IRepositoryOption
+  - uid: Oras.Interfaces.Registry.ITagLister
+    name: ITagLister
+- uid: Oras.Memory
+  name: Oras.Memory
+  items:
+  - uid: Oras.Memory.MemoryTarget
+    name: MemoryTarget
+- uid: Oras.Models
+  name: Oras.Models
+  items:
+  - uid: Oras.Models.Descriptor
+    name: Descriptor
+  - uid: Oras.Models.Index
+    name: Index
+  - uid: Oras.Models.Manifest
+    name: Manifest
+  - uid: Oras.Models.Platform
+    name: Platform
+- uid: Oras.Remote
+  name: Oras.Remote
+  items:
+  - uid: Oras.Remote.ManifestStore
+    name: ManifestStore
+  - uid: Oras.Remote.Registry
+    name: Registry
+  - uid: Oras.Remote.RemoteReference
+    name: RemoteReference
+  - uid: Oras.Remote.Repository
+    name: Repository
+- uid: Oras.Remote.Auth
+  name: Oras.Remote.Auth
+  items:
+  - uid: Oras.Remote.Auth.HttpClientWithBasicAuth
+    name: HttpClientWithBasicAuth
+memberLayout: SamePage
