@@ -40,4 +40,4 @@ If you wish to start publishing OCI Artifacts right away, take a look at the [OR
 
 ## API Documentation
 
-For detailed information on how to use the Oras-dotnet library, please refer to the [API Documentation](/api).
+For detailed information on how to use the Oras-dotnet library, please refer to the [API Documentation](/oras-dotnet/api).

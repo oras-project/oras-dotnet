@@ -1,5 +1,5 @@
 name: Deploy DocFX Documentation
-'on':
+on:
   push:
     branches:
       - main
