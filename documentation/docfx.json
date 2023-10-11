@@ -3,9 +3,7 @@
     {
       "src": [
         {
-          "files": [
-            "**.csproj"
-          ],
+          "files": ["**.csproj"],
           "src": "../Oras"
         }
       ],
@@ -23,36 +21,22 @@
   "build": {
     "content": [
       {
-        "files": [
-          "api/**.yml",
-          "api/index.md"
-        ],
-        "dest": "oras-dotnet"
+        "files": ["api/**.yml", "api/index.md"]
       },
       {
-        "files": [
-          "articles/**.md",
-          "articles/**/toc.yml",
-          "toc.yml",
-          "*.md"
-        ]
-       
+        "files": ["articles/**.md", "articles/**/toc.yml", "toc.yml", "*.md"],
+        "dest" : "oras-dotnet"
       }
     ],
     "resource": [
       {
-        "files": [
-          "images/**"
-        ]
+        "files": ["images/**"]
       }
     ],
     "output": "_site",
     "globalMetadataFiles": [],
     "fileMetadataFiles": [],
-    "template": [
-      "default",
-      "modern"
-    ],
+    "template": ["default", "modern"],
     "postProcessors": [],
     "keepFileLink": false,
     "disableGitFeatures": false
