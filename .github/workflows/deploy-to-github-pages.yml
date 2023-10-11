@@ -29,6 +29,7 @@ jobs:
       - name: Build Documentation
         run: |
           cd documentation
+          docfx metadata docfx.json
           docfx build
 
       - name: Setup Pages
