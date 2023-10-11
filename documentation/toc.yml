@@ -1,5 +1,5 @@
 - name: Home
-  href: oras-dotnet/
+  href: /oras-dotnet/
 - name: Documentation
   href: api/
   homepage: api/index.md
