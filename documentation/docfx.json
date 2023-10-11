@@ -24,8 +24,7 @@
         "files": ["api/**.yml", "api/index.md"]
       },
       {
-        "files": ["articles/**.md", "articles/**/toc.yml", "toc.yml", "*.md"],
-        "dest" : "oras-dotnet/api"
+        "files": ["articles/**.md", "articles/**/toc.yml", "toc.yml", "*.md"]
       }
     ],
     "resource": [
