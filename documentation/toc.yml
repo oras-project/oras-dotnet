@@ -1,7 +1,7 @@
 - name: Home
   href: /oras-dotnet
 - name: Documentation
-  href: api
+  href: /oras-dotnet/api
   homepage: api/index.html
 
 
