@@ -9,7 +9,7 @@
           "src": "../Oras"
         }
       ],
-      "dest": "oras-dotnet/api",
+      "dest": "api",
       "includePrivateMembers": false,
       "disableGitFeatures": false,
       "disableDefaultFilter": false,
@@ -26,7 +26,8 @@
         "files": [
           "api/**.yml",
           "api/index.md"
-        ]
+        ],
+        "dest": "oras-dotnet"
       },
       {
         "files": [
