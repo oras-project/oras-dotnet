@@ -2,8 +2,9 @@
 
 > **Warning** This project is currently under initial development. APIs may and will be changed incompatibly from one commit to another.
 
-
-![ORAS](https://raw.githubusercontent.com/oras-project/oras-www/main/static/img/oras.png)
+<p align="left">
+<a href="https://oras.land/"><img src="https://oras.land/img/oras.svg" alt="banner" width="100px"></a>
+</p>
 
 ## Versioning
 
