@@ -14,7 +14,7 @@ The Open Container Initiative (OCI) defines the specifications and standards for
 
 The distribution-spec was written based on an open-source registry server originally released by the company Docker, which lives on GitHub at [distribution/distribution](https://github.com/distribution/distribution) (now a CNCF project).
 
-There are now a number of other open-source and commercial distribution-spec implementations, a list of which can be found [here](https://oras.land/oci-registries). Registries that implement the distribution-spec are referred to herein as OCI Registries.
+There are now a number of other open-source and commercial distribution-spec implementations, a list of which can be found [here](https://oras.land/docs/compatible_oci_registries/#registries-supporting-oci-artifacts). Registries that implement the distribution-spec are referred to herein as OCI Registries.
 
 ## What are OCI Artifacts?
 
