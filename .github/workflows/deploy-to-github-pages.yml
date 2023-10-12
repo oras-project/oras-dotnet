@@ -1,0 +1,53 @@
+name: Deploy DocFX Documentation
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+        name: github-pages
+        url: ${{steps.deployment.outputs.page_url}}
+    permissions:
+        id-token: write
+        pages: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 7.x
+
+      - name: Install DocFX
+        run: |
+          dotnet tool update -g docfx
+
+      - name: Build Documentation
+        run: |
+          cd documentation
+          docfx metadata docfx.json
+          docfx build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+        
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: ./documentation/_site
+          name: mydocs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+        with:
+          artifact_name: mydocs
+          preview: true
+
+      - name: Output the Documentation URL
+        run: >
+          echo "The link to the docs can be found here >> 
+          ${{steps.deployment.outputs.page_url}}">> $GITHUB_STEP_SUMMARY
