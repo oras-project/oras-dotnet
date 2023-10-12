@@ -8,7 +8,7 @@
 
 ## Versioning
 
-The `oras-dotnet` library follows [Semantic Versioning](https://semver.org/), where breaking changes are reserved for MAJOR releases, and MINOR and PATCH releases must be 100% backwards compatible.
+The ORAS .NET library follows [Semantic Versioning](https://semver.org/), where breaking changes are reserved for MAJOR releases, and MINOR and PATCH releases must be 100% backwards compatible.
 
 ## Docs
 
