@@ -12,7 +12,7 @@ The `oras-dotnet` library follows [Semantic Versioning](https://semver.org/), wh
 
 ## Docs
 
-- [oras-dotnet API Documentation](https://oras-project.github.io/oras-dotnet/api/): API Documentation for the ORAS .NET library.
+- [API Documentation](https://oras-project.github.io/oras-dotnet/api/): API Documentation for the ORAS .NET library.
 - [oras.land/client_libraries](https://oras.land/client_libraries/): Documentation for general ORAS libraries.
 - [Reviewing guide](https://github.com/oras-project/community/blob/main/REVIEWING.md): All reviewers must read the reviewing guide and agree to follow the project review guidelines.
 
