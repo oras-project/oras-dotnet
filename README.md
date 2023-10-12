@@ -2,15 +2,16 @@
 
 > **Warning** This project is currently under initial development. APIs may and will be changed incompatibly from one commit to another.
 
-![ORAS](https://github.com/oras-project/oras-www/raw/main/docs/assets/images/oras.png)
+
+![ORAS](https://raw.githubusercontent.com/oras-project/oras-www/main/static/img/oras.png)
 
 ## Versioning
 
-The ORAS .NET library follows [Semantic Versioning](https://semver.org/), where breaking changes are reserved for MAJOR releases, and MINOR and PATCH releases must be 100% backwards compatible.
+The `oras-dotnet` library follows [Semantic Versioning](https://semver.org/), where breaking changes are reserved for MAJOR releases, and MINOR and PATCH releases must be 100% backwards compatible.
 
 ## Docs
 
-- [Oras-dotnet API Documentation](https://oras-project.github.io/oras-dotnet/api/): Documentation for the Oras .NET library.
+- [oras-dotnet API Documentation](https://oras-project.github.io/oras-dotnet/api/): Documentation for the `oras-dotnet` library.
 - [oras.land/client_libraries](https://oras.land/client_libraries/): Documentation for general ORAS libraries.
 - [Reviewing guide](https://github.com/oras-project/community/blob/main/REVIEWING.md): All reviewers must read the reviewing guide and agree to follow the project review guidelines.
 
