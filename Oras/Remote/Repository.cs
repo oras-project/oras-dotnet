@@ -593,7 +593,7 @@ namespace Oras.Remote
 
             return res.StatusCode switch
             {
-                HttpStatusCode.OK => await GenerateDescriptor(res, remoteReference, req.Method),
+                HttpStatusCode.OK => await GenerateDescriptorAsync(res, remoteReference, req.Method),
                 HttpStatusCode.NotFound => throw new NotFoundException($"reference {reference} not found"),
                 _ => throw await ErrorUtility.ParseErrorResponse(res)
             };
@@ -607,7 +607,7 @@ namespace Oras.Remote
         /// <param name="httpMethod"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public async Task<Descriptor> GenerateDescriptor(HttpResponseMessage res, RemoteReference reference, HttpMethod httpMethod)
+        public async Task<Descriptor> GenerateDescriptorAsync(HttpResponseMessage res, RemoteReference reference, HttpMethod httpMethod)
         {
             string mediaType;
             try
@@ -749,7 +749,7 @@ namespace Oras.Remote
                     }
                     else
                     {
-                        desc = await GenerateDescriptor(resp, remoteReference, HttpMethod.Get);
+                        desc = await GenerateDescriptorAsync(resp, remoteReference, HttpMethod.Get);
                     }
 
                     return (desc, await resp.Content.ReadAsStreamAsync());
