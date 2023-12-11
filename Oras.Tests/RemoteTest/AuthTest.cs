@@ -33,15 +33,19 @@ namespace Oras.Tests.RemoteTest
             var password = "test_password";
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
-                var res = new HttpResponseMessage();
-                res.RequestMessage = req;
-                if (req.Method != HttpMethod.Get && req.RequestUri.AbsolutePath == $"/")
+                var res = new HttpResponseMessage
+                {
+                    RequestMessage = req
+                };
+             
+                if (req.Method != HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/")
                 {
                     res.StatusCode = HttpStatusCode.NotFound;
                     return res;
                 }
+
                 var authHeader = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
-                if (req.Headers.Authorization.ToString() != authHeader)
+                if (req.Headers.Authorization?.ToString() != authHeader)
                 {
                     res.Headers.Add("WWW-Authenticate", "Basic realm=\"test\"");
                     res.StatusCode = HttpStatusCode.Unauthorized;

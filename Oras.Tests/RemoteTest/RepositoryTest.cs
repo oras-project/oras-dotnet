@@ -529,13 +529,13 @@ namespace Oras.Tests.RemoteTest
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
                 if (req.Method == HttpMethod.Get &&
-                    req.RequestUri.AbsolutePath == "/v2/test/manifests/" + blobDesc.Digest)
+                    req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + blobDesc.Digest)
                 {
                     return new HttpResponseMessage(HttpStatusCode.Found);
                 }
 
                 if (req.Method == HttpMethod.Get &&
-                    req.RequestUri.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
+                    req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
                 {
                     if (req.Headers.TryGetValues("Accept", out var values) &&
                         !values.Contains(OCIMediaTypes.ImageIndex))
@@ -549,8 +549,8 @@ namespace Oras.Tests.RemoteTest
                     return res;
                 }
 
-                if (req.Method == HttpMethod.Put && req.RequestUri.AbsolutePath == "/v2/test/manifests/" + reference
-                    || req.RequestUri.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
+                if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + reference
+                    || req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
 
                 {
                     if (req.Headers.TryGetValues("Content-Type", out var values) &&
@@ -559,7 +559,7 @@ namespace Oras.Tests.RemoteTest
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
 
-                    gotIndex = req.Content.ReadAsByteArrayAsync().Result;
+                    gotIndex = req.Content?.ReadAsByteArrayAsync().Result;
                     res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
@@ -600,7 +600,7 @@ namespace Oras.Tests.RemoteTest
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
-                if (req.Method == HttpMethod.Put && req.RequestUri.AbsolutePath == "/v2/test/manifests/" + reference)
+                if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + reference)
                 {
                     if (req.Headers.TryGetValues("Content-Type", out var values) &&
                         !values.Contains(OCIMediaTypes.ImageIndex))
@@ -608,7 +608,7 @@ namespace Oras.Tests.RemoteTest
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
 
-                    gotIndex = req.Content.ReadAsByteArrayAsync().Result;
+                    gotIndex = req.Content?.ReadAsByteArrayAsync().Result;
                     res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
@@ -657,13 +657,13 @@ namespace Oras.Tests.RemoteTest
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
                 }
 
-                if (req.RequestUri.AbsolutePath == "/v2/test/manifests/" + blobDesc.Digest)
+                if (req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + blobDesc.Digest)
                 {
                     return new HttpResponseMessage(HttpStatusCode.NotFound);
                 }
 
-                if (req.RequestUri.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest
-                    || req.RequestUri.AbsolutePath == "/v2/test/manifests/" + reference)
+                if (req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest
+                    || req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + reference)
                 {
                     if (req.Headers.TryGetValues("Accept", out var values) &&
                         !values.Contains(OCIMediaTypes.ImageIndex))
@@ -740,7 +740,7 @@ namespace Oras.Tests.RemoteTest
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
                 if (req.Method != HttpMethod.Get ||
-                    req.RequestUri.AbsolutePath != "/v2/test/tags/list"
+                    req.RequestUri?.AbsolutePath != "/v2/test/tags/list"
                    )
                 {
                     return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -752,7 +752,7 @@ namespace Oras.Tests.RemoteTest
                     var n = int.Parse(Regex.Match(q, @"(?<=n=)\d+").Value);
                     if (n != 4) throw new Exception();
                 }
-                catch (Exception e)
+                catch
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
@@ -792,7 +792,7 @@ namespace Oras.Tests.RemoteTest
             var cancellationToken = new CancellationToken();
 
             var index = 0;
-            await repo.TagsAsync("", async (string[] got) =>
+            await repo.TagsAsync("", (string[] got) =>
             {
                 if (index > 2)
                 {
@@ -828,7 +828,7 @@ namespace Oras.Tests.RemoteTest
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
                 }
 
-                if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     res.Content = new ByteArrayContent(blob);
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
@@ -875,15 +875,14 @@ namespace Oras.Tests.RemoteTest
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
                 }
 
-                if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     if (seekable)
                     {
                         res.Headers.AcceptRanges.Add("bytes");
                     }
 
-                    IEnumerable<string> rangeHeader;
-                    if (req.Headers.TryGetValues("Range", out rangeHeader))
+                    if (req.Headers.TryGetValues("Range", out IEnumerable<string>? rangeHeader))
                     {
                     }
 
@@ -898,15 +897,12 @@ namespace Oras.Tests.RemoteTest
                     }
 
 
-                    long start = 0, end = 0;
-                    try
+                    long start = -1, end = -1;
+                    var hv = req.Headers?.Range?.Ranges?.FirstOrDefault();
+                    if (hv != null && hv.From.HasValue && hv.To.HasValue)
                     {
-                        start = req.Headers.Range.Ranges.First().From.Value;
-                        end = req.Headers.Range.Ranges.First().To.Value;
-                    }
-                    catch (Exception e)
-                    {
-                        return new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable);
+                        start = hv.From.Value;
+                        end = hv.To.Value;
                     }
 
                     if (start < 0 || start > end || start >= blobDesc.Size)
@@ -979,7 +975,7 @@ namespace Oras.Tests.RemoteTest
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
                 }
 
-                if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     if (req.Headers.TryGetValues("Range", out var rangeHeader))
                     {
@@ -1025,14 +1021,14 @@ namespace Oras.Tests.RemoteTest
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
-                if (req.Method == HttpMethod.Post && req.RequestUri.AbsolutePath == $"/v2/test/blobs/uploads/")
+                if (req.Method == HttpMethod.Post && req.RequestUri?.AbsolutePath == $"/v2/test/blobs/uploads/")
                 {
                     res.StatusCode = HttpStatusCode.Accepted;
                     res.Headers.Add("Location", "/v2/test/blobs/uploads/" + uuid);
                     return res;
                 }
 
-                if (req.Method == HttpMethod.Put && req.RequestUri.AbsolutePath == "/v2/test/blobs/uploads/" + uuid)
+                if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == "/v2/test/blobs/uploads/" + uuid)
                 {
                     if (req.Headers.TryGetValues("Content-Type", out var contentType) &&
                         contentType.FirstOrDefault() != "application/octet-stream")
@@ -1045,7 +1041,6 @@ namespace Oras.Tests.RemoteTest
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
 
-                    var buf = new byte[req.Content.Headers.ContentLength.Value];
                     // read content into buffer
                     var stream = req.Content!.ReadAsStream(cancellationToken);
                     stream.Read(gotBlob);
@@ -1096,7 +1091,7 @@ namespace Oras.Tests.RemoteTest
                     return res;
                 }
 
-                if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
                     res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
@@ -1142,7 +1137,7 @@ namespace Oras.Tests.RemoteTest
                     return res;
                 }
 
-                if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     blobDeleted = true;
                     res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
@@ -1167,7 +1162,7 @@ namespace Oras.Tests.RemoteTest
                 Digest = CalculateDigest(content),
                 Size = content.Length
             };
-            Assert.ThrowsAsync<NotFoundException>(async () => await store.DeleteAsync(contentDesc, cancellationToken));
+            await Assert.ThrowsAsync<NotFoundException>(async () => await store.DeleteAsync(contentDesc, cancellationToken));
         }
 
         /// <summary>
@@ -1184,7 +1179,6 @@ namespace Oras.Tests.RemoteTest
                 Digest = CalculateDigest(blob),
                 Size = blob.Length
             };
-            var reference = "foobar";
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var res = new HttpResponseMessage();
@@ -1195,7 +1189,7 @@ namespace Oras.Tests.RemoteTest
                     return res;
                 }
 
-                if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
                     res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
@@ -1243,7 +1237,6 @@ namespace Oras.Tests.RemoteTest
                 Digest = CalculateDigest(blob),
                 Size = blob.Length
             };
-            var reference = "foobar";
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var res = new HttpResponseMessage();
@@ -1254,7 +1247,7 @@ namespace Oras.Tests.RemoteTest
                     return res;
                 }
 
-                if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     res.Content = new ByteArrayContent(blob);
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
@@ -1322,15 +1315,14 @@ namespace Oras.Tests.RemoteTest
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
                 }
 
-                if (req.RequestUri.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     if (seekable)
                     {
                         res.Headers.AcceptRanges.Add("bytes");
                     }
 
-                    IEnumerable<string> rangeHeader;
-                    if (req.Headers.TryGetValues("Range", out rangeHeader))
+                    if (req.Headers.TryGetValues("Range", out IEnumerable<string>? rangeHeader))
                     {
                     }
 
@@ -1345,16 +1337,8 @@ namespace Oras.Tests.RemoteTest
                     }
 
 
-                    long start = 0;
-                    try
-                    {
-                        start = req.Headers.Range.Ranges.First().From.Value;
-                    }
-                    catch (Exception e)
-                    {
-                        return new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable);
-                    }
-
+                    var hv = req.Headers?.Range?.Ranges?.FirstOrDefault();
+                    var start = (hv != null && hv.To.HasValue) ? hv.To.Value : -1;
                     if (start < 0 || start >= blobDesc.Size)
                     {
                         return new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable);
@@ -1410,7 +1394,7 @@ namespace Oras.Tests.RemoteTest
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
         [Fact]
-        public async Task GenerateBlobDescriptor_WithVariousDockerContentDigestHeaders()
+        public void GenerateBlobDescriptor_WithVariousDockerContentDigestHeaders()
         {
             var reference = new RemoteReference()
             {
@@ -1436,7 +1420,7 @@ namespace Oras.Tests.RemoteTest
                         resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
                         resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
                     }
-                    if (!resp.Content.Headers.TryGetValues(dockerContentDigestHeader, out IEnumerable<string> values))
+                    if (!resp.Content.Headers.TryGetValues(dockerContentDigestHeader, out IEnumerable<string>? values))
                     {
                         resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
                         resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
@@ -1459,7 +1443,7 @@ namespace Oras.Tests.RemoteTest
                     {
                         d = reference.Digest();
                     }
-                    catch (Exception e)
+                    catch
                     {
                         throw new Exception(
                             $"[Blob.{method}] {testName}; got digest from a tag reference unexpectedly");
@@ -1522,9 +1506,9 @@ namespace Oras.Tests.RemoteTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
                 }
-                if (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string> values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -1552,7 +1536,7 @@ namespace Oras.Tests.RemoteTest
                 Digest = CalculateDigest(content),
                 Size = content.Length
             };
-            Assert.ThrowsAsync<NotFoundException>(async () => await store.FetchAsync(contentDesc, cancellationToken));
+            await Assert.ThrowsAsync<NotFoundException>(async () => await store.FetchAsync(contentDesc, cancellationToken));
         }
 
         /// <summary>
@@ -1569,22 +1553,25 @@ namespace Oras.Tests.RemoteTest
                 Digest = CalculateDigest(manifest),
                 Size = manifest.Length
             };
-            byte[] gotManifest = null;
+            byte[]? gotManifest = null;
 
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
-                if (req.Method == HttpMethod.Put && req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+                if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string> values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
 
-                    var buf = new byte[req.Content.Headers.ContentLength.Value];
-                    req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
-                    gotManifest = buf;
+                    if (req.Content?.Headers?.ContentLength != null)
+                    {
+                        var buf = new byte[req.Content.Headers.ContentLength.Value];
+                        req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
+                        gotManifest = buf;
+                    }
                     res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
@@ -1625,9 +1612,9 @@ namespace Oras.Tests.RemoteTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
                 }
-                if (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string> values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -1680,15 +1667,15 @@ namespace Oras.Tests.RemoteTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
                 }
-                if (req.Method == HttpMethod.Delete && req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+                if (req.Method == HttpMethod.Delete && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
                 {
                     manifestDeleted = true;
                     res.StatusCode = HttpStatusCode.Accepted;
                     return res;
                 }
-                if (req.Method == HttpMethod.Get && req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+                if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string> values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -1714,7 +1701,7 @@ namespace Oras.Tests.RemoteTest
                 Digest = CalculateDigest(content),
                 Size = content.Length
             };
-            Assert.ThrowsAsync<NotFoundException>(async () => await store.DeleteAsync(contentDesc, cancellationToken));
+            await Assert.ThrowsAsync<NotFoundException>(async () => await store.DeleteAsync(contentDesc, cancellationToken));
         }
 
         /// <summary>
@@ -1740,9 +1727,9 @@ namespace Oras.Tests.RemoteTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
                 }
-                if (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}" || req.RequestUri.AbsolutePath == $"/v2/test/manifests/{reference}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}" || req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string> values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -1778,7 +1765,8 @@ namespace Oras.Tests.RemoteTest
                 Digest = CalculateDigest(content),
                 Size = content.Length
             };
-            Assert.ThrowsAsync<NotFoundException>(async () => await store.ResolveAsync(contentDesc.Digest, cancellationToken));
+            
+            await Assert.ThrowsAsync<NotFoundException>(async () => await store.ResolveAsync(contentDesc.Digest, cancellationToken));
 
         }
 
@@ -1805,9 +1793,9 @@ namespace Oras.Tests.RemoteTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
                 }
-                if (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}" || req.RequestUri.AbsolutePath == $"/v2/test/manifests/{reference}")
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}" || req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string> values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -1888,14 +1876,14 @@ namespace Oras.Tests.RemoteTest
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
-                if (req.Method == HttpMethod.Get && req.RequestUri.AbsolutePath == $"/v2/test/manifests/{blobDesc.Digest}")
+                if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{blobDesc.Digest}")
                 {
                     res.StatusCode = HttpStatusCode.NotFound;
                     return res;
                 }
-                if (req.Method == HttpMethod.Get && req.RequestUri.AbsolutePath == $"/v2/test/manifests/{indexDesc.Digest}")
+                if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{indexDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string> values) && !values.Contains(indexDesc.MediaType))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(indexDesc.MediaType))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -1904,16 +1892,20 @@ namespace Oras.Tests.RemoteTest
                     res.Content.Headers.Add("Content-Type", new string[] { indexDesc.MediaType });
                     return res;
                 }
-                if (req.Method == HttpMethod.Put && req.RequestUri.AbsolutePath == $"/v2/test/manifests/{reference}" || req.RequestUri.AbsolutePath == $"/v2/test/manifests/{indexDesc.Digest}")
+                if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}" || req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{indexDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string> values) && !values.Contains(indexDesc.MediaType))
+                    if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values) && !values.Contains(indexDesc.MediaType))
                     {
                         res.StatusCode = HttpStatusCode.BadRequest;
                         return res;
                     }
-                    var buf = new byte[req.Content.Headers.ContentLength.Value];
-                    req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
-                    gotIndex = buf;
+                    if (req.Content?.Headers?.ContentLength != null)
+                    {
+                        var buf = new byte[req.Content.Headers.ContentLength.Value];
+                        req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
+                        gotIndex = buf;
+                    }
+
                     res.Content.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
@@ -1929,7 +1921,7 @@ namespace Oras.Tests.RemoteTest
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
 
-            Assert.ThrowsAnyAsync<Exception>(async () => await store.TagAsync(blobDesc, reference, cancellationToken));
+            await Assert.ThrowsAnyAsync<Exception>(async () => await store.TagAsync(blobDesc, reference, cancellationToken));
 
             await store.TagAsync(indexDesc, reference, cancellationToken);
             Assert.Equal(index, gotIndex);
@@ -1961,16 +1953,21 @@ namespace Oras.Tests.RemoteTest
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
 
-                if (req.Method == HttpMethod.Put && req.RequestUri.AbsolutePath == $"/v2/test/manifests/{reference}")
+                if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
                 {
-                    if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string> values) && !values.Contains(indexDesc.MediaType))
+                    if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values) && !values.Contains(indexDesc.MediaType))
                     {
                         res.StatusCode = HttpStatusCode.BadRequest;
                         return res;
                     }
-                    var buf = new byte[req.Content.Headers.ContentLength.Value];
-                    req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
-                    gotIndex = buf;
+
+                    if (req.Content?.Headers?.ContentLength != null)
+                    {
+                        var buf = new byte[req.Content.Headers.ContentLength.Value];
+                        req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
+                        gotIndex = buf;
+                    }
+
                     res.Content.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
@@ -1992,7 +1989,7 @@ namespace Oras.Tests.RemoteTest
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task Test_CopyFromRepositoryToMemory()
+        public async Task CopyFromRepositoryToMemory()
         {
             var exampleManifest = @"hello world"u8.ToArray();
 
@@ -2002,35 +1999,35 @@ namespace Oras.Tests.RemoteTest
                 Digest = CalculateSHA256DigestFromBytes(exampleManifest),
                 Size = exampleManifest.Length
             };
-            var exampleTag = "latest";
             var exampleUploadUUid = new Guid().ToString();
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
-                var p = req.RequestUri.AbsolutePath;
-                var m = req.Method;
-                if (p.Contains("/blobs/uploads/") && m == HttpMethod.Post)
+                var path = req.RequestUri != null? req.RequestUri.AbsolutePath : string.Empty;
+                var method = req.Method;
+                if (path.Contains("/blobs/uploads/") && method == HttpMethod.Post)
                 {
                     res.StatusCode = HttpStatusCode.Accepted;
-                    res.Headers.Location = new Uri($"{p}/{exampleUploadUUid}");
-                    res.Content.Headers.ContentType.MediaType = OCIMediaTypes.ImageManifest;
+                    res.Headers.Location = new Uri($"{path}/{exampleUploadUUid}");
+                    res.Headers.Add("Content-Type", OCIMediaTypes.ImageManifest);
                     return res;
                 }
-                if (p.Contains("/blobs/uploads/" + exampleUploadUUid) && m == HttpMethod.Get)
+                if (path.Contains("/blobs/uploads/" + exampleUploadUUid) && method == HttpMethod.Get)
                 {
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
                 }
 
-                if (p.Contains("/manifests/latest") && m == HttpMethod.Put)
+                if (path.Contains("/manifests/latest") && method == HttpMethod.Put)
                 {
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
                 }
-                if (p.Contains("/manifests/" + exampleManifestDescriptor.Digest) || p.Contains("/manifests/latest") && m == HttpMethod.Head)
+
+                if (path.Contains("/manifests/" + exampleManifestDescriptor.Digest) || path.Contains("/manifests/latest") && method == HttpMethod.Head)
                 {
-                    if (m == HttpMethod.Get)
+                    if (method == HttpMethod.Get)
                     {
                         res.Content = new ByteArrayContent(exampleManifest);
                         res.Content.Headers.Add("Content-Type", OCIMediaTypes.Descriptor);
@@ -2045,27 +2042,26 @@ namespace Oras.Tests.RemoteTest
                 }
 
 
-                if (p.Contains("/blobs/") && (m == HttpMethod.Get || m == HttpMethod.Head))
+                if (path.Contains("/blobs/") && (method == HttpMethod.Get || method == HttpMethod.Head))
                 {
-                    var arr = p.Split("/");
+                    var arr = path.Split("/");
                     var digest = arr[arr.Length - 1];
-                    Descriptor desc = null;
-                    byte[] content = null;
+
 
                     if (digest == exampleManifestDescriptor.Digest)
                     {
-                        desc = exampleManifestDescriptor;
-                        content = exampleManifest;
+                        byte[] content = exampleManifest;
+                        res.Content = new ByteArrayContent(content);
+                        res.Content.Headers.Add("Content-Type", exampleManifestDescriptor.MediaType);
+                        res.Content.Headers.Add("Content-Length", content.Length.ToString());
                     }
 
-                    res.Content = new ByteArrayContent(content);
-                    res.Content.Headers.Add("Content-Type", desc.MediaType);
                     res.Content.Headers.Add("Docker-Content-Digest", digest);
-                    res.Content.Headers.Add("Content-Length", content.Length.ToString());
+
                     return res;
                 }
 
-                if (p.Contains("/manifests/") && m == HttpMethod.Put)
+                if (path.Contains("/manifests/") && method == HttpMethod.Put)
                 {
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
@@ -2083,6 +2079,7 @@ namespace Oras.Tests.RemoteTest
             var desc = await Copy.CopyAsync(src, tagName, dst, tagName, CancellationToken.None);
         }
 
+        [Fact]
         public async Task ManifestStore_generateDescriptorWithVariousDockerContentDigestHeaders()
         {
             var reference = new RemoteReference()
@@ -2122,7 +2119,7 @@ namespace Oras.Tests.RemoteTest
                     var err = false;
                     try
                     {
-                        s.GenerateDescriptor(resp, reference, method);
+                        await s.GenerateDescriptor(resp, reference, method);
                     }
                     catch (Exception e)
                     {
