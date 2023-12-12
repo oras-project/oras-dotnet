@@ -73,7 +73,7 @@ namespace Oras.Remote
         /// <param name="name"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<IRepository> Repository(string name, CancellationToken cancellationToken)
+        public Task<IRepository> Repository(string name, CancellationToken cancellationToken)
         {
             var reference = new RemoteReference
             {
@@ -81,7 +81,7 @@ namespace Oras.Remote
                 Repository = name,
             };
             
-            return new Repository(reference, this);
+            return Task.FromResult<IRepository>(new Repository(reference, this));
         }
 
 

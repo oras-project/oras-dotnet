@@ -16,7 +16,7 @@ namespace Oras.Tests
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task Copy_CanCopyBetweenMemoryTargetsWithTaggedNode()
+        public async Task CanCopyBetweenMemoryTargetsWithTaggedNode()
         {
             var sourceTarget = new MemoryTarget();
             var cancellationToken = new CancellationToken();
@@ -79,7 +79,7 @@ namespace Oras.Tests
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task CopyGraph_CanCopyBetweenMemoryTargets()
+        public async Task CanCopyBetweenMemoryTargets()
         {
             var sourceTarget = new MemoryTarget();
             var cancellationToken = new CancellationToken();

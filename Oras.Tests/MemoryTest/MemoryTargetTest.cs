@@ -17,7 +17,7 @@ namespace Oras.Tests.MemoryTest
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task MemoryTarget_CanStoreData()
+        public async Task CanStoreData()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             string hash = CalculateDigest(content);
@@ -52,7 +52,7 @@ namespace Oras.Tests.MemoryTest
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task MemoryTarget_ThrowsNotFoundExceptionWhenDataIsNotAvailable()
+        public async Task ThrowsNotFoundExceptionWhenDataIsNotAvailable()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
 
@@ -79,7 +79,7 @@ namespace Oras.Tests.MemoryTest
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task MemoryTarget_ThrowsAlreadyExistsExceptionWhenSameDataIsPushedTwice()
+        public async Task ThrowsAlreadyExistsExceptionWhenSameDataIsPushedTwice()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             string hash = CalculateDigest(content);
@@ -102,7 +102,7 @@ namespace Oras.Tests.MemoryTest
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task MemoryTarget_ThrowsAnErrorWhenABadPushOccurs()
+        public async Task ThrowsAnErrorWhenABadPushOccurs()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             var wrongContent = Encoding.UTF8.GetBytes("Hello World!");
@@ -129,7 +129,7 @@ namespace Oras.Tests.MemoryTest
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task MemoryTarget_ThrowsMismatchedDigestExceptionWhenHashInDigestIsDifferentFromContentDigest()
+        public async Task ThrowsMismatchedDigestExceptionWhenHashInDigestIsDifferentFromContentDigest()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             var wrongContent = Encoding.UTF8.GetBytes("Hello Danny");
@@ -155,7 +155,7 @@ namespace Oras.Tests.MemoryTest
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task MemoryTarget_ShouldReturnPredecessorsOfNodes()
+        public async Task ShouldReturnPredecessorsOfNodes()
         {
             var memoryTarget = new MemoryTarget();
             var cancellationToken = new CancellationToken();

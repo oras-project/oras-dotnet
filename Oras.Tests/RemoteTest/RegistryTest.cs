@@ -23,11 +23,11 @@ namespace Oras.Tests.RemoteTest
         }
 
         /// <summary>
-        /// TestRegistry_PingAsync tests the PingAsync method of the Registry class.
+        /// PingAsync tests the PingAsync method of the Registry class.
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task TestRegistry_PingAsync()
+        public async Task PingAsync()
         {
             var V2Implemented = true;
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -35,7 +35,7 @@ namespace Oras.Tests.RemoteTest
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
 
-                if (req.Method != HttpMethod.Get && req.RequestUri.AbsolutePath == $"/v2/")
+                if (req.Method != HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/")
                 {
                     res.StatusCode = HttpStatusCode.NotFound;
                     return res;
@@ -63,12 +63,12 @@ namespace Oras.Tests.RemoteTest
         }
 
         /// <summary>
-        /// TestRegistry_Repositories tests the ListRepositoriesAsync method of the Registry class.
+        /// Repositories tests the ListRepositoriesAsync method of the Registry class.
         /// </summary>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
         [Fact]
-        public async Task TestRegistry_Repositories()
+        public async Task Repositories()
         {
             var repoSet = new List<List<string>>()
             {
@@ -81,7 +81,7 @@ namespace Oras.Tests.RemoteTest
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
                 if (req.Method != HttpMethod.Get ||
-                    req.RequestUri.AbsolutePath != "/v2/_catalog"
+                    req.RequestUri?.AbsolutePath != "/v2/_catalog"
                    )
                 {
                     return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -93,7 +93,7 @@ namespace Oras.Tests.RemoteTest
                     var n = int.Parse(Regex.Match(q, @"(?<=n=)\d+").Value);
                     if (n != 4) throw new Exception();
                 }
-                catch (Exception e)
+                catch
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
@@ -134,7 +134,7 @@ namespace Oras.Tests.RemoteTest
 
 
             var index = 0;
-            await registry.Repositories("", async (string[] got) =>
+            await registry.Repositories("", (string[] got) =>
             {
                 if (index > 2)
                 {
