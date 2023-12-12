@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.1</TargetFramework>
 		<PackageId>OrasProject.Oras</PackageId>
-		<Version>1.0.0-alpha.1</Version>
+		<Version>0.0.0-dev</Version>
 		<RepositoryUrl>https://github.com/oras-project/oras-dotnet</RepositoryUrl>
 		<PackageProjectUrl>https://oras.land</PackageProjectUrl>
 		<Description>Oras package provides API to work with OCI</Description>

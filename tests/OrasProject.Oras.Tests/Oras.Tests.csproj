@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Oras\Oras.csproj" />
+    <ProjectReference Include="..\..\src\OrasProject.Oras\OrasProject.Oras.csproj" />
   </ItemGroup>
 
 </Project>
