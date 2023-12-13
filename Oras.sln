@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Oras.Tests", "Oras.Tests\Or
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Oras", "Oras\Oras.csproj", "{547F152F-6F4D-4E5A-AD3A-C3BC5CDCFD27}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{D198F8D2-3EBC-4ADE-A794-FF64800AAC25}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ManifestFetch", "samples\ManifestFetch\ManifestFetch.csproj", "{B82210C7-222B-4632-AE38-7BAEA6185654}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,8 +25,18 @@ Global
 		{547F152F-6F4D-4E5A-AD3A-C3BC5CDCFD27}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{547F152F-6F4D-4E5A-AD3A-C3BC5CDCFD27}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{547F152F-6F4D-4E5A-AD3A-C3BC5CDCFD27}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B82210C7-222B-4632-AE38-7BAEA6185654}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B82210C7-222B-4632-AE38-7BAEA6185654}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B82210C7-222B-4632-AE38-7BAEA6185654}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B82210C7-222B-4632-AE38-7BAEA6185654}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B82210C7-222B-4632-AE38-7BAEA6185654} = {D198F8D2-3EBC-4ADE-A794-FF64800AAC25}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1407904E-69B8-43DD-8CE5-67ACBCAB2416}
 	EndGlobalSection
 EndGlobal
