@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -61,7 +62,7 @@ namespace Oras.Remote
         public Repository(string reference)
         {
             RemoteReference = RemoteReference.ParseReference(reference);
-            HttpClient = new HttpClient();
+            HttpClient = new HttpClient(new RegistryMessageHandler());
             HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
         }
         
@@ -340,7 +341,7 @@ namespace Oras.Remote
         /// <exception cref="NotImplementedException"></exception>
         internal static void VerifyContentDigest(HttpResponseMessage resp, string expected)
         {
-            if (!resp.Content.Headers.TryGetValues("Docker-Content-Digest", out var digestValues)) return;
+            if (!resp.Headers.TryGetValues("Docker-Content-Digest", out var digestValues)) return;
             var digestStr = digestValues.FirstOrDefault();
             if (string.IsNullOrEmpty(digestStr))
             {
@@ -628,18 +629,10 @@ namespace Oras.Remote
             }
 
             // 3. Validate Client Reference
-            string refDigest = string.Empty;
-            try
-            {
-                refDigest = reference.Digest();
-            }
-            catch (Exception)
-            {
-            }
-
+            string refDigest = reference.IsDigest() ? reference.Digest() : string.Empty;
 
             // 4. Validate Server Digest (if present)
-            res.Content.Headers.TryGetValues("Docker-Content-Digest", out IEnumerable<string> serverHeaderDigest);
+            res.Headers.TryGetValues("Docker-Content-Digest", out IEnumerable<string> serverHeaderDigest);
             var serverDigest = serverHeaderDigest?.First();
             if (!string.IsNullOrEmpty(serverDigest))
             {

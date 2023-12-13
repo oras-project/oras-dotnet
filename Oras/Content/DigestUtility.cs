@@ -1,5 +1,6 @@
 ﻿using Oras.Exceptions;
 using System;
+using System.Net.NetworkInformation;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
@@ -12,6 +13,7 @@ namespace Oras.Content
         /// digestRegexp checks the digest.
         /// </summary>
         private const string digestRegexp = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
+        private static readonly Regex digestRegex = new Regex(digestRegexp, RegexOptions.Compiled);
 
         /// <summary>
         /// ParseDigest verifies the digest header and throws an exception if it is invalid.
@@ -19,12 +21,17 @@ namespace Oras.Content
         /// <param name="digest"></param>
         internal static string ParseDigest(string digest)
         {
-            if (!Regex.IsMatch(digest, digestRegexp))
+            if (IsDigest(digest) == false)
             {
                 throw new InvalidDigestException($"Invalid digest: {digest}");
             }
 
             return digest;
+        }
+
+        internal static bool IsDigest(string digest)
+        {
+            return !String.IsNullOrEmpty(digest) && digestRegex.IsMatch(digest);            
         }
 
         /// <summary>

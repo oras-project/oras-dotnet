@@ -196,5 +196,15 @@ namespace Oras.Remote
             return Reference;
         }
 
+        /// <summary>
+        /// IsDigest returns if the reference part is of a Digest form
+        /// </summary>
+        /// <returns></returns>
+        public bool IsDigest()
+        {
+            return DigestUtility.IsDigest(Reference);  
+        }
+
+
     }
 }
