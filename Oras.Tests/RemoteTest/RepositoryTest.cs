@@ -171,7 +171,7 @@ namespace Oras.Tests.RemoteTest
                 {
                     resp.Content = new ByteArrayContent(blob);
                     resp.Content.Headers.Add("Content-Type", "application/octet-stream");
-                    resp.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    resp.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     return resp;
                 }
 
@@ -186,7 +186,7 @@ namespace Oras.Tests.RemoteTest
 
                     resp.Content = new ByteArrayContent(index);
                     resp.Content.Headers.Add("Content-Type", indexDesc.MediaType);
-                    resp.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    resp.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     return resp;
 
                 }
@@ -263,7 +263,7 @@ namespace Oras.Tests.RemoteTest
 
                     var stream = req.Content!.ReadAsStream(cancellationToken);
                     stream.Read(gotBlob);
-                    resp.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    resp.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     resp.StatusCode = HttpStatusCode.Created;
                     return resp;
 
@@ -281,7 +281,7 @@ namespace Oras.Tests.RemoteTest
 
                     var stream = req.Content!.ReadAsStream(cancellationToken);
                     stream.Read(gotIndex);
-                    resp.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    resp.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     resp.StatusCode = HttpStatusCode.Created;
                     return resp;
                 }
@@ -335,7 +335,7 @@ namespace Oras.Tests.RemoteTest
                 {
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
                     res.Content.Headers.Add("Content-Length", blobDesc.Size.ToString());
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     return res;
                 }
 
@@ -349,7 +349,7 @@ namespace Oras.Tests.RemoteTest
 
                     res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
                     res.Content.Headers.Add("Content-Length", indexDesc.Size.ToString());
-                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     return res;
                 }
 
@@ -400,7 +400,7 @@ namespace Oras.Tests.RemoteTest
                 if (req.RequestUri!.AbsolutePath == "/v2/test/blobs/" + blobDesc.Digest)
                 {
                     blobDeleted = true;
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     res.StatusCode = HttpStatusCode.Accepted;
                     return res;
                 }
@@ -474,7 +474,7 @@ namespace Oras.Tests.RemoteTest
 
                     res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
                     res.Content.Headers.Add("Content-Length", indexDesc.Size.ToString());
-                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     return res;
                 }
 
@@ -545,7 +545,7 @@ namespace Oras.Tests.RemoteTest
 
                     res.Content = new ByteArrayContent(index);
                     res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
-                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     return res;
                 }
 
@@ -560,7 +560,7 @@ namespace Oras.Tests.RemoteTest
                     }
 
                     gotIndex = req.Content?.ReadAsByteArrayAsync().Result;
-                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
                 }
@@ -609,7 +609,7 @@ namespace Oras.Tests.RemoteTest
                     }
 
                     gotIndex = req.Content?.ReadAsByteArrayAsync().Result;
-                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
                 }
@@ -673,7 +673,7 @@ namespace Oras.Tests.RemoteTest
 
                     res.Content = new ByteArrayContent(index);
                     res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
-                    res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     return res;
                 }
 
@@ -832,7 +832,7 @@ namespace Oras.Tests.RemoteTest
                 {
                     res.Content = new ByteArrayContent(blob);
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     return res;
                 }
 
@@ -892,7 +892,7 @@ namespace Oras.Tests.RemoteTest
                         res.StatusCode = HttpStatusCode.OK;
                         res.Content = new ByteArrayContent(blob);
                         res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                        res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                        res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                         return res;
                     }
 
@@ -919,12 +919,12 @@ namespace Oras.Tests.RemoteTest
                     res.StatusCode = HttpStatusCode.PartialContent;
                     res.Content = new ByteArrayContent(blob[(int)start..(int)end]);
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     return res;
                 }
 
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                 res.StatusCode = HttpStatusCode.NotFound;
                 return res;
             };
@@ -983,7 +983,7 @@ namespace Oras.Tests.RemoteTest
                     }
 
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     return res;
                 }
 
@@ -1094,7 +1094,7 @@ namespace Oras.Tests.RemoteTest
                 if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     res.Content.Headers.Add("Content-Length", blobDesc.Size.ToString());
                     return res;
                 }
@@ -1140,7 +1140,7 @@ namespace Oras.Tests.RemoteTest
                 if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     blobDeleted = true;
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     res.StatusCode = HttpStatusCode.Accepted;
                     return res;
                 }
@@ -1192,7 +1192,7 @@ namespace Oras.Tests.RemoteTest
                 if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
                 {
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     res.Content.Headers.Add("Content-Length", blobDesc.Size.ToString());
                     return res;
                 }
@@ -1251,7 +1251,7 @@ namespace Oras.Tests.RemoteTest
                 {
                     res.Content = new ByteArrayContent(blob);
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     return res;
                 }
 
@@ -1332,7 +1332,7 @@ namespace Oras.Tests.RemoteTest
                         res.StatusCode = HttpStatusCode.OK;
                         res.Content = new ByteArrayContent(blob);
                         res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                        res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                        res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                         return res;
                     }
 
@@ -1347,12 +1347,12 @@ namespace Oras.Tests.RemoteTest
                     res.StatusCode = HttpStatusCode.PartialContent;
                     res.Content = new ByteArrayContent(blob[(int)start..]);
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                     return res;
                 }
 
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
                 res.StatusCode = HttpStatusCode.NotFound;
                 return res;
             };
@@ -1418,12 +1418,12 @@ namespace Oras.Tests.RemoteTest
                     {
                         resp.Content = new ByteArrayContent(theAmazingBanClan);
                         resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                        resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                        resp.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
                     }
-                    if (!resp.Content.Headers.TryGetValues(dockerContentDigestHeader, out IEnumerable<string>? values))
+                    if (!resp.Headers.TryGetValues(dockerContentDigestHeader, out IEnumerable<string>? values))
                     {
                         resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                        resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                        resp.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
                         resp.RequestMessage = new HttpRequestMessage()
                         {
                             Method = method
@@ -1514,7 +1514,7 @@ namespace Oras.Tests.RemoteTest
                     }
                     res.Content = new ByteArrayContent(manifest);
                     res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
-                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                    res.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
                     return res;
                 }
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -1572,7 +1572,7 @@ namespace Oras.Tests.RemoteTest
                         req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
                         gotManifest = buf;
                     }
-                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                    res.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
                 }
@@ -1618,7 +1618,7 @@ namespace Oras.Tests.RemoteTest
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
-                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                    res.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
                     res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
                     res.Content.Headers.Add("Content-Length", new string[] { manifest.Length.ToString() });
                     return res;
@@ -1680,7 +1680,7 @@ namespace Oras.Tests.RemoteTest
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
                     res.Content = new ByteArrayContent(manifest);
-                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                    res.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
                     res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
                     return res;
                 }
@@ -1733,7 +1733,7 @@ namespace Oras.Tests.RemoteTest
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
-                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                    res.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
                     res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
                     res.Content.Headers.Add("Content-Length", new string[] { manifest.Length.ToString() });
                     return res;
@@ -1800,7 +1800,7 @@ namespace Oras.Tests.RemoteTest
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
                     res.Content = new ByteArrayContent(manifest);
-                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                    res.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
                     res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
                     return res;
                 }
@@ -1888,7 +1888,7 @@ namespace Oras.Tests.RemoteTest
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
                     res.Content = new ByteArrayContent(index);
-                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
+                    res.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
                     res.Content.Headers.Add("Content-Type", new string[] { indexDesc.MediaType });
                     return res;
                 }
@@ -1906,7 +1906,7 @@ namespace Oras.Tests.RemoteTest
                         gotIndex = buf;
                     }
 
-                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
+                    res.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
                 }
@@ -1968,7 +1968,7 @@ namespace Oras.Tests.RemoteTest
                         gotIndex = buf;
                     }
 
-                    res.Content.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
+                    res.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
                 }
@@ -2031,12 +2031,12 @@ namespace Oras.Tests.RemoteTest
                     {
                         res.Content = new ByteArrayContent(exampleManifest);
                         res.Content.Headers.Add("Content-Type", OCIMediaTypes.Descriptor);
-                        res.Content.Headers.Add("Docker-Content-Digest", exampleManifestDescriptor.Digest);
+                        res.Headers.Add("Docker-Content-Digest", exampleManifestDescriptor.Digest);
                         res.Content.Headers.Add("Content-Length", exampleManifest.Length.ToString());
                         return res;
                     }
                     res.Content.Headers.Add("Content-Type", OCIMediaTypes.Descriptor);
-                    res.Content.Headers.Add("Docker-Content-Digest", exampleManifestDescriptor.Digest);
+                    res.Headers.Add("Docker-Content-Digest", exampleManifestDescriptor.Digest);
                     res.Content.Headers.Add("Content-Length", exampleManifest.Length.ToString());
                     return res;
                 }
@@ -2056,7 +2056,7 @@ namespace Oras.Tests.RemoteTest
                         res.Content.Headers.Add("Content-Length", content.Length.ToString());
                     }
 
-                    res.Content.Headers.Add("Docker-Content-Digest", digest);
+                    res.Headers.Add("Docker-Content-Digest", digest);
 
                     return res;
                 }
@@ -2102,12 +2102,12 @@ namespace Oras.Tests.RemoteTest
                     {
                         resp.Content = new ByteArrayContent(theAmazingBanClan);
                         resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                        resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                        resp.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
                     }
                     else
                     {
                         resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                        resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                        resp.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
                     }
                     resp.RequestMessage = new HttpRequestMessage()
                     {
