@@ -12,14 +12,14 @@ namespace Oras.Remote.Auth
     {
         public HttpClientWithBasicAuth(string username, string password)
         {
-            DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
+            this.AddUserAgent();
             DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic",
                 Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
         }
 
         public HttpClientWithBasicAuth(string username, string password, HttpMessageHandler handler) : base(handler)
         {
-            DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
+            this.AddUserAgent();
             DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic",
                 Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
         }

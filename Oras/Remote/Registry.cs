@@ -28,7 +28,7 @@ namespace Oras.Remote
             reference.ValidateRegistry();
             RemoteReference = reference;
             HttpClient = new HttpClient();
-            HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
+            HttpClient.AddUserAgent();
         }
 
         public Registry(string name, HttpClient httpClient)
