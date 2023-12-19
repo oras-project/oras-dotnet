@@ -11,7 +11,8 @@ namespace Oras.Content
         /// <summary>
         /// digestRegexp checks the digest.
         /// </summary>
-        private const string digestRegexp = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
+        private const string digestRegexPattern = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
+        static Regex digestRegex = new Regex(digestRegexPattern, RegexOptions.Compiled);
 
         /// <summary>
         /// ParseDigest verifies the digest header and throws an exception if it is invalid.
@@ -19,7 +20,7 @@ namespace Oras.Content
         /// <param name="digest"></param>
         internal static string ParseDigest(string digest)
         {
-            if (!Regex.IsMatch(digest, digestRegexp))
+            if (!digestRegex.IsMatch(digest))
             {
                 throw new InvalidDigestException($"Invalid digest: {digest}");
             }

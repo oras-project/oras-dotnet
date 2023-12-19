@@ -1,6 +1,7 @@
 ﻿using Oras.Content;
 using Oras.Exceptions;
 using System;
+using System.Net.NetworkInformation;
 using System.Text.RegularExpressions;
 
 namespace Oras.Remote
@@ -36,14 +37,18 @@ namespace Oras.Remote
         /// - https://github.com/distribution/distribution/blob/v2.7.1/reference/regexp.go#L53
         /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
         /// </summary>
-        private const string repositoryRegexp = @"^[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*)*$";
+        private const string repositoryRegexPattern = @"^[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*)*$";
+
+        private static Regex repositoryRegex = new Regex(repositoryRegexPattern, RegexOptions.Compiled);
 
         /// <summary>
         /// tagRegexp checks the tag name.
         /// The docker and OCI spec have the same regular expression.
         /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
         /// </summary>
-        private const string tagRegexp = @"^[\w][\w.-]{0,127}$";
+        private const string tagRegexPattern = @"^[\w][\w.-]{0,127}$";
+
+        private static Regex tagRegex = new Regex(tagRegexPattern, RegexOptions.Compiled);
 
         public static RemoteReference ParseReference(string artifact)
         {
@@ -124,7 +129,7 @@ namespace Oras.Remote
         /// <returns></returns>
         public void ValidateRepository()
         {
-            if (!Regex.IsMatch(Repository, repositoryRegexp))
+            if (!repositoryRegex.IsMatch(Repository))
             {
                 throw new InvalidReferenceException("Invalid Respository");
             }
@@ -146,7 +151,7 @@ namespace Oras.Remote
 
         public void ValidateReferenceAsTag()
         {
-            if (!Regex.IsMatch(Reference, tagRegexp))
+            if (!tagRegex.IsMatch(Reference))
             {
                 throw new InvalidReferenceException("Invalid Tag");
             }
