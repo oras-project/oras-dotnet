@@ -134,6 +134,17 @@ namespace OrasProject.Oras.Tests.RemoteTest
             return new HttpClient(moqHandler.Object);
         }
 
+        private HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
+        {
+            var moqHandler = new Mock<DelegatingHandler>();
+            moqHandler.Protected().Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()
+            ).Returns(func);
+            return new HttpClient(moqHandler.Object);
+        }
+
         /// <summary>
         /// Repository_FetchAsync tests the FetchAsync method of the Repository.
         /// </summary>
@@ -188,7 +199,6 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     resp.Content.Headers.Add("Content-Type", indexDesc.MediaType);
                     resp.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     return resp;
-
                 }
 
                 resp.StatusCode = HttpStatusCode.NotFound;
@@ -521,10 +531,10 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 MediaType = OCIMediaTypes.ImageIndex,
                 Size = index.Length
             };
-            var gotIndex = new byte[indexDesc.Size];
+            byte[]? gotIndex = null;
             var reference = "foobar";
 
-            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
@@ -559,7 +569,10 @@ namespace OrasProject.Oras.Tests.RemoteTest
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
 
-                    gotIndex = req.Content?.ReadAsByteArrayAsync().Result;
+                    if (req.Content != null)
+                    {
+                        gotIndex = await req.Content.ReadAsByteArrayAsync(cancellationToken);
+                    }
                     res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
@@ -593,10 +606,10 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 MediaType = OCIMediaTypes.ImageIndex,
                 Size = index.Length
             };
-            var gotIndex = new byte[indexDesc.Size];
+            byte[]? gotIndex = null;
             var reference = "foobar";
 
-            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
@@ -608,7 +621,10 @@ namespace OrasProject.Oras.Tests.RemoteTest
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
 
-                    gotIndex = req.Content?.ReadAsByteArrayAsync().Result;
+                    if (req.Content != null)
+                    {
+                        gotIndex = await req.Content.ReadAsByteArrayAsync();
+                    }
                     res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
                     res.StatusCode = HttpStatusCode.Created;
                     return res;
@@ -1555,7 +1571,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
             byte[]? gotManifest = null;
 
-            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
@@ -1569,7 +1585,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     if (req.Content?.Headers?.ContentLength != null)
                     {
                         var buf = new byte[req.Content.Headers.ContentLength.Value];
-                        req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
+                        (await req.Content.ReadAsByteArrayAsync()).CopyTo(buf, 0);
                         gotManifest = buf;
                     }
                     res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
@@ -1872,7 +1888,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var gotIndex = new byte[index.Length];
             var reference = "foobar";
 
-            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
@@ -1902,7 +1918,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     if (req.Content?.Headers?.ContentLength != null)
                     {
                         var buf = new byte[req.Content.Headers.ContentLength.Value];
-                        req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
+                       (await req.Content.ReadAsByteArrayAsync()).CopyTo(buf, 0);
                         gotIndex = buf;
                     }
 
@@ -1948,7 +1964,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var gotIndex = new byte[index.Length];
             var reference = "foobar";
 
-            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
@@ -1964,7 +1980,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     if (req.Content?.Headers?.ContentLength != null)
                     {
                         var buf = new byte[req.Content.Headers.ContentLength.Value];
-                        req.Content.ReadAsByteArrayAsync().Result.CopyTo(buf, 0);
+                        (await req.Content.ReadAsByteArrayAsync()).CopyTo(buf, 0);
                         gotIndex = buf;
                     }
 
