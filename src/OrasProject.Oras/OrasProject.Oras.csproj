@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>netstandard2.1</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 		<PackageId>OrasProject.Oras</PackageId>
 		<Version>0.0.0-dev</Version>
 		<RepositoryUrl>https://github.com/oras-project/oras-dotnet</RepositoryUrl>
@@ -9,6 +9,7 @@
 		<PackageTags>OCI, ORAS, Registry, Container, Image, Artifacts</PackageTags>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<OutputType>Library</OutputType>
 	</PropertyGroup>
 	<ItemGroup>
 		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
@@ -16,10 +17,9 @@
 		</AssemblyAttribute>
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="System.Text.Json" Version="7.0.2" />
+		<PackageReference Include="System.Text.Json" Version="8.0.0" />
 	</ItemGroup>
 	<ItemGroup>
-    	<None Include="README.md" Pack="true" PackagePath="/"/>
+    	<None Include="README.md" Pack="true" PackagePath="/" />
   	</ItemGroup>
 </Project>
-
