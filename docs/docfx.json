@@ -6,7 +6,7 @@
           "files": [
             "**.csproj"
           ],
-          "src": "../Oras"
+          "src": "../src/OrasProject.Oras"
         }
       ],
       "dest": "api",

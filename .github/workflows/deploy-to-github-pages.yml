@@ -7,11 +7,11 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     environment:
-        name: github-pages
-        url: ${{steps.deployment.outputs.page_url}}
+      name: github-pages
+      url: ${{steps.deployment.outputs.page_url}}
     permissions:
-        id-token: write
-        pages: write
+      id-token: write
+      pages: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -27,17 +27,17 @@ jobs:
 
       - name: Build Documentation
         run: |
-          cd documentation
+          cd docs
           docfx metadata docfx.json
           docfx build
 
       - name: Setup Pages
         uses: actions/configure-pages@v3
-        
+
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v2
         with:
-          path: ./documentation/_site
+          path: ./docs/_site
           name: mydocs
 
       - name: Deploy to GitHub Pages
