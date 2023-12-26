@@ -1,13 +1,13 @@
-﻿using Oras.Interfaces;
-using Oras.Models;
+﻿using OrasProject.Oras.Interfaces;
+using OrasProject.Oras.Models;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static Oras.Content.Content;
+using static OrasProject.Oras.Content.Content;
 
-namespace Oras.Memory
+namespace OrasProject.Oras.Memory
 {
     internal class MemoryGraph
     {

@@ -1,8 +1,8 @@
-﻿using Oras.Constants;
-using Oras.Models;
+﻿using OrasProject.Oras.Models;
+using OrasProject.Oras.Constants;
 using System.Linq;
 
-namespace Oras.Remote
+namespace OrasProject.Oras.Remote
 {
     internal static class ManifestUtility
     {

@@ -1,4 +1,4 @@
-﻿namespace Oras.Interfaces
+﻿namespace OrasProject.Oras.Interfaces
 {
     /// <summary>
     /// Target is a CAS with generic tags

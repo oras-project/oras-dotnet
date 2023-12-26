@@ -1,7 +1,7 @@
-﻿using Oras.Constants;
-using Oras.Exceptions;
-using Oras.Interfaces;
-using Oras.Models;
+﻿using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Interfaces;
+using OrasProject.Oras.Models;
+using OrasProject.Oras.Constants;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,9 +9,9 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Index = Oras.Models.Index;
+using Index = OrasProject.Oras.Models.Index;
 
-namespace Oras.Content
+namespace OrasProject.Oras.Content
 {
     public static class Content
     {
@@ -55,7 +55,7 @@ namespace Oras.Content
         /// <param name="desc"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public static async Task<Byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
+        public static async Task<byte[]> FetchAllAsync(IFetcher fetcher, Descriptor desc, CancellationToken cancellationToken)
         {
             var stream = await fetcher.FetchAsync(desc, cancellationToken);
             return await ReadAllAsync(stream, desc);

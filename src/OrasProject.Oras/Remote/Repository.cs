@@ -1,7 +1,7 @@
-﻿using Oras.Content;
-using Oras.Exceptions;
-using Oras.Interfaces.Registry;
-using Oras.Models;
+﻿using OrasProject.Oras.Content;
+using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Interfaces.Registry;
+using OrasProject.Oras.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,7 +13,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using static System.Web.HttpUtility;
-namespace Oras.Remote
+namespace OrasProject.Oras.Remote
 {
 
     /// <summary>

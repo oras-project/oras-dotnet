@@ -1,14 +1,14 @@
-﻿using Oras.Constants;
-using Oras.Exceptions;
-using Oras.Memory;
-using Oras.Models;
+﻿using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Memory;
+using OrasProject.Oras.Models;
+using OrasProject.Oras.Constants;
 using System.Text;
 using System.Text.Json;
 using Xunit;
-using static Oras.Content.Content;
-using Index = Oras.Models.Index;
+using static OrasProject.Oras.Content.Content;
+using Index = OrasProject.Oras.Models.Index;
 
-namespace Oras.Tests.MemoryTest
+namespace OrasProject.Oras.Tests.MemoryTest
 {
     public class MemoryTargetTest
     {

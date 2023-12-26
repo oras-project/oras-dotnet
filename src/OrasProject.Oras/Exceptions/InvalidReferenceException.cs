@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Oras.Exceptions
+namespace OrasProject.Oras.Exceptions
 {
     /// <summary>
     /// InvalidReferenceException is thrown when the reference is invlid

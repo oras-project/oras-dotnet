@@ -1,4 +1,4 @@
-﻿namespace Oras.Constants
+﻿namespace OrasProject.Oras.Constants
 {
     public static class OCIMediaTypes
     {

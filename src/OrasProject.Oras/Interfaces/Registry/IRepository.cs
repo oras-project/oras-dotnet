@@ -1,4 +1,4 @@
-﻿namespace Oras.Interfaces.Registry
+﻿namespace OrasProject.Oras.Interfaces.Registry
 {
     /// <summary>
     /// Repository is an ORAS target and an union of the blob and the manifest CASs.

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Oras.Exceptions
+namespace OrasProject.Oras.Exceptions
 {
     /// <summary>
     /// SizeExceedsLimitException is thrown when a size exceeds the limit.

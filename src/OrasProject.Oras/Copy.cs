@@ -1,11 +1,11 @@
-﻿using Oras.Interfaces;
-using Oras.Models;
+﻿using OrasProject.Oras.Interfaces;
+using OrasProject.Oras.Models;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using static Oras.Content.Content;
+using static OrasProject.Oras.Content.Content;
 
-namespace Oras
+namespace OrasProject.Oras
 {
     public class Copy
     {

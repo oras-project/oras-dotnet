@@ -1,9 +1,9 @@
-﻿using Oras.Exceptions;
+﻿using OrasProject.Oras.Exceptions;
 using System;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
-namespace Oras.Content
+namespace OrasProject.Oras.Content
 {
     internal static class DigestUtility
     {

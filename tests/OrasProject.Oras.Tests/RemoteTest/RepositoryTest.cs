@@ -1,10 +1,11 @@
 ﻿using Moq;
 using Moq.Protected;
-using Oras.Constants;
-using Oras.Exceptions;
-using Oras.Memory;
-using Oras.Models;
-using Oras.Remote;
+using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Memory;
+using OrasProject.Oras.Models;
+using OrasProject.Oras.Remote;
+using OrasProject.Oras;
+using OrasProject.Oras.Constants;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Net;
@@ -14,10 +15,10 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 using Xunit;
-using static Oras.Content.Content;
-using static Oras.Content.DigestUtility;
+using static OrasProject.Oras.Content.Content;
+using static OrasProject.Oras.Content.DigestUtility;
 
-namespace Oras.Tests.RemoteTest
+namespace OrasProject.Oras.Tests.RemoteTest
 {
     public class RepositoryTest
     {

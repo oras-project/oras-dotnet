@@ -1,9 +1,9 @@
-﻿using Oras.Models;
+﻿using OrasProject.Oras.Models;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Oras.Interfaces
+namespace OrasProject.Oras.Interfaces
 {
     /// <summary>
     /// IStorage represents a content-addressable storage (CAS) where contents are accessed via Descriptors.

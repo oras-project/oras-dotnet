@@ -1,4 +1,4 @@
-﻿namespace Oras.Remote
+﻿namespace OrasProject.Oras.Remote
 {
 
     internal static class URLUtiliity

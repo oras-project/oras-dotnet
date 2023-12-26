@@ -1,10 +1,10 @@
-﻿using Oras.Content;
-using Oras.Exceptions;
+﻿using OrasProject.Oras.Content;
+using OrasProject.Oras.Exceptions;
 using System;
 using System.Net.NetworkInformation;
 using System.Text.RegularExpressions;
 
-namespace Oras.Remote
+namespace OrasProject.Oras.Remote
 {
     public class RemoteReference
     {

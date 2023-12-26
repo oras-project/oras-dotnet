@@ -2,7 +2,7 @@
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace Oras.Remote
+namespace OrasProject.Oras.Remote
 {
     internal class ErrorUtility
     {

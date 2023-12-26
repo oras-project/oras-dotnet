@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Oras.Exceptions
+namespace OrasProject.Oras.Exceptions
 {
     /// <summary>
     /// MissingReferenceException is thrown when a reference is missing.

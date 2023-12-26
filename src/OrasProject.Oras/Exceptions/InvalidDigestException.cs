@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Oras.Exceptions
+namespace OrasProject.Oras.Exceptions
 {
     /// <summary>
     /// InvalidDigestException is thrown when a digest is invalid.

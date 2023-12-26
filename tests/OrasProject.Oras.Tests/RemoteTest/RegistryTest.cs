@@ -1,12 +1,12 @@
 ﻿using Moq;
 using Moq.Protected;
-using Oras.Remote;
+using OrasProject.Oras.Remote;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Xunit;
 
-namespace Oras.Tests.RemoteTest
+namespace OrasProject.Oras.Tests.RemoteTest
 {
     public class RegistryTest
     {
@@ -52,7 +52,7 @@ namespace Oras.Tests.RemoteTest
                     return res;
                 }
             };
-            var registry = new Oras.Remote.Registry("localhost:5000");
+            var registry = new OrasProject.Oras.Remote.Registry("localhost:5000");
             registry.PlainHTTP = true;
             registry.HttpClient = CustomClient(func);
             var cancellationToken = new CancellationToken();
@@ -125,7 +125,7 @@ namespace Oras.Tests.RemoteTest
 
             };
 
-            var registry = new Oras.Remote.Registry("localhost:5000");
+            var registry = new OrasProject.Oras.Remote.Registry("localhost:5000");
             registry.PlainHTTP = true;
             registry.HttpClient = CustomClient(func);
             var cancellationToken = new CancellationToken();
