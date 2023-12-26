@@ -1,8 +1,8 @@
-﻿using Oras.Models;
+﻿using OrasProject.Oras.Models;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Oras.Interfaces
+namespace OrasProject.Oras.Interfaces
 {
     /// <summary>
     /// IReadOnlyStorage represents a read-only Storage.

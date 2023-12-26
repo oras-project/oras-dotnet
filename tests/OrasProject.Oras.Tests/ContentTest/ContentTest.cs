@@ -1,8 +1,8 @@
 ﻿using System.Text;
 using Xunit;
-using static Oras.Content.Content;
+using static OrasProject.Oras.Content.Content;
 
-namespace Oras.Tests.ContentTest
+namespace OrasProject.Oras.Tests.ContentTest
 {
     public class CalculateDigest
     {

@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Net.Http;
 
-namespace Oras.Remote
+namespace OrasProject.Oras.Remote
 {
     internal class LinkUtility
     {

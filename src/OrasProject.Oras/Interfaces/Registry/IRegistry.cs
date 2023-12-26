@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Oras.Interfaces.Registry
+namespace OrasProject.Oras.Interfaces.Registry
 {
     public interface IRegistry
     {

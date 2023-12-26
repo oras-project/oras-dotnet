@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Oras.Exceptions
+namespace OrasProject.Oras.Exceptions
 {
     /// <summary>
     /// UnsupportedException is thrown when a feature is not supported.

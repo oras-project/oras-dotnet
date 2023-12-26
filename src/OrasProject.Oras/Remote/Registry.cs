@@ -1,5 +1,5 @@
-﻿using Oras.Exceptions;
-using Oras.Interfaces.Registry;
+﻿using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Interfaces.Registry;
 using System;
 using System.Net;
 using System.Net.Http;
@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using static System.Web.HttpUtility;
 
-namespace Oras.Remote
+namespace OrasProject.Oras.Remote
 {
     public class Registry : IRegistry, IRepositoryOption
     {

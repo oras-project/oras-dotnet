@@ -1,9 +1,9 @@
-﻿using Oras.Models;
+﻿using OrasProject.Oras.Models;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Oras.Interfaces.Registry
+namespace OrasProject.Oras.Interfaces.Registry
 {
     /// <summary>
     /// IReferencePusher provides advanced push with the tag service.

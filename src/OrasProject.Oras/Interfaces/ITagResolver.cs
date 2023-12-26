@@ -1,4 +1,4 @@
-﻿namespace Oras.Interfaces
+﻿namespace OrasProject.Oras.Interfaces
 {
     /// <summary>
     /// ITagResolver provides reference tag indexing services.

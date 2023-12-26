@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Oras.Remote
+namespace OrasProject.Oras.Remote
 {
     internal static class ResponseTypes
     {

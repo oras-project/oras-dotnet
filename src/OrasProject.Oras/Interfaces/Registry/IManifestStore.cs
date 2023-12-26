@@ -1,4 +1,4 @@
-﻿namespace Oras.Interfaces.Registry
+﻿namespace OrasProject.Oras.Interfaces.Registry
 {
     /// <summary>
     /// IManifestStore is a CAS with the ability to stat and delete its content.

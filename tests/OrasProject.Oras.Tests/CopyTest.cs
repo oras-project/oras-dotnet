@@ -1,12 +1,13 @@
-﻿using Oras.Constants;
-using Oras.Memory;
-using Oras.Models;
+﻿using OrasProject.Oras.Memory;
+using OrasProject.Oras.Models;
+using OrasProject.Oras;
+using OrasProject.Oras.Constants;
 using System.Text;
 using System.Text.Json;
 using Xunit;
-using static Oras.Content.Content;
+using static OrasProject.Oras.Content.Content;
 
-namespace Oras.Tests
+namespace OrasProject.Oras.Tests
 {
     public class CopyTest
     {

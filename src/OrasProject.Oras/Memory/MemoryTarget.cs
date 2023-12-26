@@ -1,12 +1,12 @@
-﻿using Oras.Exceptions;
-using Oras.Interfaces;
-using Oras.Models;
+﻿using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Interfaces;
+using OrasProject.Oras.Models;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Oras.Memory
+namespace OrasProject.Oras.Memory
 {
     public class MemoryTarget : ITarget
     {

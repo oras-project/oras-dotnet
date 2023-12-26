@@ -2,7 +2,7 @@ using System;
 using System.Text.Json.Serialization;
 
 
-namespace Oras.Models
+namespace OrasProject.Oras.Models
 {
     internal class MinimumDescriptor : IEquatable<MinimumDescriptor>
     {

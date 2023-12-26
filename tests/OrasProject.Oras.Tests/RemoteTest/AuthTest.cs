@@ -1,12 +1,12 @@
 ﻿using Moq;
 using Moq.Protected;
-using Oras.Remote;
-using Oras.Remote.Auth;
+using OrasProject.Oras.Remote;
+using OrasProject.Oras.Remote.Auth;
 using System.Net;
 using System.Text;
 using Xunit;
 
-namespace Oras.Tests.RemoteTest
+namespace OrasProject.Oras.Tests.RemoteTest
 {
     public class AuthTest
     {

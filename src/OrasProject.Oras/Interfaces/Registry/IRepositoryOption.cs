@@ -1,7 +1,7 @@
-﻿using Oras.Remote;
+﻿using OrasProject.Oras.Remote;
 using System.Net.Http;
 
-namespace Oras.Interfaces.Registry
+namespace OrasProject.Oras.Interfaces.Registry
 {
     /// <summary>
     /// IRepositoryOption is used to configure a remote repository.
