@@ -1,7 +1,6 @@
 ﻿using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using System;
-using System.Net.NetworkInformation;
 using System.Text.RegularExpressions;
 
 namespace OrasProject.Oras.Remote

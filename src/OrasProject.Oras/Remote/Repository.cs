@@ -64,7 +64,7 @@ namespace OrasProject.Oras.Remote
             HttpClient = new HttpClient();
             HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
         }
-        
+
         /// <summary>
         /// Creates a client to the remote repository using a reference and a HttpClient
         /// </summary>

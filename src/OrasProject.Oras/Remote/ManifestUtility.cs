@@ -1,5 +1,5 @@
-﻿using OrasProject.Oras.Models;
-using OrasProject.Oras.Constants;
+﻿using OrasProject.Oras.Constants;
+using OrasProject.Oras.Models;
 using System.Linq;
 
 namespace OrasProject.Oras.Remote

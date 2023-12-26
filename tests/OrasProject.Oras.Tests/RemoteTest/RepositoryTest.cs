@@ -1,11 +1,10 @@
 ﻿using Moq;
 using Moq.Protected;
+using OrasProject.Oras.Constants;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Memory;
 using OrasProject.Oras.Models;
 using OrasProject.Oras.Remote;
-using OrasProject.Oras;
-using OrasProject.Oras.Constants;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Net;
@@ -1766,7 +1765,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 Digest = CalculateDigest(content),
                 Size = content.Length
             };
-            
+
             await Assert.ThrowsAsync<NotFoundException>(async () => await store.ResolveAsync(contentDesc.Digest, cancellationToken));
 
         }
@@ -2005,7 +2004,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             {
                 var res = new HttpResponseMessage();
                 res.RequestMessage = req;
-                var path = req.RequestUri != null? req.RequestUri.AbsolutePath : string.Empty;
+                var path = req.RequestUri != null ? req.RequestUri.AbsolutePath : string.Empty;
                 var method = req.Method;
                 if (path.Contains("/blobs/uploads/") && method == HttpMethod.Post)
                 {
@@ -2074,7 +2073,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var reg = new Registry("localhost:5000");
             reg.HttpClient = CustomClient(func);
             var src = await reg.Repository("source", CancellationToken.None);
-            
+
             var dst = new MemoryTarget();
             var tagName = "latest";
             var desc = await Copy.CopyAsync(src, tagName, dst, tagName, CancellationToken.None);
