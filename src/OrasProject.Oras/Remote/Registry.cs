@@ -33,7 +33,7 @@ namespace OrasProject.Oras.Remote
 
         public Registry(string name, HttpClient httpClient)
         {
-             var reference = new RemoteReference
+            var reference = new RemoteReference
             {
                 Registry = name,
             };
@@ -80,7 +80,7 @@ namespace OrasProject.Oras.Remote
                 Registry = RemoteReference.Registry,
                 Repository = name,
             };
-            
+
             return Task.FromResult<IRepository>(new Repository(reference, this));
         }
 

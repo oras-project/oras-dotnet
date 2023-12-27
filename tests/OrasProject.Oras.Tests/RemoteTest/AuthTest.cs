@@ -1,6 +1,5 @@
 ﻿using Moq;
 using Moq.Protected;
-using OrasProject.Oras.Remote;
 using OrasProject.Oras.Remote.Auth;
 using System.Net;
 using System.Text;
@@ -37,7 +36,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 {
                     RequestMessage = req
                 };
-             
+
                 if (req.Method != HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/")
                 {
                     res.StatusCode = HttpStatusCode.NotFound;
