@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Content;
 
-public class MemoryTarget : ITarget, IPredecessorFinder
+public class MemoryStore : ITarget, IPredecessorFinder
 {
     private readonly MemoryStorage _storage = new();
     private readonly MemoryTagResolver _tagResolver = new();

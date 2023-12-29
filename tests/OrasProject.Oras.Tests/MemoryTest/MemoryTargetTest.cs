@@ -40,7 +40,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
             };
 
             var reference = "foobar";
-            var memoryTarget = new MemoryTarget();
+            var memoryTarget = new MemoryStore();
             var cancellationToken = new CancellationToken();
             var stream = new MemoryStream(content);
             await memoryTarget.PushAsync(descriptor, stream, cancellationToken);
@@ -75,7 +75,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
                 Size = content.Length
             };
 
-            var memoryTarget = new MemoryTarget();
+            var memoryTarget = new MemoryStore();
             var cancellationToken = new CancellationToken();
             var contentExists = await memoryTarget.ExistsAsync(descriptor, cancellationToken);
             Assert.False(contentExists);
@@ -101,7 +101,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
                 Size = content.Length
             };
 
-            var memoryTarget = new MemoryTarget();
+            var memoryTarget = new MemoryStore();
             var cancellationToken = new CancellationToken();
             var stream = new MemoryStream(content);
             await memoryTarget.PushAsync(descriptor, stream, cancellationToken);
@@ -125,7 +125,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
                 Size = content.Length
             };
 
-            var memoryTarget = new MemoryTarget();
+            var memoryTarget = new MemoryStore();
             var cancellationToken = new CancellationToken();
             var stream = new MemoryStream(wrongContent);
             await Assert.ThrowsAnyAsync<Exception>(async () =>
@@ -152,7 +152,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
                 Size = content.Length
             };
 
-            var memoryTarget = new MemoryTarget();
+            var memoryTarget = new MemoryStore();
             var cancellationToken = new CancellationToken();
             var stream = new MemoryStream(wrongContent);
             await Assert.ThrowsAnyAsync<MismatchedDigestException>(async () =>
@@ -168,7 +168,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         [Fact]
         public async Task ShouldReturnPredecessorsOfNodes()
         {
-            var memoryTarget = new MemoryTarget();
+            var memoryTarget = new MemoryStore();
             var cancellationToken = new CancellationToken();
             var blobs = new List<byte[]>();
             var descs = new List<Descriptor>();

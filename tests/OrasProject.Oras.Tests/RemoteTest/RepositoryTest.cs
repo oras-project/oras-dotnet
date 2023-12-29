@@ -2101,7 +2101,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             reg.HttpClient = CustomClient(func);
             var src = await reg.Repository("source", CancellationToken.None);
 
-            var dst = new MemoryTarget();
+            var dst = new MemoryStore();
             var tagName = "latest";
             var desc = await src.CopyAsync(tagName, dst, tagName, CancellationToken.None);
         }

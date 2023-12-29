@@ -29,7 +29,7 @@ namespace OrasProject.Oras.Tests
         [Fact]
         public async Task CanCopyBetweenMemoryTargetsWithTaggedNode()
         {
-            var sourceTarget = new MemoryTarget();
+            var sourceTarget = new MemoryStore();
             var cancellationToken = new CancellationToken();
             var blobs = new List<byte[]>();
             var descs = new List<Descriptor>();
@@ -69,7 +69,7 @@ namespace OrasProject.Oras.Tests
             var root = descs[3];
             var reference = "foobar";
             await sourceTarget.TagAsync(root, reference, cancellationToken);
-            var destinationTarget = new MemoryTarget();
+            var destinationTarget = new MemoryStore();
             var gotDesc = await sourceTarget.CopyAsync(reference, destinationTarget, "", cancellationToken);
             Assert.Equal(gotDesc, root);
             Assert.Equal(await destinationTarget.ResolveAsync(reference, cancellationToken), root);
@@ -92,7 +92,7 @@ namespace OrasProject.Oras.Tests
         [Fact]
         public async Task CanCopyBetweenMemoryTargets()
         {
-            var sourceTarget = new MemoryTarget();
+            var sourceTarget = new MemoryStore();
             var cancellationToken = new CancellationToken();
             var blobs = new List<byte[]>();
             var descs = new List<Descriptor>();
@@ -129,7 +129,7 @@ namespace OrasProject.Oras.Tests
 
             }
             var root = descs[3];
-            var destinationTarget = new MemoryTarget();
+            var destinationTarget = new MemoryStore();
             await sourceTarget.CopyGraphAsync(destinationTarget, root, cancellationToken);
             for (var i = 0; i < descs.Count; i++)
             {
