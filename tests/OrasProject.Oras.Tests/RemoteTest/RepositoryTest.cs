@@ -2103,7 +2103,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             var dst = new MemoryTarget();
             var tagName = "latest";
-            var desc = await Copy.CopyAsync(src, tagName, dst, tagName, CancellationToken.None);
+            var desc = await src.CopyAsync(tagName, dst, tagName, CancellationToken.None);
         }
 
         [Fact]

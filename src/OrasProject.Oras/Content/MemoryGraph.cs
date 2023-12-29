@@ -34,7 +34,7 @@ internal class MemoryGraph : IPredecessorFinder
         var key = node.BasicDescriptor;
         if (_predecessors.TryGetValue(key, out var predecessors))
         {
-            return Task.FromResult<IEnumerable<Descriptor>> (predecessors.Values);
+            return Task.FromResult<IEnumerable<Descriptor>>(predecessors.Values);
         }
         return Task.FromResult<IEnumerable<Descriptor>>(Array.Empty<Descriptor>());
     }
