@@ -13,6 +13,7 @@
 
 using Moq;
 using Moq.Protected;
+using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Memory;
 using OrasProject.Oras.Oci;
@@ -26,8 +27,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 using Xunit;
-using static OrasProject.Oras.Content.Content;
-using static OrasProject.Oras.Content.DigestUtility;
+using static OrasProject.Oras.Content.Digest;
 
 namespace OrasProject.Oras.Tests.RemoteTest
 {
@@ -167,14 +167,14 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blob = Encoding.UTF8.GetBytes("hello world");
             var blobDesc = new Descriptor()
             {
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 MediaType = "test",
                 Size = (uint)blob.Length
             };
             var index = """{"manifests":[]}"""u8.ToArray();
             var indexDesc = new Descriptor()
             {
-                Digest = CalculateDigest(index),
+                Digest = ComputeSHA256(index),
                 MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
@@ -241,14 +241,14 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blob = @"hello world"u8.ToArray();
             var blobDesc = new Descriptor()
             {
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 MediaType = "test",
                 Size = (uint)blob.Length
             };
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
             {
-                Digest = CalculateDigest(index),
+                Digest = ComputeSHA256(index),
                 MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
@@ -333,14 +333,14 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blob = @"hello world"u8.ToArray();
             var blobDesc = new Descriptor()
             {
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 MediaType = "test",
                 Size = (uint)blob.Length
             };
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
             {
-                Digest = CalculateDigest(index),
+                Digest = ComputeSHA256(index),
                 MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
@@ -397,7 +397,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blob = @"hello world"u8.ToArray();
             var blobDesc = new Descriptor()
             {
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 MediaType = "test",
                 Size = (uint)blob.Length
             };
@@ -405,7 +405,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
             {
-                Digest = CalculateDigest(index),
+                Digest = ComputeSHA256(index),
                 MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
@@ -457,14 +457,14 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blob = @"hello world"u8.ToArray();
             var blobDesc = new Descriptor()
             {
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 MediaType = "test",
                 Size = (uint)blob.Length
             };
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
             {
-                Digest = CalculateDigest(index),
+                Digest = ComputeSHA256(index),
                 MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
@@ -532,14 +532,14 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blob = "hello"u8.ToArray();
             var blobDesc = new Descriptor()
             {
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 MediaType = "test",
                 Size = (uint)blob.Length
             };
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
             {
-                Digest = CalculateDigest(index),
+                Digest = ComputeSHA256(index),
                 MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
@@ -614,7 +614,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
             {
-                Digest = CalculateDigest(index),
+                Digest = ComputeSHA256(index),
                 MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
@@ -663,14 +663,14 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blob = "hello"u8.ToArray();
             var blobDesc = new Descriptor()
             {
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 MediaType = "test",
                 Size = (uint)blob.Length
             };
             var index = @"{""manifests"":[]}"u8.ToArray();
             var indexDesc = new Descriptor()
             {
-                Digest = CalculateDigest(index),
+                Digest = ComputeSHA256(index),
                 MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
@@ -844,7 +844,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blobDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 Size = blob.Length
             };
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -890,7 +890,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blobDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 Size = blob.Length
             };
             var seekable = false;
@@ -991,7 +991,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blobDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 Size = blob.Length
             };
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1040,7 +1040,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blobDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 Size = blob.Length
             };
             var gotBlob = new byte[blob.Length];
@@ -1099,14 +1099,14 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blobDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 Size = blob.Length
             };
             var content = "foobar"u8.ToArray();
             var contentDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(content),
+                Digest = ComputeSHA256(content),
                 Size = content.Length
             };
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1151,7 +1151,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blobDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 Size = blob.Length
             };
             var blobDeleted = false;
@@ -1187,7 +1187,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var contentDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(content),
+                Digest = ComputeSHA256(content),
                 Size = content.Length
             };
             await Assert.ThrowsAsync<NotFoundException>(async () => await store.DeleteAsync(contentDesc, cancellationToken));
@@ -1204,7 +1204,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blobDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 Size = blob.Length
             };
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1244,7 +1244,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var contentDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(content),
+                Digest = ComputeSHA256(content),
                 Size = content.Length
             };
             await Assert.ThrowsAsync<NotFoundException>(async () =>
@@ -1262,7 +1262,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blobDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 Size = blob.Length
             };
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1311,7 +1311,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var contentDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(content),
+                Digest = ComputeSHA256(content),
                 Size = content.Length
             };
             // test with other digest
@@ -1330,7 +1330,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blobDesc = new Descriptor()
             {
                 MediaType = "test",
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 Size = blob.Length
             };
             var seekable = false;
@@ -1522,7 +1522,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifestDesc = new Descriptor
             {
                 MediaType = MediaType.ImageManifest,
-                Digest = CalculateDigest(manifest),
+                Digest = ComputeSHA256(manifest),
                 Size = manifest.Length
             };
 
@@ -1561,7 +1561,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var contentDesc = new Descriptor
             {
                 MediaType = MediaType.ImageIndex,
-                Digest = CalculateDigest(content),
+                Digest = ComputeSHA256(content),
                 Size = content.Length
             };
             await Assert.ThrowsAsync<NotFoundException>(async () => await store.FetchAsync(contentDesc, cancellationToken));
@@ -1578,7 +1578,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifestDesc = new Descriptor
             {
                 MediaType = MediaType.ImageManifest,
-                Digest = CalculateDigest(manifest),
+                Digest = ComputeSHA256(manifest),
                 Size = manifest.Length
             };
             byte[]? gotManifest = null;
@@ -1629,7 +1629,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifestDesc = new Descriptor
             {
                 MediaType = MediaType.ImageManifest,
-                Digest = CalculateDigest(manifest),
+                Digest = ComputeSHA256(manifest),
                 Size = manifest.Length
             };
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1665,7 +1665,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var contentDesc = new Descriptor
             {
                 MediaType = MediaType.ImageIndex,
-                Digest = CalculateDigest(content),
+                Digest = ComputeSHA256(content),
                 Size = content.Length
             };
             exist = await store.ExistsAsync(contentDesc, cancellationToken);
@@ -1683,7 +1683,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifestDesc = new Descriptor
             {
                 MediaType = MediaType.ImageManifest,
-                Digest = CalculateDigest(manifest),
+                Digest = ComputeSHA256(manifest),
                 Size = manifest.Length
             };
             var manifestDeleted = false;
@@ -1726,7 +1726,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var contentDesc = new Descriptor
             {
                 MediaType = MediaType.ImageIndex,
-                Digest = CalculateDigest(content),
+                Digest = ComputeSHA256(content),
                 Size = content.Length
             };
             await Assert.ThrowsAsync<NotFoundException>(async () => await store.DeleteAsync(contentDesc, cancellationToken));
@@ -1743,7 +1743,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifestDesc = new Descriptor
             {
                 MediaType = MediaType.ImageManifest,
-                Digest = CalculateDigest(manifest),
+                Digest = ComputeSHA256(manifest),
                 Size = manifest.Length
             };
             var reference = "foobar";
@@ -1790,7 +1790,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var contentDesc = new Descriptor
             {
                 MediaType = MediaType.ImageIndex,
-                Digest = CalculateDigest(content),
+                Digest = ComputeSHA256(content),
                 Size = content.Length
             };
 
@@ -1809,7 +1809,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifestDesc = new Descriptor
             {
                 MediaType = MediaType.ImageManifest,
-                Digest = CalculateDigest(manifest),
+                Digest = ComputeSHA256(manifest),
                 Size = manifest.Length
             };
             var reference = "foobar";
@@ -1887,14 +1887,14 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var blobDesc = new Descriptor
             {
                 MediaType = "test",
-                Digest = CalculateDigest(blob),
+                Digest = ComputeSHA256(blob),
                 Size = blob.Length
             };
             var index = """{"manifests":[]}"""u8.ToArray();
             var indexDesc = new Descriptor
             {
                 MediaType = MediaType.ImageIndex,
-                Digest = CalculateDigest(index),
+                Digest = ComputeSHA256(index),
                 Size = index.Length
             };
             var gotIndex = new byte[index.Length];
@@ -1930,7 +1930,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     if (req.Content?.Headers?.ContentLength != null)
                     {
                         var buf = new byte[req.Content.Headers.ContentLength.Value];
-                       (await req.Content.ReadAsByteArrayAsync()).CopyTo(buf, 0);
+                        (await req.Content.ReadAsByteArrayAsync()).CopyTo(buf, 0);
                         gotIndex = buf;
                     }
 
@@ -1970,7 +1970,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var indexDesc = new Descriptor
             {
                 MediaType = MediaType.ImageIndex,
-                Digest = CalculateDigest(index),
+                Digest = ComputeSHA256(index),
                 Size = index.Length
             };
             var gotIndex = new byte[index.Length];
@@ -2024,7 +2024,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var exampleManifestDescriptor = new Descriptor
             {
                 MediaType = MediaType.Descriptor,
-                Digest = CalculateSHA256DigestFromBytes(exampleManifest),
+                Digest = Digest.ComputeSHA256(exampleManifest),
                 Size = exampleManifest.Length
             };
             var exampleUploadUUid = new Guid().ToString();

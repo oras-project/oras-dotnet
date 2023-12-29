@@ -11,14 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Interfaces;
+using OrasProject.Oras.Content;
 using OrasProject.Oras.Oci;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static OrasProject.Oras.Content.Content;
+using static OrasProject.Oras.Content.Extensions;
 
 namespace OrasProject.Oras.Memory
 {
@@ -26,9 +26,9 @@ namespace OrasProject.Oras.Memory
     {
         private ConcurrentDictionary<BasicDescriptor, ConcurrentDictionary<BasicDescriptor, Descriptor>> _predecessors = new ConcurrentDictionary<BasicDescriptor, ConcurrentDictionary<BasicDescriptor, Descriptor>>();
 
-        internal async Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
+        internal async Task IndexAsync(IFetchable fetcher, Descriptor node, CancellationToken cancellationToken)
         {
-            IList<Descriptor> successors = await SuccessorsAsync(fetcher, node, cancellationToken);
+            IList<Descriptor> successors = await fetcher.SuccessorsAsync(node, cancellationToken);
             Index(node, successors, cancellationToken);
         }
 

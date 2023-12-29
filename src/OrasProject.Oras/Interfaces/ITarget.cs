@@ -11,12 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content;
+
 namespace OrasProject.Oras.Interfaces
 {
     /// <summary>
     /// Target is a CAS with generic tags
     /// </summary>
-    public interface ITarget : IStorage, ITagResolver
+    public interface ITarget : IStorage, ITagStore
     {
     }
 }

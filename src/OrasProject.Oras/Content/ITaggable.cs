@@ -11,12 +11,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace OrasProject.Oras.Interfaces
+using OrasProject.Oras.Oci;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// Tags reference tags
+/// </summary>
+public interface ITaggable
 {
     /// <summary>
-    /// ITagResolver provides reference tag indexing services.
+    /// TagAsync tags the descriptor with the reference.
     /// </summary>
-    public interface ITagResolver : IResolver, ITagger
-    {
-    }
+    /// <param name="descriptor"></param>
+    /// <param name="reference"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default);
 }

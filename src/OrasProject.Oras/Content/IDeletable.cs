@@ -15,19 +15,18 @@ using OrasProject.Oras.Oci;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OrasProject.Oras.Interfaces
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// Removes content.
+/// </summary>
+public interface IDeletable
 {
     /// <summary>
-    /// IReadOnlyStorage represents a read-only Storage.
+    /// This deletes content Identified by the descriptor
     /// </summary>
-    public interface IReadOnlyStorage : IFetcher
-    {
-        /// <summary>
-        /// ExistsAsync returns true if the described content exists.
-        /// </summary>
-        /// <param name="target"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default);
-    }
+    /// <param name="target"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default);
 }

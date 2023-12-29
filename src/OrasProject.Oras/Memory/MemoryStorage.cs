@@ -11,14 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
-using OrasProject.Oras.Interfaces;
 using OrasProject.Oras.Oci;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using static OrasProject.Oras.Content.Content;
+using static OrasProject.Oras.Content.Extensions;
 
 namespace OrasProject.Oras.Memory
 {
@@ -53,7 +53,7 @@ namespace OrasProject.Oras.Memory
             {
                 throw new AlreadyExistsException($"{expected.Digest} : {expected.MediaType}");
             }
-            var readBytes = await ReadAllAsync(contentStream, expected);
+            var readBytes = await contentStream.ReadAllAsync(expected, cancellationToken);
 
             var added = _content.TryAdd(key, readBytes);
             if (!added) throw new AlreadyExistsException($"{key.Digest} : {key.MediaType}");

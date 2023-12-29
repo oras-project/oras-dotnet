@@ -11,13 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Memory;
 using OrasProject.Oras.Oci;
 using System.Text;
 using System.Text.Json;
 using Xunit;
-using static OrasProject.Oras.Content.Content;
 using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Tests.MemoryTest
@@ -32,7 +32,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         public async Task CanStoreData()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
-            string hash = CalculateDigest(content);
+            string hash = Digest.ComputeSHA256(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -68,7 +68,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
 
-            string hash = CalculateDigest(content);
+            string hash = Digest.ComputeSHA256(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -94,7 +94,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         public async Task ThrowsAlreadyExistsExceptionWhenSameDataIsPushedTwice()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
-            string hash = CalculateDigest(content);
+            string hash = Digest.ComputeSHA256(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -118,7 +118,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             var wrongContent = Encoding.UTF8.GetBytes("Hello World!");
-            string hash = CalculateDigest(content);
+            string hash = Digest.ComputeSHA256(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -145,7 +145,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             var wrongContent = Encoding.UTF8.GetBytes("Hello Danny");
-            string hash = CalculateDigest(content);
+            string hash = Digest.ComputeSHA256(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -179,7 +179,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
                 var desc = new Descriptor
                 {
                     MediaType = mediaType,
-                    Digest = CalculateDigest(blob),
+                    Digest = Digest.ComputeSHA256(blob),
                     Size = blob.Length
                 };
                 descs.Add(desc);

@@ -12,25 +12,21 @@
 // limitations under the License.
 
 using OrasProject.Oras.Oci;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OrasProject.Oras.Interfaces
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// Resolves reference tags.
+/// </summary>
+public interface IResolvable
 {
     /// <summary>
-    /// IStorage represents a content-addressable storage (CAS) where contents are accessed via Descriptors.
-    /// The storage is designed to handle blobs of large sizes.
+    /// ResolveAsync resolves the reference to a descriptor.
     /// </summary>
-    public interface IStorage : IReadOnlyStorage
-    {
-        /// <summary>
-        /// PushAsync pushes the content, matching the expected descriptor.
-        /// </summary>
-        /// <param name="expected"></param>
-        /// <param name="content"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default);
-    }
+    /// <param name="reference"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default);
 }

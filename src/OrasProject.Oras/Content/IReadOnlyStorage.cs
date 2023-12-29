@@ -12,23 +12,21 @@
 // limitations under the License.
 
 using OrasProject.Oras.Oci;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OrasProject.Oras.Interfaces
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// Represents a read-only Storage.
+/// </summary>
+public interface IReadOnlyStorage : IFetchable
 {
     /// <summary>
-    /// IFetcher fetches content.
+    /// ExistsAsync returns true if the described content exists.
     /// </summary>
-    public interface IFetcher
-    {
-        /// <summary>
-        /// FetchAsync fetches the content identified by the descriptor.
-        /// </summary>
-        /// <param name="target"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default);
-    }
+    /// <param name="target"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default);
 }

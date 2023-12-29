@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using System;
 using System.Text.RegularExpressions;
@@ -131,7 +130,7 @@ namespace OrasProject.Oras.Remote
         /// </summary>
         public void ValidateReferenceAsDigest()
         {
-            DigestUtility.ParseDigest(Reference);
+            Content.Digest.Validate(Reference);
         }
 
 

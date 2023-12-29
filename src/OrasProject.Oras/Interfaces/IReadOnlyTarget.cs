@@ -11,12 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content;
+
 namespace OrasProject.Oras.Interfaces
 {
     /// <summary>
     /// IReadOnlyTarget represents a read-only Target.
     /// </summary>
-    public interface IReadOnlyTarget : IReadOnlyStorage, IResolver
+    public interface IReadOnlyTarget : IReadOnlyStorage, IResolvable
     {
     }
 }
