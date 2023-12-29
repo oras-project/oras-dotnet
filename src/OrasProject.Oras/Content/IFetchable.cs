@@ -11,14 +11,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Content;
+using OrasProject.Oras.Oci;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace OrasProject.Oras.Interfaces.Registry
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// Fetches content.
+/// </summary>
+public interface IFetchable
 {
     /// <summary>
-    /// IBlobStore is a CAS with the ability to stat and delete its content.
+    /// FetchAsync fetches the content identified by the descriptor.
     /// </summary>
-    public interface IBlobStore : IStorage, IResolvable, IDeletable, IReferenceFetcher
-    {
-    }
+    /// <param name="target"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default);
 }

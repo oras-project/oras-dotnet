@@ -11,14 +11,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Content;
+using OrasProject.Oras.Oci;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace OrasProject.Oras.Interfaces.Registry
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// Tags reference tags
+/// </summary>
+public interface ITaggable
 {
     /// <summary>
-    /// IBlobStore is a CAS with the ability to stat and delete its content.
+    /// TagAsync tags the descriptor with the reference.
     /// </summary>
-    public interface IBlobStore : IStorage, IResolvable, IDeletable, IReferenceFetcher
-    {
-    }
+    /// <param name="descriptor"></param>
+    /// <param name="reference"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default);
 }

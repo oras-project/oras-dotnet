@@ -11,24 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Models;
-using System.IO;
+using OrasProject.Oras.Oci;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OrasProject.Oras.Interfaces
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// Removes content.
+/// </summary>
+public interface IDeletable
 {
     /// <summary>
-    /// IFetcher fetches content.
+    /// This deletes content Identified by the descriptor
     /// </summary>
-    public interface IFetcher
-    {
-        /// <summary>
-        /// FetchAsync fetches the content identified by the descriptor.
-        /// </summary>
-        /// <param name="target"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default);
-    }
+    /// <param name="target"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default);
 }

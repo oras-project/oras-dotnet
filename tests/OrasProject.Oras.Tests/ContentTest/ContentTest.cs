@@ -11,9 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content;
 using System.Text;
 using Xunit;
-using static OrasProject.Oras.Content.Content;
 
 namespace OrasProject.Oras.Tests.ContentTest
 {
@@ -27,7 +27,7 @@ namespace OrasProject.Oras.Tests.ContentTest
         {
             var helloWorldDigest = "sha256:11d4ddc357e0822968dbfd226b6e1c2aac018d076a54da4f65e1dc8180684ac3";
             var content = Encoding.UTF8.GetBytes("helloWorld");
-            var calculateHelloWorldDigest = CalculateDigest(content);
+            var calculateHelloWorldDigest = Digest.ComputeSHA256(content);
             Assert.Equal(helloWorldDigest, calculateHelloWorldDigest);
         }
     }

@@ -11,12 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace OrasProject.Oras.Interfaces
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// Represents a content-addressable storage (CAS) where contents are accessed via Descriptors.
+/// The storage is designed to handle blobs of large sizes.
+/// </summary>
+public interface IStorage : IReadOnlyStorage, IPushable
 {
-    /// <summary>
-    /// ITagResolver provides reference tag indexing services.
-    /// </summary>
-    public interface ITagResolver : IResolver, ITagger
-    {
-    }
 }

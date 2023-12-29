@@ -11,14 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Content;
+namespace OrasProject.Oras.Content;
 
-namespace OrasProject.Oras.Interfaces.Registry
+/// <summary>
+/// Provides reference tag indexing services.
+/// </summary>
+public interface ITagStore : IResolvable, ITaggable
 {
-    /// <summary>
-    /// IBlobStore is a CAS with the ability to stat and delete its content.
-    /// </summary>
-    public interface IBlobStore : IStorage, IResolvable, IDeletable, IReferenceFetcher
-    {
-    }
 }

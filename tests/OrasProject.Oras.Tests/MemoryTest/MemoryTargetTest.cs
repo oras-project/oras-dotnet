@@ -11,15 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Constants;
+using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Memory;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System.Text;
 using System.Text.Json;
 using Xunit;
-using static OrasProject.Oras.Content.Content;
-using Index = OrasProject.Oras.Models.Index;
+using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Tests.MemoryTest
 {
@@ -33,7 +32,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         public async Task CanStoreData()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
-            string hash = CalculateDigest(content);
+            string hash = Digest.ComputeSHA256(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -69,7 +68,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
 
-            string hash = CalculateDigest(content);
+            string hash = Digest.ComputeSHA256(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -95,7 +94,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         public async Task ThrowsAlreadyExistsExceptionWhenSameDataIsPushedTwice()
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
-            string hash = CalculateDigest(content);
+            string hash = Digest.ComputeSHA256(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -119,7 +118,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             var wrongContent = Encoding.UTF8.GetBytes("Hello World!");
-            string hash = CalculateDigest(content);
+            string hash = Digest.ComputeSHA256(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -146,7 +145,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
         {
             var content = Encoding.UTF8.GetBytes("Hello World");
             var wrongContent = Encoding.UTF8.GetBytes("Hello Danny");
-            string hash = CalculateDigest(content);
+            string hash = Digest.ComputeSHA256(content);
             var descriptor = new Descriptor
             {
                 MediaType = "test",
@@ -180,7 +179,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
                 var desc = new Descriptor
                 {
                     MediaType = mediaType,
-                    Digest = CalculateDigest(blob),
+                    Digest = Digest.ComputeSHA256(blob),
                     Size = blob.Length
                 };
                 descs.Add(desc);
@@ -193,7 +192,7 @@ namespace OrasProject.Oras.Tests.MemoryTest
                     Layers = layers
                 };
                 var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-                appendBlob(OCIMediaTypes.ImageManifest, manifestBytes);
+                appendBlob(MediaType.ImageManifest, manifestBytes);
             };
 
             var generateIndex = (List<Descriptor> manifests) =>
@@ -203,13 +202,13 @@ namespace OrasProject.Oras.Tests.MemoryTest
                     Manifests = manifests
                 };
                 var indexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(index));
-                appendBlob(OCIMediaTypes.ImageIndex, indexBytes);
+                appendBlob(MediaType.ImageIndex, indexBytes);
             };
             var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-            appendBlob(OCIMediaTypes.ImageConfig, getBytes("config")); // blob 0
-            appendBlob(OCIMediaTypes.ImageLayer, getBytes("foo")); // blob 1
-            appendBlob(OCIMediaTypes.ImageLayer, getBytes("bar")); // blob 2
-            appendBlob(OCIMediaTypes.ImageLayer, getBytes("hello")); // blob 3
+            appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
+            appendBlob(MediaType.ImageLayer, getBytes("foo")); // blob 1
+            appendBlob(MediaType.ImageLayer, getBytes("bar")); // blob 2
+            appendBlob(MediaType.ImageLayer, getBytes("hello")); // blob 3
             generateManifest(descs[0], descs.GetRange(1, 2)); // blob 4
             generateManifest(descs[0], new() { descs[3] }); // blob 5
             generateManifest(descs[0], descs.GetRange(1, 3)); // blob 6

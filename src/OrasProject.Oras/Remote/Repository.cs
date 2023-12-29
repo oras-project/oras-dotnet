@@ -14,7 +14,7 @@
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Interfaces.Registry;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -363,7 +363,7 @@ namespace OrasProject.Oras.Remote
             string contentDigest;
             try
             {
-                contentDigest = DigestUtility.ParseDigest(digestStr);
+                contentDigest = Digest.Validate(digestStr);
             }
             catch (Exception)
             {
@@ -724,7 +724,7 @@ namespace OrasProject.Oras.Remote
         static async Task<string> CalculateDigestFromResponse(HttpResponseMessage res)
         {
             var bytes = await res.Content.ReadAsByteArrayAsync();
-            return DigestUtility.CalculateSHA256DigestFromBytes(bytes);
+            return Digest.ComputeSHA256(bytes);
         }
 
         /// <summary>
@@ -819,7 +819,7 @@ namespace OrasProject.Oras.Remote
         public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
         {
             var remoteReference = Repository.RemoteReference;
-            DigestUtility.ParseDigest(target.Digest);
+            Digest.Validate(target.Digest);
             remoteReference.Reference = target.Digest;
             var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
             var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);

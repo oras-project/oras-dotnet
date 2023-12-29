@@ -11,23 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OrasProject.Oras.Interfaces
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// Represents a read-only Storage.
+/// </summary>
+public interface IReadOnlyStorage : IFetchable
 {
     /// <summary>
-    /// IResolver resolves reference tags.
+    /// ExistsAsync returns true if the described content exists.
     /// </summary>
-    public interface IResolver
-    {
-        /// <summary>
-        /// ResolveAsync resolves the reference to a descriptor.
-        /// </summary>
-        /// <param name="reference"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default);
-    }
+    /// <param name="target"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default);
 }

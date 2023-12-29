@@ -12,11 +12,11 @@
 // limitations under the License.
 
 using OrasProject.Oras.Interfaces;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using static OrasProject.Oras.Content.Content;
+using static OrasProject.Oras.Content.Extensions;
 
 namespace OrasProject.Oras
 {
@@ -63,7 +63,7 @@ namespace OrasProject.Oras
             if (!await dst.ExistsAsync(node, cancellationToken))
             {
                 // retrieve successors
-                var successors = await SuccessorsAsync(src, node, cancellationToken);
+                var successors = await src.SuccessorsAsync(node, cancellationToken);
                 // obtain data stream
                 var dataStream = await src.FetchAsync(node, cancellationToken);
                 // check if the node has successors

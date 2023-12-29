@@ -11,14 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Content;
+namespace OrasProject.Oras.Docker;
 
-namespace OrasProject.Oras.Interfaces.Registry
+/// <summary>
+/// Docker media types
+/// </summary>
+public static class MediaType
 {
-    /// <summary>
-    /// IBlobStore is a CAS with the ability to stat and delete its content.
-    /// </summary>
-    public interface IBlobStore : IStorage, IResolvable, IDeletable, IReferenceFetcher
-    {
-    }
+    public const string Config = "application/vnd.docker.container.image.v1+json";
+    public const string ManifestList = "application/vnd.docker.distribution.manifest.list.v2+json";
+    public const string Manifest = "application/vnd.docker.distribution.manifest.v2+json";
+    public const string ForeignLayer = "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip";
 }

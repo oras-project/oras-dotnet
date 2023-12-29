@@ -11,13 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content;
+
 namespace OrasProject.Oras.Interfaces.Registry
 {
     /// <summary>
     /// IManifestStore is a CAS with the ability to stat and delete its content.
     /// Besides, IManifestStore provides reference tagging.
     /// </summary>
-    public interface IManifestStore : IBlobStore, IReferencePusher, ITagger
+    public interface IManifestStore : IBlobStore, IReferencePusher, ITaggable
     {
     }
 }

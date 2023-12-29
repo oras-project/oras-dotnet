@@ -11,24 +11,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OrasProject.Oras.Interfaces
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// Represents a content-addressable storage (CAS) where contents are accessed via Descriptors.
+/// The storage is designed to handle blobs of large sizes.
+/// </summary>
+public interface IPushable
 {
     /// <summary>
-    /// ITagger tags reference tags
+    /// PushAsync pushes the content, matching the expected descriptor.
     /// </summary>
-    public interface ITagger
-    {
-        /// <summary>
-        /// TagAsync tags the descriptor with the reference.
-        /// </summary>
-        /// <param name="descriptor"></param>
-        /// <param name="reference"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default);
-    }
+    /// <param name="expected"></param>
+    /// <param name="content"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default);
 }

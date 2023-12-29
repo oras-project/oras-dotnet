@@ -11,23 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Models;
-using System.Threading;
-using System.Threading.Tasks;
+namespace OrasProject.Oras.Oci;
 
-namespace OrasProject.Oras.Interfaces
-{
-    /// <summary>
-    /// IDeleter removes content.
-    /// </summary>
-    public interface IDeleter
-    {
-        /// <summary>
-        /// This deletes content Identified by the descriptor
-        /// </summary>
-        /// <param name="target"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default);
-    }
-}
+internal record BasicDescriptor(string MediaType, string Digest, long Size);
