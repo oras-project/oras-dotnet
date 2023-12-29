@@ -12,7 +12,7 @@
 // limitations under the License.
 
 using OrasProject.Oras.Interfaces;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +24,7 @@ namespace OrasProject.Oras.Memory
 {
     internal class MemoryGraph
     {
-        private ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>> _predecessors = new ConcurrentDictionary<MinimumDescriptor, ConcurrentDictionary<MinimumDescriptor, Descriptor>>();
+        private ConcurrentDictionary<BasicDescriptor, ConcurrentDictionary<BasicDescriptor, Descriptor>> _predecessors = new ConcurrentDictionary<BasicDescriptor, ConcurrentDictionary<BasicDescriptor, Descriptor>>();
 
         internal async Task IndexAsync(IFetcher fetcher, Descriptor node, CancellationToken cancellationToken)
         {
@@ -42,8 +42,8 @@ namespace OrasProject.Oras.Memory
         /// <returns></returns>
         internal async Task<List<Descriptor>> PredecessorsAsync(Descriptor node, CancellationToken cancellationToken)
         {
-            var key = node.GetMinimumDescriptor();
-            if (!this._predecessors.TryGetValue(key, out ConcurrentDictionary<MinimumDescriptor, Descriptor> predecessors))
+            var key = node.BasicDescriptor;
+            if (!this._predecessors.TryGetValue(key, out ConcurrentDictionary<BasicDescriptor, Descriptor> predecessors))
             {
                 return default;
             }
@@ -66,11 +66,11 @@ namespace OrasProject.Oras.Memory
                 return;
             }
 
-            var predecessorKey = node.GetMinimumDescriptor();
+            var predecessorKey = node.BasicDescriptor;
             foreach (var successor in successors)
             {
-                var successorKey = successor.GetMinimumDescriptor();
-                var predecessors = this._predecessors.GetOrAdd(successorKey, new ConcurrentDictionary<MinimumDescriptor, Descriptor>());
+                var successorKey = successor.BasicDescriptor;
+                var predecessors = this._predecessors.GetOrAdd(successorKey, new ConcurrentDictionary<BasicDescriptor, Descriptor>());
                 predecessors.TryAdd(predecessorKey, node);
             }
 

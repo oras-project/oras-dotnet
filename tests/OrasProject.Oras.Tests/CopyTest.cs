@@ -13,7 +13,7 @@
 
 using OrasProject.Oras.Constants;
 using OrasProject.Oras.Memory;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System.Text;
 using System.Text.Json;
 using Xunit;

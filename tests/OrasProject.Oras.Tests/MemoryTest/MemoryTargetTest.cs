@@ -14,12 +14,12 @@
 using OrasProject.Oras.Constants;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Memory;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System.Text;
 using System.Text.Json;
 using Xunit;
 using static OrasProject.Oras.Content.Content;
-using Index = OrasProject.Oras.Models.Index;
+using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Tests.MemoryTest
 {

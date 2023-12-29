@@ -14,7 +14,7 @@
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Interfaces.Registry;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
 using System.IO;

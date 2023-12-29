@@ -12,7 +12,7 @@
 // limitations under the License.
 
 using OrasProject.Oras.Interfaces;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System;
 using System.Threading;
 using System.Threading.Tasks;

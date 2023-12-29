@@ -16,7 +16,7 @@ using Moq.Protected;
 using OrasProject.Oras.Constants;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Memory;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using OrasProject.Oras.Remote;
 using System.Collections.Immutable;
 using System.Diagnostics;

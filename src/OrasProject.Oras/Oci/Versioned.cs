@@ -11,23 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Oci;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
-namespace OrasProject.Oras.Interfaces
+namespace OrasProject.Oras.Oci;
+
+public class Versioned
 {
-    /// <summary>
-    /// IResolver resolves reference tags.
-    /// </summary>
-    public interface IResolver
-    {
-        /// <summary>
-        /// ResolveAsync resolves the reference to a descriptor.
-        /// </summary>
-        /// <param name="reference"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default);
-    }
+    [JsonPropertyName("schemaVersion")]
+    public int SchemaVersion { get; set; }
 }

@@ -13,7 +13,7 @@
 
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Interfaces;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;

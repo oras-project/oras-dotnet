@@ -12,7 +12,7 @@
 // limitations under the License.
 
 using OrasProject.Oras.Constants;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System.Linq;
 
 namespace OrasProject.Oras.Remote

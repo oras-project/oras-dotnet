@@ -14,7 +14,7 @@
 using OrasProject.Oras.Constants;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Interfaces;
-using OrasProject.Oras.Models;
+using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,7 +22,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Index = OrasProject.Oras.Models.Index;
+using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Content
 {
