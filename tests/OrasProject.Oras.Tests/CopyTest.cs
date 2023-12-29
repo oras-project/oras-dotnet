@@ -12,7 +12,6 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
-using OrasProject.Oras.Memory;
 using OrasProject.Oras.Oci;
 using System.Text;
 using System.Text.Json;

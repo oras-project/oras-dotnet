@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Interfaces;
 using OrasProject.Oras.Oci;
 using System;
 using System.Threading;
@@ -63,7 +62,7 @@ namespace OrasProject.Oras
             if (!await dst.ExistsAsync(node, cancellationToken))
             {
                 // retrieve successors
-                var successors = await src.SuccessorsAsync(node, cancellationToken);
+                var successors = await src.GetSuccessorsAsync(node, cancellationToken);
                 // obtain data stream
                 var dataStream = await src.FetchAsync(node, cancellationToken);
                 // check if the node has successors

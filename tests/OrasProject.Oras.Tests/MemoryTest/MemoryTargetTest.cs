@@ -13,7 +13,6 @@
 
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
-using OrasProject.Oras.Memory;
 using OrasProject.Oras.Oci;
 using System.Text;
 using System.Text.Json;
@@ -229,18 +228,18 @@ namespace OrasProject.Oras.Tests.MemoryTest
                 new() { descs[7] }, // blob 4
                 new() { descs[7] }, // blob 5
                 new() { descs[8] }, // blob 6
-                null!, // blob 7
-                null! // blob 8
+                new() { }, // blob 7
+                new() { } // blob 8
             };
 
 
             foreach (var (i, want) in wants.Select((v, i) => (i, v)))
             {
-                var predecessors = await memoryTarget.PredecessorsAsync(descs[i], cancellationToken);
-                if (predecessors is null && want is null) continue;
+                var predecessors = await memoryTarget.GetPredecessorsAsync(descs[i], cancellationToken);
                 want.Sort((a, b) => (int)b.Size - (int)a.Size);
-                predecessors?.Sort((a, b) => (int)b.Size - (int)a.Size);
-                Assert.Equal(predecessors, want);
+                var predecessorList = predecessors?.ToList();
+                predecessorList?.Sort((a, b) => (int)b.Size - (int)a.Size);
+                Assert.Equal(predecessorList, want);
             }
         }
     }

@@ -31,7 +31,7 @@ public static class Extensions
     /// <param name="node"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public static async Task<IList<Descriptor>> SuccessorsAsync(this IFetchable fetcher, Descriptor node, CancellationToken cancellationToken)
+    public static async Task<IEnumerable<Descriptor>> GetSuccessorsAsync(this IFetchable fetcher, Descriptor node, CancellationToken cancellationToken)
     {
         switch (node.MediaType)
         {
@@ -61,7 +61,7 @@ public static class Extensions
                     return index.Manifests;
                 }
         }
-        return new List<Descriptor>();
+        return Array.Empty<Descriptor>();
     }
 
     /// <summary>
