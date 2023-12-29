@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Constants;
 using OrasProject.Oras.Memory;
 using OrasProject.Oras.Oci;
 using System.Text;
@@ -54,12 +53,12 @@ namespace OrasProject.Oras.Tests
                     Layers = layers
                 };
                 var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-                appendBlob(OCIMediaTypes.ImageManifest, manifestBytes);
+                appendBlob(MediaType.ImageManifest, manifestBytes);
             };
             var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-            appendBlob(OCIMediaTypes.ImageConfig, getBytes("config")); // blob 0
-            appendBlob(OCIMediaTypes.ImageLayer, getBytes("foo")); // blob 1
-            appendBlob(OCIMediaTypes.ImageLayer, getBytes("bar")); // blob 2
+            appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
+            appendBlob(MediaType.ImageLayer, getBytes("foo")); // blob 1
+            appendBlob(MediaType.ImageLayer, getBytes("bar")); // blob 2
             generateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
 
             for (var i = 0; i < blobs.Count; i++)
@@ -117,12 +116,12 @@ namespace OrasProject.Oras.Tests
                     Layers = layers
                 };
                 var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-                appendBlob(OCIMediaTypes.ImageManifest, manifestBytes);
+                appendBlob(MediaType.ImageManifest, manifestBytes);
             };
             var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-            appendBlob(OCIMediaTypes.ImageConfig, getBytes("config")); // blob 0
-            appendBlob(OCIMediaTypes.ImageLayer, getBytes("foo")); // blob 1
-            appendBlob(OCIMediaTypes.ImageLayer, getBytes("bar")); // blob 2
+            appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
+            appendBlob(MediaType.ImageLayer, getBytes("foo")); // blob 1
+            appendBlob(MediaType.ImageLayer, getBytes("bar")); // blob 2
             generateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
 
             for (var i = 0; i < blobs.Count; i++)

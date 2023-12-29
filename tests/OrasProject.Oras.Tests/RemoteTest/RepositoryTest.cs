@@ -13,7 +13,6 @@
 
 using Moq;
 using Moq.Protected;
-using OrasProject.Oras.Constants;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Memory;
 using OrasProject.Oras.Oci;
@@ -176,7 +175,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var indexDesc = new Descriptor()
             {
                 Digest = CalculateDigest(index),
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -201,7 +200,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
                 if (path == "/v2/test/manifests/" + indexDesc.Digest)
                 {
-                    if (!req.Headers.Accept.Contains(new MediaTypeWithQualityHeaderValue(OCIMediaTypes.ImageIndex)))
+                    if (!req.Headers.Accept.Contains(new MediaTypeWithQualityHeaderValue(MediaType.ImageIndex)))
                     {
                         resp.StatusCode = HttpStatusCode.BadRequest;
                         Debug.WriteLine("manifest not convertable: " + req.Headers.Accept);
@@ -250,7 +249,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var indexDesc = new Descriptor()
             {
                 Digest = CalculateDigest(index),
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
             var uuid = Guid.NewGuid().ToString();
@@ -296,7 +295,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     req.RequestUri!.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
                 {
                     if (req.Headers.TryGetValues("Content-Type", out var values) &&
-                        !values.Contains(OCIMediaTypes.ImageIndex))
+                        !values.Contains(MediaType.ImageIndex))
                     {
                         resp.StatusCode = HttpStatusCode.BadRequest;
                         return resp;
@@ -342,7 +341,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var indexDesc = new Descriptor()
             {
                 Digest = CalculateDigest(index),
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
             var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -365,7 +364,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 if (req.RequestUri!.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
                 {
                     if (req.Headers.TryGetValues("Accept", out var values) &&
-                        !values.Contains(OCIMediaTypes.ImageIndex))
+                        !values.Contains(MediaType.ImageIndex))
                     {
                         return new HttpResponseMessage(HttpStatusCode.NotAcceptable);
                     }
@@ -407,7 +406,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var indexDesc = new Descriptor()
             {
                 Digest = CalculateDigest(index),
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
             var indexDeleted = false;
@@ -466,7 +465,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var indexDesc = new Descriptor()
             {
                 Digest = CalculateDigest(index),
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
             var reference = "foobar";
@@ -490,7 +489,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
                 {
                     if (req.Headers.TryGetValues("Accept", out var values) &&
-                        !values.Contains(OCIMediaTypes.ImageIndex))
+                        !values.Contains(MediaType.ImageIndex))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -541,7 +540,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var indexDesc = new Descriptor()
             {
                 Digest = CalculateDigest(index),
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
             byte[]? gotIndex = null;
@@ -561,7 +560,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
                 {
                     if (req.Headers.TryGetValues("Accept", out var values) &&
-                        !values.Contains(OCIMediaTypes.ImageIndex))
+                        !values.Contains(MediaType.ImageIndex))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -577,7 +576,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
                 {
                     if (req.Headers.TryGetValues("Content-Type", out var values) &&
-                        !values.Contains(OCIMediaTypes.ImageIndex))
+                        !values.Contains(MediaType.ImageIndex))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -616,7 +615,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var indexDesc = new Descriptor()
             {
                 Digest = CalculateDigest(index),
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
             byte[]? gotIndex = null;
@@ -629,7 +628,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + reference)
                 {
                     if (req.Headers.TryGetValues("Content-Type", out var values) &&
-                        !values.Contains(OCIMediaTypes.ImageIndex))
+                        !values.Contains(MediaType.ImageIndex))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -672,7 +671,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var indexDesc = new Descriptor()
             {
                 Digest = CalculateDigest(index),
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Size = index.Length
             };
             var reference = "foobar";
@@ -695,7 +694,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     || req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + reference)
                 {
                     if (req.Headers.TryGetValues("Accept", out var values) &&
-                        !values.Contains(OCIMediaTypes.ImageIndex))
+                        !values.Contains(MediaType.ImageIndex))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -1522,7 +1521,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifest = """{"layers":[]}"""u8.ToArray();
             var manifestDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageManifest,
+                MediaType = MediaType.ImageManifest,
                 Digest = CalculateDigest(manifest),
                 Size = manifest.Length
             };
@@ -1537,12 +1536,12 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 }
                 if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
                     res.Content = new ByteArrayContent(manifest);
-                    res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
+                    res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
                     res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
                     return res;
                 }
@@ -1561,7 +1560,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var content = """{"manifests":[]}"""u8.ToArray();
             var contentDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Digest = CalculateDigest(content),
                 Size = content.Length
             };
@@ -1578,7 +1577,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifest = """{"layers":[]}"""u8.ToArray();
             var manifestDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageManifest,
+                MediaType = MediaType.ImageManifest,
                 Digest = CalculateDigest(manifest),
                 Size = manifest.Length
             };
@@ -1590,7 +1589,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 res.RequestMessage = req;
                 if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -1629,7 +1628,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifest = """{"layers":[]}"""u8.ToArray();
             var manifestDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageManifest,
+                MediaType = MediaType.ImageManifest,
                 Digest = CalculateDigest(manifest),
                 Size = manifest.Length
             };
@@ -1643,12 +1642,12 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 }
                 if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
                     res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
-                    res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
+                    res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
                     res.Content.Headers.Add("Content-Length", new string[] { manifest.Length.ToString() });
                     return res;
                 }
@@ -1665,7 +1664,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var content = """{"manifests":[]}"""u8.ToArray();
             var contentDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Digest = CalculateDigest(content),
                 Size = content.Length
             };
@@ -1683,7 +1682,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifest = """{"layers":[]}"""u8.ToArray();
             var manifestDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageManifest,
+                MediaType = MediaType.ImageManifest,
                 Digest = CalculateDigest(manifest),
                 Size = manifest.Length
             };
@@ -1704,13 +1703,13 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 }
                 if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
                     res.Content = new ByteArrayContent(manifest);
                     res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
-                    res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
+                    res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
                     return res;
                 }
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -1726,7 +1725,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var content = """{"manifests":[]}"""u8.ToArray();
             var contentDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Digest = CalculateDigest(content),
                 Size = content.Length
             };
@@ -1743,7 +1742,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifest = """{"layers":[]}"""u8.ToArray();
             var manifestDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageManifest,
+                MediaType = MediaType.ImageManifest,
                 Digest = CalculateDigest(manifest),
                 Size = manifest.Length
             };
@@ -1758,12 +1757,12 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 }
                 if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}" || req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
                     res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
-                    res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
+                    res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
                     res.Content.Headers.Add("Content-Length", new string[] { manifest.Length.ToString() });
                     return res;
                 }
@@ -1790,7 +1789,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var content = """{"manifests":[]}"""u8.ToArray();
             var contentDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Digest = CalculateDigest(content),
                 Size = content.Length
             };
@@ -1809,7 +1808,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var manifest = """{"layers":[]}"""u8.ToArray();
             var manifestDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageManifest,
+                MediaType = MediaType.ImageManifest,
                 Digest = CalculateDigest(manifest),
                 Size = manifest.Length
             };
@@ -1824,13 +1823,13 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 }
                 if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}" || req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
                 {
-                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(OCIMediaTypes.ImageManifest))
+                    if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
                     res.Content = new ByteArrayContent(manifest);
                     res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
-                    res.Content.Headers.Add("Content-Type", new string[] { OCIMediaTypes.ImageManifest });
+                    res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
                     return res;
                 }
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -1894,7 +1893,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var index = """{"manifests":[]}"""u8.ToArray();
             var indexDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Digest = CalculateDigest(index),
                 Size = index.Length
             };
@@ -1970,7 +1969,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var index = """{"manifests":[]}"""u8.ToArray();
             var indexDesc = new Descriptor
             {
-                MediaType = OCIMediaTypes.ImageIndex,
+                MediaType = MediaType.ImageIndex,
                 Digest = CalculateDigest(index),
                 Size = index.Length
             };
@@ -2024,7 +2023,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             var exampleManifestDescriptor = new Descriptor
             {
-                MediaType = OCIMediaTypes.Descriptor,
+                MediaType = MediaType.Descriptor,
                 Digest = CalculateSHA256DigestFromBytes(exampleManifest),
                 Size = exampleManifest.Length
             };
@@ -2039,7 +2038,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 {
                     res.StatusCode = HttpStatusCode.Accepted;
                     res.Headers.Location = new Uri($"{path}/{exampleUploadUUid}");
-                    res.Headers.Add("Content-Type", OCIMediaTypes.ImageManifest);
+                    res.Headers.Add("Content-Type", MediaType.ImageManifest);
                     return res;
                 }
                 if (path.Contains("/blobs/uploads/" + exampleUploadUUid) && method == HttpMethod.Get)
@@ -2059,12 +2058,12 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     if (method == HttpMethod.Get)
                     {
                         res.Content = new ByteArrayContent(exampleManifest);
-                        res.Content.Headers.Add("Content-Type", OCIMediaTypes.Descriptor);
+                        res.Content.Headers.Add("Content-Type", MediaType.Descriptor);
                         res.Content.Headers.Add("Docker-Content-Digest", exampleManifestDescriptor.Digest);
                         res.Content.Headers.Add("Content-Length", exampleManifest.Length.ToString());
                         return res;
                     }
-                    res.Content.Headers.Add("Content-Type", OCIMediaTypes.Descriptor);
+                    res.Content.Headers.Add("Content-Type", MediaType.Descriptor);
                     res.Content.Headers.Add("Docker-Content-Digest", exampleManifestDescriptor.Digest);
                     res.Content.Headers.Add("Content-Length", exampleManifest.Length.ToString());
                     return res;

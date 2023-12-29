@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Constants;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Interfaces;
 using OrasProject.Oras.Oci;
@@ -39,8 +38,8 @@ namespace OrasProject.Oras.Content
         {
             switch (node.MediaType)
             {
-                case DockerMediaTypes.Manifest:
-                case OCIMediaTypes.ImageManifest:
+                case Docker.MediaType.Manifest:
+                case Oci.MediaType.ImageManifest:
                     {
                         var content = await FetchAllAsync(fetcher, node, cancellationToken);
                         var manifest = JsonSerializer.Deserialize<Manifest>(content);
@@ -48,8 +47,8 @@ namespace OrasProject.Oras.Content
                         descriptors.AddRange(manifest.Layers);
                         return descriptors;
                     }
-                case DockerMediaTypes.ManifestList:
-                case OCIMediaTypes.ImageIndex:
+                case Docker.MediaType.ManifestList:
+                case Oci.MediaType.ImageIndex:
                     {
                         var content = await FetchAllAsync(fetcher, node, cancellationToken);
                         // docker manifest list and oci index are equivalent for successors.

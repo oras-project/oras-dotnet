@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Constants;
 using OrasProject.Oras.Oci;
 using System.Linq;
 
@@ -21,10 +20,10 @@ namespace OrasProject.Oras.Remote
     {
         internal static string[] DefaultManifestMediaTypes = new[]
         {
-            DockerMediaTypes.Manifest,
-            DockerMediaTypes.ManifestList,
-            OCIMediaTypes.ImageIndex,
-            OCIMediaTypes.ImageManifest
+            Docker.MediaType.Manifest,
+            Docker.MediaType.ManifestList,
+            Oci.MediaType.ImageIndex,
+            Oci.MediaType.ImageManifest
         };
 
         /// <summary>

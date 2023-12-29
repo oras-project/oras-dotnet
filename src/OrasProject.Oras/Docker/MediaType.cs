@@ -11,14 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace OrasProject.Oras.Constants
+namespace OrasProject.Oras.Docker;
+
+/// <summary>
+/// Docker media types
+/// </summary>
+public static class MediaType
 {
-    public static class DockerMediaTypes
-    {
-        // Docker media types
-        public const string Config = "application/vnd.docker.container.image.v1+json";
-        public const string ManifestList = "application/vnd.docker.distribution.manifest.list.v2+json";
-        public const string Manifest = "application/vnd.docker.distribution.manifest.v2+json";
-        public const string ForeignLayer = "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip";
-    }
+    public const string Config = "application/vnd.docker.container.image.v1+json";
+    public const string ManifestList = "application/vnd.docker.distribution.manifest.list.v2+json";
+    public const string Manifest = "application/vnd.docker.distribution.manifest.v2+json";
+    public const string ForeignLayer = "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip";
 }
