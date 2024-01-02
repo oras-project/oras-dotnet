@@ -12,7 +12,6 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
-using OrasProject.Oras.Memory;
 using OrasProject.Oras.Oci;
 using System.Text;
 using System.Text.Json;
@@ -30,7 +29,7 @@ namespace OrasProject.Oras.Tests
         [Fact]
         public async Task CanCopyBetweenMemoryTargetsWithTaggedNode()
         {
-            var sourceTarget = new MemoryTarget();
+            var sourceTarget = new MemoryStore();
             var cancellationToken = new CancellationToken();
             var blobs = new List<byte[]>();
             var descs = new List<Descriptor>();
@@ -70,8 +69,8 @@ namespace OrasProject.Oras.Tests
             var root = descs[3];
             var reference = "foobar";
             await sourceTarget.TagAsync(root, reference, cancellationToken);
-            var destinationTarget = new MemoryTarget();
-            var gotDesc = await Copy.CopyAsync(sourceTarget, reference, destinationTarget, "", cancellationToken);
+            var destinationTarget = new MemoryStore();
+            var gotDesc = await sourceTarget.CopyAsync(reference, destinationTarget, "", cancellationToken);
             Assert.Equal(gotDesc, root);
             Assert.Equal(await destinationTarget.ResolveAsync(reference, cancellationToken), root);
 
@@ -93,7 +92,7 @@ namespace OrasProject.Oras.Tests
         [Fact]
         public async Task CanCopyBetweenMemoryTargets()
         {
-            var sourceTarget = new MemoryTarget();
+            var sourceTarget = new MemoryStore();
             var cancellationToken = new CancellationToken();
             var blobs = new List<byte[]>();
             var descs = new List<Descriptor>();
@@ -130,8 +129,8 @@ namespace OrasProject.Oras.Tests
 
             }
             var root = descs[3];
-            var destinationTarget = new MemoryTarget();
-            await Copy.CopyGraphAsync(sourceTarget, destinationTarget, root, cancellationToken);
+            var destinationTarget = new MemoryStore();
+            await sourceTarget.CopyGraphAsync(destinationTarget, root, cancellationToken);
             for (var i = 0; i < descs.Count; i++)
             {
                 Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));

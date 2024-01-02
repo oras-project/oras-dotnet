@@ -13,12 +13,11 @@
 
 using OrasProject.Oras.Content;
 
-namespace OrasProject.Oras.Interfaces
+namespace OrasProject.Oras;
+
+/// <summary>
+/// IReadOnlyTarget represents a read-only Target.
+/// </summary>
+public interface IReadOnlyTarget : IReadOnlyStorage, IResolvable
 {
-    /// <summary>
-    /// Target is a CAS with generic tags
-    /// </summary>
-    public interface ITarget : IStorage, ITagStore
-    {
-    }
 }

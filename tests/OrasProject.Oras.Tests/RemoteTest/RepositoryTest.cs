@@ -15,7 +15,6 @@ using Moq;
 using Moq.Protected;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
-using OrasProject.Oras.Memory;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Remote;
 using System.Collections.Immutable;
@@ -2102,9 +2101,9 @@ namespace OrasProject.Oras.Tests.RemoteTest
             reg.HttpClient = CustomClient(func);
             var src = await reg.Repository("source", CancellationToken.None);
 
-            var dst = new MemoryTarget();
+            var dst = new MemoryStore();
             var tagName = "latest";
-            var desc = await Copy.CopyAsync(src, tagName, dst, tagName, CancellationToken.None);
+            var desc = await src.CopyAsync(tagName, dst, tagName, CancellationToken.None);
         }
 
         [Fact]
