@@ -27,7 +27,7 @@ internal static class Digest
     /// Verifies the digest header and throws an exception if it is invalid.
     /// </summary>
     /// <param name="digest"></param>
-    internal static string Validate(string digest)
+    internal static string Validate(string? digest)
     {
         if (string.IsNullOrEmpty(digest) || !digestRegex.IsMatch(digest))
         {

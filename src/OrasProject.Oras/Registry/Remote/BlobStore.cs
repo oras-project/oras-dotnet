@@ -41,7 +41,7 @@ internal class BlobStore : IBlobStore
     {
         var remoteReference = Repository.RemoteReference;
         Digest.Validate(target.Digest);
-        remoteReference.Reference = target.Digest;
+        remoteReference.ContentReference = target.Digest;
         var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
         var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
         switch (resp.StatusCode)
@@ -167,14 +167,14 @@ internal class BlobStore : IBlobStore
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReference(reference);
-        var refDigest = remoteReference.Digest();
+        var refDigest = remoteReference.Digest;
         var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
         var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
         using var resp = await Repository.HttpClient.SendAsync(requestMessage, cancellationToken);
         return resp.StatusCode switch
         {
             HttpStatusCode.OK => Repository.GenerateBlobDescriptor(resp, refDigest),
-            HttpStatusCode.NotFound => throw new NotFoundException($"{remoteReference.Reference}: not found"),
+            HttpStatusCode.NotFound => throw new NotFoundException($"{remoteReference.ContentReference}: not found"),
             _ => throw await ErrorUtility.ParseErrorResponse(resp)
         };
     }
@@ -200,7 +200,7 @@ internal class BlobStore : IBlobStore
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReference(reference);
-        var refDigest = remoteReference.Digest();
+        var refDigest = remoteReference.Digest;
         var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
         var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
         switch (resp.StatusCode)

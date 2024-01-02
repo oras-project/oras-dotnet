@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Registry;
+
 namespace OrasProject.Oras.Remote
 {
 
@@ -39,9 +41,9 @@ namespace OrasProject.Oras.Remote
         /// <param name="plainHTTP"></param>
         /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRegistryBaseURL(bool plainHTTP, RemoteReference reference)
+        internal static string BuildRegistryBaseURL(bool plainHTTP, Reference reference)
         {
-            return $"{BuildScheme(plainHTTP)}://{reference.Host()}/v2/";
+            return $"{BuildScheme(plainHTTP)}://{reference.Host}/v2/";
         }
 
         /// <summary>
@@ -52,9 +54,9 @@ namespace OrasProject.Oras.Remote
         /// <param name="plainHTTP"></param>
         /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRegistryCatalogURL(bool plainHTTP, RemoteReference reference)
+        internal static string BuildRegistryCatalogURL(bool plainHTTP, Reference reference)
         {
-            return $"{BuildScheme(plainHTTP)}://{reference.Host()}/v2/_catalog";
+            return $"{BuildScheme(plainHTTP)}://{reference.Host}/v2/_catalog";
         }
 
         /// <summary>
@@ -64,9 +66,9 @@ namespace OrasProject.Oras.Remote
         /// <param name="plainHTTP"></param>
         /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRepositoryBaseURL(bool plainHTTP, RemoteReference reference)
+        internal static string BuildRepositoryBaseURL(bool plainHTTP, Reference reference)
         {
-            return $"{BuildScheme(plainHTTP)}://{reference.Host()}/v2/{reference.Repository}";
+            return $"{BuildScheme(plainHTTP)}://{reference.Host}/v2/{reference.Repository}";
         }
 
         /// <summary>
@@ -77,7 +79,7 @@ namespace OrasProject.Oras.Remote
         /// <param name="plainHTTP"></param>
         /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRepositoryTagListURL(bool plainHTTP, RemoteReference reference)
+        internal static string BuildRepositoryTagListURL(bool plainHTTP, Reference reference)
         {
             return $"{BuildRepositoryBaseURL(plainHTTP, reference)}/tags/list";
         }
@@ -90,9 +92,9 @@ namespace OrasProject.Oras.Remote
         /// <param name="plainHTTP"></param>
         /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRepositoryManifestURL(bool plainHTTP, RemoteReference reference)
+        internal static string BuildRepositoryManifestURL(bool plainHTTP, Reference reference)
         {
-            return $"{BuildRepositoryBaseURL(plainHTTP, reference)}/manifests/{reference.Reference}";
+            return $"{BuildRepositoryBaseURL(plainHTTP, reference)}/manifests/{reference.ContentReference}";
         }
 
         /// <summary>
@@ -103,9 +105,9 @@ namespace OrasProject.Oras.Remote
         /// <param name="plainHTTP"></param>
         /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRepositoryBlobURL(bool plainHTTP, RemoteReference reference)
+        internal static string BuildRepositoryBlobURL(bool plainHTTP, Reference reference)
         {
-            return $"{BuildRepositoryBaseURL(plainHTTP, reference)}/blobs/{reference.Reference}";
+            return $"{BuildRepositoryBaseURL(plainHTTP, reference)}/blobs/{reference.ContentReference}";
         }
 
         /// <summary>
@@ -117,7 +119,7 @@ namespace OrasProject.Oras.Remote
         /// <param name="plainHTTP"></param>
         /// <param name="reference"></param>
         /// <returns></returns>
-        internal static string BuildRepositoryBlobUploadURL(bool plainHTTP, RemoteReference reference)
+        internal static string BuildRepositoryBlobUploadURL(bool plainHTTP, Reference reference)
         {
             return $"{BuildRepositoryBaseURL(plainHTTP, reference)}/blobs/uploads/";
         }

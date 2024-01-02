@@ -47,7 +47,7 @@ public class ManifestStore : IManifestStore
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.RemoteReference;
-        remoteReference.Reference = target.Digest;
+        remoteReference.ContentReference = target.Digest;
         var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
         var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Add("Accept", target.MediaType);
@@ -120,7 +120,7 @@ public class ManifestStore : IManifestStore
     private async Task InternalPushAsync(Descriptor expected, Stream stream, string reference, CancellationToken cancellationToken)
     {
         var remoteReference = Repository.RemoteReference;
-        remoteReference.Reference = reference;
+        remoteReference.ContentReference = reference;
         var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
         var req = new HttpRequestMessage(HttpMethod.Put, url);
         req.Content = new StreamContent(stream);
@@ -159,7 +159,7 @@ public class ManifestStore : IManifestStore
     /// <param name="httpMethod"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public async Task<Descriptor> GenerateDescriptorAsync(HttpResponseMessage res, RemoteReference reference, HttpMethod httpMethod)
+    public async Task<Descriptor> GenerateDescriptorAsync(HttpResponseMessage res, Reference reference, HttpMethod httpMethod)
     {
         string mediaType;
         try
@@ -183,7 +183,7 @@ public class ManifestStore : IManifestStore
         string refDigest = string.Empty;
         try
         {
-            refDigest = reference.Digest();
+            refDigest = reference.Digest;
         }
         catch (Exception)
         {
@@ -325,7 +325,7 @@ public class ManifestStore : IManifestStore
         CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReference(reference);
-        await InternalPushAsync(expected, content, remoteReference.Reference, cancellationToken);
+        await InternalPushAsync(expected, content, remoteReference.ContentReference, cancellationToken);
     }
 
     /// <summary>
@@ -339,6 +339,6 @@ public class ManifestStore : IManifestStore
     {
         var remoteReference = Repository.ParseReference(reference);
         var rc = await FetchAsync(descriptor, cancellationToken);
-        await InternalPushAsync(descriptor, rc, remoteReference.Reference, cancellationToken);
+        await InternalPushAsync(descriptor, rc, remoteReference.ContentReference, cancellationToken);
     }
 }
