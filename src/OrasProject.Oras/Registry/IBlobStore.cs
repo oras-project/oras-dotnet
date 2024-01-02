@@ -13,12 +13,11 @@
 
 using OrasProject.Oras.Content;
 
-namespace OrasProject.Oras.Interfaces.Registry
+namespace OrasProject.Oras.Registry;
+
+/// <summary>
+/// IBlobStore is a CAS with the ability to stat and delete its content.
+/// </summary>
+public interface IBlobStore : IStorage, IResolvable, IDeletable, IReferenceFetchable
 {
-    /// <summary>
-    /// IBlobStore is a CAS with the ability to stat and delete its content.
-    /// </summary>
-    public interface IBlobStore : IStorage, IResolvable, IDeletable, IReferenceFetcher
-    {
-    }
 }

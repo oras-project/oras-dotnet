@@ -16,6 +16,7 @@ using Moq.Protected;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Remote;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -648,7 +649,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var streamContent = new MemoryStream(index);
-            await repo.PushReferenceAsync(indexDesc, streamContent, reference, cancellationToken);
+            await repo.PushAsync(indexDesc, streamContent, reference, cancellationToken);
             Assert.Equal(index, gotIndex);
         }
 
@@ -713,17 +714,17 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             // test with blob digest
             await Assert.ThrowsAsync<NotFoundException>(
-                async () => await repo.FetchReferenceAsync(blobDesc.Digest, cancellationToken));
+                async () => await repo.FetchAsync(blobDesc.Digest, cancellationToken));
 
             // test with manifest digest
-            var data = await repo.FetchReferenceAsync(indexDesc.Digest, cancellationToken);
+            var data = await repo.FetchAsync(indexDesc.Digest, cancellationToken);
             Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
             var buf = new byte[data.Stream.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
             Assert.Equal(index, buf);
 
             // test with manifest tag
-            data = await repo.FetchReferenceAsync(reference, cancellationToken);
+            data = await repo.FetchAsync(reference, cancellationToken);
             Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
             buf = new byte[data.Stream.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
@@ -731,7 +732,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             // test with manifest tag@digest
             var tagDigestRef = "whatever" + "@" + indexDesc.Digest;
-            data = await repo.FetchReferenceAsync(tagDigestRef, cancellationToken);
+            data = await repo.FetchAsync(tagDigestRef, cancellationToken);
             Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
             buf = new byte[data.Stream.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
@@ -739,7 +740,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             // test with manifest FQDN
             var fqdnRef = "localhost:5000/test" + ":" + tagDigestRef;
-            data = await repo.FetchReferenceAsync(fqdnRef, cancellationToken);
+            data = await repo.FetchAsync(fqdnRef, cancellationToken);
             Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
 
             buf = new byte[data.Stream.Length];
@@ -818,18 +819,17 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             var cancellationToken = new CancellationToken();
 
-            var index = 0;
-            await repo.TagsAsync("", (string[] got) =>
+            var wantTags = new List<string>();
+            foreach (var set in tagSet)
             {
-                if (index > 2)
-                {
-                    throw new Exception($"Error out of range: {index}");
-                }
-
-                var tags = tagSet[index];
-                index++;
-                Assert.Equal(got, tags);
-            }, cancellationToken);
+                wantTags.AddRange(set);
+            }
+            var gotTags = new List<string>();
+            await foreach (var tag in repo.ListTagsAsync().WithCancellation(cancellationToken))
+            {
+                gotTags.Add(tag);
+            }
+            Assert.Equal(wantTags, gotTags);
         }
 
         /// <summary>
@@ -1292,7 +1292,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var store = new BlobStore(repo);
 
             // test with digest
-            var gotDesc = await store.FetchReferenceAsync(blobDesc.Digest, cancellationToken);
+            var gotDesc = await store.FetchAsync(blobDesc.Digest, cancellationToken);
             Assert.Equal(blobDesc.Digest, gotDesc.Descriptor.Digest);
             Assert.Equal(blobDesc.Size, gotDesc.Descriptor.Size);
 
@@ -1302,7 +1302,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             // test with FQDN reference
             var fqdnRef = $"localhost:5000/test@{blobDesc.Digest}";
-            gotDesc = await store.FetchReferenceAsync(fqdnRef, cancellationToken);
+            gotDesc = await store.FetchAsync(fqdnRef, cancellationToken);
             Assert.Equal(blobDesc.Digest, gotDesc.Descriptor.Digest);
             Assert.Equal(blobDesc.Size, gotDesc.Descriptor.Size);
 
@@ -1315,7 +1315,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
             // test with other digest
             await Assert.ThrowsAsync<NotFoundException>(async () =>
-                await store.FetchReferenceAsync(contentDesc.Digest, cancellationToken));
+                await store.FetchAsync(contentDesc.Digest, cancellationToken));
         }
 
         /// <summary>
@@ -1393,7 +1393,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             // test non-seekable content
 
-            var data = await store.FetchReferenceAsync(blobDesc.Digest, cancellationToken);
+            var data = await store.FetchAsync(blobDesc.Digest, cancellationToken);
 
             Assert.Equal(data.Descriptor.Digest, blobDesc.Digest);
             Assert.Equal(data.Descriptor.Size, blobDesc.Size);
@@ -1404,7 +1404,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             // test seekable content
             seekable = true;
-            data = await store.FetchReferenceAsync(blobDesc.Digest, cancellationToken);
+            data = await store.FetchAsync(blobDesc.Digest, cancellationToken);
             Assert.Equal(data.Descriptor.Digest, blobDesc.Digest);
             Assert.Equal(data.Descriptor.Size, blobDesc.Size);
 
@@ -1840,7 +1840,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var store = new ManifestStore(repo);
 
             // test with tag
-            var data = await store.FetchReferenceAsync(reference, cancellationToken);
+            var data = await store.FetchAsync(reference, cancellationToken);
             Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
             var buf = new byte[manifest.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
@@ -1848,10 +1848,10 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             // test with other tag
             var randomRef = "whatever";
-            await Assert.ThrowsAsync<NotFoundException>(async () => await store.FetchReferenceAsync(randomRef, cancellationToken));
+            await Assert.ThrowsAsync<NotFoundException>(async () => await store.FetchAsync(randomRef, cancellationToken));
 
             // test with digest
-            data = await store.FetchReferenceAsync(manifestDesc.Digest, cancellationToken);
+            data = await store.FetchAsync(manifestDesc.Digest, cancellationToken);
             Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
 
             buf = new byte[manifest.Length];
@@ -1860,7 +1860,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             // test with tag@digest
             var tagDigestRef = randomRef + "@" + manifestDesc.Digest;
-            data = await store.FetchReferenceAsync(tagDigestRef, cancellationToken);
+            data = await store.FetchAsync(tagDigestRef, cancellationToken);
             Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
             buf = new byte[manifest.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
@@ -1868,7 +1868,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             // test with FQDN
             var fqdnRef = "localhost:5000/test" + ":" + tagDigestRef;
-            data = await store.FetchReferenceAsync(fqdnRef, cancellationToken);
+            data = await store.FetchAsync(fqdnRef, cancellationToken);
             Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
             buf = new byte[manifest.Length];
             await data.Stream.ReadAsync(buf, cancellationToken);
@@ -2007,7 +2007,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             repo.PlainHTTP = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
-            await store.PushReferenceAsync(indexDesc, new MemoryStream(index), reference, cancellationToken);
+            await store.PushAsync(indexDesc, new MemoryStream(index), reference, cancellationToken);
             Assert.Equal(index, gotIndex);
         }
 
@@ -2097,9 +2097,9 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return res;
             };
 
-            var reg = new Registry("localhost:5000");
+            var reg = new Remote.Registry("localhost:5000");
             reg.HttpClient = CustomClient(func);
-            var src = await reg.Repository("source", CancellationToken.None);
+            var src = await reg.GetRepository("source", CancellationToken.None);
 
             var dst = new MemoryStore();
             var tagName = "latest";

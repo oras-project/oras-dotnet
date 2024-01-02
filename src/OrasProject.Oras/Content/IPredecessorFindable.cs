@@ -19,12 +19,12 @@ using System.Threading.Tasks;
 namespace OrasProject.Oras.Content;
 
 /// <summary>
-/// IPredecessorFinder finds out the nodes directly pointing to a given node of a
+/// Finds out the nodes directly pointing to a given node of a
 /// directed acyclic graph.
 /// In other words, returns the "parents" of the current descriptor.
 /// IPredecessorFinder is an extension of Storage.
 /// </summary>
-public interface IPredecessorFinder
+public interface IPredecessorFindable
 {
     /// <summary>
     /// returns the nodes directly pointing to the current node.
