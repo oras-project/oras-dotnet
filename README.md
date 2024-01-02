@@ -1,10 +1,14 @@
 # ORAS .NET library
 
-> **Warning** This project is currently under initial development. APIs may and will be changed incompatibly from one commit to another.
+[![Build Status](https://github.com/oras-project/oras-dotnet/actions/workflows/build.yml/badge.svg?event=push&branch=main)](https://github.com/oras-project/oras-dotnet/actions/workflows/build.yml?query=workflow%3Abuild+event%3Apush+branch%3Amain)
+[![codecov](https://codecov.io/gh/oras-project/oras-dotnet/branch/main/graph/badge.svg)](https://codecov.io/gh/oras-project/oras-dotnet)
 
 <p align="left">
 <a href="https://oras.land/"><img src="https://oras.land/img/oras.svg" alt="banner" width="100px"></a>
 </p>
+
+> [!WARNING]
+> This project is currently under initial development. APIs may and will be changed incompatibly from one commit to another.
 
 ## Versioning
 
