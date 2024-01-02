@@ -16,21 +16,18 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OrasProject.Oras.Interfaces.Registry
+namespace OrasProject.Oras.Registry;
+
+/// <summary>
+/// Provides advanced fetch with the tag service.
+/// </summary>
+public interface IReferenceFetchable
 {
     /// <summary>
-    /// IReferencePusher provides advanced push with the tag service.
+    /// Fetches the content identified by the reference.
     /// </summary>
-    public interface IReferencePusher
-    {
-        /// <summary>
-        /// PushReferenceAsync pushes the manifest with a reference tag.
-        /// </summary>
-        /// <param name="descriptor"></param>
-        /// <param name="content"></param>
-        /// <param name="reference"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task PushReferenceAsync(Descriptor descriptor, Stream content, string reference, CancellationToken cancellationToken = default);
-    }
+    /// <param name="reference"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default);
 }

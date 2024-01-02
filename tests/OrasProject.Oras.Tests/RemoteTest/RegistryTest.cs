@@ -144,20 +144,17 @@ namespace OrasProject.Oras.Tests.RemoteTest
             var cancellationToken = new CancellationToken();
             registry.TagListPageSize = 4;
 
-
-
-            var index = 0;
-            await registry.Repositories("", (string[] got) =>
+            var wantRepositories = new List<string>();
+            foreach (var set in repoSet)
             {
-                if (index > 2)
-                {
-                    throw new Exception($"Error out of range: {index}");
-                }
-
-                var repos = repoSet[index];
-                index++;
-                Assert.Equal(got, repos);
-            }, cancellationToken);
+                wantRepositories.AddRange(set);
+            }
+            var gotRepositories = new List<string>();
+            await foreach (var repo in registry.ListRepositoriesAsync().WithCancellation(cancellationToken))
+            {
+                gotRepositories.Add(repo);
+            }
+            Assert.Equal(wantRepositories, gotRepositories);
         }
     }
 }

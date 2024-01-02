@@ -12,10 +12,13 @@
 // limitations under the License.
 
 using OrasProject.Oras.Exceptions;
-using OrasProject.Oras.Interfaces.Registry;
+using OrasProject.Oras.Registry;
+using OrasProject.Oras.Registry.Remote;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -86,7 +89,7 @@ namespace OrasProject.Oras.Remote
         /// <param name="name"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public Task<IRepository> Repository(string name, CancellationToken cancellationToken)
+        public Task<IRepository> GetRepository(string name, CancellationToken cancellationToken)
         {
             var reference = new RemoteReference
             {
@@ -102,23 +105,28 @@ namespace OrasProject.Oras.Remote
         /// Repositories returns a list of repositories from the remote registry.
         /// </summary>
         /// <param name="last"></param>
-        /// <param name="fn"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task Repositories(string last, Action<string[]> fn, CancellationToken cancellationToken)
+        public async IAsyncEnumerable<string> ListRepositoriesAsync(string? last = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            try
+            var url = URLUtiliity.BuildRegistryCatalogURL(PlainHTTP, RemoteReference);
+            var done = false;
+            while (!done)
             {
-                var url = URLUtiliity.BuildRegistryCatalogURL(PlainHTTP, RemoteReference);
-                while (true)
+                IEnumerable<string> repositories = Array.Empty<string>();
+                try
                 {
-                    url = await RepositoryPageAsync(last, fn, url, cancellationToken);
+                    url = await RepositoryPageAsync(last, values => repositories = values, url, cancellationToken);
                     last = "";
                 }
-            }
-            catch (LinkUtility.NoLinkHeaderException)
-            {
-                return;
+                catch (LinkUtility.NoLinkHeaderException)
+                {
+                    done = true;
+                }
+                foreach (var repository in repositories)
+                {
+                    yield return repository;
+                }
             }
         }
 
@@ -130,11 +138,11 @@ namespace OrasProject.Oras.Remote
         /// <param name="url"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        private async Task<string> RepositoryPageAsync(string last, Action<string[]> fn, string url, CancellationToken cancellationToken)
+        private async Task<string> RepositoryPageAsync(string? last, Action<string[]> fn, string url, CancellationToken cancellationToken)
         {
             var uriBuilder = new UriBuilder(url);
             var query = ParseQueryString(uriBuilder.Query);
-            if (TagListPageSize > 0 || last != "")
+            if (TagListPageSize > 0 || !string.IsNullOrEmpty(last))
             {
                 if (TagListPageSize > 0)
                 {

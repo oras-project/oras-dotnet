@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Content;
 
-internal class MemoryGraph : IPredecessorFinder
+internal class MemoryGraph : IPredecessorFindable
 {
     private readonly ConcurrentDictionary<BasicDescriptor, ConcurrentDictionary<BasicDescriptor, Descriptor>> _predecessors = new();
 
