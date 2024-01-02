@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Content;
 
-internal class MemoryTagResolver : ITagStore
+internal class MemoryTagStore : ITagStore
 {
     private readonly ConcurrentDictionary<string, Descriptor> _index = new();
 

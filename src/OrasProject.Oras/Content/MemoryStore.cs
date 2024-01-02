@@ -23,7 +23,7 @@ namespace OrasProject.Oras.Content;
 public class MemoryStore : ITarget, IPredecessorFinder
 {
     private readonly MemoryStorage _storage = new();
-    private readonly MemoryTagResolver _tagResolver = new();
+    private readonly MemoryTagStore _tagResolver = new();
     private readonly MemoryGraph _graph = new();
 
     /// <summary>
