@@ -13,20 +13,19 @@
 
 using System.Text.Json.Serialization;
 
-namespace OrasProject.Oras.Remote
-{
-    internal static class ResponseTypes
-    {
-        internal struct RepositoryList
-        {
-            [JsonPropertyName("repositories")]
-            public string[] Repositories { get; set; }
-        }
+namespace OrasProject.Oras.Registry.Remote;
 
-        internal struct TagList
-        {
-            [JsonPropertyName("tags")]
-            public string[] Tags { get; set; }
-        }
+internal static class ResponseTypes
+{
+    internal struct RepositoryList
+    {
+        [JsonPropertyName("repositories")]
+        public string[] Repositories { get; set; }
+    }
+
+    internal struct TagList
+    {
+        [JsonPropertyName("tags")]
+        public string[] Tags { get; set; }
     }
 }

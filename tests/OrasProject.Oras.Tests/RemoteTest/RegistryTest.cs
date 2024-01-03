@@ -13,7 +13,7 @@
 
 using Moq;
 using Moq.Protected;
-using OrasProject.Oras.Remote;
+using OrasProject.Oras.Registry.Remote;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -66,8 +66,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 }
             };
             var registry = new OrasProject.Oras.Remote.Registry("localhost:5000");
-            registry.PlainHTTP = true;
-            registry.HttpClient = CustomClient(func);
+            registry._opts.PlainHttp = true;
+            registry._opts.HttpClient = CustomClient(func);
             var cancellationToken = new CancellationToken();
             await registry.PingAsync(cancellationToken);
             V2Implemented = false;
@@ -139,10 +139,10 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
 
             var registry = new OrasProject.Oras.Remote.Registry("localhost:5000");
-            registry.PlainHTTP = true;
-            registry.HttpClient = CustomClient(func);
+            registry._opts.PlainHttp = true;
+            registry._opts.HttpClient = CustomClient(func);
             var cancellationToken = new CancellationToken();
-            registry.TagListPageSize = 4;
+            registry._opts.TagListPageSize = 4;
 
             var wantRepositories = new List<string>();
             foreach (var set in repoSet)

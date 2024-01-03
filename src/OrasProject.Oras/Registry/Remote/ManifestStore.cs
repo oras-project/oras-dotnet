@@ -14,7 +14,6 @@
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
-using OrasProject.Oras.Remote;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -46,12 +45,12 @@ public class ManifestStore : IManifestStore
     /// <exception cref="Exception"></exception>
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        var remoteReference = Repository.RemoteReference;
+        var remoteReference = Repository._opts.Reference;
         remoteReference.ContentReference = target.Digest;
-        var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
+        var url = URLUtiliity.BuildRepositoryManifestURL(Repository._opts.PlainHttp, remoteReference);
         var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Add("Accept", target.MediaType);
-        var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
+        var resp = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);
 
         switch (resp.StatusCode)
         {
@@ -119,14 +118,14 @@ public class ManifestStore : IManifestStore
     /// <param name="cancellationToken"></param>
     private async Task InternalPushAsync(Descriptor expected, Stream stream, string reference, CancellationToken cancellationToken)
     {
-        var remoteReference = Repository.RemoteReference;
+        var remoteReference = Repository._opts.Reference;
         remoteReference.ContentReference = reference;
-        var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
+        var url = URLUtiliity.BuildRepositoryManifestURL(Repository._opts.PlainHttp, remoteReference);
         var req = new HttpRequestMessage(HttpMethod.Put, url);
         req.Content = new StreamContent(stream);
         req.Content.Headers.ContentLength = expected.Size;
         req.Content.Headers.Add("Content-Type", expected.MediaType);
-        var client = Repository.HttpClient;
+        var client = Repository._opts.HttpClient;
         using var resp = await client.SendAsync(req, cancellationToken);
         if (resp.StatusCode != HttpStatusCode.Created)
         {
@@ -138,10 +137,10 @@ public class ManifestStore : IManifestStore
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReference(reference);
-        var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
+        var url = URLUtiliity.BuildRepositoryManifestURL(Repository._opts.PlainHttp, remoteReference);
         var req = new HttpRequestMessage(HttpMethod.Head, url);
-        req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository.ManifestMediaTypes));
-        using var res = await Repository.HttpClient.SendAsync(req, cancellationToken);
+        req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository._opts.ManifestMediaTypes));
+        using var res = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);
 
         return res.StatusCode switch
         {
@@ -287,10 +286,10 @@ public class ManifestStore : IManifestStore
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReference(reference);
-        var url = URLUtiliity.BuildRepositoryManifestURL(Repository.PlainHTTP, remoteReference);
+        var url = URLUtiliity.BuildRepositoryManifestURL(Repository._opts.PlainHttp, remoteReference);
         var req = new HttpRequestMessage(HttpMethod.Get, url);
-        req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository.ManifestMediaTypes));
-        var resp = await Repository.HttpClient.SendAsync(req, cancellationToken);
+        req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository._opts.ManifestMediaTypes));
+        var resp = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.OK:

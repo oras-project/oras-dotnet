@@ -18,7 +18,6 @@ using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
-using OrasProject.Oras.Remote;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Net;
@@ -218,8 +217,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return resp;
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var stream = await repo.FetchAsync(blobDesc, cancellationToken);
             var buf = new byte[stream.Length];
@@ -315,8 +314,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             await repo.PushAsync(blobDesc, new MemoryStream(blob), cancellationToken);
             Assert.Equal(blob, gotBlob);
@@ -379,8 +378,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var exists = await repo.ExistsAsync(blobDesc, cancellationToken);
             Assert.True(exists);
@@ -439,8 +438,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             await repo.DeleteAsync(blobDesc, cancellationToken);
             Assert.True(blobDeleted);
@@ -504,8 +503,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             await Assert.ThrowsAsync<NotFoundException>(async () =>
                 await repo.ResolveAsync(blobDesc.Digest, cancellationToken));
@@ -594,8 +593,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.Forbidden);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             await Assert.ThrowsAnyAsync<Exception>(
                 async () => await repo.TagAsync(blobDesc, reference, cancellationToken));
@@ -646,8 +645,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.Forbidden);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var streamContent = new MemoryStream(index);
             await repo.PushAsync(indexDesc, streamContent, reference, cancellationToken);
@@ -709,8 +708,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.Found);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
 
             // test with blob digest
@@ -814,9 +813,9 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
-            repo.TagListPageSize = 4;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
+            repo._opts.TagListPageSize = 4;
 
             var cancellationToken = new CancellationToken();
 
@@ -868,8 +867,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
             var stream = await store.FetchAsync(blobDesc, cancellationToken);
@@ -958,8 +957,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
             var stream = await store.FetchAsync(blobDesc, cancellationToken);
@@ -1019,8 +1018,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
             var stream = await store.FetchAsync(blobDesc, cancellationToken);
@@ -1080,8 +1079,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.Forbidden);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
             await store.PushAsync(blobDesc, new MemoryStream(blob), cancellationToken);
@@ -1130,8 +1129,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
             var exists = await store.ExistsAsync(blobDesc, cancellationToken);
@@ -1176,8 +1175,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
             await store.DeleteAsync(blobDesc, cancellationToken);
@@ -1228,8 +1227,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
             var got = await store.ResolveAsync(blobDesc.Digest, cancellationToken);
@@ -1287,8 +1286,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new BlobStore(repo);
 
@@ -1386,8 +1385,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
 
             var store = new BlobStore(repo);
@@ -1543,8 +1542,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
             var data = await store.FetchAsync(manifestDesc, cancellationToken);
@@ -1605,8 +1604,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 }
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
             await store.PushAsync(manifestDesc, new MemoryStream(manifest), cancellationToken);
@@ -1649,8 +1648,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
             var exist = await store.ExistsAsync(manifestDesc, cancellationToken);
@@ -1710,8 +1709,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
             await store.DeleteAsync(manifestDesc, cancellationToken);
@@ -1764,8 +1763,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
             var got = await store.ResolveAsync(manifestDesc.Digest, cancellationToken);
@@ -1830,8 +1829,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
 
@@ -1939,8 +1938,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
 
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
 
@@ -1999,8 +1998,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return res;
             };
             var repo = new Repository("localhost:5000/test");
-            repo.HttpClient = CustomClient(func);
-            repo.PlainHTTP = true;
+            repo._opts.HttpClient = CustomClient(func);
+            repo._opts.PlainHttp = true;
             var cancellationToken = new CancellationToken();
             var store = new ManifestStore(repo);
             await store.PushAsync(indexDesc, new MemoryStream(index), reference, cancellationToken);
@@ -2094,7 +2093,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
             };
 
             var reg = new Remote.Registry("localhost:5000");
-            reg.HttpClient = CustomClient(func);
+            reg._opts.HttpClient = CustomClient(func);
             var src = await reg.GetRepository("source", CancellationToken.None);
 
             var dst = new MemoryStore();

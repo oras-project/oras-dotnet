@@ -12,54 +12,49 @@
 // limitations under the License.
 
 using OrasProject.Oras.Oci;
+using System.Collections.Generic;
 using System.Linq;
 
-namespace OrasProject.Oras.Remote
+namespace OrasProject.Oras.Registry.Remote;
+
+internal static class ManifestUtility
 {
-    internal static class ManifestUtility
+    internal static string[] DefaultManifestMediaTypes = new[]
     {
-        internal static string[] DefaultManifestMediaTypes = new[]
+        Docker.MediaType.Manifest,
+        Docker.MediaType.ManifestList,
+        MediaType.ImageIndex,
+        MediaType.ImageManifest
+    };
+
+    /// <summary>
+    /// isManifest determines if the given descriptor is a manifest.
+    /// </summary>
+    /// <param name="manifestMediaTypes"></param>
+    /// <param name="desc"></param>
+    /// <returns></returns>
+    internal static bool IsManifest(IEnumerable<string>? manifestMediaTypes, Descriptor desc)
+    {
+        if (manifestMediaTypes == null)
         {
-            Docker.MediaType.Manifest,
-            Docker.MediaType.ManifestList,
-            Oci.MediaType.ImageIndex,
-            Oci.MediaType.ImageManifest
-        };
-
-        /// <summary>
-        /// isManifest determines if the given descriptor is a manifest.
-        /// </summary>
-        /// <param name="manifestMediaTypes"></param>
-        /// <param name="desc"></param>
-        /// <returns></returns>
-        internal static bool IsManifest(string[] manifestMediaTypes, Descriptor desc)
-        {
-            if (manifestMediaTypes == null || manifestMediaTypes.Length == 0)
-            {
-                manifestMediaTypes = DefaultManifestMediaTypes;
-            }
-
-            if (manifestMediaTypes.Any((mediaType) => mediaType == desc.MediaType))
-            {
-                return true;
-            }
-
-            return false;
+            manifestMediaTypes = DefaultManifestMediaTypes;
         }
 
-        /// <summary>
-        /// ManifestAcceptHeader returns the accept header for the given manifest media types.
-        /// </summary>
-        /// <param name="manifestMediaTypes"></param>
-        /// <returns></returns>
-        internal static string ManifestAcceptHeader(string[] manifestMediaTypes)
+        if (manifestMediaTypes.Any((mediaType) => mediaType == desc.MediaType))
         {
-            if (manifestMediaTypes == null || manifestMediaTypes.Length == 0)
-            {
-                manifestMediaTypes = DefaultManifestMediaTypes;
-            }
-
-            return string.Join(',', manifestMediaTypes);
+            return true;
         }
+
+        return false;
+    }
+
+    /// <summary>
+    /// ManifestAcceptHeader returns the accept header for the given manifest media types.
+    /// </summary>
+    /// <param name="manifestMediaTypes"></param>
+    /// <returns></returns>
+    internal static string ManifestAcceptHeader(IEnumerable<string>? manifestMediaTypes)
+    {
+        return string.Join(',', manifestMediaTypes ?? DefaultManifestMediaTypes);
     }
 }

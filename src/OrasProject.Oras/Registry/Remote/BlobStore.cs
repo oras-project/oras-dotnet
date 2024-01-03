@@ -14,7 +14,6 @@
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
-using OrasProject.Oras.Remote;
 using System;
 using System.IO;
 using System.Linq;
@@ -39,11 +38,11 @@ internal class BlobStore : IBlobStore
 
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        var remoteReference = Repository.RemoteReference;
+        var remoteReference = Repository._opts.Reference;
         Digest.Validate(target.Digest);
         remoteReference.ContentReference = target.Digest;
-        var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
-        var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
+        var url = URLUtiliity.BuildRepositoryBlobURL(Repository._opts.PlainHttp, remoteReference);
+        var resp = await Repository._opts.HttpClient.GetAsync(url, cancellationToken);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.OK:
@@ -98,8 +97,8 @@ internal class BlobStore : IBlobStore
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
     {
-        var url = URLUtiliity.BuildRepositoryBlobUploadURL(Repository.PlainHTTP, Repository.RemoteReference);
-        using var resp = await Repository.HttpClient.PostAsync(url, null, cancellationToken);
+        var url = URLUtiliity.BuildRepositoryBlobUploadURL(Repository._opts.PlainHttp, Repository._opts.Reference);
+        using var resp = await Repository._opts.HttpClient.PostAsync(url, null, cancellationToken);
         var reqHostname = resp.RequestMessage.RequestUri.Host;
         var reqPort = resp.RequestMessage.RequestUri.Port;
         if (resp.StatusCode != HttpStatusCode.Accepted)
@@ -149,7 +148,7 @@ internal class BlobStore : IBlobStore
         {
             req.Headers.Add("Authorization", auth.FirstOrDefault());
         }
-        using var resp2 = await Repository.HttpClient.SendAsync(req, cancellationToken);
+        using var resp2 = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);
         if (resp2.StatusCode != HttpStatusCode.Created)
         {
             throw await ErrorUtility.ParseErrorResponse(resp2);
@@ -168,9 +167,9 @@ internal class BlobStore : IBlobStore
     {
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
-        var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
+        var url = URLUtiliity.BuildRepositoryBlobURL(Repository._opts.PlainHttp, remoteReference);
         var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
-        using var resp = await Repository.HttpClient.SendAsync(requestMessage, cancellationToken);
+        using var resp = await Repository._opts.HttpClient.SendAsync(requestMessage, cancellationToken);
         return resp.StatusCode switch
         {
             HttpStatusCode.OK => Repository.GenerateBlobDescriptor(resp, refDigest),
@@ -201,8 +200,8 @@ internal class BlobStore : IBlobStore
     {
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
-        var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
-        var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
+        var url = URLUtiliity.BuildRepositoryBlobURL(Repository._opts.PlainHttp, remoteReference);
+        var resp = await Repository._opts.HttpClient.GetAsync(url, cancellationToken);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.OK:

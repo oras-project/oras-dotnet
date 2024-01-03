@@ -14,7 +14,6 @@
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
-using OrasProject.Oras.Remote;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -25,58 +24,25 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using static System.Web.HttpUtility;
+using System.Web;
 
 namespace OrasProject.Oras.Registry.Remote;
 
 /// <summary>
 /// Repository is an HTTP client to a remote repository
 /// </summary>
-public class Repository : IRepository, IRepositoryOption
+public class Repository : IRepository
 {
-    /// <summary>
-    /// HttpClient is the underlying HTTP client used to access the remote registry.
-    /// </summary>
-    public HttpClient HttpClient { get; set; }
+    public RepositoryOptions Options => _opts;
 
-    /// <summary>
-    /// ReferenceObj references the remote repository.
-    /// </summary>
-    public Reference RemoteReference { get; set; }
-
-    /// <summary>
-    /// PlainHTTP signals the transport to access the remote repository via HTTP
-    /// instead of HTTPS.
-    /// </summary>
-    public bool PlainHTTP { get; set; }
-
-
-    /// <summary>
-    /// ManifestMediaTypes is used in `Accept` header for resolving manifests
-    /// from references. It is also used in identifying manifests and blobs from
-    /// descriptors. If an empty list is present, default manifest media types
-    /// are used.
-    /// </summary>
-    public string[] ManifestMediaTypes { get; set; }
-
-    /// <summary>
-    /// TagListPageSize specifies the page size when invoking the tag list API.
-    /// If zero, the page size is determined by the remote registry.
-    /// Reference: https://docs.docker.com/registry/spec/api/#tags
-    /// </summary>
-    public int TagListPageSize { get; set; }
+    internal RepositoryOptions _opts;
 
     /// <summary>
     /// Creates a client to the remote repository identified by a reference
     /// Example: localhost:5000/hello-world
     /// </summary>
     /// <param name="reference"></param>
-    public Repository(string reference)
-    {
-        RemoteReference = Reference.Parse(reference);
-        HttpClient = new HttpClient();
-        HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
-    }
+    public Repository(string reference) : this(reference, new HttpClient().AddUserAgent()) { }
 
     /// <summary>
     /// Creates a client to the remote repository using a reference and a HttpClient
@@ -85,24 +51,19 @@ public class Repository : IRepository, IRepositoryOption
     /// <param name="httpClient"></param>
     public Repository(string reference, HttpClient httpClient)
     {
-        RemoteReference = Reference.Parse(reference);
-        HttpClient = httpClient;
+        var parsedReference = Reference.Parse(reference);
+        if (string.IsNullOrEmpty(parsedReference.Repository))
+        {
+            throw new InvalidReferenceException("missing repository");
+        }
+        _opts = new()
+        {
+            Reference = parsedReference,
+            HttpClient = httpClient,
+        };
     }
 
-    /// <summary>
-    /// This constructor customizes the HttpClient and sets the properties
-    /// using values from the parameter.
-    /// </summary>
-    /// <param name="reference"></param>
-    /// <param name="option"></param>
-    internal Repository(Reference reference, IRepositoryOption option)
-    {
-        HttpClient = option.HttpClient;
-        RemoteReference = reference;
-        ManifestMediaTypes = option.ManifestMediaTypes;
-        PlainHTTP = option.PlainHTTP;
-        TagListPageSize = option.TagListPageSize;
-    }
+    public Repository(RepositoryOptions options) => _opts = options;
 
     /// <summary>
     /// BlobStore detects the blob store for the given descriptor.
@@ -111,7 +72,7 @@ public class Repository : IRepository, IRepositoryOption
     /// <returns></returns>
     private IBlobStore BlobStore(Descriptor desc)
     {
-        if (ManifestUtility.IsManifest(ManifestMediaTypes, desc))
+        if (ManifestUtility.IsManifest(_opts.ManifestMediaTypes, desc))
         {
             return Manifests;
         }
@@ -248,7 +209,7 @@ public class Repository : IRepository, IRepositoryOption
     /// <returns></returns>
     public async IAsyncEnumerable<string> ListTagsAsync(string? last = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var url = URLUtiliity.BuildRepositoryTagListURL(PlainHTTP, RemoteReference);
+        var url = URLUtiliity.BuildRepositoryTagListURL(_opts.PlainHttp, _opts.Reference);
         var done = false;
         while (!done)
         {
@@ -279,12 +240,12 @@ public class Repository : IRepository, IRepositoryOption
     private async Task<string> TagsPageAsync(string? last, Action<string[]> fn, string url, CancellationToken cancellationToken)
     {
         var uriBuilder = new UriBuilder(url);
-        var query = ParseQueryString(uriBuilder.Query);
-        if (TagListPageSize > 0 || !string.IsNullOrEmpty(last))
+        var query = HttpUtility.ParseQueryString(uriBuilder.Query);
+        if (_opts.TagListPageSize > 0 || !string.IsNullOrEmpty(last))
         {
-            if (TagListPageSize > 0)
+            if (_opts.TagListPageSize > 0)
             {
-                query["n"] = TagListPageSize.ToString();
+                query["n"] = _opts.TagListPageSize.ToString();
             }
             if (!string.IsNullOrEmpty(last))
             {
@@ -293,7 +254,7 @@ public class Repository : IRepository, IRepositoryOption
         }
 
         uriBuilder.Query = query.ToString();
-        using var resp = await HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
+        using var resp = await _opts.HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
         if (resp.StatusCode != HttpStatusCode.OK)
         {
             throw await ErrorUtility.ParseErrorResponse(resp);
@@ -317,19 +278,19 @@ public class Repository : IRepository, IRepositoryOption
     /// <exception cref="Exception"></exception>
     internal async Task DeleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken)
     {
-        var remoteReference = RemoteReference;
+        var remoteReference = _opts.Reference;
         remoteReference.ContentReference = target.Digest;
         string url;
         if (isManifest)
         {
-            url = URLUtiliity.BuildRepositoryManifestURL(PlainHTTP, remoteReference);
+            url = URLUtiliity.BuildRepositoryManifestURL(_opts.PlainHttp, remoteReference);
         }
         else
         {
-            url = URLUtiliity.BuildRepositoryBlobURL(PlainHTTP, remoteReference);
+            url = URLUtiliity.BuildRepositoryBlobURL(_opts.PlainHttp, remoteReference);
         }
 
-        using var resp = await HttpClient.DeleteAsync(url, cancellationToken);
+        using var resp = await _opts.HttpClient.DeleteAsync(url, cancellationToken);
 
         switch (resp.StatusCode)
         {
@@ -419,7 +380,7 @@ public class Repository : IRepository, IRepositoryOption
                 // `@` implies *digest*, so drop the *tag* (irrespective of what it is).
                 reference = reference[(index + 1)..];
             }
-            remoteReference = new Reference(RemoteReference.Registry, RemoteReference.Repository, reference);
+            remoteReference = new Reference(_opts.Reference.Registry, _opts.Reference.Repository, reference);
             if (index != -1)
             {
                 _ = remoteReference.Digest;
@@ -428,11 +389,11 @@ public class Repository : IRepository, IRepositoryOption
 
         if (!hasError)
         {
-            if (remoteReference.Registry != RemoteReference.Registry ||
-                remoteReference.Repository != RemoteReference.Repository)
+            if (remoteReference.Registry != _opts.Reference.Registry ||
+                remoteReference.Repository != _opts.Reference.Repository)
             {
                 throw new InvalidReferenceException(
-                    $"mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(RemoteReference)}");
+                    $"mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(_opts.Reference)}");
             }
         }
         if (string.IsNullOrEmpty(remoteReference.ContentReference))
