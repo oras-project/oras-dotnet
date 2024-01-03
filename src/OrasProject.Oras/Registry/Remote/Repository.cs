@@ -42,7 +42,7 @@ public class Repository : IRepository, IRepositoryOption
     /// <summary>
     /// ReferenceObj references the remote repository.
     /// </summary>
-    public RemoteReference RemoteReference { get; set; }
+    public Reference RemoteReference { get; set; }
 
     /// <summary>
     /// PlainHTTP signals the transport to access the remote repository via HTTP
@@ -73,7 +73,7 @@ public class Repository : IRepository, IRepositoryOption
     /// <param name="reference"></param>
     public Repository(string reference)
     {
-        RemoteReference = RemoteReference.ParseReference(reference);
+        RemoteReference = Reference.Parse(reference);
         HttpClient = new HttpClient();
         HttpClient.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
     }
@@ -85,7 +85,7 @@ public class Repository : IRepository, IRepositoryOption
     /// <param name="httpClient"></param>
     public Repository(string reference, HttpClient httpClient)
     {
-        RemoteReference = RemoteReference.ParseReference(reference);
+        RemoteReference = Reference.Parse(reference);
         HttpClient = httpClient;
     }
 
@@ -95,9 +95,8 @@ public class Repository : IRepository, IRepositoryOption
     /// </summary>
     /// <param name="reference"></param>
     /// <param name="option"></param>
-    internal Repository(RemoteReference reference, IRepositoryOption option)
+    internal Repository(Reference reference, IRepositoryOption option)
     {
-        reference.ValidateRepository();
         HttpClient = option.HttpClient;
         RemoteReference = reference;
         ManifestMediaTypes = option.ManifestMediaTypes;
@@ -319,7 +318,7 @@ public class Repository : IRepository, IRepositoryOption
     internal async Task DeleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken)
     {
         var remoteReference = RemoteReference;
-        remoteReference.Reference = target.Digest;
+        remoteReference.ContentReference = target.Digest;
         string url;
         if (isManifest)
         {
@@ -402,35 +401,29 @@ public class Repository : IRepository, IRepositoryOption
     /// </summary>
     /// <param name="reference"></param>
     /// <returns></returns>
-    public RemoteReference ParseReference(string reference)
+    public Reference ParseReference(string reference)
     {
-        RemoteReference remoteReference;
+        Reference remoteReference;
         var hasError = false;
         try
         {
-            remoteReference = RemoteReference.ParseReference(reference);
+            remoteReference = Reference.Parse(reference);
         }
         catch (Exception)
         {
             hasError = true;
-            remoteReference = new RemoteReference
-            {
-                Registry = RemoteReference.Registry,
-                Repository = RemoteReference.Repository,
-                Reference = reference
-            };
             //reference is not a FQDN
-            if (reference.IndexOf("@") is var index && index != -1)
+            var index = reference.IndexOf("@");
+            if (index != -1)
             {
                 // `@` implies *digest*, so drop the *tag* (irrespective of what it is).
-                remoteReference.Reference = reference[(index + 1)..];
-                remoteReference.ValidateReferenceAsDigest();
+                reference = reference[(index + 1)..];
             }
-            else
+            remoteReference = new Reference(RemoteReference.Registry, RemoteReference.Repository, reference);
+            if (index != -1)
             {
-                remoteReference.ValidateReference();
+                _ = remoteReference.Digest;
             }
-
         }
 
         if (!hasError)
@@ -442,7 +435,7 @@ public class Repository : IRepository, IRepositoryOption
                     $"mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(RemoteReference)}");
             }
         }
-        if (string.IsNullOrEmpty(remoteReference.Reference))
+        if (string.IsNullOrEmpty(remoteReference.ContentReference))
         {
             throw new InvalidReferenceException();
         }

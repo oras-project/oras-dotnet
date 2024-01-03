@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Remote;
 using System.Net.Http;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -29,7 +28,7 @@ public interface IRepositoryOption
     /// <summary>
     /// Reference references the remote repository.
     /// </summary>
-    public RemoteReference RemoteReference { get; set; }
+    public Reference RemoteReference { get; set; }
 
     /// <summary>
     /// PlainHTTP signals the transport to access the remote repository via HTTP

@@ -30,31 +30,21 @@ namespace OrasProject.Oras.Remote
     {
 
         public HttpClient HttpClient { get; set; }
-        public RemoteReference RemoteReference { get; set; }
+        public Reference RemoteReference { get; set; }
         public bool PlainHTTP { get; set; }
         public string[] ManifestMediaTypes { get; set; }
         public int TagListPageSize { get; set; }
 
         public Registry(string name)
         {
-            var reference = new RemoteReference
-            {
-                Registry = name,
-            };
-            reference.ValidateRegistry();
-            RemoteReference = reference;
+            RemoteReference = new Reference(name);
             HttpClient = new HttpClient();
             HttpClient.AddUserAgent();
         }
 
         public Registry(string name, HttpClient httpClient)
         {
-            var reference = new RemoteReference
-            {
-                Registry = name,
-            };
-            reference.ValidateRegistry();
-            RemoteReference = reference;
+            RemoteReference = new Reference(name);
             HttpClient = httpClient;
         }
 
@@ -91,11 +81,7 @@ namespace OrasProject.Oras.Remote
         /// <returns></returns>
         public Task<IRepository> GetRepository(string name, CancellationToken cancellationToken)
         {
-            var reference = new RemoteReference
-            {
-                Registry = RemoteReference.Registry,
-                Repository = name,
-            };
+            var reference = new Reference(RemoteReference.Registry, name);
 
             return Task.FromResult<IRepository>(new Repository(reference, this));
         }

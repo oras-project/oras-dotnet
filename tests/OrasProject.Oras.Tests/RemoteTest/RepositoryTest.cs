@@ -16,6 +16,7 @@ using Moq.Protected;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Remote;
 using System.Collections.Immutable;
@@ -1423,12 +1424,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
         [Fact]
         public void GenerateBlobDescriptor_WithVariousDockerContentDigestHeaders()
         {
-            var reference = new RemoteReference()
-            {
-                Registry = "eastern.haan.com",
-                Reference = "<calculate>",
-                Repository = "from25to220ce"
-            };
+            var reference = new Reference("eastern.haan.com", "from25to220ce");
             var tests = GetTestIOStructMapForGetDescriptorClass();
             foreach ((string testName, TestIOStruct dcdIOStruct) in tests)
             {
@@ -1439,7 +1435,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 HttpMethod[] methods = new HttpMethod[] { HttpMethod.Get, HttpMethod.Head };
                 foreach ((int i, HttpMethod method) in methods.Select((value, i) => (i, value)))
                 {
-                    reference.Reference = dcdIOStruct.clientSuppliedReference;
+                    reference.ContentReference = dcdIOStruct.clientSuppliedReference;
                     var resp = new HttpResponseMessage();
                     if (method == HttpMethod.Get)
                     {
@@ -1468,7 +1464,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     var d = string.Empty;
                     try
                     {
-                        d = reference.Digest();
+                        d = reference.Digest;
                     }
                     catch
                     {
@@ -2109,12 +2105,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
         [Fact]
         public async Task ManifestStore_generateDescriptorWithVariousDockerContentDigestHeaders()
         {
-            var reference = new RemoteReference()
-            {
-                Registry = "eastern.haan.com",
-                Reference = "<calculate>",
-                Repository = "from25to220ce"
-            };
+            var reference = new Reference("eastern.haan.com", "from25to220ce");
             var tests = GetTestIOStructMapForGetDescriptorClass();
             foreach ((string testName, TestIOStruct dcdIOStruct) in tests)
             {
@@ -2123,7 +2114,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 var s = new ManifestStore(repo);
                 foreach ((int i, HttpMethod method) in methods.Select((value, i) => (i, value)))
                 {
-                    reference.Reference = dcdIOStruct.clientSuppliedReference;
+                    reference.ContentReference = dcdIOStruct.clientSuppliedReference;
                     var resp = new HttpResponseMessage();
                     if (method == HttpMethod.Get)
                     {
