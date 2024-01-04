@@ -209,7 +209,7 @@ public class Repository : IRepository
     /// <returns></returns>
     public async IAsyncEnumerable<string> ListTagsAsync(string? last = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var url = URLUtiliity.BuildRepositoryTagListURL(_opts.PlainHttp, _opts.Reference);
+        var url = new UriFactory(_opts).BuildRepositoryTagList();
         var done = false;
         while (!done)
         {
@@ -237,7 +237,7 @@ public class Repository : IRepository
     /// <param name="url"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private async Task<string> TagsPageAsync(string? last, Action<string[]> fn, string url, CancellationToken cancellationToken)
+    private async Task<Uri> TagsPageAsync(string? last, Action<string[]> fn, Uri url, CancellationToken cancellationToken)
     {
         var uriBuilder = new UriBuilder(url);
         var query = HttpUtility.ParseQueryString(uriBuilder.Query);
@@ -280,18 +280,10 @@ public class Repository : IRepository
     {
         var remoteReference = _opts.Reference;
         remoteReference.ContentReference = target.Digest;
-        string url;
-        if (isManifest)
-        {
-            url = URLUtiliity.BuildRepositoryManifestURL(_opts.PlainHttp, remoteReference);
-        }
-        else
-        {
-            url = URLUtiliity.BuildRepositoryBlobURL(_opts.PlainHttp, remoteReference);
-        }
+        var uriFactory = new UriFactory(remoteReference, _opts.PlainHttp);
+        var url = isManifest ? uriFactory.BuildRepositoryManifest() : uriFactory.BuildRepositoryBlob();
 
         using var resp = await _opts.HttpClient.DeleteAsync(url, cancellationToken);
-
         switch (resp.StatusCode)
         {
             case HttpStatusCode.Accepted:

@@ -15,12 +15,16 @@ using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Mime;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace OrasProject.Oras.Registry.Remote;
 
@@ -41,7 +45,7 @@ internal class BlobStore : IBlobStore
         var remoteReference = Repository._opts.Reference;
         Digest.Validate(target.Digest);
         remoteReference.ContentReference = target.Digest;
-        var url = URLUtiliity.BuildRepositoryBlobURL(Repository._opts.PlainHttp, remoteReference);
+        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryBlob();
         var resp = await Repository._opts.HttpClient.GetAsync(url, cancellationToken);
         switch (resp.StatusCode)
         {
@@ -97,64 +101,37 @@ internal class BlobStore : IBlobStore
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
     {
-        var url = URLUtiliity.BuildRepositoryBlobUploadURL(Repository._opts.PlainHttp, Repository._opts.Reference);
-        using var resp = await Repository._opts.HttpClient.PostAsync(url, null, cancellationToken);
-        var reqHostname = resp.RequestMessage.RequestUri.Host;
-        var reqPort = resp.RequestMessage.RequestUri.Port;
-        if (resp.StatusCode != HttpStatusCode.Accepted)
+        var url = new UriFactory(Repository._opts).BuildRepositoryBlobUpload();
+        using (var resp = await Repository._opts.HttpClient.PostAsync(url, null, cancellationToken))
         {
-            throw await ErrorUtility.ParseErrorResponse(resp);
+            if (resp.StatusCode != HttpStatusCode.Accepted)
+            {
+                throw await ErrorUtility.ParseErrorResponse(resp);
+            }
+
+            var location = resp.Headers.Location ?? throw new HttpRequestException("missing location header");
+            url = location.IsAbsoluteUri ? location : new Uri(url, location);
         }
 
-        string location;
         // monolithic upload
-        if (!resp.Headers.Location.IsAbsoluteUri)
+        // add digest key to query string with expected digest value
+        var req = new HttpRequestMessage(HttpMethod.Put, new UriBuilder(url)
         {
-            location = resp.RequestMessage.RequestUri.Scheme + "://" + resp.RequestMessage.RequestUri.Authority + resp.Headers.Location;
-        }
-        else
-        {
-            location = resp.Headers.Location.ToString();
-        }
-        // work-around solution for https://github.com/oras-project/oras-go/issues/177
-        // For some registries, if the port 443 is explicitly set to the hostname                                                                                                                                                        plicitly set to the hostname
-        // like registry.wabbit-networks.io:443/myrepo, blob push will fail since
-        // the hostname of the Location header in the response is set to
-        // registry.wabbit-networks.io instead of registry.wabbit-networks.io:443.
-        var uri = new UriBuilder(location);
-        var locationHostname = uri.Host;
-        var locationPort = uri.Port;
-        // if location port 443 is missing, add it back
-        if (reqPort == 443 && locationHostname == reqHostname && locationPort != reqPort)
-        {
-            location = new UriBuilder($"{locationHostname}:{reqPort}").ToString();
-        }
-
-        url = location;
-
-        var req = new HttpRequestMessage(HttpMethod.Put, url);
+            Query = $"digest={HttpUtility.UrlEncode(expected.Digest)}"
+        }.Uri);
         req.Content = new StreamContent(content);
         req.Content.Headers.ContentLength = expected.Size;
 
         // the expected media type is ignored as in the API doc.
-        req.Content.Headers.Add("Content-Type", "application/octet-stream");
+        req.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
 
-        // add digest key to query string with expected digest value
-        req.RequestUri = new UriBuilder($"{req.RequestUri}?digest={expected.Digest}").Uri;
-
-        //reuse credential from previous POST request
-        resp.Headers.TryGetValues("Authorization", out var auth);
-        if (auth != null)
+        using (var resp = await Repository._opts.HttpClient.SendAsync(req, cancellationToken))
         {
-            req.Headers.Add("Authorization", auth.FirstOrDefault());
+            if (resp.StatusCode != HttpStatusCode.Created)
+            {
+                throw await ErrorUtility.ParseErrorResponse(resp);
+            }
         }
-        using var resp2 = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);
-        if (resp2.StatusCode != HttpStatusCode.Created)
-        {
-            throw await ErrorUtility.ParseErrorResponse(resp2);
-        }
-
-        return;
     }
 
     /// <summary>
@@ -167,7 +144,7 @@ internal class BlobStore : IBlobStore
     {
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
-        var url = URLUtiliity.BuildRepositoryBlobURL(Repository._opts.PlainHttp, remoteReference);
+        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryBlob();
         var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
         using var resp = await Repository._opts.HttpClient.SendAsync(requestMessage, cancellationToken);
         return resp.StatusCode switch
@@ -200,7 +177,7 @@ internal class BlobStore : IBlobStore
     {
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
-        var url = URLUtiliity.BuildRepositoryBlobURL(Repository._opts.PlainHttp, remoteReference);
+        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryBlob();
         var resp = await Repository._opts.HttpClient.GetAsync(url, cancellationToken);
         switch (resp.StatusCode)
         {

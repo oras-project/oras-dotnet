@@ -13,6 +13,7 @@
 
 using Moq;
 using Moq.Protected;
+using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
 using System.Net;
 using System.Text.Json;
@@ -65,9 +66,12 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     return res;
                 }
             };
-            var registry = new OrasProject.Oras.Remote.Registry("localhost:5000");
-            registry._opts.PlainHttp = true;
-            registry._opts.HttpClient = CustomClient(func);
+            var registry = new Remote.Registry(new RepositoryOptions()
+            {
+                Reference = new Reference("localhost:5000"),
+                PlainHttp = true,
+                HttpClient = CustomClient(func),
+            });
             var cancellationToken = new CancellationToken();
             await registry.PingAsync(cancellationToken);
             V2Implemented = false;
@@ -138,11 +142,14 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             };
 
-            var registry = new OrasProject.Oras.Remote.Registry("localhost:5000");
-            registry._opts.PlainHttp = true;
-            registry._opts.HttpClient = CustomClient(func);
+            var registry = new OrasProject.Oras.Remote.Registry(new RepositoryOptions()
+            {
+                Reference = new Reference("localhost:5000"),
+                PlainHttp = true,
+                HttpClient = CustomClient(func),
+                TagListPageSize = 4,
+            });
             var cancellationToken = new CancellationToken();
-            registry._opts.TagListPageSize = 4;
 
             var wantRepositories = new List<string>();
             foreach (var set in repoSet)

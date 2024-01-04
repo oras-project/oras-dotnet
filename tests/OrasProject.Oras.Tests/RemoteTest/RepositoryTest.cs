@@ -27,6 +27,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 using Xunit;
+using Xunit.Abstractions;
 using static OrasProject.Oras.Content.Digest;
 
 namespace OrasProject.Oras.Tests.RemoteTest
@@ -277,7 +278,8 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
                     }
 
-                    if (!req.RequestUri.Query.Contains("digest=" + blobDesc.Digest))
+                    var queries = HttpUtility.ParseQueryString(req.RequestUri.Query);
+                    if (queries["digest"] != blobDesc.Digest)
                     {
                         resp.StatusCode = HttpStatusCode.BadRequest;
                         return resp;
@@ -2092,8 +2094,11 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return res;
             };
 
-            var reg = new Remote.Registry("localhost:5000");
-            reg._opts.HttpClient = CustomClient(func);
+            var reg = new Remote.Registry(new RepositoryOptions()
+            {
+                Reference = new Reference("localhost:5000"),
+                HttpClient = CustomClient(func),
+            });
             var src = await reg.GetRepository("source", CancellationToken.None);
 
             var dst = new MemoryStore();

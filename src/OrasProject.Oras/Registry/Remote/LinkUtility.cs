@@ -24,7 +24,7 @@ internal class LinkUtility
     /// </summary>
     /// <param name="resp"></param>
     /// <returns></returns>
-    internal static string ParseLink(HttpResponseMessage resp)
+    internal static Uri ParseLink(HttpResponseMessage resp)
     {
         string link;
         if (resp.Headers.TryGetValues("Link", out var values))
@@ -59,7 +59,7 @@ internal class LinkUtility
         Uri baseUri = new Uri(scheme + "://" + authority);
         Uri resolvedUri = new Uri(baseUri, link);
 
-        return resolvedUri.AbsoluteUri;
+        return resolvedUri;
     }
 
 

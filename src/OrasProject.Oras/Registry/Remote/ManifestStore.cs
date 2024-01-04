@@ -47,7 +47,7 @@ public class ManifestStore : IManifestStore
     {
         var remoteReference = Repository._opts.Reference;
         remoteReference.ContentReference = target.Digest;
-        var url = URLUtiliity.BuildRepositoryManifestURL(Repository._opts.PlainHttp, remoteReference);
+        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryManifest();
         var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Add("Accept", target.MediaType);
         var resp = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);
@@ -120,7 +120,7 @@ public class ManifestStore : IManifestStore
     {
         var remoteReference = Repository._opts.Reference;
         remoteReference.ContentReference = reference;
-        var url = URLUtiliity.BuildRepositoryManifestURL(Repository._opts.PlainHttp, remoteReference);
+        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryManifest();
         var req = new HttpRequestMessage(HttpMethod.Put, url);
         req.Content = new StreamContent(stream);
         req.Content.Headers.ContentLength = expected.Size;
@@ -137,7 +137,7 @@ public class ManifestStore : IManifestStore
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReference(reference);
-        var url = URLUtiliity.BuildRepositoryManifestURL(Repository._opts.PlainHttp, remoteReference);
+        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryManifest();
         var req = new HttpRequestMessage(HttpMethod.Head, url);
         req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository._opts.ManifestMediaTypes));
         using var res = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);
@@ -286,7 +286,7 @@ public class ManifestStore : IManifestStore
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReference(reference);
-        var url = URLUtiliity.BuildRepositoryManifestURL(Repository._opts.PlainHttp, remoteReference);
+        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryManifest();
         var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository._opts.ManifestMediaTypes));
         var resp = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);

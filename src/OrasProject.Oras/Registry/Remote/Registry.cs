@@ -30,18 +30,15 @@ public class Registry : IRegistry
 {
     public RepositoryOptions RepositoryOptions => _opts;
 
-    internal RepositoryOptions _opts;
+    private RepositoryOptions _opts;
 
     public Registry(string registry) : this(registry, new HttpClient().AddUserAgent()) { }
 
-    public Registry(string registry, HttpClient httpClient)
+    public Registry(string registry, HttpClient httpClient) => _opts = new()
     {
-        _opts = new()
-        {
-            Reference = new Reference(registry),
-            HttpClient = httpClient,
-        };
-    }
+        Reference = new Reference(registry),
+        HttpClient = httpClient,
+    };
 
     public Registry(RepositoryOptions options) => _opts = options;
 
@@ -57,7 +54,7 @@ public class Registry : IRegistry
     /// <returns></returns>
     public async Task PingAsync(CancellationToken cancellationToken)
     {
-        var url = URLUtiliity.BuildRegistryBaseURL(_opts.PlainHttp, _opts.Reference);
+        var url = new UriFactory(_opts).BuildRegistryBase();
         using var resp = await _opts.HttpClient.GetAsync(url, cancellationToken);
         switch (resp.StatusCode)
         {
@@ -93,7 +90,7 @@ public class Registry : IRegistry
     /// <returns></returns>
     public async IAsyncEnumerable<string> ListRepositoriesAsync(string? last = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var url = URLUtiliity.BuildRegistryCatalogURL(_opts.PlainHttp, _opts.Reference);
+        var url = new UriFactory(_opts).BuildRegistryCatalog();
         var done = false;
         while (!done)
         {
@@ -122,7 +119,7 @@ public class Registry : IRegistry
     /// <param name="url"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private async Task<string> RepositoryPageAsync(string? last, Action<string[]> fn, string url, CancellationToken cancellationToken)
+    private async Task<Uri> RepositoryPageAsync(string? last, Action<string[]> fn, Uri url, CancellationToken cancellationToken)
     {
         var uriBuilder = new UriBuilder(url);
         var query = HttpUtility.ParseQueryString(uriBuilder.Query);
