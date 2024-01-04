@@ -59,7 +59,7 @@ public class ManifestStore : IManifestStore
             case HttpStatusCode.NotFound:
                 throw new NotFoundException($"digest {target.Digest} not found");
             default:
-                throw await ErrorUtility.ParseErrorResponse(resp);
+                throw await resp.ParseErrorResponseAsync(cancellationToken);
         }
         var mediaType = resp.Content.Headers?.ContentType.MediaType;
         if (mediaType != target.MediaType)
@@ -129,7 +129,7 @@ public class ManifestStore : IManifestStore
         using var resp = await client.SendAsync(req, cancellationToken);
         if (resp.StatusCode != HttpStatusCode.Created)
         {
-            throw await ErrorUtility.ParseErrorResponse(resp);
+            throw await resp.ParseErrorResponseAsync(cancellationToken);
         }
         Repository.VerifyContentDigest(resp, expected.Digest);
     }
@@ -146,7 +146,7 @@ public class ManifestStore : IManifestStore
         {
             HttpStatusCode.OK => await GenerateDescriptorAsync(res, remoteReference, req.Method),
             HttpStatusCode.NotFound => throw new NotFoundException($"reference {reference} not found"),
-            _ => throw await ErrorUtility.ParseErrorResponse(res)
+            _ => throw await res.ParseErrorResponseAsync(cancellationToken)
         };
     }
 
@@ -307,7 +307,7 @@ public class ManifestStore : IManifestStore
             case HttpStatusCode.NotFound:
                 throw new NotFoundException($"{req.Method} {req.RequestUri}: manifest unknown");
             default:
-                throw await ErrorUtility.ParseErrorResponse(resp);
+                throw await resp.ParseErrorResponseAsync(cancellationToken);
 
         }
     }

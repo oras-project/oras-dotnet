@@ -13,23 +13,24 @@
 
 using System;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-internal class ErrorUtility
+internal static class HttpResponseMessageExtensions
 {
     /// <summary>
-    /// ParseErrorResponse parses the error returned by the remote registry.
+    /// Parses the error returned by the remote registry.
     /// </summary>
     /// <param name="response"></param>
     /// <returns></returns>
-    internal static async Task<Exception> ParseErrorResponse(HttpResponseMessage response)
+    public static async Task<Exception> ParseErrorResponseAsync(this HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return new Exception(new
         {
-            response.RequestMessage.Method,
+            response.RequestMessage!.Method,
             URL = response.RequestMessage.RequestUri,
             response.StatusCode,
             Errors = body

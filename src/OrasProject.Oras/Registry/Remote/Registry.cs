@@ -63,7 +63,7 @@ public class Registry : IRegistry
             case HttpStatusCode.NotFound:
                 throw new NotFoundException($"Repository {_opts.Reference} not found");
             default:
-                throw await ErrorUtility.ParseErrorResponse(resp);
+                throw await resp.ParseErrorResponseAsync(cancellationToken);
         }
     }
 
@@ -141,7 +141,7 @@ public class Registry : IRegistry
         using var response = await _opts.HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
         if (response.StatusCode != HttpStatusCode.OK)
         {
-            throw await ErrorUtility.ParseErrorResponse(response);
+            throw await response.ParseErrorResponseAsync(cancellationToken);
 
         }
         var data = await response.Content.ReadAsStringAsync();

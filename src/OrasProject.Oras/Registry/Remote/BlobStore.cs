@@ -59,7 +59,7 @@ internal class BlobStore : IBlobStore
             case HttpStatusCode.NotFound:
                 throw new NotFoundException($"{target.Digest}: not found");
             default:
-                throw await ErrorUtility.ParseErrorResponse(resp);
+                throw await resp.ParseErrorResponseAsync(cancellationToken);
         }
     }
 
@@ -106,7 +106,7 @@ internal class BlobStore : IBlobStore
         {
             if (resp.StatusCode != HttpStatusCode.Accepted)
             {
-                throw await ErrorUtility.ParseErrorResponse(resp);
+                throw await resp.ParseErrorResponseAsync(cancellationToken);
             }
 
             var location = resp.Headers.Location ?? throw new HttpRequestException("missing location header");
@@ -129,7 +129,7 @@ internal class BlobStore : IBlobStore
         {
             if (resp.StatusCode != HttpStatusCode.Created)
             {
-                throw await ErrorUtility.ParseErrorResponse(resp);
+                throw await resp.ParseErrorResponseAsync(cancellationToken);
             }
         }
     }
@@ -151,7 +151,7 @@ internal class BlobStore : IBlobStore
         {
             HttpStatusCode.OK => Repository.GenerateBlobDescriptor(resp, refDigest),
             HttpStatusCode.NotFound => throw new NotFoundException($"{remoteReference.ContentReference}: not found"),
-            _ => throw await ErrorUtility.ParseErrorResponse(resp)
+            _ => throw await resp.ParseErrorResponseAsync(cancellationToken)
         };
     }
 
@@ -197,7 +197,7 @@ internal class BlobStore : IBlobStore
             case HttpStatusCode.NotFound:
                 throw new NotFoundException();
             default:
-                throw await ErrorUtility.ParseErrorResponse(resp);
+                throw await resp.ParseErrorResponseAsync(cancellationToken);
         }
     }
 }

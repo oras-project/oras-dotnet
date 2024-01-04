@@ -257,7 +257,7 @@ public class Repository : IRepository
         using var resp = await _opts.HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
         if (resp.StatusCode != HttpStatusCode.OK)
         {
-            throw await ErrorUtility.ParseErrorResponse(resp);
+            throw await resp.ParseErrorResponseAsync(cancellationToken);
 
         }
         var data = await resp.Content.ReadAsStringAsync();
@@ -292,7 +292,7 @@ public class Repository : IRepository
             case HttpStatusCode.NotFound:
                 throw new NotFoundException($"digest {target.Digest} not found");
             default:
-                throw await ErrorUtility.ParseErrorResponse(resp);
+                throw await resp.ParseErrorResponseAsync(cancellationToken);
         }
     }
 
