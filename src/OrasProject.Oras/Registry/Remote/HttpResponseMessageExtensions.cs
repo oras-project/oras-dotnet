@@ -12,9 +12,11 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Oci;
 using System;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Mime;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -101,5 +103,33 @@ internal static class HttpResponseMessageExtensions
         {
             throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {digestStr}");
         }
+    }
+
+    /// <summary>
+    /// Returns a descriptor generated from the response.
+    /// </summary>
+    /// <param name="response"></param>
+    /// <param name="expectedDigest"></param>
+    /// <returns></returns>
+    /// <exception cref="Exception"></exception>
+    public static Descriptor GenerateBlobDescriptor(this HttpResponseMessage response, string expectedDigest)
+    {
+        var mediaType = response.Content.Headers.ContentType?.MediaType;
+        if (string.IsNullOrEmpty(mediaType))
+        {
+            mediaType = MediaTypeNames.Application.Octet;
+        }
+        var size = response.Content.Headers.ContentLength ?? -1;
+        if (size == -1)
+        {
+            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: unknown response Content-Length");
+        }
+        response.VerifyContentDigest(expectedDigest);
+        return new Descriptor
+        {
+            MediaType = mediaType,
+            Digest = expectedDigest,
+            Size = size
+        };
     }
 }

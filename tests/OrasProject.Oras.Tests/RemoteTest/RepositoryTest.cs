@@ -27,7 +27,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 using Xunit;
-using Xunit.Abstractions;
 using static OrasProject.Oras.Content.Digest;
 
 namespace OrasProject.Oras.Tests.RemoteTest
@@ -1538,7 +1537,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     var err = false;
                     try
                     {
-                        BlobStore.GenerateBlobDescriptor(resp, d);
+                        resp.GenerateBlobDescriptor(d);
                     }
                     catch (Exception e)
                     {

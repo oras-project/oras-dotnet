@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
@@ -240,8 +241,7 @@ public class Repository : IRepository
     /// <exception cref="NotFoundException"></exception>
     internal async Task DeleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken)
     {
-        var remoteReference = _opts.Reference;
-        remoteReference.ContentReference = target.Digest;
+        var remoteReference = ParseReferenceFromDigest(target.Digest);
         var uriFactory = new UriFactory(remoteReference, _opts.PlainHttp);
         var url = isManifest ? uriFactory.BuildRepositoryManifest() : uriFactory.BuildRepositoryBlob();
 
@@ -297,6 +297,13 @@ public class Repository : IRepository
             throw new InvalidReferenceException();
         }
         return remoteReference;
+    }
+
+    internal Reference ParseReferenceFromDigest(string digest)
+    {
+        var reference = new Reference(_opts.Reference.Registry, _opts.Reference.Repository, digest);
+        _ = reference.Digest;
+        return reference;
     }
 
     /// <summary>
