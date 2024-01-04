@@ -805,7 +805,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                         break;
                 }
 
-                var listOfTags = new ResponseTypes.TagList
+                var listOfTags = new Repository.TagList
                 {
                     Tags = tags.ToArray()
                 };

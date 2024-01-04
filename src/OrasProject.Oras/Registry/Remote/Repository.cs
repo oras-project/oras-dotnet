@@ -22,6 +22,7 @@ using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -210,24 +211,15 @@ public class Repository : IRepository
     public async IAsyncEnumerable<string> ListTagsAsync(string? last = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var url = new UriFactory(_opts).BuildRepositoryTagList();
-        var done = false;
-        while (!done)
+        do
         {
-            IEnumerable<string> tags = Array.Empty<string>();
-            try
-            {
-                url = await TagsPageAsync(last, values => tags = values, url, cancellationToken);
-                last = "";
-            }
-            catch (LinkUtility.NoLinkHeaderException)
-            {
-                done = true;
-            }
+            (var tags, url) = await TagsPageAsync(last, url!, cancellationToken).ConfigureAwait(false);
+            last = null;
             foreach (var tag in tags)
             {
                 yield return tag;
             }
-        }
+        } while (url != null);
     }
 
     /// <summary>
@@ -237,12 +229,12 @@ public class Repository : IRepository
     /// <param name="url"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private async Task<Uri> TagsPageAsync(string? last, Action<string[]> fn, Uri url, CancellationToken cancellationToken)
+    private async Task<(string[], Uri?)> TagsPageAsync(string? last, Uri url, CancellationToken cancellationToken)
     {
         var uriBuilder = new UriBuilder(url);
-        var query = HttpUtility.ParseQueryString(uriBuilder.Query);
         if (_opts.TagListPageSize > 0 || !string.IsNullOrEmpty(last))
         {
+            var query = HttpUtility.ParseQueryString(uriBuilder.Query);
             if (_opts.TagListPageSize > 0)
             {
                 query["n"] = _opts.TagListPageSize.ToString();
@@ -251,19 +243,23 @@ public class Repository : IRepository
             {
                 query["last"] = last;
             }
+            uriBuilder.Query = query.ToString();
         }
 
-        uriBuilder.Query = query.ToString();
-        using var resp = await _opts.HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
-        if (resp.StatusCode != HttpStatusCode.OK)
+        using var response = await _opts.HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode != HttpStatusCode.OK)
         {
-            throw await resp.ParseErrorResponseAsync(cancellationToken);
-
+            throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
-        var data = await resp.Content.ReadAsStringAsync();
-        var tagList = JsonSerializer.Deserialize<ResponseTypes.TagList>(data);
-        fn(tagList.Tags);
-        return LinkUtility.ParseLink(resp);
+        var data = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var tagList = JsonSerializer.Deserialize<TagList>(data);
+        return (tagList.Tags, response.ParseLink());
+    }
+
+    internal struct TagList
+    {
+        [JsonPropertyName("tags")]
+        public string[] Tags { get; set; }
     }
 
     /// <summary>

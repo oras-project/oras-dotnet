@@ -133,7 +133,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                         break;
                 }
 
-                var repositoryList = new ResponseTypes.RepositoryList
+                var repositoryList = new Remote.Registry.RepositoryList
                 {
                     Repositories = repos.ToArray()
                 };
@@ -142,7 +142,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             };
 
-            var registry = new OrasProject.Oras.Remote.Registry(new RepositoryOptions()
+            var registry = new Remote.Registry(new RepositoryOptions()
             {
                 Reference = new Reference("localhost:5000"),
                 PlainHttp = true,

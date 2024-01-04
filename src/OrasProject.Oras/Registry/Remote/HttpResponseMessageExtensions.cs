@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,5 +36,34 @@ internal static class HttpResponseMessageExtensions
             response.StatusCode,
             Errors = body
         }.ToString());
+    }
+
+    /// <summary>
+    /// Returns the URL of the response's "Link" header, if present.
+    /// </summary>
+    /// <returns>next link or null if not present</returns>
+    public static Uri? ParseLink(this HttpResponseMessage response)
+    {
+        if (!response.Headers.TryGetValues("Link", out var values))
+        {
+            return null;
+        }
+
+        var link = values.FirstOrDefault();
+        if (string.IsNullOrEmpty(link) || link[0] != '<')
+        {
+            throw new Exception($"invalid next link {link}: missing '<");
+        }
+        if (link.IndexOf('>') is var index && index == -1)
+        {
+            throw new Exception($"invalid next link {link}: missing '>'");
+        }
+        link = link[1..index];
+        if (!Uri.IsWellFormedUriString(link, UriKind.RelativeOrAbsolute))
+        {
+            throw new Exception($"invalid next link {link}");
+        }
+
+        return new Uri(response.RequestMessage!.RequestUri!, link);
     }
 }

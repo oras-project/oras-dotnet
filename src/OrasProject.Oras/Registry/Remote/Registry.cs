@@ -20,6 +20,7 @@ using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -52,10 +53,10 @@ public class Registry : IRegistry
     /// </summary>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task PingAsync(CancellationToken cancellationToken)
+    public async Task PingAsync(CancellationToken cancellationToken = default)
     {
         var url = new UriFactory(_opts).BuildRegistryBase();
-        using var resp = await _opts.HttpClient.GetAsync(url, cancellationToken);
+        using var resp = await _opts.HttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.OK:
@@ -63,7 +64,7 @@ public class Registry : IRegistry
             case HttpStatusCode.NotFound:
                 throw new NotFoundException($"Repository {_opts.Reference} not found");
             default:
-                throw await resp.ParseErrorResponseAsync(cancellationToken);
+                throw await resp.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -81,7 +82,6 @@ public class Registry : IRegistry
         return Task.FromResult<IRepository>(new Repository(options));
     }
 
-
     /// <summary>
     /// Repositories returns a list of repositories from the remote registry.
     /// </summary>
@@ -91,62 +91,54 @@ public class Registry : IRegistry
     public async IAsyncEnumerable<string> ListRepositoriesAsync(string? last = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var url = new UriFactory(_opts).BuildRegistryCatalog();
-        var done = false;
-        while (!done)
+        do
         {
-            IEnumerable<string> repositories = Array.Empty<string>();
-            try
-            {
-                url = await RepositoryPageAsync(last, values => repositories = values, url, cancellationToken);
-                last = "";
-            }
-            catch (LinkUtility.NoLinkHeaderException)
-            {
-                done = true;
-            }
+            (var repositories, url) = await RepositoryPageAsync(last, url!, cancellationToken).ConfigureAwait(false);
+            last = null;
             foreach (var repository in repositories)
             {
                 yield return repository;
             }
-        }
+        } while (url != null);
     }
 
     /// <summary>
     /// RepositoryPageAsync returns a returns a single page of repositories list with the next link
     /// </summary>
     /// <param name="last"></param>
-    /// <param name="fn"></param>
     /// <param name="url"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private async Task<Uri> RepositoryPageAsync(string? last, Action<string[]> fn, Uri url, CancellationToken cancellationToken)
+    private async Task<(string[], Uri?)> RepositoryPageAsync(string? last, Uri url, CancellationToken cancellationToken)
     {
         var uriBuilder = new UriBuilder(url);
-        var query = HttpUtility.ParseQueryString(uriBuilder.Query);
         if (_opts.TagListPageSize > 0 || !string.IsNullOrEmpty(last))
         {
+            var query = HttpUtility.ParseQueryString(uriBuilder.Query);
             if (_opts.TagListPageSize > 0)
             {
                 query["n"] = _opts.TagListPageSize.ToString();
-
-
             }
             if (!string.IsNullOrEmpty(last))
             {
                 query["last"] = last;
             }
+            uriBuilder.Query = query.ToString();
         }
 
-        uriBuilder.Query = query.ToString();
-        using var response = await _opts.HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken);
+        using var response = await _opts.HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
-            throw await response.ParseErrorResponseAsync(cancellationToken);
-
+            throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
-        var data = await response.Content.ReadAsStringAsync();
-        var repositories = JsonSerializer.Deserialize<ResponseTypes.RepositoryList>(data);
-        fn(repositories.Repositories);
-        return LinkUtility.ParseLink(response);
+        var data = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var repositories = JsonSerializer.Deserialize<RepositoryList>(data);
+        return (repositories.Repositories, response.ParseLink());
+    }
+
+    internal struct RepositoryList
+    {
+        [JsonPropertyName("repositories")]
+        public string[] Repositories { get; set; }
     }
 }
