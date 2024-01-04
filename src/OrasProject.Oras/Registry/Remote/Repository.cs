@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
@@ -74,7 +73,8 @@ public class Repository : IRepository
     {
         Reference = Reference.Parse(reference),
         HttpClient = httpClient,
-    }) { }
+    })
+    { }
 
     public Repository(RepositoryOptions options)
     {
