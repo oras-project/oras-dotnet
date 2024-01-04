@@ -24,7 +24,6 @@ namespace OrasProject.Oras.Tests.RemoteTest
 {
     public class RegistryTest
     {
-
         public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
         {
             var moqHandler = new Mock<DelegatingHandler>();
@@ -34,6 +33,18 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 ItExpr.IsAny<CancellationToken>()
             ).ReturnsAsync(func);
             return new HttpClient(moqHandler.Object);
+        }
+
+        /// <summary>
+        /// Test registry constructor
+        /// </summary>
+        [Fact]
+        public void Registry()
+        {
+            var registryName = "foobar";
+            var registry = new Remote.Registry(registryName);
+            var options = registry.RepositoryOptions;
+            Assert.Equal(registryName, options.Reference.Registry);
         }
 
         /// <summary>
