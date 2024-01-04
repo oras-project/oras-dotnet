@@ -15,9 +15,7 @@ using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
-using System.Collections.Specialized;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -28,25 +26,22 @@ using System.Web;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-internal class BlobStore : IBlobStore
+public class BlobStore : IBlobStore
 {
-
     public Repository Repository { get; set; }
 
     public BlobStore(Repository repository)
     {
         Repository = repository;
-
     }
-
 
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        var remoteReference = Repository._opts.Reference;
+        var remoteReference = Repository.Options.Reference;
         Digest.Validate(target.Digest);
         remoteReference.ContentReference = target.Digest;
-        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryBlob();
-        var resp = await Repository._opts.HttpClient.GetAsync(url, cancellationToken);
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
+        var resp = await Repository.Options.HttpClient.GetAsync(url, cancellationToken);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.OK:
@@ -101,8 +96,8 @@ internal class BlobStore : IBlobStore
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
     {
-        var url = new UriFactory(Repository._opts).BuildRepositoryBlobUpload();
-        using (var resp = await Repository._opts.HttpClient.PostAsync(url, null, cancellationToken))
+        var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
+        using (var resp = await Repository.Options.HttpClient.PostAsync(url, null, cancellationToken))
         {
             if (resp.StatusCode != HttpStatusCode.Accepted)
             {
@@ -125,7 +120,7 @@ internal class BlobStore : IBlobStore
         // the expected media type is ignored as in the API doc.
         req.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
 
-        using (var resp = await Repository._opts.HttpClient.SendAsync(req, cancellationToken))
+        using (var resp = await Repository.Options.HttpClient.SendAsync(req, cancellationToken))
         {
             if (resp.StatusCode != HttpStatusCode.Created)
             {
@@ -144,12 +139,12 @@ internal class BlobStore : IBlobStore
     {
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
-        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryBlob();
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
-        using var resp = await Repository._opts.HttpClient.SendAsync(requestMessage, cancellationToken);
+        using var resp = await Repository.Options.HttpClient.SendAsync(requestMessage, cancellationToken);
         return resp.StatusCode switch
         {
-            HttpStatusCode.OK => Repository.GenerateBlobDescriptor(resp, refDigest),
+            HttpStatusCode.OK => GenerateBlobDescriptor(resp, refDigest),
             HttpStatusCode.NotFound => throw new NotFoundException($"{remoteReference.ContentReference}: not found"),
             _ => throw await resp.ParseErrorResponseAsync(cancellationToken)
         };
@@ -177,8 +172,8 @@ internal class BlobStore : IBlobStore
     {
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
-        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryBlob();
-        var resp = await Repository._opts.HttpClient.GetAsync(url, cancellationToken);
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
+        var resp = await Repository.Options.HttpClient.GetAsync(url, cancellationToken);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.OK:
@@ -190,7 +185,7 @@ internal class BlobStore : IBlobStore
                 }
                 else
                 {
-                    desc = Repository.GenerateBlobDescriptor(resp, refDigest);
+                    desc = GenerateBlobDescriptor(resp, refDigest);
                 }
 
                 return (desc, await resp.Content.ReadAsStreamAsync());
@@ -199,5 +194,36 @@ internal class BlobStore : IBlobStore
             default:
                 throw await resp.ParseErrorResponseAsync(cancellationToken);
         }
+    }
+
+
+    /// <summary>
+    /// GenerateBlobDescriptor returns a descriptor generated from the response.
+    /// </summary>
+    /// <param name="resp"></param>
+    /// <param name="refDigest"></param>
+    /// <returns></returns>
+    /// <exception cref="Exception"></exception>
+    public static Descriptor GenerateBlobDescriptor(HttpResponseMessage resp, string refDigest)
+    {
+        var mediaType = resp.Content.Headers.ContentType.MediaType;
+        if (string.IsNullOrEmpty(mediaType))
+        {
+            mediaType = "application/octet-stream";
+        }
+        var size = resp.Content.Headers.ContentLength.Value;
+        if (size == -1)
+        {
+            throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: unknown response Content-Length");
+        }
+
+        resp.VerifyContentDigest(refDigest);
+
+        return new Descriptor
+        {
+            MediaType = mediaType,
+            Digest = refDigest,
+            Size = size
+        };
     }
 }

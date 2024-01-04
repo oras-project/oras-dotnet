@@ -45,12 +45,12 @@ public class ManifestStore : IManifestStore
     /// <exception cref="Exception"></exception>
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        var remoteReference = Repository._opts.Reference;
+        var remoteReference = Repository.Options.Reference;
         remoteReference.ContentReference = target.Digest;
-        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryManifest();
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Add("Accept", target.MediaType);
-        var resp = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);
+        var resp = await Repository.Options.HttpClient.SendAsync(req, cancellationToken);
 
         switch (resp.StatusCode)
         {
@@ -72,7 +72,7 @@ public class ManifestStore : IManifestStore
             throw new Exception(
                 $"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
         }
-        Repository.VerifyContentDigest(resp, target.Digest);
+        resp.VerifyContentDigest(target.Digest);
         return await resp.Content.ReadAsStreamAsync();
     }
 
@@ -118,29 +118,29 @@ public class ManifestStore : IManifestStore
     /// <param name="cancellationToken"></param>
     private async Task InternalPushAsync(Descriptor expected, Stream stream, string reference, CancellationToken cancellationToken)
     {
-        var remoteReference = Repository._opts.Reference;
+        var remoteReference = Repository.Options.Reference;
         remoteReference.ContentReference = reference;
-        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryManifest();
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var req = new HttpRequestMessage(HttpMethod.Put, url);
         req.Content = new StreamContent(stream);
         req.Content.Headers.ContentLength = expected.Size;
         req.Content.Headers.Add("Content-Type", expected.MediaType);
-        var client = Repository._opts.HttpClient;
+        var client = Repository.Options.HttpClient;
         using var resp = await client.SendAsync(req, cancellationToken);
         if (resp.StatusCode != HttpStatusCode.Created)
         {
             throw await resp.ParseErrorResponseAsync(cancellationToken);
         }
-        Repository.VerifyContentDigest(resp, expected.Digest);
+        resp.VerifyContentDigest(expected.Digest);
     }
 
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReference(reference);
-        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryManifest();
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var req = new HttpRequestMessage(HttpMethod.Head, url);
-        req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository._opts.ManifestMediaTypes));
-        using var res = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);
+        req.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
+        using var res = await Repository.Options.HttpClient.SendAsync(req, cancellationToken);
 
         return res.StatusCode switch
         {
@@ -196,7 +196,7 @@ public class ManifestStore : IManifestStore
         {
             try
             {
-                Repository.VerifyContentDigest(res, serverDigest);
+                res.VerifyContentDigest(serverDigest);
             }
             catch (Exception)
             {
@@ -286,10 +286,10 @@ public class ManifestStore : IManifestStore
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReference(reference);
-        var url = new UriFactory(remoteReference, Repository._opts.PlainHttp).BuildRepositoryManifest();
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var req = new HttpRequestMessage(HttpMethod.Get, url);
-        req.Headers.Add("Accept", ManifestUtility.ManifestAcceptHeader(Repository._opts.ManifestMediaTypes));
-        var resp = await Repository._opts.HttpClient.SendAsync(req, cancellationToken);
+        req.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
+        var resp = await Repository.Options.HttpClient.SendAsync(req, cancellationToken);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.OK:

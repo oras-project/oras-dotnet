@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content;
 using System;
 using System.Linq;
 using System.Net.Http;
@@ -65,5 +66,40 @@ internal static class HttpResponseMessageExtensions
         }
 
         return new Uri(response.RequestMessage!.RequestUri!, link);
+    }
+
+    /// <summary>
+    /// VerifyContentDigest verifies "Docker-Content-Digest" header if present.
+    /// OCI distribution-spec states the Docker-Content-Digest header is optional.
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#legacy-docker-support-http-headers
+    /// </summary>
+    /// <param name="response"></param>
+    /// <param name="expected"></param>
+    /// <exception cref="NotImplementedException"></exception>
+    public static void VerifyContentDigest(this HttpResponseMessage response, string expected)
+    {
+        if (!response.Content.Headers.TryGetValues("Docker-Content-Digest", out var digestValues))
+        {
+            return;
+        }
+        var digestStr = digestValues.FirstOrDefault();
+        if (string.IsNullOrEmpty(digestStr))
+        {
+            return;
+        }
+
+        string contentDigest;
+        try
+        {
+            contentDigest = Digest.Validate(digestStr);
+        }
+        catch (Exception)
+        {
+            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response header: `Docker-Content-Digest: {digestStr}`");
+        }
+        if (contentDigest != expected)
+        {
+            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {digestStr}");
+        }
     }
 }

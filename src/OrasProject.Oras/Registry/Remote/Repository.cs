@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
@@ -34,9 +33,29 @@ namespace OrasProject.Oras.Registry.Remote;
 /// </summary>
 public class Repository : IRepository
 {
+    /// <summary>
+    /// Blobs provides access to the blob CAS only, which contains
+    /// layers, and other generic blobs.
+    /// </summary>
+    public IBlobStore Blobs => new BlobStore(this);
+
+    /// <summary>
+    /// Manifests provides access to the manifest CAS only.
+    /// </summary>
+    /// <returns></returns>
+    public IManifestStore Manifests => new ManifestStore(this);
+
     public RepositoryOptions Options => _opts;
 
-    internal RepositoryOptions _opts;
+    internal static readonly string[] DefaultManifestMediaTypes =
+    [
+        Docker.MediaType.Manifest,
+        Docker.MediaType.ManifestList,
+        MediaType.ImageIndex,
+        MediaType.ImageManifest
+    ];
+
+    private RepositoryOptions _opts;
 
     /// <summary>
     /// Creates a client to the remote repository identified by a reference
@@ -50,38 +69,20 @@ public class Repository : IRepository
     /// </summary>
     /// <param name="reference"></param>
     /// <param name="httpClient"></param>
-    public Repository(string reference, HttpClient httpClient)
+    public Repository(string reference, HttpClient httpClient) : this(new RepositoryOptions()
     {
-        var parsedReference = Reference.Parse(reference);
-        if (string.IsNullOrEmpty(parsedReference.Repository))
-        {
-            throw new InvalidReferenceException("missing repository");
-        }
-        _opts = new()
-        {
-            Reference = parsedReference,
-            HttpClient = httpClient,
-        };
-    }
+        Reference = Reference.Parse(reference),
+        HttpClient = httpClient,
+    }) { }
 
-    public Repository(RepositoryOptions options) => _opts = options;
-
-    /// <summary>
-    /// BlobStore detects the blob store for the given descriptor.
-    /// </summary>
-    /// <param name="desc"></param>
-    /// <returns></returns>
-    private IBlobStore BlobStore(Descriptor desc)
+    public Repository(RepositoryOptions options)
     {
-        if (ManifestUtility.IsManifest(_opts.ManifestMediaTypes, desc))
+        if (string.IsNullOrEmpty(options.Reference.Repository))
         {
-            return Manifests;
+            throw new InvalidReferenceException("Missing repository");
         }
-
-        return Blobs;
+        _opts = options;
     }
-
-
 
     /// <summary>
     /// FetchAsync fetches the content identified by the descriptor.
@@ -90,9 +91,7 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
-    {
-        return await BlobStore(target).FetchAsync(target, cancellationToken);
-    }
+        => await BlobStore(target).FetchAsync(target, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// ExistsAsync returns true if the described content exists.
@@ -101,9 +100,7 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
-    {
-        return await BlobStore(target).ExistsAsync(target, cancellationToken);
-    }
+        => await BlobStore(target).ExistsAsync(target, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// PushAsync pushes the content, matching the expected descriptor.
@@ -113,9 +110,7 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
-    {
-        await BlobStore(expected).PushAsync(expected, content, cancellationToken);
-    }
+        => await BlobStore(expected).PushAsync(expected, content, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// ResolveAsync resolves a reference to a manifest descriptor
@@ -125,9 +120,7 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
-    {
-        return await Manifests.ResolveAsync(reference, cancellationToken);
-    }
+        => await Manifests.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// TagAsync tags a manifest descriptor with a reference string.
@@ -137,9 +130,7 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
-    {
-        await Manifests.TagAsync(descriptor, reference, cancellationToken);
-    }
+        => await Manifests.TagAsync(descriptor, reference, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// FetchReference fetches the manifest identified by the reference.
@@ -149,9 +140,7 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-    {
-        return await Manifests.FetchAsync(reference, cancellationToken);
-    }
+        => await Manifests.FetchAsync(reference, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// PushReference pushes the manifest with a reference tag.
@@ -161,11 +150,8 @@ public class Repository : IRepository
     /// <param name="reference"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task PushAsync(Descriptor descriptor, Stream content, string reference,
-        CancellationToken cancellationToken = default)
-    {
-        await Manifests.PushAsync(descriptor, content, reference, cancellationToken);
-    }
+    public async Task PushAsync(Descriptor descriptor, Stream content, string reference, CancellationToken cancellationToken = default)
+        => await Manifests.PushAsync(descriptor, content, reference, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// DeleteAsync removes the content identified by the descriptor.
@@ -174,25 +160,7 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
-    {
-        await BlobStore(target).DeleteAsync(target, cancellationToken);
-    }
-
-    /// <summary>
-    /// TagsAsync returns a list of tags in a repository
-    /// </summary>
-    /// <param name="repo"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    public async Task<List<string>> TagsAsync(ITagListable repo, CancellationToken cancellationToken)
-    {
-        var tags = new List<string>();
-        await foreach (var tag in repo.ListTagsAsync().WithCancellation(cancellationToken))
-        {
-            tags.Add(tag);
-        }
-        return tags;
-    }
+        => await BlobStore(target).DeleteAsync(target, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// TagsAsync lists the tags available in the repository.
@@ -205,7 +173,6 @@ public class Repository : IRepository
     /// - https://docs.docker.com/registry/spec/api/#tags
     /// </summary>
     /// <param name="last"></param>
-    /// <param name="fn"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async IAsyncEnumerable<string> ListTagsAsync(string? last = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -213,7 +180,7 @@ public class Repository : IRepository
         var url = new UriFactory(_opts).BuildRepositoryTagList();
         do
         {
-            (var tags, url) = await TagsPageAsync(last, url!, cancellationToken).ConfigureAwait(false);
+            (var tags, url) = await FetchTagsPageAsync(last, url!, cancellationToken).ConfigureAwait(false);
             last = null;
             foreach (var tag in tags)
             {
@@ -223,13 +190,13 @@ public class Repository : IRepository
     }
 
     /// <summary>
-    /// TagsPageAsync returns a single page of tag list with the next link.
+    /// Returns a single page of tag list with the next link.
     /// </summary>
     /// <param name="last"></param>
     /// <param name="url"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private async Task<(string[], Uri?)> TagsPageAsync(string? last, Uri url, CancellationToken cancellationToken)
+    private async Task<(string[], Uri?)> FetchTagsPageAsync(string? last, Uri url, CancellationToken cancellationToken)
     {
         var uriBuilder = new UriBuilder(url);
         if (_opts.TagListPageSize > 0 || !string.IsNullOrEmpty(last))
@@ -271,7 +238,6 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="NotFoundException"></exception>
-    /// <exception cref="Exception"></exception>
     internal async Task DeleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken)
     {
         var remoteReference = _opts.Reference;
@@ -279,65 +245,18 @@ public class Repository : IRepository
         var uriFactory = new UriFactory(remoteReference, _opts.PlainHttp);
         var url = isManifest ? uriFactory.BuildRepositoryManifest() : uriFactory.BuildRepositoryBlob();
 
-        using var resp = await _opts.HttpClient.DeleteAsync(url, cancellationToken);
+        using var resp = await _opts.HttpClient.DeleteAsync(url, cancellationToken).ConfigureAwait(false);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.Accepted:
-                VerifyContentDigest(resp, target.Digest);
+                resp.VerifyContentDigest(target.Digest);
                 break;
             case HttpStatusCode.NotFound:
-                throw new NotFoundException($"digest {target.Digest} not found");
+                throw new NotFoundException($"Digest {target.Digest} not found");
             default:
-                throw await resp.ParseErrorResponseAsync(cancellationToken);
+                throw await resp.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
     }
-
-
-    /// <summary>
-    /// VerifyContentDigest verifies "Docker-Content-Digest" header if present.
-    /// OCI distribution-spec states the Docker-Content-Digest header is optional.
-    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#legacy-docker-support-http-headers
-    /// </summary>
-    /// <param name="resp"></param>
-    /// <param name="expected"></param>
-    /// <exception cref="NotImplementedException"></exception>
-    internal static void VerifyContentDigest(HttpResponseMessage resp, string expected)
-    {
-        if (!resp.Content.Headers.TryGetValues("Docker-Content-Digest", out var digestValues)) return;
-        var digestStr = digestValues.FirstOrDefault();
-        if (string.IsNullOrEmpty(digestStr))
-        {
-            return;
-        }
-
-        string contentDigest;
-        try
-        {
-            contentDigest = Digest.Validate(digestStr);
-        }
-        catch (Exception)
-        {
-            throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response header: `Docker-Content-Digest: {digestStr}`");
-        }
-        if (contentDigest != expected)
-        {
-            throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {digestStr}");
-        }
-    }
-
-
-    /// <summary>
-    /// Blobs provides access to the blob CAS only, which contains
-    /// layers, and other generic blobs.
-    /// </summary>
-    public IBlobStore Blobs => new BlobStore(this);
-
-
-    /// <summary>
-    /// Manifests provides access to the manifest CAS only.
-    /// </summary>
-    /// <returns></returns>
-    public IManifestStore Manifests => new ManifestStore(this);
 
     /// <summary>
     /// ParseReference resolves a tag or a digest reference to a fully qualified
@@ -349,19 +268,18 @@ public class Repository : IRepository
     /// error, InvalidReferenceException.
     /// </summary>
     /// <param name="reference"></param>
-    /// <returns></returns>
-    public Reference ParseReference(string reference)
+    internal Reference ParseReference(string reference)
     {
-        Reference remoteReference;
-        var hasError = false;
-        try
+        if (Reference.TryParse(reference, out var remoteReference))
         {
-            remoteReference = Reference.Parse(reference);
+            if (remoteReference.Registry != _opts.Reference.Registry || remoteReference.Repository != _opts.Reference.Repository)
+            {
+                throw new InvalidReferenceException(
+                    $"mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(_opts.Reference)}");
+            }
         }
-        catch (Exception)
+        else
         {
-            hasError = true;
-            //reference is not a FQDN
             var index = reference.IndexOf("@");
             if (index != -1)
             {
@@ -374,52 +292,28 @@ public class Repository : IRepository
                 _ = remoteReference.Digest;
             }
         }
-
-        if (!hasError)
-        {
-            if (remoteReference.Registry != _opts.Reference.Registry ||
-                remoteReference.Repository != _opts.Reference.Repository)
-            {
-                throw new InvalidReferenceException(
-                    $"mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(_opts.Reference)}");
-            }
-        }
         if (string.IsNullOrEmpty(remoteReference.ContentReference))
         {
             throw new InvalidReferenceException();
         }
         return remoteReference;
-
     }
-
 
     /// <summary>
-    /// GenerateBlobDescriptor returns a descriptor generated from the response.
+    /// Returns the accept header for manifest media types.
     /// </summary>
-    /// <param name="resp"></param>
-    /// <param name="refDigest"></param>
+    internal string ManifestAcceptHeader() => string.Join(',', _opts.ManifestMediaTypes ?? DefaultManifestMediaTypes);
+
+    /// <summary>
+    /// Determines if the given descriptor is a manifest.
+    /// </summary>
+    /// <param name="desc"></param>
+    private bool IsManifest(Descriptor desc) => (_opts.ManifestMediaTypes ?? DefaultManifestMediaTypes).Any(mediaType => mediaType == desc.MediaType);
+
+    /// <summary>
+    /// Detects the blob store for the given descriptor.
+    /// </summary>
+    /// <param name="desc"></param>
     /// <returns></returns>
-    /// <exception cref="Exception"></exception>
-    public static Descriptor GenerateBlobDescriptor(HttpResponseMessage resp, string refDigest)
-    {
-        var mediaType = resp.Content.Headers.ContentType.MediaType;
-        if (string.IsNullOrEmpty(mediaType))
-        {
-            mediaType = "application/octet-stream";
-        }
-        var size = resp.Content.Headers.ContentLength.Value;
-        if (size == -1)
-        {
-            throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: unknown response Content-Length");
-        }
-
-        VerifyContentDigest(resp, refDigest);
-
-        return new Descriptor
-        {
-            MediaType = mediaType,
-            Digest = refDigest,
-            Size = size
-        };
-    }
+    private IBlobStore BlobStore(Descriptor desc) => IsManifest(desc) ? Manifests : Blobs;
 }

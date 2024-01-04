@@ -74,7 +74,7 @@ public class Registry : IRegistry
     /// <param name="name"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public Task<IRepository> GetRepository(string name, CancellationToken cancellationToken)
+    public Task<IRepository> GetRepositoryAsync(string name, CancellationToken cancellationToken)
     {
         var reference = new Reference(_opts.Reference.Registry, name);
         var options = _opts; // shallow copy
@@ -93,7 +93,7 @@ public class Registry : IRegistry
         var url = new UriFactory(_opts).BuildRegistryCatalog();
         do
         {
-            (var repositories, url) = await RepositoryPageAsync(last, url!, cancellationToken).ConfigureAwait(false);
+            (var repositories, url) = await FetchRepositoryPageAsync(last, url!, cancellationToken).ConfigureAwait(false);
             last = null;
             foreach (var repository in repositories)
             {
@@ -103,13 +103,13 @@ public class Registry : IRegistry
     }
 
     /// <summary>
-    /// RepositoryPageAsync returns a returns a single page of repositories list with the next link
+    /// Returns a returns a single page of repositories list with the next link
     /// </summary>
     /// <param name="last"></param>
     /// <param name="url"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private async Task<(string[], Uri?)> RepositoryPageAsync(string? last, Uri url, CancellationToken cancellationToken)
+    private async Task<(string[], Uri?)> FetchRepositoryPageAsync(string? last, Uri url, CancellationToken cancellationToken)
     {
         var uriBuilder = new UriBuilder(url);
         if (_opts.TagListPageSize > 0 || !string.IsNullOrEmpty(last))
