@@ -16,6 +16,7 @@ using OrasProject.Oras.Oci;
 using System;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Threading;
 using System.Threading.Tasks;
@@ -131,5 +132,113 @@ internal static class HttpResponseMessageExtensions
             Digest = expectedDigest,
             Size = size
         };
+    }
+
+    /// <summary>
+    /// Returns a descriptor generated from the response.
+    /// </summary>
+    /// <param name="response"></param>
+    /// <param name="reference"></param>
+    /// <param name="httpMethod"></param>
+    /// <returns></returns>
+    /// <exception cref="Exception"></exception>
+    public static async Task<Descriptor> GenerateDescriptorAsync(this HttpResponseMessage response, Reference reference, CancellationToken cancellationToken)
+    {
+        // 1. Validate Content-Type
+        var mediaType = response.Content.Headers.ContentType?.MediaType;
+        if (!MediaTypeHeaderValue.TryParse(mediaType, out _))
+        {
+            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response `Content-Type` header");
+        }
+
+        // 2. Validate Size
+        var size = response.Content.Headers.ContentLength ?? -1;
+        if (size == -1)
+        {
+            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: unknown response Content-Length");
+        }
+
+        // 3. Validate Client Reference
+        string? refDigest = null;
+        try
+        {
+            refDigest = reference.Digest;
+        }
+        catch { }
+
+        // 4. Validate Server Digest (if present)
+        string? serverDigest = null;
+        if (response.Content.Headers.TryGetValues("Docker-Content-Digest", out var serverHeaderDigest))
+        {
+            serverDigest = serverHeaderDigest.FirstOrDefault();
+            if (!string.IsNullOrEmpty(serverDigest))
+            {
+                try
+                {
+                    response.VerifyContentDigest(serverDigest);
+                }
+                catch
+                {
+                    throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response header value: `Docker-Content-Digest: {serverHeaderDigest}`");
+                }
+            }
+        }
+
+        // 5. Now, look for specific error conditions;
+        string contentDigest;
+        if (string.IsNullOrEmpty(serverDigest))
+        {
+            if (response.RequestMessage!.Method == HttpMethod.Head)
+            {
+                if (string.IsNullOrEmpty(refDigest))
+                {
+                    // HEAD without server `Docker-Content-Digest`
+                    // immediate fail
+                    throw new Exception($"{response.RequestMessage.Method} {response.RequestMessage.RequestUri}: missing required header {serverHeaderDigest}");
+                }
+                // Otherwise, just trust the client-supplied digest
+                contentDigest = refDigest;
+            }
+            else
+            {
+                // GET without server `Docker-Content-Digest header forces the
+                // expensive calculation
+                try
+                {
+                    contentDigest = await response.CalculateDigestFromResponse(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    throw new Exception($"failed to calculate digest on response body; {e.Message}");
+                }
+            }
+        }
+        else
+        {
+            contentDigest = serverDigest;
+        }
+        if (!string.IsNullOrEmpty(refDigest) && refDigest != contentDigest)
+        {
+            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in {serverHeaderDigest}: received {contentDigest} when expecting {refDigest}");
+        }
+
+        // 6. Finally, if we made it this far, then all is good; return the descriptor
+        return new Descriptor
+        {
+            MediaType = mediaType,
+            Digest = contentDigest,
+            Size = size
+        };
+    }
+
+    /// <summary>
+    /// CalculateDigestFromResponse calculates the actual digest of the response body
+    /// taking care not to destroy it in the process
+    /// </summary>
+    /// <param name="response"></param>
+    private static async Task<string> CalculateDigestFromResponse(this HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        return Digest.ComputeSHA256(bytes);
     }
 }

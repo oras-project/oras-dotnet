@@ -2217,7 +2217,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     var err = false;
                     try
                     {
-                        await s.GenerateDescriptorAsync(resp, reference, method);
+                        await resp.GenerateDescriptorAsync(reference, CancellationToken.None);
                     }
                     catch (Exception e)
                     {

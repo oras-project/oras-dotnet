@@ -27,26 +27,76 @@ namespace OrasProject.Oras.Registry.Remote;
 
 public class BlobStore(Repository repository) : IBlobStore
 {
-    public Repository Repository { get; set; } = repository;
+    public Repository Repository { get; init; } = repository;
 
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         var response = await Repository.Options.HttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-        switch (response.StatusCode)
+        try
         {
-            case HttpStatusCode.OK:
-                // server does not support seek as `Range` was ignored.
-                if (response.Content.Headers.ContentLength is var size && size != -1 && size != target.Size)
-                {
-                    throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch Content-Length");
-                }
-                return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            case HttpStatusCode.NotFound:
-                throw new NotFoundException($"{target.Digest}: not found");
-            default:
-                throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    // server does not support seek as `Range` was ignored.
+                    if (response.Content.Headers.ContentLength is var size && size != -1 && size != target.Size)
+                    {
+                        throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch Content-Length");
+                    }
+                    return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException($"{target.Digest}: not found");
+                default:
+                    throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// FetchReferenceAsync fetches the blob identified by the reference.
+    /// The reference must be a digest.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
+    {
+        var remoteReference = Repository.ParseReference(reference);
+        var refDigest = remoteReference.Digest;
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
+        var response = await Repository.Options.HttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    // server does not support seek as `Range` was ignored.
+                    Descriptor desc;
+                    if (response.Content.Headers.ContentLength == -1)
+                    {
+                        desc = await ResolveAsync(refDigest, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        desc = response.GenerateBlobDescriptor(refDigest);
+                    }
+                    return (desc, await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false));
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException();
+                default:
+                    throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
         }
     }
 
@@ -149,38 +199,4 @@ public class BlobStore(Repository repository) : IBlobStore
     /// <returns></returns>
     public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
         => await Repository.DeleteAsync(target, false, cancellationToken).ConfigureAwait(false);
-
-    /// <summary>
-    /// FetchReferenceAsync fetches the blob identified by the reference.
-    /// The reference must be a digest.
-    /// </summary>
-    /// <param name="reference"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-    {
-        var remoteReference = Repository.ParseReference(reference);
-        var refDigest = remoteReference.Digest;
-        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
-        var resp = await Repository.Options.HttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-        switch (resp.StatusCode)
-        {
-            case HttpStatusCode.OK:
-                // server does not support seek as `Range` was ignored.
-                Descriptor desc;
-                if (resp.Content.Headers.ContentLength == -1)
-                {
-                    desc = await ResolveAsync(refDigest, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    desc = resp.GenerateBlobDescriptor(refDigest);
-                }
-                return (desc, await resp.Content.ReadAsStreamAsync().ConfigureAwait(false));
-            case HttpStatusCode.NotFound:
-                throw new NotFoundException();
-            default:
-                throw await resp.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
-        }
-    }
 }

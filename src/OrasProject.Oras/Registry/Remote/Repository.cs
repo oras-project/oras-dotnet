@@ -294,7 +294,7 @@ public class Repository : IRepository
         }
         if (string.IsNullOrEmpty(remoteReference.ContentReference))
         {
-            throw new InvalidReferenceException();
+            throw new InvalidReferenceException("Empty content reference");
         }
         return remoteReference;
     }
@@ -304,6 +304,15 @@ public class Repository : IRepository
         var reference = new Reference(_opts.Reference.Registry, _opts.Reference.Repository, digest);
         _ = reference.Digest;
         return reference;
+    }
+
+    internal Reference ParseReferenceFromContentReference(string reference)
+    {
+        if (string.IsNullOrEmpty(reference))
+        {
+            throw new InvalidReferenceException("Empty content reference");
+        }
+        return new Reference(_opts.Reference.Registry, _opts.Reference.Repository, reference);
     }
 
     /// <summary>
