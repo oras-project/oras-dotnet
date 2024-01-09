@@ -25,7 +25,7 @@ public interface IRegistry
     /// <param name="name"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    Task<IRepository> GetRepository(string name, CancellationToken cancellationToken = default);
+    Task<IRepository> GetRepositoryAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Repositories lists the name of repositories available in the registry.

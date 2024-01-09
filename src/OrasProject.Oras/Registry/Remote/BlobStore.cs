@@ -11,52 +11,92 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
-using OrasProject.Oras.Remote;
 using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Mime;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-internal class BlobStore : IBlobStore
+public class BlobStore(Repository repository) : IBlobStore
 {
-
-    public Repository Repository { get; set; }
-
-    public BlobStore(Repository repository)
-    {
-        Repository = repository;
-
-    }
-
+    public Repository Repository { get; init; } = repository;
 
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        var remoteReference = Repository.RemoteReference;
-        Digest.Validate(target.Digest);
-        remoteReference.ContentReference = target.Digest;
-        var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
-        var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
-        switch (resp.StatusCode)
+        var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
+        var response = await Repository.Options.HttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        try
         {
-            case HttpStatusCode.OK:
-                // server does not support seek as `Range` was ignored.
-                if (resp.Content.Headers.ContentLength is var size && size != -1 && size != target.Size)
-                {
-                    throw new Exception($"{resp.RequestMessage.Method} {resp.RequestMessage.RequestUri}: mismatch Content-Length");
-                }
-                return await resp.Content.ReadAsStreamAsync();
-            case HttpStatusCode.NotFound:
-                throw new NotFoundException($"{target.Digest}: not found");
-            default:
-                throw await ErrorUtility.ParseErrorResponse(resp);
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    // server does not support seek as `Range` was ignored.
+                    if (response.Content.Headers.ContentLength is var size && size != -1 && size != target.Size)
+                    {
+                        throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch Content-Length");
+                    }
+                    return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException($"{target.Digest}: not found");
+                default:
+                    throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// FetchReferenceAsync fetches the blob identified by the reference.
+    /// The reference must be a digest.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
+    {
+        var remoteReference = Repository.ParseReference(reference);
+        var refDigest = remoteReference.Digest;
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
+        var response = await Repository.Options.HttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    // server does not support seek as `Range` was ignored.
+                    Descriptor desc;
+                    if (response.Content.Headers.ContentLength == -1)
+                    {
+                        desc = await ResolveAsync(refDigest, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        desc = response.GenerateBlobDescriptor(refDigest);
+                    }
+                    return (desc, await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false));
+                case HttpStatusCode.NotFound:
+                    throw new NotFoundException();
+                default:
+                    throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
         }
     }
 
@@ -70,14 +110,13 @@ internal class BlobStore : IBlobStore
     {
         try
         {
-            await ResolveAsync(target.Digest, cancellationToken);
+            await ResolveAsync(target.Digest, cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (NotFoundException)
         {
             return false;
         }
-
     }
 
     /// <summary>
@@ -98,64 +137,37 @@ internal class BlobStore : IBlobStore
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
     {
-        var url = URLUtiliity.BuildRepositoryBlobUploadURL(Repository.PlainHTTP, Repository.RemoteReference);
-        using var resp = await Repository.HttpClient.PostAsync(url, null, cancellationToken);
-        var reqHostname = resp.RequestMessage.RequestUri.Host;
-        var reqPort = resp.RequestMessage.RequestUri.Port;
-        if (resp.StatusCode != HttpStatusCode.Accepted)
+        var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
+        using (var response = await Repository.Options.HttpClient.PostAsync(url, null, cancellationToken).ConfigureAwait(false))
         {
-            throw await ErrorUtility.ParseErrorResponse(resp);
+            if (response.StatusCode != HttpStatusCode.Accepted)
+            {
+                throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
+            url = location.IsAbsoluteUri ? location : new Uri(url, location);
         }
 
-        string location;
         // monolithic upload
-        if (!resp.Headers.Location.IsAbsoluteUri)
+        // add digest key to query string with expected digest value
+        var req = new HttpRequestMessage(HttpMethod.Put, new UriBuilder(url)
         {
-            location = resp.RequestMessage.RequestUri.Scheme + "://" + resp.RequestMessage.RequestUri.Authority + resp.Headers.Location;
-        }
-        else
-        {
-            location = resp.Headers.Location.ToString();
-        }
-        // work-around solution for https://github.com/oras-project/oras-go/issues/177
-        // For some registries, if the port 443 is explicitly set to the hostname                                                                                                                                                        plicitly set to the hostname
-        // like registry.wabbit-networks.io:443/myrepo, blob push will fail since
-        // the hostname of the Location header in the response is set to
-        // registry.wabbit-networks.io instead of registry.wabbit-networks.io:443.
-        var uri = new UriBuilder(location);
-        var locationHostname = uri.Host;
-        var locationPort = uri.Port;
-        // if location port 443 is missing, add it back
-        if (reqPort == 443 && locationHostname == reqHostname && locationPort != reqPort)
-        {
-            location = new UriBuilder($"{locationHostname}:{reqPort}").ToString();
-        }
-
-        url = location;
-
-        var req = new HttpRequestMessage(HttpMethod.Put, url);
+            Query = $"digest={HttpUtility.UrlEncode(expected.Digest)}"
+        }.Uri);
         req.Content = new StreamContent(content);
         req.Content.Headers.ContentLength = expected.Size;
 
         // the expected media type is ignored as in the API doc.
-        req.Content.Headers.Add("Content-Type", "application/octet-stream");
+        req.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
 
-        // add digest key to query string with expected digest value
-        req.RequestUri = new UriBuilder($"{req.RequestUri}?digest={expected.Digest}").Uri;
-
-        //reuse credential from previous POST request
-        resp.Headers.TryGetValues("Authorization", out var auth);
-        if (auth != null)
+        using (var response = await Repository.Options.HttpClient.SendAsync(req, cancellationToken).ConfigureAwait(false))
         {
-            req.Headers.Add("Authorization", auth.FirstOrDefault());
+            if (response.StatusCode != HttpStatusCode.Created)
+            {
+                throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
-        using var resp2 = await Repository.HttpClient.SendAsync(req, cancellationToken);
-        if (resp2.StatusCode != HttpStatusCode.Created)
-        {
-            throw await ErrorUtility.ParseErrorResponse(resp2);
-        }
-
-        return;
     }
 
     /// <summary>
@@ -168,14 +180,14 @@ internal class BlobStore : IBlobStore
     {
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
-        var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
-        using var resp = await Repository.HttpClient.SendAsync(requestMessage, cancellationToken);
+        using var resp = await Repository.Options.HttpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
         return resp.StatusCode switch
         {
-            HttpStatusCode.OK => Repository.GenerateBlobDescriptor(resp, refDigest),
+            HttpStatusCode.OK => resp.GenerateBlobDescriptor(refDigest),
             HttpStatusCode.NotFound => throw new NotFoundException($"{remoteReference.ContentReference}: not found"),
-            _ => throw await ErrorUtility.ParseErrorResponse(resp)
+            _ => throw await resp.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false)
         };
     }
 
@@ -186,42 +198,5 @@ internal class BlobStore : IBlobStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
-    {
-        await Repository.DeleteAsync(target, false, cancellationToken);
-    }
-
-    /// <summary>
-    /// FetchReferenceAsync fetches the blob identified by the reference.
-    /// The reference must be a digest.
-    /// </summary>
-    /// <param name="reference"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-    {
-        var remoteReference = Repository.ParseReference(reference);
-        var refDigest = remoteReference.Digest;
-        var url = URLUtiliity.BuildRepositoryBlobURL(Repository.PlainHTTP, remoteReference);
-        var resp = await Repository.HttpClient.GetAsync(url, cancellationToken);
-        switch (resp.StatusCode)
-        {
-            case HttpStatusCode.OK:
-                // server does not support seek as `Range` was ignored.
-                Descriptor desc;
-                if (resp.Content.Headers.ContentLength == -1)
-                {
-                    desc = await ResolveAsync(refDigest, cancellationToken);
-                }
-                else
-                {
-                    desc = Repository.GenerateBlobDescriptor(resp, refDigest);
-                }
-
-                return (desc, await resp.Content.ReadAsStreamAsync());
-            case HttpStatusCode.NotFound:
-                throw new NotFoundException();
-            default:
-                throw await ErrorUtility.ParseErrorResponse(resp);
-        }
-    }
+        => await Repository.DeleteAsync(target, false, cancellationToken).ConfigureAwait(false);
 }

@@ -13,13 +13,15 @@
 
 using System.Net.Http;
 
-namespace OrasProject.Oras.Remote
+namespace OrasProject.Oras.Registry.Remote;
+
+internal static class HttpClientExtensions
 {
-    internal static class HttpClientExtensions
+    private const string _userAgent = "oras-dotnet";
+
+    public static HttpClient AddUserAgent(this HttpClient client)
     {
-        public static void AddUserAgent(this HttpClient client)
-        {
-            client.DefaultRequestHeaders.Add("User-Agent", new string[] { "oras-dotnet" });
-        }
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(_userAgent);
+        return client;
     }
 }

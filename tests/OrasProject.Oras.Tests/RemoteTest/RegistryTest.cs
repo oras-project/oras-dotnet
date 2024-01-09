@@ -13,7 +13,8 @@
 
 using Moq;
 using Moq.Protected;
-using OrasProject.Oras.Remote;
+using OrasProject.Oras.Registry;
+using OrasProject.Oras.Registry.Remote;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -23,7 +24,6 @@ namespace OrasProject.Oras.Tests.RemoteTest
 {
     public class RegistryTest
     {
-
         public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
         {
             var moqHandler = new Mock<DelegatingHandler>();
@@ -33,6 +33,18 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 ItExpr.IsAny<CancellationToken>()
             ).ReturnsAsync(func);
             return new HttpClient(moqHandler.Object);
+        }
+
+        /// <summary>
+        /// Test registry constructor
+        /// </summary>
+        [Fact]
+        public void Registry()
+        {
+            var registryName = "foobar";
+            var registry = new Remote.Registry(registryName);
+            var options = registry.RepositoryOptions;
+            Assert.Equal(registryName, options.Reference.Registry);
         }
 
         /// <summary>
@@ -65,9 +77,12 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     return res;
                 }
             };
-            var registry = new OrasProject.Oras.Remote.Registry("localhost:5000");
-            registry.PlainHTTP = true;
-            registry.HttpClient = CustomClient(func);
+            var registry = new Remote.Registry(new RepositoryOptions()
+            {
+                Reference = new Reference("localhost:5000"),
+                PlainHttp = true,
+                HttpClient = CustomClient(func),
+            });
             var cancellationToken = new CancellationToken();
             await registry.PingAsync(cancellationToken);
             V2Implemented = false;
@@ -129,7 +144,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                         break;
                 }
 
-                var repositoryList = new ResponseTypes.RepositoryList
+                var repositoryList = new Remote.Registry.RepositoryList
                 {
                     Repositories = repos.ToArray()
                 };
@@ -138,11 +153,14 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             };
 
-            var registry = new OrasProject.Oras.Remote.Registry("localhost:5000");
-            registry.PlainHTTP = true;
-            registry.HttpClient = CustomClient(func);
+            var registry = new Remote.Registry(new RepositoryOptions()
+            {
+                Reference = new Reference("localhost:5000"),
+                PlainHttp = true,
+                HttpClient = CustomClient(func),
+                TagListPageSize = 4,
+            });
             var cancellationToken = new CancellationToken();
-            registry.TagListPageSize = 4;
 
             var wantRepositories = new List<string>();
             foreach (var set in repoSet)

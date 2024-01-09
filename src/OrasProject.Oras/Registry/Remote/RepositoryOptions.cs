@@ -11,39 +11,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Collections.Generic;
 using System.Net.Http;
 
 namespace OrasProject.Oras.Registry.Remote;
 
 /// <summary>
-/// IRepositoryOption is used to configure a remote repository.
+/// RepositoryOption is used to configure a remote repository.
 /// </summary>
-public interface IRepositoryOption
+public struct RepositoryOptions
 {
     /// <summary>
     /// Client is the underlying HTTP client used to access the remote registry.
     /// </summary>
-    public HttpClient HttpClient { get; set; }
+    public required HttpClient HttpClient { get; set; }
 
     /// <summary>
     /// Reference references the remote repository.
     /// </summary>
-    public Reference RemoteReference { get; set; }
+    public required Reference Reference { get; set; }
 
     /// <summary>
-    /// PlainHTTP signals the transport to access the remote repository via HTTP
+    /// PlainHttp signals the transport to access the remote repository via HTTP
     /// instead of HTTPS.
     /// </summary>
-    public bool PlainHTTP { get; set; }
-
+    public bool PlainHttp { get; set; }
 
     /// <summary>
     /// ManifestMediaTypes is used in `Accept` header for resolving manifests
     /// from references. It is also used in identifying manifests and blobs from
-    /// descriptors. If an empty list is present, default manifest media types
-    /// are used.
+    /// descriptors. If null, default manifest media types are used.
     /// </summary>
-    public string[] ManifestMediaTypes { get; set; }
+    public IEnumerable<string>? ManifestMediaTypes { get; set; }
 
     /// <summary>
     /// TagListPageSize specifies the page size when invoking the tag list API.
@@ -51,5 +50,4 @@ public interface IRepositoryOption
     /// Reference: https://docs.docker.com/registry/spec/api/#tags
     /// </summary>
     public int TagListPageSize { get; set; }
-
 }

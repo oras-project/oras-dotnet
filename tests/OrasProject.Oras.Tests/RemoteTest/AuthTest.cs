@@ -13,7 +13,7 @@
 
 using Moq;
 using Moq.Protected;
-using OrasProject.Oras.Remote.Auth;
+using OrasProject.Oras.Registry.Remote.Auth;
 using System.Net;
 using System.Text;
 using Xunit;

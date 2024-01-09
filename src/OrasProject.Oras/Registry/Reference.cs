@@ -13,6 +13,7 @@
 
 using OrasProject.Oras.Exceptions;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
 namespace OrasProject.Oras.Registry;
@@ -82,11 +83,11 @@ public class Reference
         {
             if (_reference == null)
             {
-                throw new InvalidReferenceException("null content reference");
+                throw new InvalidReferenceException("Null content reference");
             }
             if (_isTag)
             {
-                throw new InvalidReferenceException("not a digest");
+                throw new InvalidReferenceException("Not a digest");
             }
             return _reference;
         }
@@ -101,11 +102,11 @@ public class Reference
         {
             if (_reference == null)
             {
-                throw new InvalidReferenceException("null content reference");
+                throw new InvalidReferenceException("Null content reference");
             }
             if (!_isTag)
             {
-                throw new InvalidReferenceException("not a tag");
+                throw new InvalidReferenceException("Not a tag");
             }
             return _reference;
         }
@@ -142,7 +143,7 @@ public class Reference
         var parts = reference.Split('/', 2);
         if (parts.Length == 1)
         {
-            throw new InvalidReferenceException("missing repository");
+            throw new InvalidReferenceException("Missing repository");
         }
         var registry = parts[0];
         var path = parts[1];
@@ -186,6 +187,20 @@ public class Reference
         return new Reference(registry, path);
     }
 
+    public static bool TryParse(string reference, [NotNullWhen(true)] out Reference? parsedReference)
+    {
+        try
+        {
+            parsedReference = Parse(reference);
+            return true;
+        }
+        catch (InvalidReferenceException)
+        {
+            parsedReference = null;
+            return false;
+        }
+    }
+
     public Reference(string registry) => _registry = ValidateRegistry(registry);
 
     public Reference(string registry, string? repository) : this(registry)
@@ -199,7 +214,7 @@ public class Reference
         var url = "dummy://" + registry;
         if (!Uri.IsWellFormedUriString(url, UriKind.Absolute) || new Uri(url).Authority != registry)
         {
-            throw new InvalidReferenceException("invalid registry");
+            throw new InvalidReferenceException("Invalid registry");
         }
         return registry;
     }
@@ -208,7 +223,7 @@ public class Reference
     {
         if (repository == null || !_repositoryRegex.IsMatch(repository))
         {
-            throw new InvalidReferenceException("invalid respository");
+            throw new InvalidReferenceException("Invalid respository");
         }
         return repository;
     }
@@ -219,7 +234,7 @@ public class Reference
     {
         if (reference == null || !_tagRegex.IsMatch(reference))
         {
-            throw new InvalidReferenceException("invalid tag");
+            throw new InvalidReferenceException("Invalid tag");
         }
         return reference;
     }
