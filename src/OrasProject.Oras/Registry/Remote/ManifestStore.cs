@@ -48,7 +48,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 case HttpStatusCode.OK:
                     break;
                 case HttpStatusCode.NotFound:
-                    throw new NotFoundException($"digest {target.Digest} not found");
+                    throw new NotFoundException($"Digest {target.Digest} not found");
                 default:
                     throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -189,7 +189,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         return response.StatusCode switch
         {
             HttpStatusCode.OK => await response.GenerateDescriptorAsync(remoteReference, cancellationToken).ConfigureAwait(false),
-            HttpStatusCode.NotFound => throw new NotFoundException($"reference {reference} not found"),
+            HttpStatusCode.NotFound => throw new NotFoundException($"Reference {reference} not found"),
             _ => throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false)
         };
     }

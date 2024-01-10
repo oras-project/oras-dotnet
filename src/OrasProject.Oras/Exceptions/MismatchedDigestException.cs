@@ -13,25 +13,24 @@
 
 using System;
 
-namespace OrasProject.Oras.Exceptions
+namespace OrasProject.Oras.Exceptions;
+
+/// <summary>
+/// MismatchedDigestException is thrown when a digest does not match the content.
+/// </summary>
+public class MismatchedDigestException : Exception
 {
-    /// <summary>
-    /// MismatchedDigestException is thrown when a digest does not match the content.
-    /// </summary>
-    public class MismatchedDigestException : Exception
+    public MismatchedDigestException()
     {
-        public MismatchedDigestException()
-        {
-        }
+    }
 
-        public MismatchedDigestException(string message)
-            : base(message)
-        {
-        }
+    public MismatchedDigestException(string message)
+        : base(message)
+    {
+    }
 
-        public MismatchedDigestException(string message, Exception inner)
-            : base(message, inner)
-        {
-        }
+    public MismatchedDigestException(string message, Exception inner)
+        : base(message, inner)
+    {
     }
 }

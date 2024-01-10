@@ -274,8 +274,7 @@ public class Repository : IRepository
         {
             if (remoteReference.Registry != _opts.Reference.Registry || remoteReference.Repository != _opts.Reference.Repository)
             {
-                throw new InvalidReferenceException(
-                    $"mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(_opts.Reference)}");
+                throw new InvalidReferenceException($"Mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(_opts.Reference)}");
             }
         }
         else
