@@ -12,13 +12,14 @@
 // limitations under the License.
 
 using System;
+using System.IO;
 
 namespace OrasProject.Oras.Content;
 
 /// <summary>
 /// MismatchedDigestException is thrown when a digest does not match the content.
 /// </summary>
-public class MismatchedDigestException : Exception
+public class MismatchedDigestException : IOException
 {
     public MismatchedDigestException()
     {

@@ -12,13 +12,14 @@
 // limitations under the License.
 
 using System;
+using System.IO;
 
 namespace OrasProject.Oras.Exceptions;
 
 /// <summary>
 /// AlreadyExistsException is thrown when a resource already exists.
 /// </summary>
-public class AlreadyExistsException : Exception
+public class AlreadyExistsException : IOException
 {
     public AlreadyExistsException()
     {

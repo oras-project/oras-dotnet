@@ -18,7 +18,7 @@ namespace OrasProject.Oras.Content;
 /// <summary>
 /// InvalidDescriptorSizeException is thrown when a descriptor size is invalid.
 /// </summary>
-public class InvalidDescriptorSizeException : Exception
+public class InvalidDescriptorSizeException : ArgumentException
 {
     public InvalidDescriptorSizeException()
     {

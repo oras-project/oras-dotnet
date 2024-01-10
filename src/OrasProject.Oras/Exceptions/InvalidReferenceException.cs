@@ -18,7 +18,7 @@ namespace OrasProject.Oras.Exceptions;
 /// <summary>
 /// InvalidReferenceException is thrown when the reference is invlid
 /// </summary>
-public class InvalidReferenceException : Exception
+public class InvalidReferenceException : FormatException
 {
     public InvalidReferenceException()
     {

@@ -18,7 +18,7 @@ namespace OrasProject.Oras.Exceptions;
 /// <summary>
 /// InvalidDigestException is thrown when a digest is invalid.
 /// </summary>
-public class InvalidDigestException : Exception
+public class InvalidDigestException : FormatException
 {
     public InvalidDigestException()
     {
