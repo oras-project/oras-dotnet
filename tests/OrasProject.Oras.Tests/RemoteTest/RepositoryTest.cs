@@ -1618,6 +1618,43 @@ namespace OrasProject.Oras.Tests.RemoteTest
             await Assert.ThrowsAsync<NotFoundException>(async () => await store.FetchAsync(contentDesc, cancellationToken));
         }
 
+        [Fact]
+        public async Task ManifestStore_FetchAsync_ManifestUnknown()
+        {
+            var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+            {
+                var res = new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                res.RequestMessage = req;
+                if (req.Method != HttpMethod.Get)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+                }
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                res.Content = new StringContent("""{"errors":[{"code":"UNAUTHORIZED","message":"authentication required","detail":[{"Type":"repository","Class":"","Name":"repo","Action":"pull"}]}]}""");
+                return res;
+            };
+            var repo = new Repository(new RepositoryOptions()
+            {
+                Reference = Reference.Parse("localhost:5000/test"),
+                HttpClient = CustomClient(func),
+                PlainHttp = true,
+            });
+            var cancellationToken = new CancellationToken();
+            var store = new ManifestStore(repo);
+            try
+            {
+                var data = await store.FetchAsync("hello", cancellationToken);
+                Assert.Fail();
+            }
+            catch (ResponseException e)
+            {
+                Assert.Equal("UNAUTHORIZED", e.Errors?[0].Code);
+            }
+        }
+
         /// <summary>
         /// ManifestStore_PushAsync tests the PushAsync method of ManifestStore.
         /// </summary>
@@ -2237,6 +2274,5 @@ namespace OrasProject.Oras.Tests.RemoteTest
             }
 
         }
-
     }
 }

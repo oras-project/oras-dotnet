@@ -33,13 +33,7 @@ internal static class HttpResponseMessageExtensions
     public static async Task<Exception> ParseErrorResponseAsync(this HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return new Exception(new
-        {
-            response.RequestMessage!.Method,
-            URL = response.RequestMessage.RequestUri,
-            response.StatusCode,
-            Errors = body
-        }.ToString());
+        return new ResponseException(response, body);
     }
 
     /// <summary>
