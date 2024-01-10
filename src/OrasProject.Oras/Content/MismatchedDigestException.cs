@@ -13,23 +13,23 @@
 
 using System;
 
-namespace OrasProject.Oras.Exceptions;
+namespace OrasProject.Oras.Content;
 
 /// <summary>
-/// InvalidDescriptorSizeException is thrown when a descriptor size is invalid.
+/// MismatchedDigestException is thrown when a digest does not match the content.
 /// </summary>
-public class InvalidDescriptorSizeException : Exception
+public class MismatchedDigestException : Exception
 {
-    public InvalidDescriptorSizeException()
+    public MismatchedDigestException()
     {
     }
 
-    public InvalidDescriptorSizeException(string message)
+    public MismatchedDigestException(string message)
         : base(message)
     {
     }
 
-    public InvalidDescriptorSizeException(string message, Exception inner)
+    public MismatchedDigestException(string message, Exception inner)
         : base(message, inner)
     {
     }
