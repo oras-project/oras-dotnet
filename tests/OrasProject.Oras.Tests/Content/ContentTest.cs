@@ -15,20 +15,19 @@ using OrasProject.Oras.Content;
 using System.Text;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.ContentTest
+namespace OrasProject.Oras.Tests.Content;
+
+public class CalculateDigest
 {
-    public class CalculateDigest
+    /// <summary>
+    /// This method tests if the digest is calculated properly
+    /// </summary>
+    [Fact]
+    public void VerifiesIfDigestMatches()
     {
-        /// <summary>
-        /// This method tests if the digest is calculated properly
-        /// </summary>
-        [Fact]
-        public void VerifiesIfDigestMatches()
-        {
-            var helloWorldDigest = "sha256:11d4ddc357e0822968dbfd226b6e1c2aac018d076a54da4f65e1dc8180684ac3";
-            var content = Encoding.UTF8.GetBytes("helloWorld");
-            var calculateHelloWorldDigest = Digest.ComputeSHA256(content);
-            Assert.Equal(helloWorldDigest, calculateHelloWorldDigest);
-        }
+        var helloWorldDigest = "sha256:11d4ddc357e0822968dbfd226b6e1c2aac018d076a54da4f65e1dc8180684ac3";
+        var content = Encoding.UTF8.GetBytes("helloWorld");
+        var calculateHelloWorldDigest = Digest.ComputeSHA256(content);
+        Assert.Equal(helloWorldDigest, calculateHelloWorldDigest);
     }
 }
