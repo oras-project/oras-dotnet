@@ -48,18 +48,19 @@ public class ManifestStore(Repository repository) : IManifestStore
                 case HttpStatusCode.OK:
                     break;
                 case HttpStatusCode.NotFound:
-                    throw new NotFoundException($"digest {target.Digest} not found");
+                    throw new NotFoundException($"Digest {target.Digest} not found");
                 default:
                     throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
             }
             var mediaType = response.Content.Headers.ContentType?.MediaType;
             if (mediaType != target.MediaType)
             {
-                throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch response Content-Type {mediaType}: expect {target.MediaType}");
+                throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch response Content-Type {mediaType}: expect {target.MediaType}");
             }
-            if (response.Content.Headers.ContentLength is var size && size != -1 && size != target.Size)
+            var size = response.Content.Headers.ContentLength;
+            if (size != null && size != target.Size)
             {
-                throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch Content-Length");
+                throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch Content-Length");
             }
             response.VerifyContentDigest(target.Digest);
             return await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
@@ -90,7 +91,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             {
                 case HttpStatusCode.OK:
                     Descriptor desc;
-                    if (response.Content.Headers.ContentLength == -1)
+                    if (response.Content.Headers.ContentLength == null)
                     {
                         desc = await ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
                     }
@@ -189,7 +190,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         return response.StatusCode switch
         {
             HttpStatusCode.OK => await response.GenerateDescriptorAsync(remoteReference, cancellationToken).ConfigureAwait(false),
-            HttpStatusCode.NotFound => throw new NotFoundException($"reference {reference} not found"),
+            HttpStatusCode.NotFound => throw new NotFoundException($"Reference {reference} not found"),
             _ => throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false)
         };
     }

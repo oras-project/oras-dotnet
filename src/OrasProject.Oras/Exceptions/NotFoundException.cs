@@ -12,26 +12,26 @@
 // limitations under the License.
 
 using System;
+using System.IO;
 
-namespace OrasProject.Oras.Exceptions
+namespace OrasProject.Oras.Exceptions;
+
+/// <summary>
+/// NotFoundException is thrown when a resource is not found.
+/// </summary>
+public class NotFoundException : IOException
 {
-    /// <summary>
-    /// NotFoundException is thrown when a resource is not found.
-    /// </summary>
-    public class NotFoundException : Exception
+    public NotFoundException()
     {
-        public NotFoundException()
-        {
-        }
+    }
 
-        public NotFoundException(string message)
-            : base(message)
-        {
-        }
+    public NotFoundException(string? message)
+        : base(message)
+    {
+    }
 
-        public NotFoundException(string message, Exception inner)
-            : base(message, inner)
-        {
-        }
+    public NotFoundException(string? message, Exception? inner)
+        : base(message, inner)
+    {
     }
 }

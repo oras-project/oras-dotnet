@@ -12,26 +12,26 @@
 // limitations under the License.
 
 using System;
+using System.IO;
 
-namespace OrasProject.Oras.Exceptions
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// MismatchedDigestException is thrown when a digest does not match the content.
+/// </summary>
+public class MismatchedDigestException : IOException
 {
-    public class UnsupportedVersionException : Exception
+    public MismatchedDigestException()
     {
-        /// <summary>
-        /// UnsupportedVersionException is thrown when a version is not supported
-        /// </summary>
-        public UnsupportedVersionException()
-        {
-        }
+    }
 
-        public UnsupportedVersionException(string message)
-            : base(message)
-        {
-        }
+    public MismatchedDigestException(string? message)
+        : base(message)
+    {
+    }
 
-        public UnsupportedVersionException(string message, Exception inner)
-            : base(message, inner)
-        {
-        }
+    public MismatchedDigestException(string? message, Exception? inner)
+        : base(message, inner)
+    {
     }
 }

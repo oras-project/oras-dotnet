@@ -71,7 +71,7 @@ internal class UriFactory : UriBuilder
     {
         if (string.IsNullOrEmpty(_reference.Repository))
         {
-            throw new InvalidReferenceException("missing manifest reference");
+            throw new InvalidReferenceException("Missing manifest reference");
         }
         var builder = NewRepositoryBaseBuilder();
         builder.Path += $"/manifests/{_reference.ContentReference}";
@@ -111,7 +111,7 @@ internal class UriFactory : UriBuilder
     {
         if (string.IsNullOrEmpty(_reference.Repository))
         {
-            throw new InvalidReferenceException("missing repository");
+            throw new InvalidReferenceException("Missing repository");
         }
         var builder = new UriBuilder(_base)
         {

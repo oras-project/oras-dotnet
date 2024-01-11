@@ -11,27 +11,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
+using OrasProject.Oras.Content;
+using System.Text;
+using Xunit;
 
-namespace OrasProject.Oras.Exceptions
+namespace OrasProject.Oras.Tests.Content;
+
+public class CalculateDigest
 {
     /// <summary>
-    /// SizeExceedsLimitException is thrown when a size exceeds the limit.
+    /// This method tests if the digest is calculated properly
     /// </summary>
-    public class SizeExceedsLimitException : Exception
+    [Fact]
+    public void VerifiesIfDigestMatches()
     {
-        public SizeExceedsLimitException()
-        {
-        }
-
-        public SizeExceedsLimitException(string message)
-            : base(message)
-        {
-        }
-
-        public SizeExceedsLimitException(string message, Exception inner)
-            : base(message, inner)
-        {
-        }
+        var helloWorldDigest = "sha256:11d4ddc357e0822968dbfd226b6e1c2aac018d076a54da4f65e1dc8180684ac3";
+        var content = Encoding.UTF8.GetBytes("helloWorld");
+        var calculateHelloWorldDigest = Digest.ComputeSHA256(content);
+        Assert.Equal(helloWorldDigest, calculateHelloWorldDigest);
     }
 }

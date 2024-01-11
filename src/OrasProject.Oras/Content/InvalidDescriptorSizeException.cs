@@ -13,25 +13,24 @@
 
 using System;
 
-namespace OrasProject.Oras.Exceptions
+namespace OrasProject.Oras.Content;
+
+/// <summary>
+/// InvalidDescriptorSizeException is thrown when a descriptor size is invalid.
+/// </summary>
+public class InvalidDescriptorSizeException : ArgumentException
 {
-    /// <summary>
-    /// MissingReferenceException is thrown when a reference is missing.
-    /// </summary>
-    public class MissingReferenceException : Exception
+    public InvalidDescriptorSizeException()
     {
-        public MissingReferenceException()
-        {
-        }
+    }
 
-        public MissingReferenceException(string message)
-            : base(message)
-        {
-        }
+    public InvalidDescriptorSizeException(string? message)
+        : base(message)
+    {
+    }
 
-        public MissingReferenceException(string message, Exception inner)
-            : base(message, inner)
-        {
-        }
+    public InvalidDescriptorSizeException(string? message, Exception? inner)
+        : base(message, inner)
+    {
     }
 }

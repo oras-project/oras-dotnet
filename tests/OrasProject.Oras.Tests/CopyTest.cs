@@ -17,130 +17,129 @@ using System.Text;
 using System.Text.Json;
 using Xunit;
 
-namespace OrasProject.Oras.Tests
+namespace OrasProject.Oras.Tests;
+
+public class CopyTest
 {
-    public class CopyTest
+    /// <summary>
+    /// Can copy a rooted directed acyclic graph (DAG) with the tagged root node
+    /// in the source Memory Target to the destination Memory Target.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task CanCopyBetweenMemoryTargetsWithTaggedNode()
     {
-        /// <summary>
-        /// Can copy a rooted directed acyclic graph (DAG) with the tagged root node
-        /// in the source Memory Target to the destination Memory Target.
-        /// </summary>
-        /// <returns></returns>
-        [Fact]
-        public async Task CanCopyBetweenMemoryTargetsWithTaggedNode()
+        var sourceTarget = new MemoryStore();
+        var cancellationToken = new CancellationToken();
+        var blobs = new List<byte[]>();
+        var descs = new List<Descriptor>();
+        var appendBlob = (string mediaType, byte[] blob) =>
         {
-            var sourceTarget = new MemoryStore();
-            var cancellationToken = new CancellationToken();
-            var blobs = new List<byte[]>();
-            var descs = new List<Descriptor>();
-            var appendBlob = (string mediaType, byte[] blob) =>
+            blobs.Add(blob);
+            var desc = new Descriptor
             {
-                blobs.Add(blob);
-                var desc = new Descriptor
-                {
-                    MediaType = mediaType,
-                    Digest = Digest.ComputeSHA256(blob),
-                    Size = blob.Length
-                };
-                descs.Add(desc);
+                MediaType = mediaType,
+                Digest = Digest.ComputeSHA256(blob),
+                Size = blob.Length
             };
-            var generateManifest = (Descriptor config, List<Descriptor> layers) =>
+            descs.Add(desc);
+        };
+        var generateManifest = (Descriptor config, List<Descriptor> layers) =>
+        {
+            var manifest = new Manifest
             {
-                var manifest = new Manifest
-                {
-                    Config = config,
-                    Layers = layers
-                };
-                var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-                appendBlob(MediaType.ImageManifest, manifestBytes);
+                Config = config,
+                Layers = layers
             };
-            var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-            appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
-            appendBlob(MediaType.ImageLayer, getBytes("foo")); // blob 1
-            appendBlob(MediaType.ImageLayer, getBytes("bar")); // blob 2
-            generateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
+            var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+            appendBlob(MediaType.ImageManifest, manifestBytes);
+        };
+        var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
+        appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
+        appendBlob(MediaType.ImageLayer, getBytes("foo")); // blob 1
+        appendBlob(MediaType.ImageLayer, getBytes("bar")); // blob 2
+        generateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
 
-            for (var i = 0; i < blobs.Count; i++)
-            {
-                await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+        for (var i = 0; i < blobs.Count; i++)
+        {
+            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
 
-            }
-
-            var root = descs[3];
-            var reference = "foobar";
-            await sourceTarget.TagAsync(root, reference, cancellationToken);
-            var destinationTarget = new MemoryStore();
-            var gotDesc = await sourceTarget.CopyAsync(reference, destinationTarget, "", cancellationToken);
-            Assert.Equal(gotDesc, root);
-            Assert.Equal(await destinationTarget.ResolveAsync(reference, cancellationToken), root);
-
-            for (var i = 0; i < descs.Count; i++)
-            {
-                Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
-                var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
-                var memoryStream = new MemoryStream();
-                await fetchContent.CopyToAsync(memoryStream);
-                var bytes = memoryStream.ToArray();
-                Assert.Equal(blobs[i], bytes);
-            }
         }
 
-        /// <summary>
-        ///  Can copy a rooted directed acyclic graph (DAG) from the source Memory Target to the destination Memory Target.
-        /// </summary>
-        /// <returns></returns>
-        [Fact]
-        public async Task CanCopyBetweenMemoryTargets()
+        var root = descs[3];
+        var reference = "foobar";
+        await sourceTarget.TagAsync(root, reference, cancellationToken);
+        var destinationTarget = new MemoryStore();
+        var gotDesc = await sourceTarget.CopyAsync(reference, destinationTarget, "", cancellationToken);
+        Assert.Equal(gotDesc, root);
+        Assert.Equal(await destinationTarget.ResolveAsync(reference, cancellationToken), root);
+
+        for (var i = 0; i < descs.Count; i++)
         {
-            var sourceTarget = new MemoryStore();
-            var cancellationToken = new CancellationToken();
-            var blobs = new List<byte[]>();
-            var descs = new List<Descriptor>();
-            var appendBlob = (string mediaType, byte[] blob) =>
+            Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
+            var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
+            var memoryStream = new MemoryStream();
+            await fetchContent.CopyToAsync(memoryStream);
+            var bytes = memoryStream.ToArray();
+            Assert.Equal(blobs[i], bytes);
+        }
+    }
+
+    /// <summary>
+    ///  Can copy a rooted directed acyclic graph (DAG) from the source Memory Target to the destination Memory Target.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task CanCopyBetweenMemoryTargets()
+    {
+        var sourceTarget = new MemoryStore();
+        var cancellationToken = new CancellationToken();
+        var blobs = new List<byte[]>();
+        var descs = new List<Descriptor>();
+        var appendBlob = (string mediaType, byte[] blob) =>
+        {
+            blobs.Add(blob);
+            var desc = new Descriptor
             {
-                blobs.Add(blob);
-                var desc = new Descriptor
-                {
-                    MediaType = mediaType,
-                    Digest = Digest.ComputeSHA256(blob),
-                    Size = blob.Length
-                };
-                descs.Add(desc);
+                MediaType = mediaType,
+                Digest = Digest.ComputeSHA256(blob),
+                Size = blob.Length
             };
-            var generateManifest = (Descriptor config, List<Descriptor> layers) =>
+            descs.Add(desc);
+        };
+        var generateManifest = (Descriptor config, List<Descriptor> layers) =>
+        {
+            var manifest = new Manifest
             {
-                var manifest = new Manifest
-                {
-                    Config = config,
-                    Layers = layers
-                };
-                var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-                appendBlob(MediaType.ImageManifest, manifestBytes);
+                Config = config,
+                Layers = layers
             };
-            var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-            appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
-            appendBlob(MediaType.ImageLayer, getBytes("foo")); // blob 1
-            appendBlob(MediaType.ImageLayer, getBytes("bar")); // blob 2
-            generateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
+            var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+            appendBlob(MediaType.ImageManifest, manifestBytes);
+        };
+        var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
+        appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
+        appendBlob(MediaType.ImageLayer, getBytes("foo")); // blob 1
+        appendBlob(MediaType.ImageLayer, getBytes("bar")); // blob 2
+        generateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
 
-            for (var i = 0; i < blobs.Count; i++)
-            {
-                await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+        for (var i = 0; i < blobs.Count; i++)
+        {
+            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
 
-            }
-            var root = descs[3];
-            var destinationTarget = new MemoryStore();
-            await sourceTarget.CopyGraphAsync(destinationTarget, root, cancellationToken);
-            for (var i = 0; i < descs.Count; i++)
-            {
-                Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
-                var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
-                var memoryStream = new MemoryStream();
-                await fetchContent.CopyToAsync(memoryStream);
-                var bytes = memoryStream.ToArray();
-                Assert.Equal(blobs[i], bytes);
+        }
+        var root = descs[3];
+        var destinationTarget = new MemoryStore();
+        await sourceTarget.CopyGraphAsync(destinationTarget, root, cancellationToken);
+        for (var i = 0; i < descs.Count; i++)
+        {
+            Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
+            var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
+            var memoryStream = new MemoryStream();
+            await fetchContent.CopyToAsync(memoryStream);
+            var bytes = memoryStream.ToArray();
+            Assert.Equal(blobs[i], bytes);
 
-            }
         }
     }
 }

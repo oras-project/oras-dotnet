@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
@@ -91,7 +90,7 @@ public static class Extensions
     {
         if (descriptor.Size < 0)
         {
-            throw new InvalidDescriptorSizeException("this descriptor size is less than 0");
+            throw new InvalidDescriptorSizeException("Descriptor size is less than 0");
         }
         var buffer = new byte[descriptor.Size];
         try
@@ -100,12 +99,12 @@ public static class Extensions
         }
         catch (ArgumentOutOfRangeException)
         {
-            throw new ArgumentOutOfRangeException("this descriptor size is less than content size");
+            throw new ArgumentOutOfRangeException("Descriptor size is less than content size");
         }
 
         if (Digest.ComputeSHA256(buffer) != descriptor.Digest)
         {
-            throw new MismatchedDigestException("this descriptor digest is different from content digest");
+            throw new MismatchedDigestException("Descriptor digest is different from content digest");
         }
         return buffer;
     }

@@ -33,13 +33,7 @@ internal static class HttpResponseMessageExtensions
     public static async Task<Exception> ParseErrorResponseAsync(this HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return new Exception(new
-        {
-            response.RequestMessage!.Method,
-            URL = response.RequestMessage.RequestUri,
-            response.StatusCode,
-            Errors = body
-        }.ToString());
+        return new ResponseException(response, body);
     }
 
     /// <summary>
@@ -56,16 +50,16 @@ internal static class HttpResponseMessageExtensions
         var link = values.FirstOrDefault();
         if (string.IsNullOrEmpty(link) || link[0] != '<')
         {
-            throw new Exception($"invalid next link {link}: missing '<");
+            throw new HttpIOException(HttpRequestError.InvalidResponse, $"invalid next link {link}: missing '<");
         }
         if (link.IndexOf('>') is var index && index == -1)
         {
-            throw new Exception($"invalid next link {link}: missing '>'");
+            throw new HttpIOException(HttpRequestError.InvalidResponse, $"invalid next link {link}: missing '>'");
         }
         link = link[1..index];
         if (!Uri.IsWellFormedUriString(link, UriKind.RelativeOrAbsolute))
         {
-            throw new Exception($"invalid next link {link}");
+            throw new HttpIOException(HttpRequestError.InvalidResponse, $"invalid next link {link}");
         }
 
         return new Uri(response.RequestMessage!.RequestUri!, link);
@@ -98,11 +92,11 @@ internal static class HttpResponseMessageExtensions
         }
         catch (Exception)
         {
-            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response header: `Docker-Content-Digest: {digestStr}`");
+            throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response header: `Docker-Content-Digest: {digestStr}`");
         }
         if (contentDigest != expected)
         {
-            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {digestStr}");
+            throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {digestStr}");
         }
     }
 
@@ -120,11 +114,7 @@ internal static class HttpResponseMessageExtensions
         {
             mediaType = MediaTypeNames.Application.Octet;
         }
-        var size = response.Content.Headers.ContentLength ?? -1;
-        if (size == -1)
-        {
-            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: unknown response Content-Length");
-        }
+        var size = response.Content.Headers.ContentLength ?? throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: unknown response Content-Length");
         response.VerifyContentDigest(expectedDigest);
         return new Descriptor
         {
@@ -148,15 +138,11 @@ internal static class HttpResponseMessageExtensions
         var mediaType = response.Content.Headers.ContentType?.MediaType;
         if (!MediaTypeHeaderValue.TryParse(mediaType, out _))
         {
-            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response `Content-Type` header");
+            throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response `Content-Type` header");
         }
 
         // 2. Validate Size
-        var size = response.Content.Headers.ContentLength ?? -1;
-        if (size == -1)
-        {
-            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: unknown response Content-Length");
-        }
+        var size = response.Content.Headers.ContentLength ?? throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: unknown response Content-Length");
 
         // 3. Validate Client Reference
         string? refDigest = null;
@@ -173,14 +159,7 @@ internal static class HttpResponseMessageExtensions
             serverDigest = serverHeaderDigest.FirstOrDefault();
             if (!string.IsNullOrEmpty(serverDigest))
             {
-                try
-                {
-                    response.VerifyContentDigest(serverDigest);
-                }
-                catch
-                {
-                    throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response header value: `Docker-Content-Digest: {serverHeaderDigest}`");
-                }
+                response.VerifyContentDigest(serverDigest);
             }
         }
 
@@ -194,7 +173,7 @@ internal static class HttpResponseMessageExtensions
                 {
                     // HEAD without server `Docker-Content-Digest`
                     // immediate fail
-                    throw new Exception($"{response.RequestMessage.Method} {response.RequestMessage.RequestUri}: missing required header {serverHeaderDigest}");
+                    throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage.Method} {response.RequestMessage.RequestUri}: missing required header {serverHeaderDigest}");
                 }
                 // Otherwise, just trust the client-supplied digest
                 contentDigest = refDigest;
@@ -209,7 +188,7 @@ internal static class HttpResponseMessageExtensions
                 }
                 catch (Exception e)
                 {
-                    throw new Exception($"failed to calculate digest on response body; {e.Message}");
+                    throw new HttpIOException(HttpRequestError.InvalidResponse, $"failed to calculate digest on response body; {e.Message}");
                 }
             }
         }
@@ -219,7 +198,7 @@ internal static class HttpResponseMessageExtensions
         }
         if (!string.IsNullOrEmpty(refDigest) && refDigest != contentDigest)
         {
-            throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in {serverHeaderDigest}: received {contentDigest} when expecting {refDigest}");
+            throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in {serverHeaderDigest}: received {contentDigest} when expecting {refDigest}");
         }
 
         // 6. Finally, if we made it this far, then all is good; return the descriptor

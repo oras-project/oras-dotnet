@@ -13,25 +13,24 @@
 
 using System;
 
-namespace OrasProject.Oras.Exceptions
+namespace OrasProject.Oras.Exceptions;
+
+/// <summary>
+/// InvalidDigestException is thrown when a digest is invalid.
+/// </summary>
+public class InvalidDigestException : FormatException
 {
-    /// <summary>
-    /// InvalidDigestException is thrown when a digest is invalid.
-    /// </summary>
-    public class InvalidDigestException : Exception
+    public InvalidDigestException()
     {
-        public InvalidDigestException()
-        {
-        }
+    }
 
-        public InvalidDigestException(string message)
-            : base(message)
-        {
-        }
+    public InvalidDigestException(string? message)
+        : base(message)
+    {
+    }
 
-        public InvalidDigestException(string message, Exception inner)
-            : base(message, inner)
-        {
-        }
+    public InvalidDigestException(string? message, Exception? inner)
+        : base(message, inner)
+    {
     }
 }

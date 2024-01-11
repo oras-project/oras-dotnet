@@ -12,8 +12,6 @@
 // limitations under the License.
 
 using OrasProject.Oras.Exceptions;
-using OrasProject.Oras.Registry;
-using OrasProject.Oras.Registry.Remote;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -25,7 +23,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 
-namespace OrasProject.Oras.Remote;
+namespace OrasProject.Oras.Registry.Remote;
 
 public class Registry : IRegistry
 {

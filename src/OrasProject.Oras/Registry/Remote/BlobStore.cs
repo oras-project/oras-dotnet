@@ -39,10 +39,10 @@ public class BlobStore(Repository repository) : IBlobStore
             switch (response.StatusCode)
             {
                 case HttpStatusCode.OK:
-                    // server does not support seek as `Range` was ignored.
-                    if (response.Content.Headers.ContentLength is var size && size != -1 && size != target.Size)
+                    var size = response.Content.Headers.ContentLength;
+                    if (size != null && size != target.Size)
                     {
-                        throw new Exception($"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch Content-Length");
+                        throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch Content-Length");
                     }
                     return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
                 case HttpStatusCode.NotFound:
@@ -76,9 +76,8 @@ public class BlobStore(Repository repository) : IBlobStore
             switch (response.StatusCode)
             {
                 case HttpStatusCode.OK:
-                    // server does not support seek as `Range` was ignored.
                     Descriptor desc;
-                    if (response.Content.Headers.ContentLength == -1)
+                    if (response.Content.Headers.ContentLength == null)
                     {
                         desc = await ResolveAsync(refDigest, cancellationToken).ConfigureAwait(false);
                     }
