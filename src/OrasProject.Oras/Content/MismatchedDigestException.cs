@@ -25,12 +25,12 @@ public class MismatchedDigestException : IOException
     {
     }
 
-    public MismatchedDigestException(string message)
+    public MismatchedDigestException(string? message)
         : base(message)
     {
     }
 
-    public MismatchedDigestException(string message, Exception inner)
+    public MismatchedDigestException(string? message, Exception? inner)
         : base(message, inner)
     {
     }

@@ -24,12 +24,12 @@ public class InvalidDigestException : FormatException
     {
     }
 
-    public InvalidDigestException(string message)
+    public InvalidDigestException(string? message)
         : base(message)
     {
     }
 
-    public InvalidDigestException(string message, Exception inner)
+    public InvalidDigestException(string? message, Exception? inner)
         : base(message, inner)
     {
     }

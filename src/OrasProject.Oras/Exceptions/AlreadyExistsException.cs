@@ -25,12 +25,12 @@ public class AlreadyExistsException : IOException
     {
     }
 
-    public AlreadyExistsException(string message)
+    public AlreadyExistsException(string? message)
         : base(message)
     {
     }
 
-    public AlreadyExistsException(string message, Exception inner)
+    public AlreadyExistsException(string? message, Exception? inner)
         : base(message, inner)
     {
     }

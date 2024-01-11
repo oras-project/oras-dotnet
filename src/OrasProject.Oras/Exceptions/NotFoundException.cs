@@ -25,12 +25,12 @@ public class NotFoundException : IOException
     {
     }
 
-    public NotFoundException(string message)
+    public NotFoundException(string? message)
         : base(message)
     {
     }
 
-    public NotFoundException(string message, Exception inner)
+    public NotFoundException(string? message, Exception? inner)
         : base(message, inner)
     {
     }

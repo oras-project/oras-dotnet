@@ -24,12 +24,12 @@ public class InvalidDescriptorSizeException : ArgumentException
     {
     }
 
-    public InvalidDescriptorSizeException(string message)
+    public InvalidDescriptorSizeException(string? message)
         : base(message)
     {
     }
 
-    public InvalidDescriptorSizeException(string message, Exception inner)
+    public InvalidDescriptorSizeException(string? message, Exception? inner)
         : base(message, inner)
     {
     }

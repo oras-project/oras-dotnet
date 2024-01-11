@@ -24,12 +24,12 @@ public class InvalidReferenceException : FormatException
     {
     }
 
-    public InvalidReferenceException(string message)
+    public InvalidReferenceException(string? message)
         : base(message)
     {
     }
 
-    public InvalidReferenceException(string message, Exception inner)
+    public InvalidReferenceException(string? message, Exception? inner)
         : base(message, inner)
     {
     }
