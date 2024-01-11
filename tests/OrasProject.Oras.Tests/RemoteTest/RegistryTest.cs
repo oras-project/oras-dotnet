@@ -42,7 +42,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
         public void Registry()
         {
             var registryName = "foobar";
-            var registry = new Remote.Registry(registryName);
+            var registry = new Registry.Remote.Registry(registryName);
             var options = registry.RepositoryOptions;
             Assert.Equal(registryName, options.Reference.Registry);
         }
@@ -77,7 +77,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                     return res;
                 }
             };
-            var registry = new Remote.Registry(new RepositoryOptions()
+            var registry = new Registry.Remote.Registry(new RepositoryOptions()
             {
                 Reference = new Reference("localhost:5000"),
                 PlainHttp = true,
@@ -144,7 +144,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                         break;
                 }
 
-                var repositoryList = new Remote.Registry.RepositoryList
+                var repositoryList = new Registry.Remote.Registry.RepositoryList
                 {
                     Repositories = repos.ToArray()
                 };
@@ -153,7 +153,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
 
             };
 
-            var registry = new Remote.Registry(new RepositoryOptions()
+            var registry = new Registry.Remote.Registry(new RepositoryOptions()
             {
                 Reference = new Reference("localhost:5000"),
                 PlainHttp = true,

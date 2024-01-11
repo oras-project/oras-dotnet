@@ -2207,7 +2207,7 @@ namespace OrasProject.Oras.Tests.RemoteTest
                 return res;
             };
 
-            var reg = new Remote.Registry(new RepositoryOptions()
+            var reg = new Registry.Remote.Registry(new RepositoryOptions()
             {
                 Reference = new Reference("localhost:5000"),
                 HttpClient = CustomClient(func),
