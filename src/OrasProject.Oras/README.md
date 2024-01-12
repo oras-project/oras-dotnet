@@ -1,6 +1,6 @@
 # ORAS .NET library
 
-`oras-dotnet` provides an implementation for working with [Open Container](https://opencontainers.org/) images and artifacts.
+`oras-dotnet` provides a .NET implementation `OrasProject.Oras` for working with [Open Container](https://opencontainers.org/) images and artifacts.
 
 ## Documentations
 
