@@ -30,7 +30,7 @@ public static class Extensions
     /// <param name="node"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public static async Task<IEnumerable<Descriptor>> GetSuccessorsAsync(this IFetchable fetcher, Descriptor node, CancellationToken cancellationToken)
+    public static async Task<IEnumerable<Descriptor>> GetSuccessorsAsync(this IFetchable fetcher, Descriptor node, CancellationToken cancellationToken = default)
     {
         switch (node.MediaType)
         {
@@ -71,7 +71,7 @@ public static class Extensions
     /// <param name="desc"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public static async Task<byte[]> FetchAllAsync(this IFetchable fetcher, Descriptor desc, CancellationToken cancellationToken)
+    public static async Task<byte[]> FetchAllAsync(this IFetchable fetcher, Descriptor desc, CancellationToken cancellationToken = default)
     {
         var stream = await fetcher.FetchAsync(desc, cancellationToken).ConfigureAwait(false);
         return await stream.ReadAllAsync(desc, cancellationToken).ConfigureAwait(false);
@@ -86,7 +86,7 @@ public static class Extensions
     /// <exception cref="InvalidDescriptorSizeException"></exception>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
     /// <exception cref="MismatchedDigestException"></exception>
-    internal static async Task<byte[]> ReadAllAsync(this Stream stream, Descriptor descriptor, CancellationToken cancellationToken)
+    public static async Task<byte[]> ReadAllAsync(this Stream stream, Descriptor descriptor, CancellationToken cancellationToken = default)
     {
         if (descriptor.Size < 0)
         {
