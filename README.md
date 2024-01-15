@@ -14,11 +14,12 @@
 
 The ORAS .NET library follows [Semantic Versioning](https://semver.org/), where breaking changes are reserved for MAJOR releases, and MINOR and PATCH releases must be 100% backwards compatible.
 
-## Docs
+## Documentations
 
-- [API Documentation](https://oras-project.github.io/oras-dotnet/api/): API Documentation for the ORAS .NET library.
-- [oras.land/client_libraries](https://oras.land/client_libraries/): Documentation for general ORAS libraries.
+- [API documentation](https://oras-project.github.io/oras-dotnet/api/): API Documentation for the ORAS .NET library.
+- [ORAS client libraries](https://oras.land/docs/category/client-libraries): Documentation for general ORAS libraries.
 - [Reviewing guide](https://github.com/oras-project/community/blob/main/REVIEWING.md): All reviewers must read the reviewing guide and agree to follow the project review guidelines.
+- [Release checklist](RELEASE_CHECKLIST.md): Checklist for releasing a new version of the ORAS .NET library.
 
 ## Code of Conduct
 
