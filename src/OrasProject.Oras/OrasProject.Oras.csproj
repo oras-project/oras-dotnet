@@ -2,13 +2,18 @@
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
 		<PackageId>OrasProject.Oras</PackageId>
-		<Version>0.0.0-dev</Version>
-		<RepositoryUrl>https://github.com/oras-project/oras-dotnet</RepositoryUrl>
-		<PackageProjectUrl>https://oras.land</PackageProjectUrl>
+		<PackageVersion>0.2.0-dev</PackageVersion>
+		<Authors>Oras Project</Authors>
 		<Description>Oras package provides API to work with OCI</Description>
-		<PackageTags>OCI, ORAS, Registry, Container, Image, Artifacts</PackageTags>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<Copyright>Copyright (c) ORAS Project 2024</Copyright>
+		<PackageProjectUrl>https://oras.land</PackageProjectUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/oras-project/oras-dotnet</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageTags>OCI, ORAS, registry, container, image, artifact</PackageTags>
+		<PackageReleaseNotes>See https://github.com/oras-project/oras-dotnet/releases for details</PackageReleaseNotes>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<OutputType>Library</OutputType>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
@@ -21,6 +26,6 @@
 		<PackageReference Include="System.Text.Json" Version="8.0.1" />
 	</ItemGroup>
 	<ItemGroup>
-    	<None Include="README.md" Pack="true" PackagePath="/" />
-  	</ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="/" />
+	</ItemGroup>
 </Project>
