@@ -8,9 +8,7 @@ This document describes the checklist to publish a release through the [GitHub r
 
 1. Determine a [SemVer2](https://semver.org/)-valid version prefixed with the letter `v` for release. For example, `v1.0.0-rc.1`.
 2. Create an issue to vote for a new release (see [example](https://github.com/oras-project/oras-dotnet/issues/103)).
-3. After the vote passes, [draft a release](https://github.com/oras-project/oras-dotnet/releases/new) using the determined version as the tag name, targeting the `main` branch.
-    > [!NOTE]
-    > A tag will be created from the `main` branch when you publish the release.
+3. After the vote passes, [draft a release](https://github.com/oras-project/oras-dotnet/releases/new) using the determined version as the tag name, targeting the `main` branch. A tag will be automatically created from the `main` branch when you publish the release.
 4. Compose and revise the release note and optionally select `Set as a pre-release` depending on the version.
 5. Publish the release on GitHub.
 6. [A workflow](https://github.com/oras-project/oras-dotnet/actions/workflows/release-nuget.yml) will be triggered automatically after releasing (i.e. a new tag is create) for publishing the release to NuGet.
