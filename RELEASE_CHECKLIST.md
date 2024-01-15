@@ -11,7 +11,7 @@ This document describes the checklist to publish a release through the [GitHub r
 3. After the vote passes, [draft a release](https://github.com/oras-project/oras-dotnet/releases/new) using the determined version as the tag name, targeting the `main` branch. A tag will be automatically created from the `main` branch when you publish the release.
 4. Compose and revise the release note and optionally select `Set as a pre-release` depending on the version.
 5. Publish the release on GitHub.
-6. [A workflow](https://github.com/oras-project/oras-dotnet/actions/workflows/release-nuget.yml) will be triggered automatically after releasing (i.e. a new tag is create) for publishing the release to NuGet.
+6. A [workflow](https://github.com/oras-project/oras-dotnet/actions/workflows/release-nuget.yml) will be triggered automatically by tag creation mentioned in the step 3 for publishing the release to NuGet.
 7. Wait for NuGet to validate the newly released package.
 8. Announce the release in the community.
 
