@@ -40,6 +40,6 @@ jobs:
       - name: Run unit tests
         run: dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover ./tests/OrasProject.Oras.Tests
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./tests/OrasProject.Oras.Tests/coverage.opencover.xml
