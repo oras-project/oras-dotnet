@@ -41,5 +41,7 @@ jobs:
         run: dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover ./tests/OrasProject.Oras.Tests
       - name: Upload coverage to codecov.io
         uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           file: ./tests/OrasProject.Oras.Tests/coverage.opencover.xml
