@@ -42,10 +42,11 @@ public class RepositoryTest
         public bool errExpectedOnGET;
     }
 
-    private byte[] theAmazingBanClan = "Ban Gu, Ban Chao, Ban Zhao"u8.ToArray();
-    private const string theAmazingBanDigest = "b526a4f2be963a2f9b0990c001255669eab8a254ab1a6e3f84f1820212ac7078";
+    private byte[] _theAmazingBanClan = "Ban Gu, Ban Chao, Ban Zhao"u8.ToArray();
+    private const string _theAmazingBanDigest = "b526a4f2be963a2f9b0990c001255669eab8a254ab1a6e3f84f1820212ac7078";
 
-    private const string dockerContentDigestHeader = "Docker-Content-Digest";
+    private const string _dockerContentDigestHeader = "Docker-Content-Digest";
+
     // The following truth table aims to cover the expected GET/HEAD request outcome
     // for all possible permutations of the client/server "containing a digest", for
     // both Manifests and Blobs.  Where the results between the two differ, the index
@@ -85,7 +86,7 @@ public class RepositoryTest
     /// <returns></returns>
     public static Dictionary<string, TestIOStruct> GetTestIOStructMapForGetDescriptorClass()
     {
-        string correctDigest = $"sha256:{theAmazingBanDigest}";
+        string correctDigest = $"sha256:{_theAmazingBanDigest}";
         string incorrectDigest = $"sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
         return new Dictionary<string, TestIOStruct>
@@ -194,7 +195,7 @@ public class RepositoryTest
             {
                 resp.Content = new ByteArrayContent(blob);
                 resp.Content.Headers.Add("Content-Type", "application/octet-stream");
-                resp.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                resp.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 return resp;
             }
 
@@ -209,7 +210,7 @@ public class RepositoryTest
 
                 resp.Content = new ByteArrayContent(index);
                 resp.Content.Headers.Add("Content-Type", indexDesc.MediaType);
-                resp.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                resp.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
                 return resp;
             }
 
@@ -289,7 +290,7 @@ public class RepositoryTest
 
                 var stream = req.Content!.ReadAsStream(cancellationToken);
                 stream.Read(gotBlob);
-                resp.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                resp.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 resp.StatusCode = HttpStatusCode.Created;
                 return resp;
 
@@ -307,7 +308,7 @@ public class RepositoryTest
 
                 var stream = req.Content!.ReadAsStream(cancellationToken);
                 stream.Read(gotIndex);
-                resp.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                resp.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
                 resp.StatusCode = HttpStatusCode.Created;
                 return resp;
             }
@@ -364,7 +365,7 @@ public class RepositoryTest
             {
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
                 res.Content.Headers.Add("Content-Length", blobDesc.Size.ToString());
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 return res;
             }
 
@@ -378,7 +379,7 @@ public class RepositoryTest
 
                 res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
                 res.Content.Headers.Add("Content-Length", indexDesc.Size.ToString());
-                res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
                 return res;
             }
 
@@ -432,7 +433,7 @@ public class RepositoryTest
             if (req.RequestUri!.AbsolutePath == "/v2/test/blobs/" + blobDesc.Digest)
             {
                 blobDeleted = true;
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 res.StatusCode = HttpStatusCode.Accepted;
                 return res;
             }
@@ -440,7 +441,7 @@ public class RepositoryTest
             if (req.RequestUri!.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
             {
                 indexDeleted = true;
-                // no "Docker-Content-Digest" header for manifest deletion
+                // no dockerContentDigestHeader header for manifest deletion
                 res.StatusCode = HttpStatusCode.Accepted;
                 return res;
             }
@@ -509,7 +510,7 @@ public class RepositoryTest
 
                 res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
                 res.Content.Headers.Add("Content-Length", indexDesc.Size.ToString());
-                res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
                 return res;
             }
 
@@ -583,7 +584,7 @@ public class RepositoryTest
 
                 res.Content = new ByteArrayContent(index);
                 res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
-                res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
                 return res;
             }
 
@@ -601,7 +602,7 @@ public class RepositoryTest
                 {
                     gotIndex = await req.Content.ReadAsByteArrayAsync(cancellationToken);
                 }
-                res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
                 res.StatusCode = HttpStatusCode.Created;
                 return res;
             }
@@ -656,7 +657,7 @@ public class RepositoryTest
                 {
                     gotIndex = await req.Content.ReadAsByteArrayAsync();
                 }
-                res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
                 res.StatusCode = HttpStatusCode.Created;
                 return res;
             }
@@ -723,7 +724,7 @@ public class RepositoryTest
 
                 res.Content = new ByteArrayContent(index);
                 res.Content.Headers.Add("Content-Type", indexDesc.MediaType);
-                res.Content.Headers.Add("Docker-Content-Digest", indexDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
                 return res;
             }
 
@@ -887,7 +888,7 @@ public class RepositoryTest
             {
                 res.Content = new ByteArrayContent(blob);
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 return res;
             }
 
@@ -950,7 +951,7 @@ public class RepositoryTest
                     res.StatusCode = HttpStatusCode.OK;
                     res.Content = new ByteArrayContent(blob);
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                     return res;
                 }
 
@@ -977,12 +978,12 @@ public class RepositoryTest
                 res.StatusCode = HttpStatusCode.PartialContent;
                 res.Content = new ByteArrayContent(blob[(int)start..(int)end]);
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 return res;
             }
 
             res.Content.Headers.Add("Content-Type", "application/octet-stream");
-            res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+            res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
             res.StatusCode = HttpStatusCode.NotFound;
             return res;
         };
@@ -1044,7 +1045,7 @@ public class RepositoryTest
                 }
 
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 return res;
             }
 
@@ -1108,7 +1109,7 @@ public class RepositoryTest
                 // read content into buffer
                 var stream = req.Content!.ReadAsStream(cancellationToken);
                 stream.Read(gotBlob);
-                res.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 res.StatusCode = HttpStatusCode.Created;
                 return res;
             }
@@ -1161,7 +1162,7 @@ public class RepositoryTest
             if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
             {
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 res.Content.Headers.Add("Content-Length", blobDesc.Size.ToString());
                 return res;
             }
@@ -1210,7 +1211,7 @@ public class RepositoryTest
             if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
             {
                 blobDeleted = true;
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 res.StatusCode = HttpStatusCode.Accepted;
                 return res;
             }
@@ -1265,7 +1266,7 @@ public class RepositoryTest
             if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
             {
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 res.Content.Headers.Add("Content-Length", blobDesc.Size.ToString());
                 return res;
             }
@@ -1327,7 +1328,7 @@ public class RepositoryTest
             {
                 res.Content = new ByteArrayContent(blob);
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 return res;
             }
 
@@ -1411,7 +1412,7 @@ public class RepositoryTest
                     res.StatusCode = HttpStatusCode.OK;
                     res.Content = new ByteArrayContent(blob);
                     res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                    res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                    res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                     return res;
                 }
 
@@ -1426,12 +1427,12 @@ public class RepositoryTest
                 res.StatusCode = HttpStatusCode.PartialContent;
                 res.Content = new ByteArrayContent(blob[(int)start..]);
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
-                res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 return res;
             }
 
             res.Content.Headers.Add("Content-Type", "application/octet-stream");
-            res.Content.Headers.Add("Docker-Content-Digest", blobDesc.Digest);
+            res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
             res.StatusCode = HttpStatusCode.NotFound;
             return res;
         };
@@ -1493,14 +1494,14 @@ public class RepositoryTest
                 var resp = new HttpResponseMessage();
                 if (method == HttpMethod.Get)
                 {
-                    resp.Content = new ByteArrayContent(theAmazingBanClan);
+                    resp.Content = new ByteArrayContent(_theAmazingBanClan);
                     resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
                 }
-                if (!resp.Content.Headers.TryGetValues(dockerContentDigestHeader, out IEnumerable<string>? values))
+                if (!resp.Headers.TryGetValues(_dockerContentDigestHeader, out IEnumerable<string>? values))
                 {
                     resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
                     resp.RequestMessage = new HttpRequestMessage()
                     {
                         Method = method
@@ -1590,7 +1591,7 @@ public class RepositoryTest
                 }
                 res.Content = new ByteArrayContent(manifest);
                 res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
-                res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -1688,7 +1689,7 @@ public class RepositoryTest
                     (await req.Content.ReadAsByteArrayAsync()).CopyTo(buf, 0);
                     gotManifest = buf;
                 }
-                res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
                 res.StatusCode = HttpStatusCode.Created;
                 return res;
             }
@@ -1737,7 +1738,7 @@ public class RepositoryTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-                res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
                 res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
                 res.Content.Headers.Add("Content-Length", new string[] { manifest.Length.ToString() });
                 return res;
@@ -1802,7 +1803,7 @@ public class RepositoryTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 res.Content = new ByteArrayContent(manifest);
-                res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
                 res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
                 return res;
             }
@@ -1858,7 +1859,7 @@ public class RepositoryTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-                res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
                 res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
                 res.Content.Headers.Add("Content-Length", new string[] { manifest.Length.ToString() });
                 return res;
@@ -1928,7 +1929,7 @@ public class RepositoryTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 res.Content = new ByteArrayContent(manifest);
-                res.Content.Headers.Add("Docker-Content-Digest", new string[] { manifestDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
                 res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
                 return res;
             }
@@ -2019,7 +2020,7 @@ public class RepositoryTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 res.Content = new ByteArrayContent(index);
-                res.Content.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { indexDesc.Digest });
                 res.Content.Headers.Add("Content-Type", new string[] { indexDesc.MediaType });
                 return res;
             }
@@ -2037,7 +2038,7 @@ public class RepositoryTest
                     gotIndex = buf;
                 }
 
-                res.Content.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { indexDesc.Digest });
                 res.StatusCode = HttpStatusCode.Created;
                 return res;
             }
@@ -2102,7 +2103,7 @@ public class RepositoryTest
                     gotIndex = buf;
                 }
 
-                res.Content.Headers.Add("Docker-Content-Digest", new string[] { indexDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { indexDesc.Digest });
                 res.StatusCode = HttpStatusCode.Created;
                 return res;
             }
@@ -2168,12 +2169,12 @@ public class RepositoryTest
                 {
                     res.Content = new ByteArrayContent(exampleManifest);
                     res.Content.Headers.Add("Content-Type", MediaType.Descriptor);
-                    res.Content.Headers.Add("Docker-Content-Digest", exampleManifestDescriptor.Digest);
+                    res.Headers.Add(_dockerContentDigestHeader, exampleManifestDescriptor.Digest);
                     res.Content.Headers.Add("Content-Length", exampleManifest.Length.ToString());
                     return res;
                 }
                 res.Content.Headers.Add("Content-Type", MediaType.Descriptor);
-                res.Content.Headers.Add("Docker-Content-Digest", exampleManifestDescriptor.Digest);
+                res.Headers.Add(_dockerContentDigestHeader, exampleManifestDescriptor.Digest);
                 res.Content.Headers.Add("Content-Length", exampleManifest.Length.ToString());
                 return res;
             }
@@ -2193,7 +2194,7 @@ public class RepositoryTest
                     res.Content.Headers.Add("Content-Length", content.Length.ToString());
                 }
 
-                res.Content.Headers.Add("Docker-Content-Digest", digest);
+                res.Headers.Add(_dockerContentDigestHeader, digest);
 
                 return res;
             }
@@ -2235,14 +2236,14 @@ public class RepositoryTest
                 var resp = new HttpResponseMessage();
                 if (method == HttpMethod.Get)
                 {
-                    resp.Content = new ByteArrayContent(theAmazingBanClan);
+                    resp.Content = new ByteArrayContent(_theAmazingBanClan);
                     resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
                 }
                 else
                 {
                     resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Content.Headers.Add(dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
                 }
                 resp.RequestMessage = new HttpRequestMessage()
                 {
