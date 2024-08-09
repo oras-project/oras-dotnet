@@ -25,6 +25,8 @@ namespace OrasProject.Oras.Registry.Remote;
 
 internal static class HttpResponseMessageExtensions
 {
+    private const string _dockerContentDigestHeader = "Docker-Content-Digest";
+
     /// <summary>
     /// Parses the error returned by the remote registry.
     /// </summary>
@@ -75,7 +77,7 @@ internal static class HttpResponseMessageExtensions
     /// <exception cref="NotImplementedException"></exception>
     public static void VerifyContentDigest(this HttpResponseMessage response, string expected)
     {
-        if (!response.Content.Headers.TryGetValues("Docker-Content-Digest", out var digestValues))
+        if (!response.Headers.TryGetValues(_dockerContentDigestHeader, out var digestValues))
         {
             return;
         }
@@ -154,7 +156,7 @@ internal static class HttpResponseMessageExtensions
 
         // 4. Validate Server Digest (if present)
         string? serverDigest = null;
-        if (response.Content.Headers.TryGetValues("Docker-Content-Digest", out var serverHeaderDigest))
+        if (response.Headers.TryGetValues(_dockerContentDigestHeader, out var serverHeaderDigest))
         {
             serverDigest = serverHeaderDigest.FirstOrDefault();
             if (!string.IsNullOrEmpty(serverDigest))
