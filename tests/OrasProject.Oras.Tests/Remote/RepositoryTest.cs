@@ -1082,6 +1082,8 @@ public class RepositoryTest
         };
         var gotBlob = new byte[blob.Length];
         var uuid = Guid.NewGuid().ToString();
+        var existingQueryParameter = "existingParam=value";
+
         var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
         {
             var res = new HttpResponseMessage();
@@ -1089,12 +1091,16 @@ public class RepositoryTest
             if (req.Method == HttpMethod.Post && req.RequestUri?.AbsolutePath == $"/v2/test/blobs/uploads/")
             {
                 res.StatusCode = HttpStatusCode.Accepted;
-                res.Headers.Add("Location", "/v2/test/blobs/uploads/" + uuid);
+                res.Headers.Add("Location", $"/v2/test/blobs/uploads/{uuid}?{existingQueryParameter}");
                 return res;
             }
 
             if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == "/v2/test/blobs/uploads/" + uuid)
             {
+                // Assert that the existing query parameter is present
+                var queryParameters = HttpUtility.ParseQueryString(req.RequestUri.Query);
+                Assert.Equal("value", queryParameters["existingParam"]);
+
                 if (req.Headers.TryGetValues("Content-Type", out var contentType) &&
                     contentType.FirstOrDefault() != "application/octet-stream")
                 {
