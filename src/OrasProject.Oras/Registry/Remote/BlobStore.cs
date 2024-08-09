@@ -152,7 +152,7 @@ public class BlobStore(Repository repository) : IBlobStore
         // add digest key to query string with expected digest value
         var req = new HttpRequestMessage(HttpMethod.Put, new UriBuilder(url)
         {
-            Query = $"digest={HttpUtility.UrlEncode(expected.Digest)}"
+            Query = $"{url.Query}&digest={HttpUtility.UrlEncode(expected.Digest)}"
         }.Uri);
         req.Content = new StreamContent(content);
         req.Content.Headers.ContentLength = expected.Size;
