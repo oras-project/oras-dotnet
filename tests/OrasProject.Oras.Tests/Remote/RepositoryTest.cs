@@ -35,11 +35,11 @@ public class RepositoryTest
 {
     public struct TestIOStruct
     {
-        public bool isTag;
-        public bool errExpectedOnHEAD;
-        public string serverCalculatedDigest;
-        public string clientSuppliedReference;
-        public bool errExpectedOnGET;
+        public bool IsTag;
+        public bool ErrExpectedOnHEAD;
+        public string ServerCalculatedDigest;
+        public string ClientSuppliedReference;
+        public bool ErrExpectedOnGET;
     }
 
     private byte[] _theAmazingBanClan = "Ban Gu, Ban Chao, Ban Zhao"u8.ToArray();
@@ -93,34 +93,34 @@ public class RepositoryTest
         {
             ["1. Client:Tag & Server:DigestMissing"] = new TestIOStruct
             {
-                isTag = true,
-                errExpectedOnHEAD = true
+                IsTag = true,
+                ErrExpectedOnHEAD = true
             },
             ["2. Client:Tag & Server:DigestValid"] = new TestIOStruct
             {
-                isTag = true,
-                serverCalculatedDigest = correctDigest
+                IsTag = true,
+                ServerCalculatedDigest = correctDigest
             },
             ["3. Client:Tag & Server:DigestWrongButSyntacticallyValid"] = new TestIOStruct
             {
-                isTag = true,
-                serverCalculatedDigest = incorrectDigest
+                IsTag = true,
+                ServerCalculatedDigest = incorrectDigest
             },
             ["4. Client:DigestValid & Server:DigestMissing"] = new TestIOStruct
             {
-                clientSuppliedReference = correctDigest
+                ClientSuppliedReference = correctDigest
             },
             ["5. Client:DigestValid & Server:DigestValid"] = new TestIOStruct
             {
-                clientSuppliedReference = correctDigest,
-                serverCalculatedDigest = correctDigest
+                ClientSuppliedReference = correctDigest,
+                ServerCalculatedDigest = correctDigest
             },
             ["6. Client:DigestValid & Server:DigestWrongButSyntacticallyValid"] = new TestIOStruct
             {
-                clientSuppliedReference = correctDigest,
-                serverCalculatedDigest = incorrectDigest,
-                errExpectedOnHEAD = true,
-                errExpectedOnGET = true
+                ClientSuppliedReference = correctDigest,
+                ServerCalculatedDigest = incorrectDigest,
+                ErrExpectedOnHEAD = true,
+                ErrExpectedOnGET = true
             }
         };
     }
@@ -1489,25 +1489,25 @@ public class RepositoryTest
         var tests = GetTestIOStructMapForGetDescriptorClass();
         foreach ((string testName, TestIOStruct dcdIOStruct) in tests)
         {
-            if (dcdIOStruct.isTag)
+            if (dcdIOStruct.IsTag)
             {
                 continue;
             }
             HttpMethod[] methods = new HttpMethod[] { HttpMethod.Get, HttpMethod.Head };
             foreach ((int i, HttpMethod method) in methods.Select((value, i) => (i, value)))
             {
-                reference.ContentReference = dcdIOStruct.clientSuppliedReference;
+                reference.ContentReference = dcdIOStruct.ClientSuppliedReference;
                 var resp = new HttpResponseMessage();
                 if (method == HttpMethod.Get)
                 {
                     resp.Content = new ByteArrayContent(_theAmazingBanClan);
                     resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.ServerCalculatedDigest });
                 }
                 if (!resp.Headers.TryGetValues(_dockerContentDigestHeader, out IEnumerable<string>? values))
                 {
                     resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.ServerCalculatedDigest });
                     resp.RequestMessage = new HttpRequestMessage()
                     {
                         Method = method
@@ -1533,12 +1533,12 @@ public class RepositoryTest
                         $"[Blob.{method}] {testName}; got digest from a tag reference unexpectedly");
                 }
 
-                var errExpected = new bool[] { dcdIOStruct.errExpectedOnGET, dcdIOStruct.errExpectedOnHEAD }[i];
+                var errExpected = new bool[] { dcdIOStruct.ErrExpectedOnGET, dcdIOStruct.ErrExpectedOnHEAD }[i];
                 if (d.Length == 0)
                 {
                     // To avoid an otherwise impossible scenario in the tested code
                     // path, we set d so that verifyContentDigest does not break.
-                    d = dcdIOStruct.serverCalculatedDigest;
+                    d = dcdIOStruct.ServerCalculatedDigest;
                 }
 
                 var err = false;
@@ -2238,25 +2238,25 @@ public class RepositoryTest
             var s = new ManifestStore(repo);
             foreach ((int i, HttpMethod method) in methods.Select((value, i) => (i, value)))
             {
-                reference.ContentReference = dcdIOStruct.clientSuppliedReference;
+                reference.ContentReference = dcdIOStruct.ClientSuppliedReference;
                 var resp = new HttpResponseMessage();
                 if (method == HttpMethod.Get)
                 {
                     resp.Content = new ByteArrayContent(_theAmazingBanClan);
                     resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.ServerCalculatedDigest });
                 }
                 else
                 {
                     resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.serverCalculatedDigest });
+                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.ServerCalculatedDigest });
                 }
                 resp.RequestMessage = new HttpRequestMessage()
                 {
                     Method = method
                 };
 
-                var errExpected = new bool[] { dcdIOStruct.errExpectedOnGET, dcdIOStruct.errExpectedOnHEAD }[i];
+                var errExpected = new bool[] { dcdIOStruct.ErrExpectedOnGET, dcdIOStruct.ErrExpectedOnHEAD }[i];
 
                 var err = false;
                 try
