@@ -13,6 +13,7 @@
 
 using OrasProject.Oras.Exceptions;
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
@@ -20,8 +21,11 @@ namespace OrasProject.Oras.Content;
 
 internal static class Digest
 {
-    private const string digestRegexPattern = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
-    private static readonly Regex digestRegex = new Regex(digestRegexPattern, RegexOptions.Compiled);
+    private const string _digestRegexPattern = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
+    private static readonly Regex _digestRegex = new Regex(_digestRegexPattern, RegexOptions.Compiled);
+
+    // List of registered and supported algorithms as per the specification
+    private static readonly HashSet<string> _supportedAlgorithms = new HashSet<string> { "sha256", "sha512" };
 
     /// <summary>
     /// Verifies the digest header and throws an exception if it is invalid.
@@ -29,10 +33,17 @@ internal static class Digest
     /// <param name="digest"></param>
     internal static string Validate(string? digest)
     {
-        if (string.IsNullOrEmpty(digest) || !digestRegex.IsMatch(digest))
+        if (string.IsNullOrEmpty(digest) || !_digestRegex.IsMatch(digest))
         {
             throw new InvalidDigestException($"Invalid digest: {digest}");
         }
+
+        var algorithm = digest.Split(':')[0];
+        if (!_supportedAlgorithms.Contains(algorithm))
+        {
+            throw new InvalidDigestException($"Unrecognized, unregistered or unsupported digest algorithm: {algorithm}");
+        }
+
         return digest;
     }
 
