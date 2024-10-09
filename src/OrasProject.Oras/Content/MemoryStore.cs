@@ -11,16 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using OrasProject.Oras.Registry;
 
 namespace OrasProject.Oras.Content;
 
-public class MemoryStore : ITarget, IPredecessorFindable
+public class MemoryStore : ITarget, IPredecessorFindable, IMounter
 {
     private readonly MemoryStorage _storage = new();
     private readonly MemoryTagStore _tagResolver = new();
@@ -94,4 +97,16 @@ public class MemoryStore : ITarget, IPredecessorFindable
     /// <returns></returns>
     public async Task<IEnumerable<Descriptor>> GetPredecessorsAsync(Descriptor node, CancellationToken cancellationToken = default)
         => await _graph.GetPredecessorsAsync(node, cancellationToken).ConfigureAwait(false);
+
+    public async Task MountAsync(Descriptor descriptor, string contentReference, Func<CancellationToken, Task<Stream>>? getContents, CancellationToken cancellationToken)
+    {
+        var taggedDescriptor = await _tagResolver.ResolveAsync(contentReference, cancellationToken).ConfigureAwait(false);
+        var successors = await _storage.GetSuccessorsAsync(taggedDescriptor, cancellationToken);
+
+        if (descriptor != taggedDescriptor && !successors.Contains(descriptor))
+        {
+            await _storage.PushAsync(descriptor, await getContents(cancellationToken), cancellationToken).ConfigureAwait(false);
+            await _graph.IndexAsync(_storage, descriptor, cancellationToken).ConfigureAwait(false);
+        }
+    }
 }
