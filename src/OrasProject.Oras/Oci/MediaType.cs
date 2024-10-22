@@ -81,4 +81,20 @@ public static class MediaType
     /// restrictions.
     /// </summary>
     public const string ImageLayerNonDistributableZstd = "application/vnd.oci.image.layer.nondistributable.v1.tar+zstd";
+
+    /// <summary>
+    /// MediaTypeUnknownConfig is the default config mediaType used
+    /// - for [Pack] when PackOptions.PackImageManifest is true and
+    ///   PackOptions.ConfigDescriptor is not specified.
+    /// - for [PackManifest] when packManifestVersion is PackManifestVersion1_0
+    ///   and PackManifestOptions.ConfigDescriptor is not specified.
+    /// </summary>
+    public const string MediaTypeUnknownConfig = "application/vnd.unknown.config.v1+json";
+
+    /// <summary>
+    /// MediaTypeUnknownArtifact is the default artifactType used for [Pack]
+    /// when PackOptions.PackImageManifest is false and artifactType is
+    /// not specified.
+    /// </summary>
+    public const string MediaTypeUnknownArtifact = "application/vnd.unknown.artifact.v1";
 }

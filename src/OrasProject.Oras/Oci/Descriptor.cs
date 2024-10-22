@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using System.Collections.Generic;
+using System.Text;
 using System.Text.Json.Serialization;
 
 namespace OrasProject.Oras.Oci;
@@ -46,6 +47,14 @@ public class Descriptor
     [JsonPropertyName("artifactType")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? ArtifactType { get; set; }
+
+    internal static Descriptor Empty => new Descriptor
+    {
+        MediaType = OrasProject.Oras.Oci.MediaType.EmptyJson,
+        Digest = OrasProject.Oras.Content.Digest.ComputeSHA256(Encoding.UTF8.GetBytes("{}")),
+        Size = Encoding.UTF8.GetBytes("{}").Length,
+        Data = Encoding.UTF8.GetBytes("{}")
+    };
 
     internal BasicDescriptor BasicDescriptor => new BasicDescriptor(MediaType, Digest, Size);
 }
