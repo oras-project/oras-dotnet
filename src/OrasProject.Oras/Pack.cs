@@ -36,9 +36,9 @@ public static class Pack
     /// </summary>
     public const string ErrInvalidDateTimeFormat = "invalid date and time format";
     // ErrMissingArtifactType is returned by [PackManifest] when
-	// packManifestVersion is PackManifestVersion1_1 and artifactType is
-	// empty and the config media type is set to
-	// "application/vnd.oci.empty.v1+json".
+    // packManifestVersion is PackManifestVersion1_1 and artifactType is
+    // empty and the config media type is set to
+    // "application/vnd.oci.empty.v1+json".
     public const string ErrMissingArtifactType = "missing artifact type";
 
     /// <summary>
