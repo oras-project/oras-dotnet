@@ -35,10 +35,13 @@ public static class Pack
     /// Reference: https://www.rfc-editor.org/rfc/rfc3339#section-5.6
     /// </summary>
     public const string ErrInvalidDateTimeFormat = "invalid date and time format";
-    // ErrMissingArtifactType is returned by [PackManifest] when
-    // packManifestVersion is PackManifestVersion1_1 and artifactType is
-    // empty and the config media type is set to
-    // "application/vnd.oci.empty.v1+json".
+
+    /// <summary>
+    /// ErrMissingArtifactType is returned by [PackManifest] when
+    /// packManifestVersion is PackManifestVersion1_1 and artifactType is
+    /// empty and the config media type is set to
+    /// "application/vnd.oci.empty.v1+json".
+    /// </summary>
     public const string ErrMissingArtifactType = "missing artifact type";
 
     /// <summary>
