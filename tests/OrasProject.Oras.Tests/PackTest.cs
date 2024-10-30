@@ -74,6 +74,56 @@ public class PackTest
     }
 
     [Fact]
+    public async Task TestPackManifestImageV1_0WithoutPassingOptions()
+    {
+        var memoryTarget = new MemoryStore();
+
+        // Test PackManifest
+        var manifestVersion = Pack.PackManifestVersion.PackManifestVersion1_0;
+        var artifactType = "application/vnd.test";
+        var manifestDesc = await Pack.PackManifestAsync(memoryTarget, manifestVersion, artifactType);
+        Assert.NotNull(manifestDesc);
+
+        Manifest? manifest;
+        var rc = await memoryTarget.FetchAsync(manifestDesc);
+        Assert.NotNull(rc);
+        using (rc)
+        {
+            manifest = await JsonSerializer.DeserializeAsync<Manifest>(rc!);
+        }
+        Assert.NotNull(manifest);
+
+        // Verify media type
+        var got = manifest?.MediaType;
+        Assert.Equal("application/vnd.oci.image.manifest.v1+json", got);
+
+        // Verify config
+        var expectedConfigData = System.Text.Encoding.UTF8.GetBytes("{}");
+        var expectedConfig = new Descriptor
+        {
+            MediaType = artifactType,
+            Digest = Digest.ComputeSHA256(expectedConfigData),
+            Size = expectedConfigData.Length
+        };
+        var expectedConfigBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedConfig));
+        var incomingConfig = manifest?.Config;
+        var incomingConfigBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(incomingConfig));
+        //Assert.True(manifest.Config.Equals(expectedConfig), $"got config = {manifest.Config}, want {expectedConfig}");
+        Assert.Equal(incomingConfigBytes, expectedConfigBytes);
+
+        // Verify layers
+        var expectedLayers = new List<Descriptor>();
+        Assert.True(manifest!.Layers.SequenceEqual(expectedLayers), $"got layers = {manifest.Layers}, want {expectedLayers}");
+
+        // Verify created time annotation
+        Assert.True(manifest.Annotations!.TryGetValue("org.opencontainers.image.created", out var createdTime), $"Annotation \"org.opencontainers.image.created\" not found");
+        Assert.True(DateTime.TryParse(createdTime, out _), $"Error parsing created time: {createdTime}");
+
+        // Verify descriptor annotations
+        Assert.True(manifestDesc.Annotations!.SequenceEqual(manifest?.Annotations!), $"got descriptor annotations = {manifestDesc.Annotations}, want {manifest!.Annotations}");
+    }
+
+    [Fact]
     public async Task TestPackManifestImageV1_0_WithOptions()
     {
         var memoryTarget = new MemoryStore();
@@ -252,8 +302,8 @@ public class PackTest
 
         // Verify artifact type and config media type
         
-        Assert.Equal(MediaType.MediaTypeUnknownConfig, manifestDesc.ArtifactType);
-        Assert.Equal(MediaType.MediaTypeUnknownConfig, manifest!.Config.MediaType);
+        Assert.Equal(UnknownMediaType.UnknownConfig, manifestDesc.ArtifactType);
+        Assert.Equal(UnknownMediaType.UnknownConfig, manifest!.Config.MediaType);
     }
 
     [Fact]
@@ -361,6 +411,37 @@ public class PackTest
                                 Size = emptyConfigBytes.Length,
                                 Data = emptyConfigBytes
                             };
+        var expectedLayers = new List<Descriptor> { emptyJSON };
+        Assert.Equal(JsonSerializer.SerializeToUtf8Bytes(expectedLayers), JsonSerializer.SerializeToUtf8Bytes(manifest!.Layers));
+    }
+
+    [Fact]
+    public async Task TestPackManifestImageV1_1WithoutPassingOptions()
+    {
+        var memoryTarget = new MemoryStore();
+        
+        // Test PackManifest
+        var artifactType = "application/vnd.test";
+        var manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, artifactType);
+
+        // Fetch and decode the manifest
+        var rc = await memoryTarget.FetchAsync(manifestDesc);
+        Manifest? manifest;
+        Assert.NotNull(rc);
+        using (rc)
+        {
+            manifest = await JsonSerializer.DeserializeAsync<Manifest>(rc);
+        }
+
+        // Verify layers
+        var emptyConfigBytes = Encoding.UTF8.GetBytes("{}");
+        var emptyJSON = new Descriptor
+        {
+            MediaType = "application/vnd.oci.empty.v1+json",
+            Digest = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            Size = emptyConfigBytes.Length,
+            Data = emptyConfigBytes
+        };
         var expectedLayers = new List<Descriptor> { emptyJSON };
         Assert.Equal(JsonSerializer.SerializeToUtf8Bytes(expectedLayers), JsonSerializer.SerializeToUtf8Bytes(manifest!.Layers));
     }

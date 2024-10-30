@@ -11,17 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Oci;
+
 using System.Collections.Generic;
+using System.Threading;
 
-namespace OrasProject.Oras.Oci;
+namespace OrasProject.Oras;
 
-public class PackManifestOptions
+public struct PackManifestOptions
 {
+    public static PackManifestOptions None { get; }
+
     /// <summary>
     /// Config is references a configuration object for a container, by digest
     /// For more details: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md#:~:text=This%20REQUIRED%20property%20references,of%20the%20reference%20code.
     /// </summary>
-    public Descriptor? Config { get; set; }
+    public Descriptor Config { get; set; }
 
     /// <summary>
     /// Layers is the layers of the manifest

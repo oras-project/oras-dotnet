@@ -34,7 +34,7 @@ public static class Pack
     /// is provided, but its value is not in RFC 3339 format.
     /// Reference: https://www.rfc-editor.org/rfc/rfc3339#section-5.6
     /// </summary>
-    public const string ErrInvalidDateTimeFormat = "invalid date and time format";
+    private const string _errInvalidDateTimeFormat = "invalid date and time format";
 
     /// <summary>
     /// ErrMissingArtifactType is returned by [PackManifest] when
@@ -42,7 +42,7 @@ public static class Pack
     /// empty and the config media type is set to
     /// "application/vnd.oci.empty.v1+json".
     /// </summary>
-    public const string ErrMissingArtifactType = "missing artifact type";
+    private const string _errMissingArtifactType = "missing artifact type";
 
     /// <summary>
     /// PackManifestVersion represents the manifest version used for [PackManifest]
@@ -106,10 +106,10 @@ public static class Pack
     /// <returns></returns>
     /// <exception cref="NotSupportedException"></exception>
     public static async Task<Descriptor> PackManifestAsync(
-            ITarget pusher,
+            IPushable pusher,
             PackManifestVersion version,
             string? artifactType,
-            PackManifestOptions options,
+            PackManifestOptions options = default,
             CancellationToken cancellationToken = default)
     {
         switch (version)
@@ -132,7 +132,7 @@ public static class Pack
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="NotSupportedException"></exception>
-    private static async Task<Descriptor> PackManifestV1_0Async(ITarget pusher, string? artifactType, PackManifestOptions options, CancellationToken cancellationToken = default)
+    private static async Task<Descriptor> PackManifestV1_0Async(IPushable pusher, string? artifactType, PackManifestOptions options = default, CancellationToken cancellationToken = default)
     {
         if (options.Subject != null)
         {
@@ -150,7 +150,7 @@ public static class Pack
         {
             if (string.IsNullOrEmpty(artifactType))
             {
-                artifactType = MediaType.MediaTypeUnknownConfig;
+                artifactType = UnknownMediaType.UnknownConfig;
             }
             ValidateMediaType(artifactType);
             configDescriptor = await PushCustomEmptyConfigAsync(pusher, artifactType, options.ConfigAnnotations, cancellationToken);
@@ -178,11 +178,11 @@ public static class Pack
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="MissingArtifactTypeException"></exception>
-    private static async Task<Descriptor> PackManifestV1_1Async(ITarget pusher, string? artifactType, PackManifestOptions options, CancellationToken cancellationToken = default)
+    private static async Task<Descriptor> PackManifestV1_1Async(IPushable pusher, string? artifactType, PackManifestOptions options = default, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(artifactType) && (options.Config == null || options.Config.MediaType == MediaType.EmptyJson))
         {
-            throw new MissingArtifactTypeException(ErrMissingArtifactType);
+            throw new MissingArtifactTypeException(_errMissingArtifactType);
         } else if (!string.IsNullOrEmpty(artifactType)) {
             ValidateMediaType(artifactType);
         }
@@ -198,17 +198,15 @@ public static class Pack
         {
             configDescriptor = Descriptor.Empty;
             options.Config = configDescriptor;
-            var configBytes = JsonSerializer.SerializeToUtf8Bytes(new { });
+            var configBytes = new byte[] { 0x7B, 0x7D };
             await PushIfNotExistAsync(pusher, configDescriptor, configBytes, cancellationToken);
         }
 
         if (options.Layers == null || options.Layers.Count == 0)
         {
             options.Layers ??= new List<Descriptor>();
-            // use the empty descriptor as the single layer
-            var expectedConfigBytes = Encoding.UTF8.GetBytes("{}");
-            var emptyLayer = Descriptor.Empty;
-            options.Layers.Add(emptyLayer);
+            // use the empty descriptor as the single layer    
+            options.Layers.Add(Descriptor.Empty);
         }
 
         var annotations = EnsureAnnotationCreated(options.ManifestAnnotations, "org.opencontainers.image.created");
@@ -237,7 +235,7 @@ public static class Pack
     /// <param name="annotations"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private static async Task<Descriptor> PushManifestAsync(ITarget pusher, object manifest, string mediaType, string? artifactType, IDictionary<string, string>? annotations, CancellationToken cancellationToken = default)
+    private static async Task<Descriptor> PushManifestAsync(IPushable pusher, object manifest, string mediaType, string? artifactType, IDictionary<string, string>? annotations, CancellationToken cancellationToken = default)
     {
         var manifestJson = JsonSerializer.SerializeToUtf8Bytes(manifest);
         var manifestDesc = new Descriptor {
@@ -273,7 +271,7 @@ public static class Pack
     /// <param name="annotations"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private static async Task<Descriptor> PushCustomEmptyConfigAsync(ITarget pusher, string mediaType, IDictionary<string, string>? annotations, CancellationToken cancellationToken = default)
+    private static async Task<Descriptor> PushCustomEmptyConfigAsync(IPushable pusher, string mediaType, IDictionary<string, string>? annotations, CancellationToken cancellationToken = default)
     {
         var configBytes = JsonSerializer.SerializeToUtf8Bytes(new { });
         var configDescriptor = new Descriptor
@@ -296,7 +294,7 @@ public static class Pack
     /// <param name="data"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private static async Task PushIfNotExistAsync(ITarget pusher, Descriptor descriptor, byte[] data, CancellationToken cancellationToken = default)
+    private static async Task PushIfNotExistAsync(IPushable pusher, Descriptor descriptor, byte[] data, CancellationToken cancellationToken = default)
     {
         await pusher.PushAsync(descriptor, new MemoryStream(data), cancellationToken);
     }
@@ -321,7 +319,7 @@ public static class Pack
         {
             if (!DateTime.TryParse(value, out _))
             {
-                throw new InvalidDateTimeFormatException(ErrInvalidDateTimeFormat);
+                throw new InvalidDateTimeFormatException(_errInvalidDateTimeFormat);
             }
 
             return annotations;
