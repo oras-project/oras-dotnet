@@ -19,6 +19,16 @@ namespace OrasProject.Oras.Oci;
 
 public class Descriptor
 {
+    public Descriptor()
+    {
+    }
+
+    public Descriptor(string mediaType, string digest)
+    {
+        MediaType = mediaType;
+        Digest = digest;
+    }
+
     [JsonPropertyName("mediaType")]
     public required string MediaType { get; set; }
 
