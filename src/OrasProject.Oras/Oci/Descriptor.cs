@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -23,11 +24,9 @@ public class Descriptor
     {
     }
 
-    public Descriptor(string mediaType, string digest)
-    {
-        MediaType = mediaType;
-        Digest = digest;
-    }
+    [SetsRequiredMembers]
+    public Descriptor(string mediaType, string digest) =>
+        (MediaType, Digest) = (mediaType, digest);
 
     [JsonPropertyName("mediaType")]
     public required string MediaType { get; set; }
