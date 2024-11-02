@@ -49,12 +49,10 @@ public static class Pack
     /// </summary>
     public enum PackManifestVersion
     {
-        // PackManifestVersion1_0 represents the OCI Image Manifest defined in
-        // image-spec v1.0.2.
+        // PackManifestVersion1_0 represents the OCI Image Manifest defined in image-spec v1.0.2.
         // Reference: https://github.com/opencontainers/image-spec/blob/v1.0.2/manifest.md
         PackManifestVersion1_0 = 1,
-        // PackManifestVersion1_1 represents the OCI Image Manifest defined in
-        // image-spec v1.1.0.
+        // PackManifestVersion1_1 represents the OCI Image Manifest defined in image-spec v1.1.0.
         // Reference: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md
         PackManifestVersion1_1 = 2
     }

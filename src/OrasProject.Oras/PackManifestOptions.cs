@@ -23,13 +23,13 @@ public struct PackManifestOptions
     public static PackManifestOptions None { get; }
 
     /// <summary>
-    /// Config is references a configuration object for a container, by digest
+    /// Config references a configuration object for a container, by digest
     /// For more details: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md#:~:text=This%20REQUIRED%20property%20references,of%20the%20reference%20code.
     /// </summary>
     public Descriptor Config { get; set; }
 
     /// <summary>
-    /// Layers is the layers of the manifest
+    /// Layers is an array of objects, and each object id a Content Descriptor (or simply Descriptor)
     /// For more details: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md#:~:text=Each%20item%20in,the%20layers.
     /// </summary>
     public IList<Descriptor>? Layers { get; set; }
