@@ -1,4 +1,4 @@
-// Copyright The ORAS Authors.
+﻿// Copyright The ORAS Authors.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,26 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
+namespace OrasProject.Oras.Utils;
 
-namespace OrasProject.Oras.Exceptions;
-
-/// <summary>
-/// InvalidPackException is thrown when an exception is thrown when pack manifest.
-/// </summary>
-public class InvalidPackException : FormatException
+public static class MediaType
 {
-    public InvalidPackException()
-    {
-    }
+    public const string UnknownConfig = "application/vnd.unknown.config.v1+json";
 
-    public InvalidPackException(string? message)
-        : base(message)
-    {
-    }
-
-    public InvalidPackException(string? message, Exception? inner)
-        : base(message, inner)
-    {
-    }
+    public const string UnknownArtifact = "application/vnd.unknown.artifact.v1";
 }

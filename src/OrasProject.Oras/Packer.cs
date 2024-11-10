@@ -14,6 +14,7 @@
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Utils;
 
 using System;
 using System.Collections.Generic;
@@ -24,60 +25,55 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+
 namespace OrasProject.Oras;
 
-public static class Pack 
+public static class Packer 
 {
     /// <summary>
-    /// ErrInvalidDateTimeFormat is returned by [Pack] and [PackManifest] when
-    /// "org.opencontainers.artifact.created" or "org.opencontainers.image.created"
-    /// is provided, but its value is not in RFC 3339 format.
+    /// ErrInvalidDateTimeFormat is returned
+    /// when "org.opencontainers.artifact.created" or "org.opencontainers.image.created" is provided,
+    /// but its value is not in RFC 3339 format.
     /// Reference: https://www.rfc-editor.org/rfc/rfc3339#section-5.6
     /// </summary>
     private const string _errInvalidDateTimeFormat = "invalid date and time format";
 
     /// <summary>
-    /// ErrMissingArtifactType is returned by [PackManifest] when
-    /// packManifestVersion is PackManifestVersion1_1 and artifactType is
-    /// empty and the config media type is set to
-    /// "application/vnd.oci.empty.v1+json".
+    /// ErrMissingArtifactType is returned
+    /// when ManifestVersion is Version1_1 and artifactType is empty
+    /// and the config media type is set to "application/vnd.oci.empty.v1+json".
     /// </summary>
     private const string _errMissingArtifactType = "missing artifact type";
 
     /// <summary>
-    /// PackManifestVersion represents the manifest version used for [PackManifest]
+    /// ManifestVersion represents the manifest version used for PackManifest
     /// </summary>
-    public enum PackManifestVersion
+    public enum ManifestVersion
     {
-        // PackManifestVersion1_0 represents the OCI Image Manifest defined in image-spec v1.0.2.
+        // Version1_0 represents the OCI Image Manifest defined in image-spec v1.0.2.
         // Reference: https://github.com/opencontainers/image-spec/blob/v1.0.2/manifest.md
-        PackManifestVersion1_0 = 1,
-        // PackManifestVersion1_1 represents the OCI Image Manifest defined in image-spec v1.1.0.
+        Version1_0 = 1,
+        // Version1_1 represents the OCI Image Manifest defined in image-spec v1.1.0.
         // Reference: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md
-        PackManifestVersion1_1 = 2
+        Version1_1 = 2
     }
 
     /// <summary>
-    /// mediaTypeRegexp checks the format of media types.
+    /// mediaTypeRegex checks the format of media types.
     /// References:
     /// - https://github.com/opencontainers/image-spec/blob/v1.1.0/schema/defs-descriptor.json#L7
     /// - https://datatracker.ietf.org/doc/html/rfc6838#section-4.2
-    /// ^[A-Za-z0-9][A-Za-z0-9!#$&-^_.+]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&-^_.+]{0,126}$
-    /// </summary>
-    private const string _mediaTypeRegexp = @"^[A-Za-z0-9][A-Za-z0-9!#$&-^_.+]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&-^_.+]{0,126}$";
-    /// <summary>
-    /// private static readonly Regex _mediaTypeRegex = new Regex(_mediaTypeRegexp, RegexOptions.Compiled);
     /// </summary>
     private static readonly Regex _mediaTypeRegex = new Regex(@"^[A-Za-z0-9][A-Za-z0-9!#$&-^_.+]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&-^_.+]{0,126}(\+json)?$", RegexOptions.Compiled);
 
     /// <summary>
     /// PackManifest generates an OCI Image Manifestbased on the given parameters
-    /// and pushes the packed manifest to a content storage/registry using pusher. The version
-    /// of the manifest to be packed is determined by packManifestVersion
-    /// (Recommended value: PackManifestVersion1_1).
-    /// - If packManifestVersion is [PackManifestVersion1_1]:
+    /// and pushes the packed manifest to a content storage/registry using pusher.
+    /// The version of the manifest to be packed is determined by manifestVersion
+    /// (Recommended value: Version1_1).
+    /// - If manifestVersion is <b><c>Version1_1</c></b>
     ///   artifactType MUST NOT be empty unless PackManifestOptions.ConfigDescriptor is specified.
-    /// - If packManifestVersion is [PackManifestVersion1_0]:
+    /// - If manifestVersion is <b><c>Version1_0</c></b>
     ///   if PackManifestOptions.ConfigDescriptor is null, artifactType will be used as the
     ///   config media type; if artifactType is empty,
     ///   "application/vnd.unknown.config.v1+json" will be used.
@@ -87,14 +83,11 @@ public static class Pack
     ///
     /// Each time when PackManifest is called, if a time stamp is not specified, a new time
     /// stamp is generated in the manifest annotations with the key ocispec.AnnotationCreated
-    /// (i.e. "org.opencontainers.image.created"). To make [PackManifest] reproducible,
+    /// (i.e. "org.opencontainers.image.created"). To make PackManifest reproducible,
     /// set the key ocispec.AnnotationCreated to a fixed value in
     /// opts.Annotations. The value MUST conform to RFC 3339.
     ///
     /// If succeeded, returns a descriptor of the packed manifest.
-    ///
-    /// Note: PackManifest can also pack artifact other than OCI image, but the config.mediaType value 
-    /// should not be a known OCI image config media type [PackManifestVersion1_1]
     /// </summary>
     /// <param name="pusher"></param>
     /// <param name="version"></param>
@@ -105,19 +98,19 @@ public static class Pack
     /// <exception cref="NotSupportedException"></exception>
     public static async Task<Descriptor> PackManifestAsync(
             IPushable pusher,
-            PackManifestVersion version,
+            ManifestVersion version,
             string? artifactType,
             PackManifestOptions options = default,
             CancellationToken cancellationToken = default)
     {
         switch (version)
         {
-            case PackManifestVersion.PackManifestVersion1_0:
+            case ManifestVersion.Version1_0:
                 return await PackManifestV1_0Async(pusher, artifactType, options, cancellationToken);
-            case PackManifestVersion.PackManifestVersion1_1:
+            case ManifestVersion.Version1_1:
                 return await PackManifestV1_1Async(pusher, artifactType, options, cancellationToken);
             default:
-                throw new NotSupportedException($"PackManifestVersion({version}) is not supported");
+                throw new NotSupportedException($"ManifestVersion({version}) is not supported");
         }
     }
 
@@ -148,7 +141,7 @@ public static class Pack
         {
             if (string.IsNullOrEmpty(artifactType))
             {
-                artifactType = UnknownMediaType.UnknownConfig;
+                artifactType = Utils.MediaType.UnknownConfig;
             }
             ValidateMediaType(artifactType);
             configDescriptor = await PushCustomEmptyConfigAsync(pusher, artifactType, options.ConfigAnnotations, cancellationToken);
@@ -158,7 +151,7 @@ public static class Pack
         var manifest = new Manifest
         {
             SchemaVersion = 2,
-            MediaType = MediaType.ImageManifest,
+            MediaType = Oci.MediaType.ImageManifest,
             Config = configDescriptor,
             Layers = options.Layers ?? new List<Descriptor>(),
             Annotations = annotations
@@ -178,7 +171,7 @@ public static class Pack
     /// <exception cref="MissingArtifactTypeException"></exception>
     private static async Task<Descriptor> PackManifestV1_1Async(IPushable pusher, string? artifactType, PackManifestOptions options = default, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(artifactType) && (options.Config == null || options.Config.MediaType == MediaType.EmptyJson))
+        if (string.IsNullOrEmpty(artifactType) && (options.Config == null || options.Config.MediaType == Oci.MediaType.EmptyJson))
         {
             throw new MissingArtifactTypeException(_errMissingArtifactType);
         } else if (!string.IsNullOrEmpty(artifactType)) {
@@ -212,7 +205,7 @@ public static class Pack
         var manifest = new Manifest
         {
             SchemaVersion = 2,
-            MediaType = MediaType.ImageManifest,
+            MediaType = Oci.MediaType.ImageManifest,
             ArtifactType = artifactType,
             Subject = options.Subject,
             Config = options.Config,
@@ -236,11 +229,7 @@ public static class Pack
     private static async Task<Descriptor> PushManifestAsync(IPushable pusher, object manifest, string mediaType, string? artifactType, IDictionary<string, string>? annotations, CancellationToken cancellationToken = default)
     {
         var manifestJson = JsonSerializer.SerializeToUtf8Bytes(manifest);
-        var manifestDesc = new Descriptor {
-            MediaType = mediaType, 
-            Digest = Digest.ComputeSHA256(manifestJson),
-            Size = manifestJson.Length
-        };
+        var manifestDesc = Descriptor.Create(manifestJson, mediaType);
         manifestDesc.ArtifactType = artifactType;
         manifestDesc.Annotations = annotations;
 
@@ -272,12 +261,7 @@ public static class Pack
     private static async Task<Descriptor> PushCustomEmptyConfigAsync(IPushable pusher, string mediaType, IDictionary<string, string>? annotations, CancellationToken cancellationToken = default)
     {
         var configBytes = JsonSerializer.SerializeToUtf8Bytes(new { });
-        var configDescriptor = new Descriptor
-        {
-            MediaType = mediaType, 
-            Digest = Digest.ComputeSHA256(configBytes),
-            Size = configBytes.Length
-        };
+        var configDescriptor = Descriptor.Create(configBytes, mediaType);
         configDescriptor.Annotations = annotations;
 
         await PushIfNotExistAsync(pusher, configDescriptor, configBytes, cancellationToken);
@@ -298,8 +282,8 @@ public static class Pack
     }
 
     /// <summary>
-    /// Validate the value of the key in annotations should have correct timestamp format.If the key is missed, 
-    /// the key and current timestamp is added in the annotations
+    /// Validate the value of the key in annotations should have correct timestamp format. 
+    /// If the key is missed, the key and current timestamp is added to the annotations
     /// </summary>
     /// <param name="annotations"></param>
     /// <param name="key"></param>

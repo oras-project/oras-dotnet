@@ -24,32 +24,31 @@ public struct PackManifestOptions
 
     /// <summary>
     /// Config references a configuration object for a container, by digest
-    /// For more details: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md#:~:text=This%20REQUIRED%20property%20references,of%20the%20reference%20code.
+    /// For more details: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md#image-manifest-property-descriptions.
     /// </summary>
     public Descriptor Config { get; set; }
 
     /// <summary>
     /// Layers is an array of objects, and each object id a Content Descriptor (or simply Descriptor)
-    /// For more details: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md#:~:text=Each%20item%20in,the%20layers.
+    /// For more details: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md#image-manifest-property-descriptions.
     /// </summary>
     public IList<Descriptor>? Layers { get; set; }
 
     /// <summary>
     /// Subject is the subject of the manifest.
-    /// This option is only valid when PackManifestVersion is
-    /// NOT PackManifestVersion1_0.
+    /// This option is invalid when PackManifestVersion is PackManifestVersion1_0.
     /// </summary>
     public Descriptor? Subject { get; set; }
 
     /// <summary>
-    /// ManifestAnnotations is OPTIONAL property contains arbitrary metadata for the image manifest
-    // MUST use the annotation rules
+    /// ManifestAnnotations is OPTIONAL property. It contains arbitrary metadata for the image manifest
+    /// and MUST use the annotation rules
     /// </summary>
     public IDictionary<string, string>? ManifestAnnotations { get; set; }
 
     /// <summary>
     /// ConfigAnnotations is the annotation map of the config descriptor.
-    // This option is valid only when Config is null.
+    /// This option is valid only when Config is null.
     /// </summary>
     public IDictionary<string, string>? ConfigAnnotations { get; set; }
 }

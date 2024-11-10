@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
@@ -20,14 +21,6 @@ namespace OrasProject.Oras.Oci;
 
 public class Descriptor
 {
-    public Descriptor()
-    {
-    }
-
-    [SetsRequiredMembers]
-    public Descriptor(string mediaType, string digest) =>
-        (MediaType, Digest) = (mediaType, digest);
-
     [JsonPropertyName("mediaType")]
     public required string MediaType { get; set; }
 
@@ -57,13 +50,19 @@ public class Descriptor
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? ArtifactType { get; set; }
 
-    public static Descriptor Empty => new Descriptor
+    public static Descriptor Create(Span<byte> data, string mediaType)
     {
-        MediaType = OrasProject.Oras.Oci.MediaType.EmptyJson,
-        Digest = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-        Size = 2,
-        Data = Encoding.UTF8.GetBytes("{}")
-    };
+        byte[] byteData = data.ToArray();
+        return new Descriptor
+        {
+            MediaType = mediaType,
+            Data = byteData,
+            Digest = OrasProject.Oras.Content.Digest.ComputeSHA256(byteData),
+            Size = byteData.Length
+        };
+    }
+
+    public static Descriptor Empty => Descriptor.Create(new byte[] { 0x7B, 0x7D }, OrasProject.Oras.Oci.MediaType.EmptyJson);  
 
     internal BasicDescriptor BasicDescriptor => new BasicDescriptor(MediaType, Digest, Size);
 }

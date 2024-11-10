@@ -17,10 +17,11 @@ using OrasProject.Oras.Exceptions;
 using System.Text;
 using System.Text.Json;
 using Xunit;
+using OrasProject.Oras.Utils;
 
 namespace OrasProject.Oras.Tests;
 
-public class PackTest
+public class PackerTest
 {
     [Fact]
     public async Task TestPackManifestImageV1_0()
@@ -29,9 +30,9 @@ public class PackTest
 
         // Test PackManifest
         var cancellationToken = new CancellationToken();
-        var manifestVersion = Pack.PackManifestVersion.PackManifestVersion1_0;
+        var manifestVersion = Packer.ManifestVersion.Version1_0;
         var artifactType = "application/vnd.test";
-        var manifestDesc = await Pack.PackManifestAsync(memoryTarget, manifestVersion, artifactType, new PackManifestOptions(), cancellationToken);
+        var manifestDesc = await Packer.PackManifestAsync(memoryTarget, manifestVersion, artifactType, new PackManifestOptions(), cancellationToken);
         Assert.NotNull(manifestDesc);
 
         Manifest? manifest;
@@ -53,7 +54,8 @@ public class PackTest
         {
             MediaType = artifactType,
             Digest = Digest.ComputeSHA256(expectedConfigData),
-            Size = expectedConfigData.Length
+            Size = expectedConfigData.Length,
+            Data = expectedConfigData
         };
         var expectedConfigBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedConfig));
         var incomingConfig = manifest?.Config;
@@ -79,9 +81,9 @@ public class PackTest
         var memoryTarget = new MemoryStore();
 
         // Test PackManifest
-        var manifestVersion = Pack.PackManifestVersion.PackManifestVersion1_0;
+        var manifestVersion = Packer.ManifestVersion.Version1_0;
         var artifactType = "application/vnd.test";
-        var manifestDesc = await Pack.PackManifestAsync(memoryTarget, manifestVersion, artifactType);
+        var manifestDesc = await Packer.PackManifestAsync(memoryTarget, manifestVersion, artifactType);
         Assert.NotNull(manifestDesc);
 
         Manifest? manifest;
@@ -99,12 +101,7 @@ public class PackTest
 
         // Verify config
         var expectedConfigData = System.Text.Encoding.UTF8.GetBytes("{}");
-        var expectedConfig = new Descriptor
-        {
-            MediaType = artifactType,
-            Digest = Digest.ComputeSHA256(expectedConfigData),
-            Size = expectedConfigData.Length
-        };
+        var expectedConfig = Descriptor.Create(expectedConfigData, artifactType);
         var expectedConfigBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedConfig));
         var incomingConfig = manifest?.Config;
         var incomingConfigBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(incomingConfig));
@@ -151,12 +148,12 @@ public class PackTest
                 Layers = layers
             };
             var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-            appendBlob(MediaType.ImageManifest, manifestBytes);
+            appendBlob(Oci.MediaType.ImageManifest, manifestBytes);
         };
         var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-        appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
-        appendBlob(MediaType.ImageLayer, getBytes("hello world")); // blob 1
-        appendBlob(MediaType.ImageLayer, getBytes("goodbye world")); // blob 2
+        appendBlob(Oci.MediaType.ImageConfig, getBytes("config")); // blob 0
+        appendBlob(Oci.MediaType.ImageLayer, getBytes("hello world")); // blob 1
+        appendBlob(Oci.MediaType.ImageLayer, getBytes("goodbye world")); // blob 2
         var layers = descs.GetRange(1, 2);
         var configBytes = Encoding.UTF8.GetBytes("{}");
         var configDesc = new Descriptor
@@ -181,7 +178,7 @@ public class PackTest
             ManifestAnnotations = annotations,
             ConfigAnnotations = configAnnotations
         };
-        var manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_0, artifactType, opts, cancellationToken);
+        var manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_0, artifactType, opts, cancellationToken);
 
         var expectedManifest = new Manifest
         {
@@ -205,8 +202,9 @@ public class PackTest
                                         {
                                             MediaType = expectedManifest.MediaType,
                                             Digest = Digest.ComputeSHA256(expectedManifestBytes),
-                                            Size = expectedManifestBytes.Length
-                                        };
+                                            Size = expectedManifestBytes.Length,
+                                            Data = expectedManifestBytes
+        };
         expectedManifestDesc.ArtifactType = expectedManifest.Config.MediaType;
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
         var expectedManifestDescBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedManifestDesc));
@@ -220,14 +218,15 @@ public class PackTest
             ManifestAnnotations = annotations,
             ConfigAnnotations = configAnnotations
         };
-        manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_0, artifactType, opts, cancellationToken);
+        manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_0, artifactType, opts, cancellationToken);
 
         var expectedConfigDesc = new Descriptor
                                     {
                                         MediaType = artifactType,
                                         Digest = Digest.ComputeSHA256(configBytes),
                                         Size = configBytes.Length,
-                                        Annotations = configAnnotations
+                                        Annotations = configAnnotations,
+                                        Data = configBytes
                                     };
         expectedManifest = new Manifest
         {
@@ -250,7 +249,8 @@ public class PackTest
                                 {
                                     MediaType = expectedManifest.MediaType,
                                     Digest = Digest.ComputeSHA256(expectedManifestBytes),
-                                    Size = expectedManifestBytes.Length
+                                    Size = expectedManifestBytes.Length,
+                                    Data = expectedManifestBytes
                                 };
         expectedManifestDesc.ArtifactType = expectedManifest.Config.MediaType;
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
@@ -281,7 +281,7 @@ public class PackTest
 
         var exception = await Assert.ThrowsAsync<NotSupportedException>(async () =>
         {
-            await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_0, artifactType, opts, cancellationToken);
+            await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_0, artifactType, opts, cancellationToken);
         });
 
         Assert.Equal("Subject is not supported for manifest version 1.0.", exception.Message);
@@ -294,7 +294,7 @@ public class PackTest
         var cancellationToken = new CancellationToken();
 
         // Call PackManifest with empty artifact type
-        var manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_0, "", new PackManifestOptions(), cancellationToken);
+        var manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_0, "", new PackManifestOptions(), cancellationToken);
 
         var rc = await memoryTarget.FetchAsync(manifestDesc, cancellationToken);
         Assert.NotNull(rc);
@@ -302,8 +302,8 @@ public class PackTest
 
         // Verify artifact type and config media type
         
-        Assert.Equal(UnknownMediaType.UnknownConfig, manifestDesc.ArtifactType);
-        Assert.Equal(UnknownMediaType.UnknownConfig, manifest!.Config.MediaType);
+        Assert.Equal(Utils.MediaType.UnknownConfig, manifestDesc.ArtifactType);
+        Assert.Equal(Utils.MediaType.UnknownConfig, manifest!.Config.MediaType);
     }
 
     [Fact]
@@ -328,7 +328,7 @@ public class PackTest
 
         try
         {
-            var manifestDesc = Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_0, artifactType, opts, cancellationToken);
+            var manifestDesc = Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_0, artifactType, opts, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -350,7 +350,7 @@ public class PackTest
 
         try
         {
-            var manifestDesc = Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_0, artifactType, opts, cancellationToken);
+            var manifestDesc = Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_0, artifactType, opts, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -374,7 +374,7 @@ public class PackTest
 
         try
         {
-            var manifestDesc = Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_0, "", opts, cancellationToken);
+            var manifestDesc = Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_0, "", opts, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -391,7 +391,7 @@ public class PackTest
 
         // Test PackManifest
         var artifactType = "application/vnd.test";
-        var manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, artifactType, new PackManifestOptions(), cancellationToken);
+        var manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, artifactType, new PackManifestOptions(), cancellationToken);
         
         // Fetch and decode the manifest
         var rc = await memoryTarget.FetchAsync(manifestDesc, cancellationToken);
@@ -404,11 +404,7 @@ public class PackTest
 
         // Verify layers
         var emptyConfigBytes = Encoding.UTF8.GetBytes("{}");
-        var emptyJSON = new Descriptor("application/vnd.oci.empty.v1+json", "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")
-                           {
-                                Size = emptyConfigBytes.Length,
-                                Data = emptyConfigBytes
-                            };
+        var emptyJSON = Descriptor.Empty;
         var expectedLayers = new List<Descriptor> { emptyJSON };
         Assert.Equal(JsonSerializer.SerializeToUtf8Bytes(expectedLayers), JsonSerializer.SerializeToUtf8Bytes(manifest!.Layers));
     }
@@ -420,7 +416,7 @@ public class PackTest
         
         // Test PackManifest
         var artifactType = "application/vnd.test";
-        var manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, artifactType);
+        var manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, artifactType);
 
         // Fetch and decode the manifest
         var rc = await memoryTarget.FetchAsync(manifestDesc);
@@ -502,7 +498,7 @@ public class PackTest
             ConfigAnnotations = configAnnotations,
             ManifestAnnotations = annotations
         };
-        var manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, artifactType, opts, cancellationToken);
+        var manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, artifactType, opts, cancellationToken);
         
         var expectedManifest = new Manifest
         {
@@ -525,8 +521,9 @@ public class PackTest
                                         {
                                             MediaType = expectedManifest.MediaType,
                                             Digest = Digest.ComputeSHA256(expectedManifestBytes),
-                                            Size = expectedManifestBytes.Length
-                                        };
+                                            Size = expectedManifestBytes.Length,
+                                            Data = expectedManifestBytes
+        };
         expectedManifestDesc.ArtifactType = expectedManifest.Config.MediaType;
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
         var expectedManifestDescBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedManifestDesc));
@@ -543,7 +540,7 @@ public class PackTest
             ManifestAnnotations = annotations
         };
 
-        manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, null, opts, cancellationToken);
+        manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, null, opts, cancellationToken);
         expectedManifest.ArtifactType = null;
         expectedManifestBytes = JsonSerializer.SerializeToUtf8Bytes(expectedManifest);
         using var rc2 = await memoryTarget.FetchAsync(manifestDesc, cancellationToken);
@@ -555,7 +552,8 @@ public class PackTest
                                 {
                                     MediaType = expectedManifest.MediaType,
                                     Digest = Digest.ComputeSHA256(expectedManifestBytes),
-                                    Size = expectedManifestBytes.Length
+                                    Size = expectedManifestBytes.Length,
+                                    Data = expectedManifestBytes
                                 };
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
         Assert.Equal(JsonSerializer.SerializeToUtf8Bytes(expectedManifestDesc), JsonSerializer.SerializeToUtf8Bytes(manifestDesc));
@@ -569,7 +567,7 @@ public class PackTest
             ManifestAnnotations = annotations
         };
 
-        manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, artifactType, opts, cancellationToken);
+        manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, artifactType, opts, cancellationToken);
         var emptyConfigBytes = Encoding.UTF8.GetBytes("{}");
         var emptyJSON = new Descriptor
                             {
@@ -591,7 +589,8 @@ public class PackTest
                                 {
                                     MediaType = expectedManifest.MediaType,
                                     Digest = Digest.ComputeSHA256(expectedManifestBytes),
-                                    Size = expectedManifestBytes.Length
+                                    Size = expectedManifestBytes.Length,
+                                    Data = expectedManifestBytes
                                 };
         expectedManifestDesc.ArtifactType = artifactType;
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
@@ -607,7 +606,7 @@ public class PackTest
         // Test no artifact type and no config
         try
         {
-            var manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, "", new PackManifestOptions(), cancellationToken);
+            var manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, "", new PackManifestOptions(), cancellationToken);
         }
         catch (Exception ex)
         {
@@ -627,7 +626,7 @@ public class PackTest
         };
         try
         {
-            var manifestDesc = await Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, "", opts, cancellationToken);
+            var manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, "", opts, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -658,7 +657,7 @@ public class PackTest
 
         try
         {
-            var manifestDesc = Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, artifactType, opts, cancellationToken);
+            var manifestDesc = Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, artifactType, opts, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -680,7 +679,7 @@ public class PackTest
 
         try
         {
-            var manifestDesc = Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, artifactType, opts, cancellationToken);
+            var manifestDesc = Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, artifactType, opts, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -705,7 +704,7 @@ public class PackTest
         var artifactType = "application/vnd.test";
         try
         {
-            var manifestDesc = Pack.PackManifestAsync(memoryTarget, Pack.PackManifestVersion.PackManifestVersion1_1, artifactType, opts, cancellationToken);
+            var manifestDesc = Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, artifactType, opts, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -723,7 +722,7 @@ public class PackTest
 
         try
         {
-            var manifestDesc = Pack.PackManifestAsync(memoryTarget, (Pack.PackManifestVersion)(-1), "", new PackManifestOptions(), cancellationToken);
+            var manifestDesc = Packer.PackManifestAsync(memoryTarget, (Packer.ManifestVersion)(-1), "", new PackManifestOptions(), cancellationToken);
         }
         catch (Exception ex)
         {
