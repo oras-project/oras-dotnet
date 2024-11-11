@@ -347,6 +347,6 @@ public class Repository : IRepository
     /// <param name="getContent"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent, CancellationToken cancellationToken) 
-        => ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken);
+    public async Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent, CancellationToken cancellationToken = default) 
+        => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
 }

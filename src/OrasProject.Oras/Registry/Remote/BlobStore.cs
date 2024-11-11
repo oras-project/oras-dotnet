@@ -207,6 +207,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
             {
                 case HttpStatusCode.Created:
                     // 201, layer has been mounted
+                    response.VerifyContentDigest(descriptor.Digest);
                     return;
                 case HttpStatusCode.Accepted:
                 {
@@ -235,21 +236,29 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         //
         // [spec]: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#mounting-a-blob-from-another-repository
 
-        Stream contents;
-        if (getContent != null)
+        async Task<Stream> GetContentStream()
         {
-            contents = await getContent(cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            var referenceOptions = repository.Options with
+            Stream stream;
+            if (getContent != null)
             {
-                Reference = Reference.Parse(fromRepository),
-            };
-            contents = await new Repository(referenceOptions).FetchAsync(descriptor, cancellationToken);
+                stream = await getContent(cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                var referenceOptions = repository.Options with
+                {
+                    Reference = Reference.Parse(fromRepository),
+                };
+                stream = await new Repository(referenceOptions).FetchAsync(descriptor, cancellationToken).ConfigureAwait(false);
+            }
+
+            return stream;
         }
 
-        await InternalPushAsync(url, descriptor, contents, cancellationToken).ConfigureAwait(false);
+        await using (var contents = await GetContentStream())
+        {
+            await InternalPushAsync(url, descriptor, contents, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private async Task InternalPushAsync(Uri url, Descriptor descriptor, Stream content,
@@ -267,11 +276,13 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         // the descriptor media type is ignored as in the API doc.
         req.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
 
-        using var response =
-            await Repository.Options.HttpClient.SendAsync(req, cancellationToken).ConfigureAwait(false);
-        if (response.StatusCode != HttpStatusCode.Created)
+        using (var response =
+               await Repository.Options.HttpClient.SendAsync(req, cancellationToken).ConfigureAwait(false))
         {
-            throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            if (response.StatusCode != HttpStatusCode.Created)
+            {
+                throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 }

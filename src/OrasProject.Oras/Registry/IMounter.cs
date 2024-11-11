@@ -33,5 +33,8 @@ public interface IMounter
     /// <param name="getContent"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent, CancellationToken cancellationToken);
+    Task MountAsync(Descriptor descriptor,
+        string fromRepository,
+        Func<CancellationToken, Task<Stream>>? getContent = null,
+        CancellationToken cancellationToken = default);
 }
