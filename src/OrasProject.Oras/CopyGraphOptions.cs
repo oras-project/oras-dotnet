@@ -16,24 +16,26 @@ using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras;
 
-public struct CopyOptions
+public struct CopyGraphOptions
 {
-    public event Action<Descriptor> OnPreCopy;
-    public event Action<Descriptor> OnPostCopy;
-    public event Action<Descriptor> OnCopySkipped;
+    public event Action<Descriptor> PreCopy;
 
-    internal void PreCopy(Descriptor descriptor)
+    public event Action<Descriptor> PostCopy;
+
+    public event Action<Descriptor> CopySkipped;
+
+    internal void OnPreCopy(Descriptor descriptor)
     {
-        OnPreCopy?.Invoke(descriptor);
+        PreCopy?.Invoke(descriptor);
     }
 
-    internal void PostCopy(Descriptor descriptor)
+    internal void OnPostCopy(Descriptor descriptor)
     {
-        OnPostCopy?.Invoke(descriptor);
+        PostCopy?.Invoke(descriptor);
     }
 
-    internal void CopySkipped(Descriptor descriptor)
+    internal void OnCopySkipped(Descriptor descriptor)
     {
-        OnCopySkipped?.Invoke(descriptor);
+        CopySkipped?.Invoke(descriptor);
     }
 }

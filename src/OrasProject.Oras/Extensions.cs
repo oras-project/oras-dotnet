@@ -12,18 +12,15 @@
 // limitations under the License.
 
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using OrasProject.Oras.Oci;
-using OrasProject.Oras.Registry;
 using static OrasProject.Oras.Content.Extensions;
 
 namespace OrasProject.Oras;
 
 public static class Extensions
 {
-
     /// <summary>
     /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
     /// in the source Target to the destination Target.
@@ -36,9 +33,10 @@ public static class Extensions
     /// <param name="dst"></param>
     /// <param name="dstRef"></param>
     /// <param name="cancellationToken"></param>
+    /// <param name="copyOptions"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CancellationToken cancellationToken = default, CopyOptions? copyOptions = default)
+    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CancellationToken cancellationToken = default, CopyGraphOptions? copyOptions = default)
     {
         if (string.IsNullOrEmpty(dstRef))
         {
@@ -50,12 +48,12 @@ public static class Extensions
         return root;
     }
 
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken, CopyOptions? copyOptions = default)
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken, CopyGraphOptions? copyOptions = default)
     {
         // check if node exists in target
         if (await dst.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
         {
-            copyOptions?.CopySkipped(node);
+            copyOptions?.OnCopySkipped(node);
             return;
         }
 
@@ -69,12 +67,12 @@ public static class Extensions
         }
 
         // perform the copy
-        copyOptions?.PreCopy(node);
+        copyOptions?.OnPreCopy(node);
         var dataStream = await src.FetchAsync(node, cancellationToken).ConfigureAwait(false);
         await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
         
         // we copied it
-        copyOptions?.PostCopy(node);
+        copyOptions?.OnPostCopy(node);
     }
 }
 
