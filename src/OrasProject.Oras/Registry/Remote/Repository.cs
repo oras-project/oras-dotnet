@@ -331,22 +331,4 @@ public class Repository : IRepository
     /// <param name="desc"></param>
     /// <returns></returns>
     private IBlobStore BlobStore(Descriptor desc) => IsManifest(desc) ? Manifests : Blobs;
-
-    /// <summary>
-    /// Mount makes the blob with the given digest in fromRepo
-    /// available in the repository signified by the receiver.
-    ///
-    /// This avoids the need to pull content down from fromRepo only to push it to r.
-    ///
-    /// If the registry does not implement mounting, getContent will be used to get the
-    /// content to push. If getContent is null, the content will be pulled from the source
-    /// repository.
-    /// </summary>
-    /// <param name="descriptor"></param>
-    /// <param name="contentReference"></param>
-    /// <param name="getContents"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    public Task MountAsync(Descriptor descriptor, string contentReference, Func<CancellationToken, Task<Stream>>? getContents, CancellationToken cancellationToken) 
-        => ((IMounter)Blobs).MountAsync(descriptor,contentReference, getContents, cancellationToken);
 }

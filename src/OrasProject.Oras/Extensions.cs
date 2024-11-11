@@ -21,37 +21,6 @@ using static OrasProject.Oras.Content.Extensions;
 
 namespace OrasProject.Oras;
 
-public struct CopyOptions
-{
-    // public int Concurrency { get; set; }
-
-    public event Action<Descriptor> OnPreCopy;
-    public event Action<Descriptor> OnPostCopy;
-    public event Action<Descriptor> OnCopySkipped;
-    public event Action<Descriptor, string> OnMounted;
-    
-    public Func<Descriptor, string[]> MountFrom { get; set; }
-
-    internal void PreCopy(Descriptor descriptor)
-    {
-        OnPreCopy?.Invoke(descriptor);
-    }
-
-    internal void PostCopy(Descriptor descriptor)
-    {
-        OnPostCopy?.Invoke(descriptor);
-    }
-
-    internal void CopySkipped(Descriptor descriptor)
-    {
-        OnCopySkipped?.Invoke(descriptor);
-    }
-
-    internal void Mounted(Descriptor descriptor, string sourceRepository)
-    {
-        OnMounted?.Invoke(descriptor, sourceRepository);
-    }
-}
 public static class Extensions
 {
 
@@ -99,59 +68,13 @@ public static class Extensions
             await src.CopyGraphAsync(dst, childNode, cancellationToken, copyOptions).ConfigureAwait(false);
         }
 
-        var sourceRepositories = copyOptions?.MountFrom(node) ?? [];
-        if (dst is IMounter mounter && sourceRepositories.Length > 0)
-        {
-            for (var i = 0; i < sourceRepositories.Length; i++)
-            {
-                var sourceRepository = sourceRepositories[i];
-                var mountFailed = false;
-
-                async Task<Stream> GetContents(CancellationToken token)
-                {
-                    // the invocation of getContent indicates that mounting has failed
-                    mountFailed = true;
-
-                    if (i < sourceRepositories.Length - 1)
-                    {
-                        // If this is not the last one, skip this source and try next one
-                        // We want to return an error that we will test for from mounter.Mount()
-                        throw new SkipSourceException();
-                    }
-
-                    // this is the last iteration so we need to actually get the content and do the copy
-                    // but first call the PreCopy function
-                    copyOptions?.PreCopy(node);
-                    return await src.FetchAsync(node, token).ConfigureAwait(false);
-                }
-
-                try
-                {
-                    await mounter.MountAsync(node, sourceRepository, GetContents, cancellationToken).ConfigureAwait(false);
-                }
-                catch (SkipSourceException)
-                {
-                }
-
-                if (!mountFailed)
-                {
-                    copyOptions?.Mounted(node, sourceRepository);
-                    return;
-                }
-            }
-        }
-        else
-        {
-            // alternatively we just copy it
-            copyOptions?.PreCopy(node);
-            var dataStream = await src.FetchAsync(node, cancellationToken).ConfigureAwait(false);
-            await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
-        }
+        // perform the copy
+        copyOptions?.PreCopy(node);
+        var dataStream = await src.FetchAsync(node, cancellationToken).ConfigureAwait(false);
+        await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
         
         // we copied it
         copyOptions?.PostCopy(node);
     }
-
-    private class SkipSourceException : Exception {}
 }
 

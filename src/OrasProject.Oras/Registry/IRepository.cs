@@ -27,7 +27,7 @@ namespace OrasProject.Oras.Registry;
 /// Furthermore, this interface also provides the ability to enforce the
 /// separation of the blob and the manifests CASs.
 /// </summary>
-public interface IRepository : ITarget, IReferenceFetchable, IReferencePushable, IDeletable, ITagListable, IMounter
+public interface IRepository : ITarget, IReferenceFetchable, IReferencePushable, IDeletable, ITagListable
 {
     /// <summary>
     /// Blobs provides access to the blob CAS only, which contains config blobs,layers, and other generic blobs.

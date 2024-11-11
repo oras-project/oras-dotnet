@@ -25,7 +25,7 @@ using System.Web;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-public class BlobStore(Repository repository) : IBlobStore, IMounter
+public class BlobStore(Repository repository) : IBlobStore
 {
     public Repository Repository { get; init; } = repository;
 
@@ -148,7 +148,25 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
             url = location.IsAbsoluteUri ? location : new Uri(url, location);
         }
 
-        await InternalPushAsync(url, expected, content, cancellationToken);
+        // monolithic upload
+        // add digest key to query string with expected digest value
+        var req = new HttpRequestMessage(HttpMethod.Put, new UriBuilder(url)
+        {
+            Query = $"{url.Query}&digest={HttpUtility.UrlEncode(expected.Digest)}"
+        }.Uri);
+        req.Content = new StreamContent(content);
+        req.Content.Headers.ContentLength = expected.Size;
+
+        // the expected media type is ignored as in the API doc.
+        req.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
+
+        using (var response = await Repository.Options.HttpClient.SendAsync(req, cancellationToken).ConfigureAwait(false))
+        {
+            if (response.StatusCode != HttpStatusCode.Created)
+            {
+                throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     /// <summary>
@@ -180,98 +198,4 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <returns></returns>
     public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
         => await Repository.DeleteAsync(target, false, cancellationToken).ConfigureAwait(false);
-
-    /// <summary>
-    /// Mounts the given descriptor from contentReference into the blob store.
-    /// </summary>
-    /// <param name="descriptor"></param>
-    /// <param name="contentReference"></param>
-    /// <param name="getContents"></param>
-    /// <param name="cancellationToken"></param>
-    /// <exception cref="HttpRequestException"></exception>
-    /// <exception cref="Exception"></exception>
-    public async Task MountAsync(Descriptor descriptor, string contentReference,
-        Func<CancellationToken, Task<Stream>>? getContents, CancellationToken cancellationToken)
-    {
-        var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
-        var mountReq = new HttpRequestMessage(HttpMethod.Post, new UriBuilder(url)
-        {
-            Query =
-                $"{url.Query}&mount={HttpUtility.UrlEncode(descriptor.Digest)}&from={HttpUtility.UrlEncode(contentReference)}"
-        }.Uri);
-
-        using (var response = await Repository.Options.HttpClient.SendAsync(mountReq, cancellationToken)
-                   .ConfigureAwait(false))
-        {
-            switch (response.StatusCode)
-            {
-                case HttpStatusCode.Created:
-                    // 201, layer has been mounted
-                    return;
-                case HttpStatusCode.Accepted:
-                {
-                    // 202, mounting failed. upload session has begun
-                    var location = response.Headers.Location ??
-                                   throw new HttpRequestException("missing location header");
-                    url = location.IsAbsoluteUri ? location : new Uri(url, location);
-                    break;
-                }
-                default:
-                    throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        // From the [spec]:
-        //
-        // "If a registry does not support cross-repository mounting
-        // or is unable to mount the requested blob,
-        // it SHOULD return a 202.
-        // This indicates that the upload session has begun
-        // and that the client MAY proceed with the upload."
-        //
-        // So we need to get the content from somewhere in order to
-        // push it. If the caller has provided a getContent function, we
-        // can use that, otherwise pull the content from the source repository.
-        //
-        // [spec]: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#mounting-a-blob-from-another-repository
-
-        Stream contents;
-        if (getContents != null)
-        {
-            contents = await getContents(cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            var referenceOptions = repository.Options with
-            {
-                Reference = Reference.Parse(contentReference),
-            };
-            contents = await new Repository(referenceOptions).FetchAsync(descriptor, cancellationToken);
-        }
-
-        await InternalPushAsync(url, descriptor, contents, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task InternalPushAsync(Uri url, Descriptor descriptor, Stream content,
-        CancellationToken cancellationToken)
-    {
-        // monolithic upload
-        // add digest key to query string with descriptor digest value
-        var req = new HttpRequestMessage(HttpMethod.Put, new UriBuilder(url)
-        {
-            Query = $"{url.Query}&digest={HttpUtility.UrlEncode(descriptor.Digest)}"
-        }.Uri);
-        req.Content = new StreamContent(content);
-        req.Content.Headers.ContentLength = descriptor.Size;
-
-        // the descriptor media type is ignored as in the API doc.
-        req.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
-
-        using var response =
-            await Repository.Options.HttpClient.SendAsync(req, cancellationToken).ConfigureAwait(false);
-        if (response.StatusCode != HttpStatusCode.Created)
-        {
-            throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
-        }
-    }
 }
