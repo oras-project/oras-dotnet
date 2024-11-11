@@ -38,7 +38,7 @@ public static class Extensions
     public static Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef,
         CancellationToken cancellationToken = default)
     {
-        return src.CopyAsync(srcRef, dst, dstRef, copyOptions: new CopyGraphOptions(), cancellationToken);
+        return src.CopyAsync(srcRef, dst, dstRef, new CopyGraphOptions(), cancellationToken);
     }
 
     /// <summary>
@@ -52,8 +52,8 @@ public static class Extensions
     /// <param name="srcRef"></param>
     /// <param name="dst"></param>
     /// <param name="dstRef"></param>
-    /// <param name="cancellationToken"></param>
     /// <param name="copyOptions"></param>
+    /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
     public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CopyGraphOptions? copyOptions = default, CancellationToken cancellationToken = default)
@@ -63,12 +63,17 @@ public static class Extensions
             dstRef = srcRef;
         }
         var root = await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
-        await src.CopyGraphAsync(dst, root, cancellationToken, copyOptions).ConfigureAwait(false);
+        await src.CopyGraphAsync(dst, root, copyOptions, cancellationToken).ConfigureAwait(false);
         await dst.TagAsync(root, dstRef, cancellationToken).ConfigureAwait(false);
         return root;
     }
 
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken, CopyGraphOptions? copyOptions = default)
+    public static Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken = default)
+    {
+        return src.CopyGraphAsync(dst, node, new CopyGraphOptions(), cancellationToken);
+    }
+
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions? copyOptions = default, CancellationToken cancellationToken = default)
     {
         // check if node exists in target
         if (await dst.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
@@ -83,7 +88,7 @@ public static class Extensions
         // check if the node has successors
         foreach (var childNode in successors)
         {
-            await src.CopyGraphAsync(dst, childNode, cancellationToken, copyOptions).ConfigureAwait(false);
+            await src.CopyGraphAsync(dst, childNode, copyOptions, cancellationToken).ConfigureAwait(false);
         }
 
         // perform the copy
