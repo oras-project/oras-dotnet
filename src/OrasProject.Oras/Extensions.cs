@@ -33,10 +33,30 @@ public static class Extensions
     /// <param name="dst"></param>
     /// <param name="dstRef"></param>
     /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="Exception"></exception>
+    public static Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef,
+        CancellationToken cancellationToken = default)
+    {
+        return src.CopyAsync(srcRef, dst, dstRef, copyOptions: new CopyGraphOptions(), cancellationToken);
+    }
+
+    /// <summary>
+    /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
+    /// in the source Target to the destination Target.
+    /// The destination reference will be the same as the source reference if the
+    /// destination reference is left blank.
+    /// Returns the descriptor of the root node on successful copy.
+    /// </summary>
+    /// <param name="src"></param>
+    /// <param name="srcRef"></param>
+    /// <param name="dst"></param>
+    /// <param name="dstRef"></param>
+    /// <param name="cancellationToken"></param>
     /// <param name="copyOptions"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CancellationToken cancellationToken = default, CopyGraphOptions? copyOptions = default)
+    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CopyGraphOptions? copyOptions = default, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(dstRef))
         {
