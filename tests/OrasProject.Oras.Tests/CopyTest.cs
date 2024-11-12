@@ -215,7 +215,7 @@ public class CopyTest
 
         // Perform the copy graph operation
         var copyOptions = new CopyGraphOptions();
-        await srcTracker.CopyGraphAsync(dstTracker, root, CancellationToken.None, copyOptions);
+        await srcTracker.CopyGraphAsync(dstTracker, root, copyOptions, CancellationToken.None);
 
         // Verify contents in the destination
         foreach (var (desc, blob) in descs.Zip(blobs, Tuple.Create))
