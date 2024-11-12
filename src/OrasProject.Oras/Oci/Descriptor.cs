@@ -56,13 +56,18 @@ public class Descriptor
         return new Descriptor
         {
             MediaType = mediaType,
-            Data = byteData,
-            Digest = OrasProject.Oras.Content.Digest.ComputeSHA256(byteData),
+            Digest = Content.Digest.ComputeSHA256(byteData),
             Size = byteData.Length
         };
     }
 
-    public static Descriptor Empty => Descriptor.Create(new byte[] { 0x7B, 0x7D }, OrasProject.Oras.Oci.MediaType.EmptyJson);  
+    public static Descriptor Empty => new()
+    {
+        MediaType = Oci.MediaType.EmptyJson,
+        Digest = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        Size = 2,
+        Data = [0x7B, 0x7D]
+    };
 
     internal BasicDescriptor BasicDescriptor => new BasicDescriptor(MediaType, Digest, Size);
 }

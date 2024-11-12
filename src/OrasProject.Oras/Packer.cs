@@ -14,12 +14,10 @@
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
-using OrasProject.Oras.Utils;
 
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Threading;
@@ -44,6 +42,10 @@ public static class Packer
     /// and the config media type is set to "application/vnd.oci.empty.v1+json".
     /// </summary>
     private const string _errMissingArtifactType = "missing artifact type";
+
+    public const string UnknownConfig = "application/vnd.unknown.config.v1+json";
+
+    public const string UnknownArtifact = "application/vnd.unknown.artifact.v1";
 
     /// <summary>
     /// ManifestVersion represents the manifest version used for PackManifest
@@ -141,7 +143,7 @@ public static class Packer
         {
             if (string.IsNullOrEmpty(artifactType))
             {
-                artifactType = Utils.MediaType.UnknownConfig;
+                artifactType = UnknownConfig;
             }
             ValidateMediaType(artifactType);
             configDescriptor = await PushCustomEmptyConfigAsync(pusher, artifactType, options.ConfigAnnotations, cancellationToken);
@@ -171,7 +173,7 @@ public static class Packer
     /// <exception cref="MissingArtifactTypeException"></exception>
     private static async Task<Descriptor> PackManifestV1_1Async(IPushable pusher, string? artifactType, PackManifestOptions options = default, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(artifactType) && (options.Config == null || options.Config.MediaType == Oci.MediaType.EmptyJson))
+        if (string.IsNullOrEmpty(artifactType) && (options.Config == null || options.Config.MediaType == MediaType.EmptyJson))
         {
             throw new MissingArtifactTypeException(_errMissingArtifactType);
         } else if (!string.IsNullOrEmpty(artifactType)) {
@@ -205,7 +207,7 @@ public static class Packer
         var manifest = new Manifest
         {
             SchemaVersion = 2,
-            MediaType = Oci.MediaType.ImageManifest,
+            MediaType = MediaType.ImageManifest,
             ArtifactType = artifactType,
             Subject = options.Subject,
             Config = options.Config,

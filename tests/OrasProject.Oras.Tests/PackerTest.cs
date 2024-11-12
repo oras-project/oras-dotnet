@@ -17,7 +17,6 @@ using OrasProject.Oras.Exceptions;
 using System.Text;
 using System.Text.Json;
 using Xunit;
-using OrasProject.Oras.Utils;
 
 namespace OrasProject.Oras.Tests;
 
@@ -54,8 +53,7 @@ public class PackerTest
         {
             MediaType = artifactType,
             Digest = Digest.ComputeSHA256(expectedConfigData),
-            Size = expectedConfigData.Length,
-            Data = expectedConfigData
+            Size = expectedConfigData.Length
         };
         var expectedConfigBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedConfig));
         var incomingConfig = manifest?.Config;
@@ -202,8 +200,7 @@ public class PackerTest
                                         {
                                             MediaType = expectedManifest.MediaType,
                                             Digest = Digest.ComputeSHA256(expectedManifestBytes),
-                                            Size = expectedManifestBytes.Length,
-                                            Data = expectedManifestBytes
+                                            Size = expectedManifestBytes.Length
         };
         expectedManifestDesc.ArtifactType = expectedManifest.Config.MediaType;
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
@@ -224,9 +221,8 @@ public class PackerTest
                                     {
                                         MediaType = artifactType,
                                         Digest = Digest.ComputeSHA256(configBytes),
-                                        Size = configBytes.Length,
                                         Annotations = configAnnotations,
-                                        Data = configBytes
+                                        Size = configBytes.Length
                                     };
         expectedManifest = new Manifest
         {
@@ -249,8 +245,7 @@ public class PackerTest
                                 {
                                     MediaType = expectedManifest.MediaType,
                                     Digest = Digest.ComputeSHA256(expectedManifestBytes),
-                                    Size = expectedManifestBytes.Length,
-                                    Data = expectedManifestBytes
+                                    Size = expectedManifestBytes.Length
                                 };
         expectedManifestDesc.ArtifactType = expectedManifest.Config.MediaType;
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
@@ -302,8 +297,8 @@ public class PackerTest
 
         // Verify artifact type and config media type
         
-        Assert.Equal(Utils.MediaType.UnknownConfig, manifestDesc.ArtifactType);
-        Assert.Equal(Utils.MediaType.UnknownConfig, manifest!.Config.MediaType);
+        Assert.Equal(Packer.UnknownConfig, manifestDesc.ArtifactType);
+        Assert.Equal(Packer.UnknownConfig, manifest!.Config.MediaType);
     }
 
     [Fact]
@@ -521,8 +516,7 @@ public class PackerTest
                                         {
                                             MediaType = expectedManifest.MediaType,
                                             Digest = Digest.ComputeSHA256(expectedManifestBytes),
-                                            Size = expectedManifestBytes.Length,
-                                            Data = expectedManifestBytes
+                                            Size = expectedManifestBytes.Length
         };
         expectedManifestDesc.ArtifactType = expectedManifest.Config.MediaType;
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
@@ -552,8 +546,7 @@ public class PackerTest
                                 {
                                     MediaType = expectedManifest.MediaType,
                                     Digest = Digest.ComputeSHA256(expectedManifestBytes),
-                                    Size = expectedManifestBytes.Length,
-                                    Data = expectedManifestBytes
+                                    Size = expectedManifestBytes.Length
                                 };
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
         Assert.Equal(JsonSerializer.SerializeToUtf8Bytes(expectedManifestDesc), JsonSerializer.SerializeToUtf8Bytes(manifestDesc));
@@ -589,8 +582,7 @@ public class PackerTest
                                 {
                                     MediaType = expectedManifest.MediaType,
                                     Digest = Digest.ComputeSHA256(expectedManifestBytes),
-                                    Size = expectedManifestBytes.Length,
-                                    Data = expectedManifestBytes
+                                    Size = expectedManifestBytes.Length
                                 };
         expectedManifestDesc.ArtifactType = artifactType;
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
