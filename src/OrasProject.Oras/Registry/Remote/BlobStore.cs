@@ -148,7 +148,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
             url = location.IsAbsoluteUri ? location : new Uri(url, location);
         }
 
-        await InternalPushAsync(url, expected, content, cancellationToken);
+        await CompletePushAsync(url, expected, content, cancellationToken);
     }
 
     /// <summary>
@@ -257,11 +257,19 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
 
         await using (var contents = await GetContentStream())
         {
-            await InternalPushAsync(url, descriptor, contents, cancellationToken).ConfigureAwait(false);
+            await CompletePushAsync(url, descriptor, contents, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task InternalPushAsync(Uri url, Descriptor descriptor, Stream content,
+    /// <summary>
+    /// Completes a push operation started beforehand.
+    /// </summary>
+    /// <param name="url"></param>
+    /// <param name="descriptor"></param>
+    /// <param name="content"></param>
+    /// <param name="cancellationToken"></param>
+    /// <exception cref="Exception"></exception>
+    private async Task CompletePushAsync(Uri url, Descriptor descriptor, Stream content,
         CancellationToken cancellationToken)
     {
         // monolithic upload
