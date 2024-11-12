@@ -297,8 +297,8 @@ public class PackerTest
 
         // Verify artifact type and config media type
         
-        Assert.Equal(Packer.UnknownConfig, manifestDesc.ArtifactType);
-        Assert.Equal(Packer.UnknownConfig, manifest!.Config.MediaType);
+        Assert.Equal(Packer.MediaTypeUnknownConfig, manifestDesc.ArtifactType);
+        Assert.Equal(Packer.MediaTypeUnknownConfig, manifest!.Config.MediaType);
     }
 
     [Fact]

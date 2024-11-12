@@ -43,9 +43,9 @@ public static class Packer
     /// </summary>
     private const string _errMissingArtifactType = "missing artifact type";
 
-    public const string UnknownConfig = "application/vnd.unknown.config.v1+json";
+    public const string MediaTypeUnknownConfig = "application/vnd.unknown.config.v1+json";
 
-    public const string UnknownArtifact = "application/vnd.unknown.artifact.v1";
+    public const string MediaTypeUnknownArtifact = "application/vnd.unknown.artifact.v1";
 
     /// <summary>
     /// ManifestVersion represents the manifest version used for PackManifest
@@ -143,7 +143,7 @@ public static class Packer
         {
             if (string.IsNullOrEmpty(artifactType))
             {
-                artifactType = UnknownConfig;
+                artifactType = MediaTypeUnknownConfig;
             }
             ValidateMediaType(artifactType);
             configDescriptor = await PushCustomEmptyConfigAsync(pusher, artifactType, options.ConfigAnnotations, cancellationToken);
