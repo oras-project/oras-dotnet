@@ -330,6 +330,114 @@ public class CopyTest
         Assert.Equal(16, dstTracker.ExistsCount);
     }
     
+    [Fact]
+    public async Task TestCopyWithOptions()
+    {
+        var src = new MemoryStore();
+
+        // Generate test content
+        var blobs = new List<byte[]>();
+        var descs = new List<Descriptor>();
+
+        void AppendBlob(string mediaType, byte[] blob)
+        {
+            blobs.Add(blob);
+            descs.Add(new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = Digest.ComputeSHA256(blob),
+                Size = blob.Length
+            });
+        }
+
+        void AppendManifest(string arc, string os, string mediaType, byte[] blob)
+        {
+            blobs.Add(blob);
+            descs.Add(new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = Digest.ComputeSHA256(blob),
+                Size = blob.Length,
+                Platform = new Platform
+                {
+                    Architecture = arc,
+                    OS = os
+                }
+            });
+        }
+
+        void GenerateManifest(string arc, string os, Descriptor config, params Descriptor[] layers)
+        {
+            var manifest = new Manifest
+            {
+                Config = config,
+                Layers = layers.ToList()
+            };
+            var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+            AppendManifest(arc, os, MediaType.ImageManifest, manifestBytes);
+        }
+
+        void GenerateIndex(params Descriptor[] manifests)
+        {
+            var index = new Index
+            {
+                Manifests = manifests.ToList()
+            };
+            var indexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(index));
+            AppendBlob(MediaType.ImageIndex, indexBytes);
+        }
+
+        // Create blobs and manifests
+        AppendBlob(MediaType.ImageConfig, Encoding.UTF8.GetBytes("config"));           // Blob 0
+        AppendBlob(MediaType.ImageLayer, Encoding.UTF8.GetBytes("foo"));               // Blob 1
+        AppendBlob(MediaType.ImageLayer, Encoding.UTF8.GetBytes("bar"));               // Blob 2
+        GenerateManifest("test-arc-1", "test-os-1", descs[0], descs[1], descs[2]);      // Blob 3
+        AppendBlob(MediaType.ImageLayer, Encoding.UTF8.GetBytes("hello"));             // Blob 4
+        GenerateManifest("test-arc-2", "test-os-2", descs[0], descs[4]);               // Blob 5
+        GenerateIndex(descs[3], descs[5]);                                             // Blob 6
+
+        var cancellationToken = CancellationToken.None;
+
+        // Push blobs to source store
+        for (int i = 0; i < blobs.Count; i++)
+        {
+            await src.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+        }
+
+        var root = descs[6];
+        var refTag = "foobar";
+        await src.TagAsync(root, refTag, cancellationToken);
+
+        // Test copy with platform filter and hooks
+        var dst = new MemoryStore();
+        var preCopyCount = 0;
+        var postCopyCount = 0;
+        var copyOptions = new CopyOptions
+        {
+            CopyGraphOptions = new CopyGraphOptions
+            {
+            }
+        };
+
+        copyOptions.CopyGraphOptions.PreCopy += d => preCopyCount++;
+        copyOptions.CopyGraphOptions.PostCopy += d => postCopyCount++;
+
+        var expectedDesc = descs[6];
+        var gotDesc = await src.CopyAsync(refTag, dst, "", copyOptions, cancellationToken);
+        Assert.Equal(expectedDesc, gotDesc);
+
+        // Verify platform-specific contents
+        var expectedDescs = new[] { descs[0], descs[4], descs[5] };
+        foreach (var desc in expectedDescs)
+        {
+            Assert.True(await dst.ExistsAsync(desc, cancellationToken));
+        }
+
+        // Verify API counts
+        Assert.Equal(7, preCopyCount);
+        Assert.Equal(7, postCopyCount);
+    }
+    
     private class StorageTracker : ITarget
     {
         private readonly ITarget _storage;
