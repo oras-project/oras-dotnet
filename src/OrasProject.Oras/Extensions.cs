@@ -38,7 +38,7 @@ public static class Extensions
     public static Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef,
         CancellationToken cancellationToken = default)
     {
-        return src.CopyAsync(srcRef, dst, dstRef, new CopyGraphOptions(), cancellationToken);
+        return src.CopyAsync(srcRef, dst, dstRef, new CopyOptions(), cancellationToken);
     }
 
     /// <summary>
@@ -56,14 +56,14 @@ public static class Extensions
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CopyGraphOptions? copyOptions = default, CancellationToken cancellationToken = default)
+    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CopyOptions? copyOptions = default, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(dstRef))
         {
             dstRef = srcRef;
         }
         var root = await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
-        await src.CopyGraphAsync(dst, root, copyOptions, cancellationToken).ConfigureAwait(false);
+        await src.CopyGraphAsync(dst, root, copyOptions?.CopyGraphOptions, cancellationToken).ConfigureAwait(false);
         await dst.TagAsync(root, dstRef, cancellationToken).ConfigureAwait(false);
         return root;
     }
@@ -73,12 +73,12 @@ public static class Extensions
         return src.CopyGraphAsync(dst, node, new CopyGraphOptions(), cancellationToken);
     }
 
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions? copyOptions = default, CancellationToken cancellationToken = default)
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions? copyGraphOptions = default, CancellationToken cancellationToken = default)
     {
         // check if node exists in target
         if (await dst.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
         {
-            copyOptions?.OnCopySkipped(node);
+            copyGraphOptions?.OnCopySkipped(node);
             return;
         }
 
@@ -88,16 +88,16 @@ public static class Extensions
         // check if the node has successors
         foreach (var childNode in successors)
         {
-            await src.CopyGraphAsync(dst, childNode, copyOptions, cancellationToken).ConfigureAwait(false);
+            await src.CopyGraphAsync(dst, childNode, copyGraphOptions, cancellationToken).ConfigureAwait(false);
         }
 
         // perform the copy
-        copyOptions?.OnPreCopy(node);
+        copyGraphOptions?.OnPreCopy(node);
         var dataStream = await src.FetchAsync(node, cancellationToken).ConfigureAwait(false);
         await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
         
         // we copied it
-        copyOptions?.OnPostCopy(node);
+        copyGraphOptions?.OnPostCopy(node);
     }
 }
 
