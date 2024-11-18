@@ -47,6 +47,18 @@ internal static class Digest
         return digest;
     }
 
+    internal static string GetAlgorithm(string digest)
+    {
+        var validatedDigest = Validate(digest);
+        return validatedDigest.Split(':')[0];
+    }
+    
+    internal static string GetRef(string digest)
+    {
+        var validatedDigest = Validate(digest);
+        return validatedDigest.Split(':')[1];
+    }
+
     /// <summary>
     /// Generates a SHA-256 digest from a byte array.
     /// </summary>

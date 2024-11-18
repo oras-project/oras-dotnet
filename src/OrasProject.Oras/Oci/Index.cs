@@ -12,7 +12,10 @@
 // limitations under the License.
 
 using System.Collections.Generic;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using OrasProject.Oras.Content;
 
 namespace OrasProject.Oras.Oci;
 
@@ -39,4 +42,23 @@ public class Index : Versioned
     [JsonPropertyName("annotations")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public IDictionary<string, string>? Annotations { get; set; }
+
+    internal static (Descriptor, byte[]) GenerateIndex(IList<Descriptor> manifests)
+    {
+        var index = new Index()
+        {
+            Manifests = manifests,
+            MediaType = Oci.MediaType.ImageIndex,
+            SchemaVersion = 2
+        };
+        var indexContent = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(index));
+        var indexDesc = new Descriptor()
+        {
+            Digest = Digest.ComputeSHA256(indexContent),
+            MediaType = Oci.MediaType.ImageIndex,
+            Size = indexContent.Length
+        };
+
+        return (indexDesc, indexContent);
+    }
 }

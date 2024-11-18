@@ -14,11 +14,15 @@
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using OrasProject.Oras.Content;
+using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
 
@@ -140,7 +144,9 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
-        => await InternalPushAsync(expected, content, expected.Digest, cancellationToken).ConfigureAwait(false);
+    {
+        await PushWithIndexingAsync(expected, content, expected.Digest, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>
     /// PushReferenceASync pushes the manifest with a reference tag.
@@ -153,9 +159,116 @@ public class ManifestStore(Repository repository) : IManifestStore
     public async Task PushAsync(Descriptor expected, Stream content, string reference, CancellationToken cancellationToken = default)
     {
         var contentReference = Repository.ParseReference(reference).ContentReference!;
-        await InternalPushAsync(expected, content, contentReference, cancellationToken).ConfigureAwait(false);
+        await PushWithIndexingAsync(expected, content, contentReference, cancellationToken).ConfigureAwait(false);
     }
 
+    private async Task PushWithIndexingAsync(Descriptor expected, Stream content, string reference,
+        CancellationToken cancellationToken = default)
+    {
+        switch (expected.MediaType) 
+        {   
+            case MediaType.ImageManifest:
+            case MediaType.ImageIndex:
+                if (Repository.ReferrerState == Referrers.ReferrerState.ReferrerSupported)
+                { 
+                    await InternalPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+
+                var contentBytes = await content.ReadAllAsync(expected, cancellationToken);
+                // var initPosition = content.Position;
+                await InternalPushAsync(expected, new MemoryStream(contentBytes), reference, cancellationToken).ConfigureAwait(false);
+                if (Repository.ReferrerState == Referrers.ReferrerState.ReferrerSupported)
+                {
+                    return;
+                }
+                // content.Seek(initPosition, SeekOrigin.Begin);
+                await IndexReferrersToPush(expected, new MemoryStream(contentBytes));
+                break;
+            default:
+                await InternalPushAsync(expected, content, reference, cancellationToken);
+                break;
+        }
+    }
+
+    private async Task IndexReferrersToPush(Descriptor desc, Stream content, CancellationToken cancellationToken = default)
+    {
+        Descriptor? subject = null;
+        switch (desc.MediaType)
+        {
+            case MediaType.ImageIndex:
+                var indexManifest = JsonSerializer.Deserialize<Index>(content);
+                if (indexManifest?.Subject == null) return;
+                subject = indexManifest.Subject;
+                desc.ArtifactType = indexManifest.ArtifactType;
+                desc.Annotations = indexManifest.Annotations;
+                break;
+            case MediaType.ImageManifest:
+                var imageManifest = JsonSerializer.Deserialize<Manifest>(content); 
+                if (imageManifest?.Subject == null) return;
+                desc.ArtifactType = string.IsNullOrEmpty(imageManifest.ArtifactType) ? imageManifest.Config.MediaType : imageManifest.ArtifactType;
+                desc.Annotations = imageManifest.Annotations;
+                break;
+            default:
+                return;
+        }
+
+        Repository.ReferrerState = Referrers.ReferrerState.ReferrerNotSupported;
+        if (subject == null)
+        {
+            throw new InvalidOperationException("Subject was not initialized");
+        }
+        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.ReferrerAdd));
+    }
+
+    private async Task UpdateReferrersIndex(Descriptor subject,
+       Referrers.ReferrerChange referrerChange, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var referrersTag = Referrers.BuildReferrersTag(subject);
+            var (oldDesc, oldReferrers) = await PullReferrersIndexList(referrersTag);
+            var updatedReferrers =
+                Referrers.ApplyReferrerChanges(oldReferrers, new List<Referrers.ReferrerChange> { referrerChange });
+
+            if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGc)
+            {
+                var (indexDesc, indexContent) = Index.GenerateIndex(updatedReferrers);
+                await InternalPushAsync(indexDesc, new MemoryStream(indexContent), referrersTag, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (repository.Options.SkipReferrersGc || Descriptor.IsEmptyOrNull(oldDesc))
+            {
+                return;
+            }
+            // delete oldIndexDesc
+            await DeleteAsync(oldDesc, cancellationToken).ConfigureAwait(false);
+        }
+        catch (NoReferrerUpdateException)
+        {
+            return;
+        }
+    }
+    
+    internal async Task<(Descriptor, IList<Descriptor>)> PullReferrersIndexList(string referrersTag, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var (desc, content) = await FetchAsync(referrersTag);
+            var index = JsonSerializer.Deserialize<Index>(content);
+            if (index == null)
+            {
+                throw new JsonException("null index manifests list");
+            }
+            return (desc, index.Manifests);
+        }
+        catch (NotFoundException)
+        {
+            return (Descriptor.EmptyDescriptor(), new List<Descriptor>());
+        }
+    }
+    
+    
     /// <summary>
     /// Pushes the manifest content, matching the expected descriptor.
     /// </summary>
@@ -163,20 +276,23 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="stream"></param>
     /// <param name="contentReference"></param>
     /// <param name="cancellationToken"></param>
-    private async Task InternalPushAsync(Descriptor expected, Stream stream, string contentReference, CancellationToken cancellationToken)
+    private async Task InternalPushAsync(Descriptor expected, Stream stream, string contentReference,
+        CancellationToken cancellationToken)
     {
-        var remoteReference = Repository.ParseReference(contentReference);
+        var remoteReference = Repository.ParseReference(contentReference); // duplicate?
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var request = new HttpRequestMessage(HttpMethod.Put, url);
         request.Content = new StreamContent(stream);
         request.Content.Headers.ContentLength = expected.Size;
         request.Content.Headers.Add("Content-Type", expected.MediaType);
+
         var client = Repository.Options.HttpClient;
         using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.Created)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
+        response.CheckOciSubjectHeader(Repository);
         response.VerifyContentDigest(expected.Digest);
     }
 

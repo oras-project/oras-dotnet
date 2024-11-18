@@ -101,6 +101,14 @@ internal static class HttpResponseMessageExtensions
             throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {digestStr}");
         }
     }
+    
+    public static void CheckOciSubjectHeader(this HttpResponseMessage response, Repository repository)
+    {
+        if (response.Headers.TryGetValues("OCI-Subject", out var values))
+        {
+            repository.ReferrerState = Referrers.ReferrerState.ReferrerSupported;
+        }
+    }
 
     /// <summary>
     /// Returns a descriptor generated from the response.

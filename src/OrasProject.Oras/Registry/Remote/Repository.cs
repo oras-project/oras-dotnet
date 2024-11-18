@@ -46,6 +46,7 @@ public class Repository : IRepository
     public IManifestStore Manifests => new ManifestStore(this);
 
     public RepositoryOptions Options => _opts;
+    internal Referrers.ReferrerState ReferrerState { get; set; } = Referrers.ReferrerState.ReferrerUnknown;
 
     internal static readonly string[] DefaultManifestMediaTypes =
     [

@@ -13,6 +13,7 @@
 
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using OrasProject.Oras.Content;
 
 namespace OrasProject.Oras.Oci;
 
@@ -48,4 +49,16 @@ public class Descriptor
     public string? ArtifactType { get; set; }
 
     internal BasicDescriptor BasicDescriptor => new BasicDescriptor(MediaType, Digest, Size);
+
+    internal static bool IsEmptyOrNull(Descriptor? descriptor)
+    {
+        return descriptor == null || descriptor.Size == 0 || string.IsNullOrEmpty(descriptor.Digest) || string.IsNullOrEmpty(descriptor.MediaType);
+    }
+    
+    internal static Descriptor EmptyDescriptor() => new Descriptor
+    {
+        MediaType = "",
+        Digest = "",
+        Size = 0
+    };
 }

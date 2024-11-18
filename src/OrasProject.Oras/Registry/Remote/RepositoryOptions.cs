@@ -50,4 +50,11 @@ public struct RepositoryOptions
     /// Reference: https://docs.docker.com/registry/spec/api/#tags
     /// </summary>
     public int TagListPageSize { get; set; }
+
+    // SkipReferrersGc specifies whether to delete the dangling referrers
+    // index when referrers tag schema is utilized.
+    //  - If false, the old referrers index will be deleted after the new one is successfully uploaded.
+    //  - If true, the old referrers index is kept.
+    // By default, it is disabled (set to false). See also:
+    public bool SkipReferrersGc { get; set; }
 }
