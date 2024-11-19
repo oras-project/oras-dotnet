@@ -30,7 +30,7 @@ public class NoReferrerUpdateException : Exception
     {
     }
 
-    public NoReferrerUpdateException(string message, Exception innerException)
+    public NoReferrerUpdateException(string message, Exception? innerException)
         : base(message, innerException)
     {
     }
