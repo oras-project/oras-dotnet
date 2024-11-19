@@ -1602,8 +1602,7 @@ public class RepositoryTest
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
             }
-            if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) &&
-                !values.Contains(MediaType.ImageManifest))
+            if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
             {
                 return new HttpResponseMessage(HttpStatusCode.BadRequest);
             }
@@ -2045,16 +2044,15 @@ public class RepositoryTest
     [Fact]
     public async Task ManifestStore_PushReferenceAsync()
     {
-        var manifest = Encoding.UTF8.GetBytes($@"{{""layers"": []}}");
-        var indexStr = $@"{{""manifests"":[{{""mediaType"": ""{MediaType.ImageManifest}"", ""digest"": ""{ComputeSHA256(manifest)}"", ""size"": {manifest.Length}}}]}}";
-        var index = Encoding.UTF8.GetBytes(indexStr);
+        var index = RandomIndex();
+        var indexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(index));
         var indexDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(index),
-            Size = index.Length
+            Digest = ComputeSHA256(indexBytes),
+            Size = indexBytes.Length
         };
-        var gotIndex = new byte[index.Length];
+        var gotIndex = new byte[indexBytes.Length];
         var reference = "foobar";
 
         var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -2092,8 +2090,8 @@ public class RepositoryTest
         });
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
-        await store.PushAsync(indexDesc, new MemoryStream(index), reference, cancellationToken);
-        Assert.Equal(index, gotIndex);
+        await store.PushAsync(indexDesc, new MemoryStream(indexBytes), reference, cancellationToken);
+        Assert.Equal(indexBytes, gotIndex);
     }
 
     /// <summary>
