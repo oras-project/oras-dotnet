@@ -101,6 +101,12 @@ internal static class HttpResponseMessageExtensions
         }
     }
     
+    /// <summary>
+    /// CheckOciSubjectHeader checks if the response header contains "OCI-Subject",
+    /// repository ReferrerState is set to supported if it is present
+    /// </summary>
+    /// <param name="response"></param>
+    /// <param name="repository"></param>
     public static void CheckOciSubjectHeader(this HttpResponseMessage response, Repository repository)
     {
         if (response.Headers.TryGetValues("OCI-Subject", out var values))
