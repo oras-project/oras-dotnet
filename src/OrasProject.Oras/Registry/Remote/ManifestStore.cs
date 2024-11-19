@@ -162,6 +162,16 @@ public class ManifestStore(Repository repository) : IManifestStore
         await PushWithIndexingAsync(expected, content, contentReference, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// PushWithIndexingAsync pushes the given manifest to the repository with indexing support.
+    /// If referrer support is not enabled, the function will first push the content, then process and update 
+    /// the referrers index before pushing the content again. It handles both image manifests and index manifests.
+    /// </summary>
+    /// <param name="expected"></param>
+    /// <param name="content"></param>
+    /// <param name="reference"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     private async Task PushWithIndexingAsync(Descriptor expected, Stream content, string reference,
         CancellationToken cancellationToken = default)
     {
@@ -176,14 +186,19 @@ public class ManifestStore(Repository repository) : IManifestStore
                 }
 
                 var contentBytes = await content.ReadAllAsync(expected, cancellationToken);
-                // var initPosition = content.Position;
-                await InternalPushAsync(expected, new MemoryStream(contentBytes), reference, cancellationToken).ConfigureAwait(false);
+                using (var contentDuplicate = new MemoryStream(contentBytes))
+                {
+                    await InternalPushAsync(expected, contentDuplicate, reference, cancellationToken).ConfigureAwait(false);
+                }
                 if (Repository.ReferrerState == Referrers.ReferrerState.ReferrerSupported)
                 {
                     return;
                 }
-                // content.Seek(initPosition, SeekOrigin.Begin);
-                await IndexReferrersToPush(expected, new MemoryStream(contentBytes));
+
+                using (var contentDuplicate = new MemoryStream(contentBytes))
+                {
+                    await ProcessReferrersAndPushIndex(expected, contentDuplicate);
+                }
                 break;
             default:
                 await InternalPushAsync(expected, content, reference, cancellationToken);
@@ -191,7 +206,17 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
     }
 
-    private async Task IndexReferrersToPush(Descriptor desc, Stream content, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// ProcessReferrersAndPushIndex processes the referrers for the given descriptor by deserializing its content
+    /// (either as an image manifest or image index), extracting relevant metadata
+    /// such as the subject, artifact type, and annotations, and then updates the 
+    /// referrers index if applicable.
+    /// </summary>
+    /// <param name="desc"></param>
+    /// <param name="content"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    private async Task ProcessReferrersAndPushIndex(Descriptor desc, Stream content, CancellationToken cancellationToken = default)
     {
         Descriptor? subject = null;
         switch (desc.MediaType)
@@ -206,6 +231,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             case MediaType.ImageManifest:
                 var imageManifest = JsonSerializer.Deserialize<Manifest>(content); 
                 if (imageManifest?.Subject == null) return;
+                subject = imageManifest.Subject;
                 desc.ArtifactType = string.IsNullOrEmpty(imageManifest.ArtifactType) ? imageManifest.Config.MediaType : imageManifest.ArtifactType;
                 desc.Annotations = imageManifest.Annotations;
                 break;
@@ -214,13 +240,18 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
 
         Repository.ReferrerState = Referrers.ReferrerState.ReferrerNotSupported;
-        if (subject == null)
-        {
-            throw new InvalidOperationException("Subject was not initialized");
-        }
         await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.ReferrerAdd));
     }
 
+    /// <summary>
+    /// UpdateReferrersIndex updates the referrers index for a given subject by applying the specified referrer changes.
+    /// If the referrers index is updated, the new index is pushed to the repository. If referrers 
+    /// garbage collection is not skipped, the old index is deleted.
+    /// </summary>
+    /// <param name="subject"></param>
+    /// <param name="referrerChange"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     private async Task UpdateReferrersIndex(Descriptor subject,
        Referrers.ReferrerChange referrerChange, CancellationToken cancellationToken = default)
     {
@@ -229,19 +260,22 @@ public class ManifestStore(Repository repository) : IManifestStore
             var referrersTag = Referrers.BuildReferrersTag(subject);
             var (oldDesc, oldReferrers) = await PullReferrersIndexList(referrersTag);
             var updatedReferrers =
-                Referrers.ApplyReferrerChanges(oldReferrers, new List<Referrers.ReferrerChange> { referrerChange });
+                Referrers.ApplyReferrerChanges(oldReferrers,  referrerChange);
 
             if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGc)
             {
                 var (indexDesc, indexContent) = Index.GenerateIndex(updatedReferrers);
-                await InternalPushAsync(indexDesc, new MemoryStream(indexContent), referrersTag, cancellationToken).ConfigureAwait(false);
+                using (var content = new MemoryStream(indexContent))
+                {
+                    await InternalPushAsync(indexDesc, content, referrersTag, cancellationToken).ConfigureAwait(false);
+                }
             }
 
             if (repository.Options.SkipReferrersGc || Descriptor.IsEmptyOrNull(oldDesc))
             {
                 return;
             }
-            // delete oldIndexDesc
+
             await DeleteAsync(oldDesc, cancellationToken).ConfigureAwait(false);
         }
         catch (NoReferrerUpdateException)
@@ -250,6 +284,15 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
     }
     
+    /// <summary>
+    /// PullReferrersIndexList retrieves the referrers index list associated with the given referrers tag.
+    /// It fetches the index manifest from the repository, deserializes it into an `Index` object, 
+    /// and returns the descriptor along with the list of manifests (referrers). If the referrers index is not found, 
+    /// an empty descriptor and an empty list are returned.
+    /// </summary>
+    /// <param name="referrersTag"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     internal async Task<(Descriptor, IList<Descriptor>)> PullReferrersIndexList(string referrersTag, CancellationToken cancellationToken = default)
     {
         try
@@ -279,7 +322,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     private async Task InternalPushAsync(Descriptor expected, Stream stream, string contentReference,
         CancellationToken cancellationToken)
     {
-        var remoteReference = Repository.ParseReference(contentReference); // duplicate?
+        var remoteReference = Repository.ParseReference(contentReference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var request = new HttpRequestMessage(HttpMethod.Put, url);
         request.Content = new StreamContent(stream);

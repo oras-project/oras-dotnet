@@ -49,4 +49,12 @@ public class ExceptionTest
         await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException("Not found"));
         await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException("Not found", null));
     }
+    
+    [Fact]
+    public async Task NoReferrerUpdateException()
+    {
+        await Assert.ThrowsAsync<NoReferrerUpdateException>(() => throw new NoReferrerUpdateException());
+        await Assert.ThrowsAsync<NoReferrerUpdateException>(() => throw new NoReferrerUpdateException("No referrer update"));
+        await Assert.ThrowsAsync<NoReferrerUpdateException>(() => throw new NoReferrerUpdateException("No referrer update", null));
+    }
 }

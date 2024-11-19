@@ -35,16 +35,24 @@ public class Referrers
         ReferrerDelete,
     }
     
-    public static string BuildReferrersTag(Descriptor descriptor)
+    internal static string BuildReferrersTag(Descriptor descriptor)
     {
         return Digest.GetAlgorithm(descriptor.Digest) + "-" + Digest.GetRef(descriptor.Digest);
     }
     
-    internal static IList<Descriptor> ApplyReferrerChanges(IList<Descriptor> oldReferrers, IList<ReferrerChange> referrerChanges)
+    /// <summary>
+    /// ApplyReferrerChanges applies the specified referrer change (either add or delete) to the existing list of referrers. 
+    /// It updates the list based on the operation defined in the provided `referrerChange`. 
+    /// If the referrer to be added or deleted already exists in the list, it is handled accordingly.
+    /// </summary>
+    /// <param name="oldReferrers"></param>
+    /// <param name="referrerChange"></param>
+    /// <returns>The updated referrers list</returns>
+    internal static IList<Descriptor> ApplyReferrerChanges(IList<Descriptor> oldReferrers, ReferrerChange referrerChange)
     {
-        if (oldReferrers == null || referrerChanges == null)
+        if (oldReferrers == null || referrerChange == null)
         {
-            throw new NoReferrerUpdateException("referrerChanges or oldReferrers is null in this request");
+            throw new NoReferrerUpdateException("referrerChange or oldReferrers is null in this request");
         }
         var updatedReferrers = new List<Descriptor>();
         var referrerToIndex = new Dictionary<BasicDescriptor, int>();
@@ -67,32 +75,34 @@ public class Referrers
             referrerToIndex[basicDesc] = updatedReferrers.Count - 1;
         }
 
-        foreach (var change in referrerChanges)
+
+        if (!Descriptor.IsEmptyOrNull(referrerChange.Referrer))
         {
-            if (Descriptor.IsEmptyOrNull(change.Referrer)) continue;
-            var basicDesc = change.Referrer.BasicDescriptor;
-            switch (change.ReferrerOperation)
+            var basicDesc = referrerChange.Referrer.BasicDescriptor;
+            switch (referrerChange.ReferrerOperation)
             {
                 case ReferrerOperation.ReferrerAdd:
                     if (!referrerToIndex.ContainsKey(basicDesc))
                     {
-                        updatedReferrers.Add(change.Referrer);
+                        updatedReferrers.Add(referrerChange.Referrer);
                         referrerToIndex[basicDesc] = updatedReferrers.Count - 1;
                     }
+
                     break;
-                
+
                 case ReferrerOperation.ReferrerDelete:
                     if (referrerToIndex.TryGetValue(basicDesc, out var index))
                     {
                         updatedReferrers[index] = Descriptor.EmptyDescriptor();
                         referrerToIndex.Remove(basicDesc);
                     }
+
                     break;
                 default:
                     break;
             }
         }
-
+        
         if (!updateRequired && referrerToIndex.Count == oldReferrers.Count)
         {
             foreach (var oldReferrer in oldReferrers)
@@ -108,6 +118,13 @@ public class Referrers
         return updatedReferrers;
     }
 
+    /// <summary>
+    /// RemoveEmptyDescriptors removes any empty or null descriptors from the provided list of referrers, ensuring that only non-empty 
+    /// descriptors remain in the list. It optimizes the list by shifting valid descriptors forward and trimming 
+    /// the remaining elements at the end. The list is truncated to only contain non-empty descriptors up to the specified count.
+    /// </summary>
+    /// <param name="updatedReferrers"></param>
+    /// <param name="numNonEmptyReferrers"></param>
     internal static void RemoveEmptyDescriptors(List<Descriptor> updatedReferrers, int numNonEmptyReferrers)
     {
         var lastEmptyIndex = 0;
