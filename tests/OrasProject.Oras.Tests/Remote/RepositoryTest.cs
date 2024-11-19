@@ -2249,4 +2249,301 @@ public class RepositoryTest
         }
 
     }
+    
+        /// <summary>
+    /// Repository_MountAsync tests the MountAsync method of the Repository
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task Repository_MountAsync()
+    {
+        var blob = @"hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            Digest = ComputeSHA256(blob),
+            MediaType = "test",
+            Size = (uint)blob.Length
+        };
+        var gotMount = 0;
+        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var resp = new HttpResponseMessage();
+            resp.RequestMessage = req;
+            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test2/blobs/uploads/")
+            {
+                var queries = HttpUtility.ParseQueryString(req.RequestUri.Query);
+                if (queries["mount"] != blobDesc.Digest)
+                {
+                    resp.StatusCode = HttpStatusCode.InternalServerError;
+                    return resp;
+                }
+                if (queries["from"] != "test")
+                {
+                    resp.StatusCode = HttpStatusCode.InternalServerError;
+                    return resp;
+                }
+                gotMount++;
+                resp.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                resp.StatusCode = HttpStatusCode.Created;
+                return resp;
+            }
+            resp.StatusCode = HttpStatusCode.InternalServerError;
+            return resp;
+        };
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test2"),
+            HttpClient = CustomClient(func),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+
+        await repo.MountAsync(blobDesc, "test", null, cancellationToken);
+        Assert.Equal(1, gotMount);
+    }
+
+    /// <summary>
+    /// Repository_MountAsync_Fallback tests the MountAsync method of the Repository when the server doesn't support mount query parameters.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task Repository_MountAsync_Fallback()
+    {
+        var blob = @"hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            Digest = ComputeSHA256(blob),
+            MediaType = "test",
+            Size = (uint)blob.Length
+        };
+        string sequence = "";
+        byte[] gotBlob = Array.Empty<byte>();
+        var uuid = "4fd53bc9-565d-4527-ab80-3e051ac4880c";
+        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var resp = new HttpResponseMessage();
+            resp.RequestMessage = req;
+            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test2/blobs/uploads/")
+            {
+                resp.Headers.Location = new Uri("/v2/test2/blobs/uploads/" + uuid, UriKind.Relative);
+                resp.StatusCode = HttpStatusCode.Accepted;
+                sequence += "post ";
+                return resp;
+            }
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/v2/test/blobs/" + blobDesc.Digest)
+            {
+                resp.Content.Headers.Add("Content-Type", "application/octet-stream");
+                resp.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                resp.Content = new ByteArrayContent(blob);
+                resp.StatusCode = HttpStatusCode.OK;
+                sequence += "get ";
+                return resp;
+            }
+            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/v2/test2/blobs/uploads/" + uuid)
+            {
+                if (req.Content?.Headers.GetValues("Content-Type").FirstOrDefault() != "application/octet-stream")
+                {
+                    resp.StatusCode = HttpStatusCode.BadRequest;
+                    return resp;
+                }
+                if (HttpUtility.ParseQueryString(req.RequestUri.Query)["digest"] != blobDesc.Digest)
+                {
+                    resp.StatusCode = HttpStatusCode.BadRequest;
+                    return resp;
+                }
+                gotBlob = req.Content!.ReadAsByteArrayAsync(cancellationToken).Result;
+                resp.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                resp.StatusCode = HttpStatusCode.Created;
+                sequence += "put ";
+                return resp;
+            }
+            resp.StatusCode = HttpStatusCode.Forbidden;
+            return resp;
+        };
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test2"),
+            HttpClient = CustomClient(func),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+
+        // getContent is null
+        sequence = "";
+        await repo.MountAsync(blobDesc, "localhost:5000/test", null, cancellationToken);
+        Assert.Equal(blob, gotBlob);
+        Assert.Equal("post get put ", sequence);
+
+        // getContent is non-null
+        sequence = "";
+        await repo.MountAsync(blobDesc, "localhost:5000/test", _ => Task.FromResult<Stream>(new MemoryStream(blob)), cancellationToken);
+        Assert.Equal(blob, gotBlob);
+        Assert.Equal("post put ", sequence);
+    }
+
+    /// <summary>
+    /// Repository_MountAsync_Error tests the error handling of the MountAsync method of the Repository.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task Repository_MountAsync_Error()
+    {
+        var blob = @"hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            Digest = ComputeSHA256(blob),
+            MediaType = "test",
+            Size = (uint)blob.Length
+        };
+        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var resp = new HttpResponseMessage();
+            resp.RequestMessage = req;
+            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test/blobs/uploads/")
+            {
+                resp.StatusCode = HttpStatusCode.BadRequest;
+                resp.Content = new StringContent(@"{ ""errors"": [ { ""code"": ""NAME_UNKNOWN"", ""message"": ""some error"" } ] }");
+                return resp;
+            }
+            resp.StatusCode = HttpStatusCode.InternalServerError;
+            return resp;
+        };
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(func),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+
+        var ex = await Assert.ThrowsAsync<ResponseException>(async () =>
+        {
+            await repo.MountAsync(blobDesc, "foo", null, cancellationToken);
+        });
+
+        Assert.NotNull(ex.Errors);
+        Assert.Single(ex.Errors);
+        Assert.Equal("NAME_UNKNOWN", ex.Errors[0].Code);
+        Assert.Equal("some error", ex.Errors[0].Message);
+    }
+
+    /// <summary>
+    /// Repository_MountAsync_Fallback_GetContent tests the case where the server doesn't recognize mount query parameters,
+    /// falling back to the regular push flow, using the getContent function parameter.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task Repository_MountAsync_Fallback_GetContent()
+    {
+        var blob = @"hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            Digest = ComputeSHA256(blob),
+            MediaType = "test",
+            Size = (uint)blob.Length
+        };
+        string sequence = "";
+        byte[] gotBlob = Array.Empty<byte>();
+        var uuid = "4fd53bc9-565d-4527-ab80-3e051ac4880c";
+        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var resp = new HttpResponseMessage();
+            resp.RequestMessage = req;
+            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test2/blobs/uploads/")
+            {
+                resp.Headers.Location = new Uri("/v2/test2/blobs/uploads/" + uuid, UriKind.Relative);
+                resp.StatusCode = HttpStatusCode.Accepted;
+                sequence += "post ";
+                return resp;
+            }
+            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/v2/test2/blobs/uploads/" + uuid)
+            {
+                if (req.Content?.Headers.GetValues("Content-Type").FirstOrDefault() != "application/octet-stream")
+                {
+                    resp.StatusCode = HttpStatusCode.BadRequest;
+                    return resp;
+                }
+                if (HttpUtility.ParseQueryString(req.RequestUri.Query)["digest"] != blobDesc.Digest)
+                {
+                    resp.StatusCode = HttpStatusCode.BadRequest;
+                    return resp;
+                }
+                gotBlob = req.Content!.ReadAsByteArrayAsync(cancellationToken).Result;
+                resp.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                resp.StatusCode = HttpStatusCode.Created;
+                sequence += "put ";
+                return resp;
+            }
+            resp.StatusCode = HttpStatusCode.Forbidden;
+            return resp;
+        };
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test2"),
+            HttpClient = CustomClient(func),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+
+        await repo.MountAsync(blobDesc, "test", _ => Task.FromResult<Stream>(new MemoryStream(blob)), cancellationToken);
+
+        // Assert that the blob was pushed correctly
+        Assert.Equal(blob, gotBlob);
+        // Assert that the request sequence matches the expected behavior
+        Assert.Equal("post put ", sequence);
+    }
+
+    /// <summary>
+    /// Repository_MountAsync_Fallback_GetContentError tests the case where the server doesn't recognize mount query parameters,
+    /// falling back to the regular push flow, but the caller wants to avoid the pull/push pattern, so an error is returned from getContent.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task Repository_MountAsync_Fallback_GetContentError()
+    {
+        var blob = @"hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            Digest = ComputeSHA256(blob),
+            MediaType = "test",
+            Size = (uint)blob.Length
+        };
+        string sequence = "";
+        var uuid = "4fd53bc9-565d-4527-ab80-3e051ac4880c";
+        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var resp = new HttpResponseMessage();
+            resp.RequestMessage = req;
+            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test2/blobs/uploads/")
+            {
+                resp.Headers.Location = new Uri("/v2/test2/blobs/uploads/" + uuid, UriKind.Relative);
+                resp.StatusCode = HttpStatusCode.Accepted;
+                sequence += "post ";
+                return resp;
+            }
+            resp.StatusCode = HttpStatusCode.Forbidden;
+            return resp;
+        };
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test2"),
+            HttpClient = CustomClient(func),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+
+        var testErr = new Exception("test error");
+        var ex = await Assert.ThrowsAsync<Exception>(async () =>
+        {
+            await repo.MountAsync(blobDesc, "test", _ => throw testErr, cancellationToken);
+        });
+
+        Assert.Equal(testErr, ex);
+        Assert.Equal("post ", sequence);
+    }
 }
