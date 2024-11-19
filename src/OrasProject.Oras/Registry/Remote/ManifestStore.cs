@@ -144,9 +144,8 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
-    {
-        await PushWithIndexingAsync(expected, content, expected.Digest, cancellationToken).ConfigureAwait(false);
-    }
+        => await PushWithIndexingAsync(expected, content, expected.Digest, cancellationToken).ConfigureAwait(false);
+    
 
     /// <summary>
     /// PushReferenceASync pushes the manifest with a reference tag.
@@ -328,7 +327,6 @@ public class ManifestStore(Repository repository) : IManifestStore
         request.Content = new StreamContent(stream);
         request.Content.Headers.ContentLength = expected.Size;
         request.Content.Headers.Add("Content-Type", expected.MediaType);
-
         var client = Repository.Options.HttpClient;
         using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.Created)

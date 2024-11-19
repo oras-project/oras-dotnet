@@ -26,7 +26,6 @@ namespace OrasProject.Oras.Registry.Remote;
 internal static class HttpResponseMessageExtensions
 {
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
-
     /// <summary>
     /// Parses the error returned by the remote registry.
     /// </summary>

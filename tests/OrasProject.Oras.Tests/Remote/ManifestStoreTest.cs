@@ -1,4 +1,17 @@
-﻿using System.Net;
+﻿// Copyright The ORAS Authors.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using OrasProject.Oras.Oci;
@@ -8,77 +21,13 @@ using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Content.Digest;
 using Index = OrasProject.Oras.Oci.Index;
-
-
 using Xunit;
-using Xunit.Abstractions;
 
 namespace OrasProject.Oras.Tests.Remote;
 
 public class ManifestStoreTest
 {
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
-
-    private ITestOutputHelper _output;
-
-    public ManifestStoreTest(ITestOutputHelper output)
-    {
-        _output = output;
-    }
-    
-    /// <summary>
-    /// ManifestStore_PushAsyncWithSubjectAndReferrerSupported tests PushAsync method for pushing manifest with subject when registry supports referrers API
-    /// </summary>
-    [Fact]
-    public async Task ManifestStore_PushAsyncWithSubjectAndReferrerSupported()
-    {
-        var (_, manifestBytes) = RandomManifestWithSubject();
-        var manifestDesc = new Descriptor
-        {
-            MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifestBytes),
-            Size = manifestBytes.Length
-        };
-        byte[]? receivedManifest = null;
-        
-        var mockHttpRequestHandler = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
-        {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
-            if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
-            {
-                if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
-                {
-                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
-                }
-                if (req.Content?.Headers?.ContentLength != null)
-                {
-                    var buf = new byte[req.Content.Headers.ContentLength.Value];
-                    (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buf, 0);
-                    receivedManifest = buf;
-                }
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
-                res.StatusCode = HttpStatusCode.Created;
-                res.Headers.Add("OCI-Subject", "test");
-                return res;
-            }
-            return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        };
-        
-        
-        var repo = new Repository(new RepositoryOptions()
-        {
-            Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockHttpRequestHandler),
-            PlainHttp = true,
-        });
-        var cancellationToken = new CancellationToken();
-        var store = new ManifestStore(repo);
-        Assert.Equal(Referrers.ReferrerState.ReferrerUnknown, repo.ReferrerState);
-        await store.PushAsync(manifestDesc, new MemoryStream(manifestBytes), cancellationToken);
-        Assert.Equal(manifestBytes, receivedManifest);
-        Assert.Equal(Referrers.ReferrerState.ReferrerSupported, repo.ReferrerState);
-    }
     
     [Fact]
     public async Task ManifestStore_PullReferrersIndexListSuccessfully()
@@ -153,6 +102,60 @@ public class ManifestStoreTest
         var (receivedDesc, receivedManifests) = await store.PullReferrersIndexList("test", cancellationToken);
         Assert.True(Descriptor.IsEmptyOrNull(receivedDesc));
         Assert.Empty(receivedManifests);
+    }
+    
+    /// <summary>
+    /// ManifestStore_PushAsyncWithSubjectAndReferrerSupported tests PushAsync method for pushing manifest with subject when registry supports referrers API
+    /// </summary>
+    [Fact]
+    public async Task ManifestStore_PushAsyncWithSubjectAndReferrerSupported()
+    {
+        var (_, manifestBytes) = RandomManifestWithSubject();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSHA256(manifestBytes),
+            Size = manifestBytes.Length
+        };
+        byte[]? receivedManifest = null;
+        
+        var mockHttpRequestHandler = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+            {
+                if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                if (req.Content?.Headers?.ContentLength != null)
+                {
+                    var buf = new byte[req.Content.Headers.ContentLength.Value];
+                    (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buf, 0);
+                    receivedManifest = buf;
+                }
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
+                res.StatusCode = HttpStatusCode.Created;
+                res.Headers.Add("OCI-Subject", "test");
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.Forbidden);
+        };
+        
+        
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockHttpRequestHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+        Assert.Equal(Referrers.ReferrerState.ReferrerUnknown, repo.ReferrerState);
+        await store.PushAsync(manifestDesc, new MemoryStream(manifestBytes), cancellationToken);
+        Assert.Equal(manifestBytes, receivedManifest);
+        Assert.Equal(Referrers.ReferrerState.ReferrerSupported, repo.ReferrerState);
     }
     
     
