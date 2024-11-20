@@ -110,12 +110,30 @@ public class ManifestStoreTest
     [Fact]
     public async Task ManifestStore_PushAsyncWithSubjectAndReferrerSupported()
     {
-        var (_, manifestBytes) = RandomManifestWithSubject();
-        var manifestDesc = new Descriptor
+        // first push with image manifest
+        var (_, expectedManifestBytes) = RandomManifestWithSubject();
+        var expectedManifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifestBytes),
-            Size = manifestBytes.Length
+            Digest = ComputeSHA256(expectedManifestBytes),
+            Size = expectedManifestBytes.Length
+        };
+        
+        // second push with index manifest
+        var expectedIndexManifest = new Index()
+        {
+            Subject = RandomDescriptor(),
+            Manifests = new List<Descriptor>{ RandomDescriptor(), RandomDescriptor() },
+            MediaType = MediaType.ImageIndex,
+            ArtifactType = MediaType.ImageIndex,
+        };
+        var expectedIndexManifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedIndexManifest));
+        var expectedIndexManifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageIndex,
+            Digest = ComputeSHA256(expectedIndexManifestBytes),
+            Size = expectedIndexManifestBytes.Length,
+            ArtifactType = MediaType.ImageIndex,
         };
         byte[]? receivedManifest = null;
         
@@ -123,11 +141,18 @@ public class ManifestStoreTest
         {
             var res = new HttpResponseMessage();
             res.RequestMessage = req;
-            if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+            if (req.Method == HttpMethod.Put && (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}" || 
+                                                 req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedIndexManifestDesc.Digest}" ))
             {
-                if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
+                if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values))
                 {
-                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    if ((req.RequestUri.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}" &&
+                         !values.Contains(MediaType.ImageManifest)) ||
+                        (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{expectedIndexManifestDesc.Digest}" &&
+                         !values.Contains(MediaType.ImageIndex)))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
                 }
                 if (req.Content?.Headers?.ContentLength != null)
                 {
@@ -135,14 +160,14 @@ public class ManifestStoreTest
                     (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buf, 0);
                     receivedManifest = buf;
                 }
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}") res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedManifestDesc.Digest });
+                else res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedIndexManifestDesc.Digest });
                 res.StatusCode = HttpStatusCode.Created;
                 res.Headers.Add("OCI-Subject", "test");
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
         };
-        
         
         var repo = new Repository(new RepositoryOptions()
         {
@@ -152,9 +177,16 @@ public class ManifestStoreTest
         });
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
+        
+        // first push with image manifest
         Assert.Equal(Referrers.ReferrerState.ReferrerUnknown, repo.ReferrerState);
-        await store.PushAsync(manifestDesc, new MemoryStream(manifestBytes), cancellationToken);
-        Assert.Equal(manifestBytes, receivedManifest);
+        await store.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
+        Assert.Equal(expectedManifestBytes, receivedManifest);
+        Assert.Equal(Referrers.ReferrerState.ReferrerSupported, repo.ReferrerState);
+        
+        // second push with index manifest
+        await store.PushAsync(expectedIndexManifestDesc, new MemoryStream(expectedIndexManifestBytes), cancellationToken);
+        Assert.Equal(expectedIndexManifestBytes, receivedManifest);
         Assert.Equal(Referrers.ReferrerState.ReferrerSupported, repo.ReferrerState);
     }
     
