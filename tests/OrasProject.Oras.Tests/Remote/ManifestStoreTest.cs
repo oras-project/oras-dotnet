@@ -104,6 +104,80 @@ public class ManifestStoreTest
         Assert.Empty(receivedManifests);
     }
     
+    [Fact]
+    public async Task ManifestStore_PushAsyncWithoutSubject()
+    {
+        // first push with image manifest
+        var (_, expectedManifestBytes) = RandomManifest();
+        var expectedManifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSHA256(expectedManifestBytes),
+            Size = expectedManifestBytes.Length
+        };
+        
+        // second push with image config
+        var expectedConfigBytes = """config"""u8.ToArray();
+        var expectedConfigDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageConfig,
+            Digest = ComputeSHA256(expectedConfigBytes),
+            Size = expectedConfigBytes.Length
+        };
+        
+        byte[]? receivedManifest = null;
+        var mockHttpRequestHandler = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method == HttpMethod.Put && (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedConfigDesc.Digest}" || 
+                req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}"))
+            {
+                if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values))
+                {
+                    if ((req.RequestUri.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}" &&
+                         !values.Contains(MediaType.ImageManifest)) ||
+                        (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{expectedConfigDesc.Digest}" &&
+                         !values.Contains(MediaType.ImageConfig)))
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
+                }
+                if (req.Content?.Headers?.ContentLength != null)
+                {
+                    var buf = new byte[req.Content.Headers.ContentLength.Value];
+                    (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buf, 0);
+                    receivedManifest = buf;
+                }
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}") 
+                    res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedManifestDesc.Digest });
+                else res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedConfigDesc.Digest });
+                res.StatusCode = HttpStatusCode.Created;
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.Forbidden);
+        };
+        
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockHttpRequestHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+        
+        Assert.Equal(Referrers.ReferrerState.ReferrerUnknown, repo.ReferrerState);
+        await store.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
+        Assert.Equal(expectedManifestBytes, receivedManifest);
+        
+        Assert.Equal(Referrers.ReferrerState.ReferrerUnknown, repo.ReferrerState);
+        await store.PushAsync(expectedConfigDesc, new MemoryStream(expectedConfigBytes), cancellationToken);
+        Assert.Equal(expectedConfigBytes, receivedManifest);
+        Assert.Equal(Referrers.ReferrerState.ReferrerUnknown, repo.ReferrerState);
+    }
+    
+    
     /// <summary>
     /// ManifestStore_PushAsyncWithSubjectAndReferrerSupported tests PushAsync method for pushing manifest with subject when registry supports referrers API
     /// </summary>
@@ -160,7 +234,8 @@ public class ManifestStoreTest
                     (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buf, 0);
                     receivedManifest = buf;
                 }
-                if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}") res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedManifestDesc.Digest });
+                if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}") 
+                    res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedManifestDesc.Digest });
                 else res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedIndexManifestDesc.Digest });
                 res.StatusCode = HttpStatusCode.Created;
                 res.Headers.Add("OCI-Subject", "test");
