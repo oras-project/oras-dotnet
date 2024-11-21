@@ -20,11 +20,11 @@ namespace OrasProject.Oras.Registry.Remote;
 
 public class Referrers
 {
-    internal enum ReferrerState
+    internal enum ReferrersSupportLevel
     {
-        ReferrerUnknown,
-        ReferrerSupported,
-        ReferrerNotSupported
+        ReferrersUnknown,
+        ReferrersSupported,
+        ReferrersNotSupported
     }
     
     internal record ReferrerChange(Descriptor Referrer, ReferrerOperation ReferrerOperation);

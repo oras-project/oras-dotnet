@@ -2544,4 +2544,42 @@ public class RepositoryTest
         Assert.Equal(testErr, ex);
         Assert.Equal("post ", sequence);
     }
+    
+    [Fact]
+    public void SetReferrersSupportLevel_ShouldSet_WhenInitiallyUnknown()
+    {
+        var repo = new Repository("localhost:5000/test2");
+        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        repo.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersSupported);
+        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersSupported, repo.ReferrersSupportLevel);
+    }
+    
+    [Fact]
+    public void SetReferrersSupportLevel_ShouldThrowException_WhenChangingAfterSet()
+    {
+        var repo = new Repository("localhost:5000/test2");
+        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        repo.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersSupported);
+        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersSupported, repo.ReferrersSupportLevel);
+        
+        var exception = Assert.Throws<ReferrersSupportLevelAlreadySetException>(() =>
+            repo.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersNotSupported)
+        );
+
+        Assert.Equal("current support level: ReferrersSupported, latest support level: ReferrersNotSupported", exception.Message);
+    }
+    
+    [Fact]
+    public void SetReferrersSupportLevel_ShouldNotThrowException_WhenSettingSameValue()
+    {
+        var repo = new Repository("localhost:5000/test2");
+        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        repo.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersSupported);
+        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersSupported, repo.ReferrersSupportLevel);
+        
+        var exception = Record.Exception(() => repo.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersSupported));
+        Assert.Null(exception);
+    }
+
+    
 }
