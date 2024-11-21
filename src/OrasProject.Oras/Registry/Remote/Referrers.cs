@@ -37,7 +37,8 @@ public class Referrers
     
     internal static string BuildReferrersTag(Descriptor descriptor)
     {
-        return Digest.GetAlgorithm(descriptor.Digest) + "-" + Digest.GetRef(descriptor.Digest);
+        var validatedDigest = Digest.Validate(descriptor.Digest);
+        return validatedDigest.Substring(0, validatedDigest.IndexOf(':')) + "-" + validatedDigest.Substring(validatedDigest.IndexOf(':') + 1);
     }
     
     /// <summary>

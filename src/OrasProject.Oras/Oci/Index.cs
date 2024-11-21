@@ -51,14 +51,7 @@ public class Index : Versioned
             MediaType = Oci.MediaType.ImageIndex,
             SchemaVersion = 2
         };
-        var indexContent = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(index));
-        var indexDesc = new Descriptor()
-        {
-            Digest = Digest.ComputeSHA256(indexContent),
-            MediaType = Oci.MediaType.ImageIndex,
-            Size = indexContent.Length
-        };
-
-        return (indexDesc, indexContent);
+        var indexContent = JsonSerializer.SerializeToUtf8Bytes(index);
+        return (Descriptor.Create(indexContent, Oci.MediaType.ImageIndex), indexContent);
     }
 }

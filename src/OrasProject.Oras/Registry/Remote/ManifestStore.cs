@@ -180,23 +180,30 @@ public class ManifestStore(Repository repository) : IManifestStore
             case MediaType.ImageIndex:
                 if (Repository.ReferrerState == Referrers.ReferrerState.ReferrerSupported)
                 { 
+                    // Push the manifest straightaway when the registry supports referrers API
                     await InternalPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
                     return;
                 }
-
+                
                 var contentBytes = await content.ReadAllAsync(expected, cancellationToken);
                 using (var contentDuplicate = new MemoryStream(contentBytes))
                 {
+                    // Push the manifest when ReferrerState is Unknown or NotSupported
                     await InternalPushAsync(expected, contentDuplicate, reference, cancellationToken).ConfigureAwait(false);
                 }
                 if (Repository.ReferrerState == Referrers.ReferrerState.ReferrerSupported)
                 {
+                    // Early exit when the registry supports Referrers API
+                    // No need to index referrers list
                     return;
                 }
 
                 using (var contentDuplicate = new MemoryStream(contentBytes))
                 {
-                    await ProcessReferrersAndPushIndex(expected, contentDuplicate);
+                    // 1. Index the referrers list using referrers tag schema when manifest contains a subject field
+                    //    And the ReferrerState is not supported
+                    // 2. Or do nothing when the manifest does not contain a subject field when ReferrerState is not supported/unknown
+                    await ProcessReferrersAndPushIndex(expected, contentDuplicate, cancellationToken);
                 }
                 break;
             default:
@@ -239,13 +246,16 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
 
         Repository.ReferrerState = Referrers.ReferrerState.ReferrerNotSupported;
-        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.ReferrerAdd));
+        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.ReferrerAdd), cancellationToken);
     }
 
     /// <summary>
     /// UpdateReferrersIndex updates the referrers index for a given subject by applying the specified referrer changes.
     /// If the referrers index is updated, the new index is pushed to the repository. If referrers 
     /// garbage collection is not skipped, the old index is deleted.
+    /// References:
+    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#pushing-manifests-with-subject
+    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#deleting-manifests
     /// </summary>
     /// <param name="subject"></param>
     /// <param name="referrerChange"></param>
@@ -256,25 +266,36 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         try
         {
+            // 1. pull the original referrers index list using referrers tag schema
             var referrersTag = Referrers.BuildReferrersTag(subject);
-            var (oldDesc, oldReferrers) = await PullReferrersIndexList(referrersTag);
+            var (oldDesc, oldReferrers) = await PullReferrersIndexList(referrersTag, cancellationToken);
+            
+            // 2. apply the referrer change to referrers list
             var updatedReferrers =
                 Referrers.ApplyReferrerChanges(oldReferrers,  referrerChange);
 
+            // 3. push the updated referrers list using referrers tag schema
             if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGc)
             {
+                // push a new index in either case:
+                // 1. the referrers list has been updated with a non-zero size
+                // 2. OR the updated referrers list is empty but referrers GC
+                //    is skipped, in this case an empty index should still be pushed
+                //    as the old index won't get deleted
                 var (indexDesc, indexContent) = Index.GenerateIndex(updatedReferrers);
                 using (var content = new MemoryStream(indexContent))
                 {
                     await InternalPushAsync(indexDesc, content, referrersTag, cancellationToken).ConfigureAwait(false);
                 }
             }
-
+            
             if (repository.Options.SkipReferrersGc || Descriptor.IsEmptyOrNull(oldDesc))
             {
+                // Skip the delete process if SkipReferrersGc is set to true or the old Descriptor is empty or null
                 return;
             }
-
+            
+            // 4. delete the dangling original referrers index, if applicable
             await DeleteAsync(oldDesc, cancellationToken).ConfigureAwait(false);
         }
         catch (NoReferrerUpdateException)
@@ -296,7 +317,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         try
         {
-            var (desc, content) = await FetchAsync(referrersTag);
+            var (desc, content) = await FetchAsync(referrersTag, cancellationToken);
             var index = JsonSerializer.Deserialize<Index>(content);
             if (index == null)
             {
@@ -318,8 +339,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="stream"></param>
     /// <param name="contentReference"></param>
     /// <param name="cancellationToken"></param>
-    private async Task InternalPushAsync(Descriptor expected, Stream stream, string contentReference,
-        CancellationToken cancellationToken)
+    private async Task InternalPushAsync(Descriptor expected, Stream stream, string contentReference, CancellationToken cancellationToken)
     {
         var remoteReference = Repository.ParseReference(contentReference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
@@ -333,7 +353,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
-        response.CheckOciSubjectHeader(Repository);
+        response.CheckOCISubjectHeader(Repository);
         response.VerifyContentDigest(expected.Digest);
     }
 

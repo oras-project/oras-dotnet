@@ -23,6 +23,23 @@ namespace OrasProject.Oras.Tests.Remote;
 public class ReferrersTest
 {
     [Fact]
+    public void BuildReferrersTag_ShouldReturnReferrersTagSuccessfully()
+    {
+        var desc = RandomDescriptor();
+        var index = desc.Digest.IndexOf(':');
+        var expected = desc.Digest.Substring(0, index) + "-" + desc.Digest.Substring(index + 1);
+        Assert.Equal(expected, Referrers.BuildReferrersTag(desc));
+    }
+    
+    [Fact]
+    public void BuildReferrersTag_ShouldThrowInvalidDigestException()
+    {
+        var desc = RandomDescriptor();
+        desc.Digest = "sha123321";
+        Assert.Throws<InvalidDigestException>(() => Referrers.BuildReferrersTag(desc));
+    }
+    
+    [Fact]
     public void ApplyReferrerChanges_ShouldAddNewReferrers()
     {
         var oldDescriptor1 = RandomDescriptor();
