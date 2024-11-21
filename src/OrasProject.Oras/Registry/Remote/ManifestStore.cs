@@ -133,17 +133,20 @@ public class ManifestStore(Repository repository) : IManifestStore
     }
 
     /// <summary>
-    /// Pushes the content, matching the expected descriptor.
+    /// Pushes the manifest content, matching the expected descriptor.
     /// </summary>
     /// <param name="expected"></param>
     /// <param name="content"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
-        => await DoPushAsync(expected, content, expected.Digest, cancellationToken).ConfigureAwait(false);
+    {
+        var remoteReference = Repository.ParseReference(expected.Digest);
+        await DoPushAsync(expected, content, remoteReference, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>
-    /// PushReferenceASync pushes the manifest with a reference tag.
+    /// Pushes the manifest content with a reference tag.
     /// </summary>
     /// <param name="expected"></param>
     /// <param name="content"></param>
@@ -154,19 +157,6 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         var remoteReference = Repository.ParseReference(reference);
         await DoPushAsync(expected, content, remoteReference, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Pushes the manifest content, matching the expected descriptor.
-    /// </summary>
-    /// <param name="expected"></param>
-    /// <param name="stream"></param>
-    /// <param name="contentReference"></param>
-    /// <param name="cancellationToken"></param>
-    private async Task DoPushAsync(Descriptor expected, Stream stream, string contentReference, CancellationToken cancellationToken)
-    {
-        var remoteReference = Repository.ParseReference(contentReference);
-        await DoPushAsync(expected, stream, remoteReference, cancellationToken);
     }
 
     /// <summary>
