@@ -264,44 +264,38 @@ public class ManifestStore(Repository repository) : IManifestStore
     private async Task UpdateReferrersIndex(Descriptor subject,
        Referrers.ReferrerChange referrerChange, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            // 1. pull the original referrers index list using referrers tag schema
-            var referrersTag = Referrers.BuildReferrersTag(subject);
-            var (oldDesc, oldReferrers) = await PullReferrersIndexList(referrersTag, cancellationToken);
-            
-            // 2. apply the referrer change to referrers list
-            var updatedReferrers =
-                Referrers.ApplyReferrerChanges(oldReferrers,  referrerChange);
+        // 1. pull the original referrers index list using referrers tag schema
+        var referrersTag = Referrers.BuildReferrersTag(subject);
+        var (oldDesc, oldReferrers) = await PullReferrersIndexList(referrersTag, cancellationToken);
+        
+        // 2. apply the referrer change to referrers list
+        var (updatedReferrers, updateRequired) =
+            Referrers.ApplyReferrerChanges(oldReferrers,  referrerChange);
+        if (!updateRequired) return;
 
-            // 3. push the updated referrers list using referrers tag schema
-            if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGc)
-            {
-                // push a new index in either case:
-                // 1. the referrers list has been updated with a non-zero size
-                // 2. OR the updated referrers list is empty but referrers GC
-                //    is skipped, in this case an empty index should still be pushed
-                //    as the old index won't get deleted
-                var (indexDesc, indexContent) = Index.GenerateIndex(updatedReferrers);
-                using (var content = new MemoryStream(indexContent))
-                {
-                    await InternalPushAsync(indexDesc, content, referrersTag, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            
-            if (repository.Options.SkipReferrersGc || Descriptor.IsEmptyOrNull(oldDesc))
-            {
-                // Skip the delete process if SkipReferrersGc is set to true or the old Descriptor is empty or null
-                return;
-            }
-            
-            // 4. delete the dangling original referrers index, if applicable
-            await DeleteAsync(oldDesc, cancellationToken).ConfigureAwait(false);
-        }
-        catch (NoReferrerUpdateException)
+        // 3. push the updated referrers list using referrers tag schema
+        if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGC)
         {
+            // push a new index in either case:
+            // 1. the referrers list has been updated with a non-zero size
+            // 2. OR the updated referrers list is empty but referrers GC
+            //    is skipped, in this case an empty index should still be pushed
+            //    as the old index won't get deleted
+            var (indexDesc, indexContent) = Index.GenerateIndex(updatedReferrers);
+            using (var content = new MemoryStream(indexContent))
+            {
+                await InternalPushAsync(indexDesc, content, referrersTag, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        
+        if (repository.Options.SkipReferrersGC || Descriptor.IsEmptyOrNull(oldDesc))
+        {
+            // Skip the delete process if SkipReferrersGC is set to true or the old Descriptor is empty or null
             return;
         }
+        
+        // 4. delete the dangling original referrers index, if applicable
+        await DeleteAsync(oldDesc, cancellationToken).ConfigureAwait(false);
     }
     
     /// <summary>

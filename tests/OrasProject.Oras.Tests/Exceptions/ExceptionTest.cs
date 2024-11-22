@@ -51,14 +51,6 @@ public class ExceptionTest
     }
     
     [Fact]
-    public async Task NoReferrerUpdateException()
-    {
-        await Assert.ThrowsAsync<NoReferrerUpdateException>(() => throw new NoReferrerUpdateException());
-        await Assert.ThrowsAsync<NoReferrerUpdateException>(() => throw new NoReferrerUpdateException("No referrer update"));
-        await Assert.ThrowsAsync<NoReferrerUpdateException>(() => throw new NoReferrerUpdateException("No referrer update", null));
-    }
-    
-    [Fact]
     public async Task ReferrersSupportLevelAlreadySetException()
     {
         await Assert.ThrowsAsync<ReferrersSupportLevelAlreadySetException>(() => throw new ReferrersSupportLevelAlreadySetException());

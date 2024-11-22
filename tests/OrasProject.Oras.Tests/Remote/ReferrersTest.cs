@@ -62,12 +62,13 @@ public class ReferrersTest
             Referrers.ReferrerOperation.ReferrerAdd
         );
 
-        var updatedReferrers = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
+        var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
         Assert.Equal(3, updatedReferrers.Count); 
         for (var i = 0; i < updatedReferrers.Count; ++i)
         {
             Assert.True(AreDescriptorsEqual(updatedReferrers[i], expectedReferrers[i]));
         }
+        Assert.True(updateRequired);
     }
     
     [Fact]
@@ -96,12 +97,13 @@ public class ReferrersTest
             Referrers.ReferrerOperation.ReferrerAdd
         );
 
-        var updatedReferrers = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
+        var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
         Assert.Equal(3, updatedReferrers.Count); 
         for (var i = 0; i < updatedReferrers.Count; ++i)
         {
             Assert.True(AreDescriptorsEqual(updatedReferrers[i], expectedReferrers[i]));
         }
+        Assert.True(updateRequired);
     }
     
     [Fact]
@@ -118,10 +120,9 @@ public class ReferrersTest
             oldDescriptor1,
             Referrers.ReferrerOperation.ReferrerAdd
         );
-
-
-        var exception = Assert.Throws<NoReferrerUpdateException>(() => Referrers.ApplyReferrerChanges(oldReferrers, referrerChange));
-        Assert.Equal("no referrer update in this request", exception.Message);
+        var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
+        Assert.Equal(2, updatedReferrers.Count); 
+        Assert.False(updateRequired);
     }
     
     [Fact]
@@ -145,13 +146,13 @@ public class ReferrersTest
             Referrers.ReferrerOperation.ReferrerAdd
         );
         
-        var updatedReferrers = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
-
+        var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
         Assert.Single(updatedReferrers); 
         for (var i = 0; i < updatedReferrers.Count; ++i)
         {
             Assert.True(AreDescriptorsEqual(updatedReferrers[i], expectedReferrers[i]));
         }
+        Assert.True(updateRequired);
     }
     
     [Fact]
@@ -160,8 +161,9 @@ public class ReferrersTest
         IList<Descriptor> oldReferrers = null;
         Referrers.ReferrerChange referrerChange = null;
         
-        var exception = Assert.Throws<NoReferrerUpdateException>(() => Referrers.ApplyReferrerChanges(oldReferrers, referrerChange));
-        Assert.Equal("referrerChange or oldReferrers is null in this request", exception.Message);
+        var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
+        Assert.Empty(updatedReferrers); 
+        Assert.False(updateRequired);
     }
     
     [Fact]
@@ -170,8 +172,9 @@ public class ReferrersTest
         var oldReferrers = new List<Descriptor>();
         var referrerChange = new Referrers.ReferrerChange(Descriptor.EmptyDescriptor(), Referrers.ReferrerOperation.ReferrerAdd);
         
-        var exception = Assert.Throws<NoReferrerUpdateException>(() => Referrers.ApplyReferrerChanges(oldReferrers, referrerChange));
-        Assert.Equal("no referrer update in this request", exception.Message);
+        var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
+        Assert.Empty(updatedReferrers); 
+        Assert.False(updateRequired);
     }
 
     [Fact]

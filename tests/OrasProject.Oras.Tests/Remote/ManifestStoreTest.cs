@@ -466,4 +466,90 @@ public class ManifestStoreTest
         Assert.Equal(expectedIndexManifestBytes, receivedIndexManifestContent);
         Assert.Equal(expectedIndexReferrersBytes, receivedIndexReferrersContent);
     }
+    
+    [Fact]
+    public async Task ManifestStore_PushAsyncWithSubjectAndNoUpdateRequired()
+    {
+        var (oldManifest, oldManifestBytes) = RandomManifestWithSubject();
+        var oldIndex = new Index()
+        {
+            Manifests = new List<Descriptor>
+            {
+                new ()
+                {
+                    MediaType = MediaType.ImageManifest,
+                    Digest = ComputeSHA256(oldManifestBytes),
+                    Size = oldManifestBytes.Length,
+                    ArtifactType = MediaType.ImageManifest,
+                }
+            },
+            MediaType = MediaType.ImageIndex,
+        };
+        var oldIndexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(oldIndex));
+        var oldIndexDesc = new Descriptor()
+        {
+            Digest = ComputeSHA256(oldIndexBytes),
+            MediaType = MediaType.ImageIndex,
+            Size = oldIndexBytes.Length
+        };
+
+        var expectedManifest = oldManifest;
+        var expectedManifestBytes = oldManifestBytes;
+        var expectedManifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSHA256(oldManifestBytes),
+            Size = oldManifestBytes.Length,
+            ArtifactType = MediaType.ImageManifest,
+        };
+        
+        byte[]? receivedManifestContent = null;
+        var referrersTag = Referrers.BuildReferrersTag(expectedManifest.Subject);
+
+        var mockHttpRequestHandler = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var response = new HttpResponseMessage();
+            response.RequestMessage = req;
+            
+            if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}")
+            {
+                if (req.Content?.Headers?.ContentLength != null)
+                {
+                    var buffer = new byte[req.Content.Headers.ContentLength.Value];
+                    (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buffer, 0);
+                    receivedManifestContent = buffer;
+                }
+                response.Headers.Add(_dockerContentDigestHeader, new[] { expectedManifestDesc.Digest });
+                response.StatusCode = HttpStatusCode.Created;
+                return response;
+            } else if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{referrersTag}")
+            {   
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                response.Content = new ByteArrayContent(oldIndexBytes);
+                response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                response.Headers.Add(_dockerContentDigestHeader, new string[] { oldIndexDesc.Digest });
+                response.StatusCode = HttpStatusCode.OK;
+                return response;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+    
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockHttpRequestHandler),
+            PlainHttp = true,
+        });
+    
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+    
+        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        await store.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
+        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersNotSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(expectedManifestBytes, receivedManifestContent);
+    }
 }
