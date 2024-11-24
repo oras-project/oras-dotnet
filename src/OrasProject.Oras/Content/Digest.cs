@@ -46,6 +46,7 @@ internal static class Digest
 
         return digest;
     }
+
     /// <summary>
     /// Generates a SHA-256 digest from a byte array.
     /// </summary>

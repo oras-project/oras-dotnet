@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -43,14 +44,19 @@ public class Index : Versioned
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public IDictionary<string, string>? Annotations { get; set; }
 
+    public Index() {}
+    
+    [SetsRequiredMembers]
+    public Index(IList<Descriptor> manifests)
+    {
+        Manifests = manifests;
+        MediaType = Oci.MediaType.ImageIndex;
+        SchemaVersion = 2;
+    }
+    
     internal static (Descriptor, byte[]) GenerateIndex(IList<Descriptor> manifests)
     {
-        var index = new Index()
-        {
-            Manifests = manifests,
-            MediaType = Oci.MediaType.ImageIndex,
-            SchemaVersion = 2
-        };
+        var index = new Index(manifests);
         var indexContent = JsonSerializer.SerializeToUtf8Bytes(index);
         return (Descriptor.Create(indexContent, Oci.MediaType.ImageIndex), indexContent);
     }
