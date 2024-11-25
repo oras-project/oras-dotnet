@@ -16,12 +16,25 @@ using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras;
 
+/// <summary>
+/// CopyGraphOptions contains parameters for <see cref="Extensions.CopyGraphAsync(OrasProject.Oras.ITarget,OrasProject.Oras.ITarget,OrasProject.Oras.Oci.Descriptor,System.Threading.CancellationToken)"/>
+/// </summary>
 public struct CopyGraphOptions
 {
+    /// <summary>
+    /// PreCopy handles the current descriptor before it is copied.
+    /// </summary>
     public event Action<Descriptor> PreCopy;
 
+    /// <summary>
+    /// PostCopy handles the current descriptor after it is copied.
+    /// </summary>
     public event Action<Descriptor> PostCopy;
 
+    /// <summary>
+    /// OnCopySkipped will be called when the sub-DAG rooted by the current node
+    /// is skipped.
+    /// </summary>
     public event Action<Descriptor> CopySkipped;
 
     internal void OnPreCopy(Descriptor descriptor)
