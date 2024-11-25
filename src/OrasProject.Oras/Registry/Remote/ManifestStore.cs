@@ -133,17 +133,17 @@ public class ManifestStore(Repository repository) : IManifestStore
     }
 
     /// <summary>
-    /// Pushes the content, matching the expected descriptor.
+    /// Pushes the manifest content, matching the expected descriptor.
     /// </summary>
     /// <param name="expected"></param>
     /// <param name="content"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
-        => await InternalPushAsync(expected, content, expected.Digest, cancellationToken).ConfigureAwait(false);
+        => await PushAsync(expected, content, expected.Digest, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
-    /// PushReferenceASync pushes the manifest with a reference tag.
+    /// Pushes the manifest content with a reference tag.
     /// </summary>
     /// <param name="expected"></param>
     /// <param name="content"></param>
@@ -152,8 +152,8 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, string reference, CancellationToken cancellationToken = default)
     {
-        var contentReference = Repository.ParseReference(reference).ContentReference!;
-        await InternalPushAsync(expected, content, contentReference, cancellationToken).ConfigureAwait(false);
+        var remoteReference = Repository.ParseReference(reference);
+        await DoPushAsync(expected, content, remoteReference, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -163,9 +163,8 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="stream"></param>
     /// <param name="contentReference"></param>
     /// <param name="cancellationToken"></param>
-    private async Task InternalPushAsync(Descriptor expected, Stream stream, string contentReference, CancellationToken cancellationToken)
+    private async Task DoPushAsync(Descriptor expected, Stream stream, Reference remoteReference, CancellationToken cancellationToken)
     {
-        var remoteReference = Repository.ParseReference(contentReference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var request = new HttpRequestMessage(HttpMethod.Put, url);
         request.Content = new StreamContent(stream);
@@ -206,7 +205,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         var remoteReference = Repository.ParseReference(reference);
         using var contentStream = await FetchAsync(descriptor, cancellationToken).ConfigureAwait(false);
-        await InternalPushAsync(descriptor, contentStream, remoteReference.ContentReference!, cancellationToken).ConfigureAwait(false);
+        await DoPushAsync(descriptor, contentStream, remoteReference, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
