@@ -140,10 +140,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
-    {
-        var remoteReference = Repository.ParseReference(expected.Digest);
-        await DoPushAsync(expected, content, remoteReference, cancellationToken).ConfigureAwait(false);
-    }
+        => await PushAsync(expected, content, expected.Digest, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Pushes the manifest content with a reference tag.
