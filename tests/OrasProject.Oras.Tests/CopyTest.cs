@@ -196,7 +196,7 @@ public class CopyTest
         // Tag root node in source
         await src.TagAsync(root, refTag, CancellationToken.None);
 
-        // Prepare copy options with OnCopySkipped
+        // Prepare copy options with OnCopySkippedAsync
         var skippedCount = 0;
         var copyOptions = new CopyOptions
         {
@@ -204,7 +204,11 @@ public class CopyTest
             {
             }
         };
-        copyOptions.CopyGraphOptions.CopySkipped += d => skippedCount++;
+        copyOptions.CopyGraphOptions.CopySkipped += d =>
+        {
+            skippedCount++;
+            return Task.CompletedTask;
+        };
 
         // Copy with the source tag
         var gotDesc = await src.CopyAsync(refTag, dst, "", copyOptions, CancellationToken.None);
@@ -229,7 +233,7 @@ public class CopyTest
         gotDesc = await dst.ResolveAsync(newTag, CancellationToken.None);
         Assert.Equal(root, gotDesc);
 
-        // Verify the OnCopySkipped invocation count
+        // Verify the OnCopySkippedAsync invocation count
         Assert.Equal(1, skippedCount);
     }
     
@@ -419,8 +423,16 @@ public class CopyTest
             }
         };
 
-        copyOptions.CopyGraphOptions.PreCopy += d => preCopyCount++;
-        copyOptions.CopyGraphOptions.PostCopy += d => postCopyCount++;
+        copyOptions.CopyGraphOptions.PreCopy += d =>
+        {
+            preCopyCount++;
+            return Task.CompletedTask;
+        };
+        copyOptions.CopyGraphOptions.PostCopy += d =>
+        {
+            postCopyCount++;
+            return Task.CompletedTask;
+        };
 
         var expectedDesc = descs[6];
         var gotDesc = await src.CopyAsync(refTag, dst, "", copyOptions, cancellationToken);

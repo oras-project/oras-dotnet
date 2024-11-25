@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using System;
+using System.Threading.Tasks;
 using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras;
@@ -24,31 +25,31 @@ public struct CopyGraphOptions
     /// <summary>
     /// PreCopy handles the current descriptor before it is copied.
     /// </summary>
-    public event Action<Descriptor> PreCopy;
+    public event Func<Descriptor, Task> PreCopy;
 
     /// <summary>
     /// PostCopy handles the current descriptor after it is copied.
     /// </summary>
-    public event Action<Descriptor> PostCopy;
+    public event Func<Descriptor, Task> PostCopy;
 
     /// <summary>
-    /// OnCopySkipped will be called when the sub-DAG rooted by the current node
+    /// CopySkipped will be called when the sub-DAG rooted by the current node
     /// is skipped.
     /// </summary>
-    public event Action<Descriptor> CopySkipped;
+    public event Func<Descriptor, Task> CopySkipped;
 
-    internal void OnPreCopy(Descriptor descriptor)
+    internal Task OnPreCopyAsync(Descriptor descriptor)
     {
-        PreCopy?.Invoke(descriptor);
+        return PreCopy?.Invoke(descriptor) ?? Task.CompletedTask;
     }
 
-    internal void OnPostCopy(Descriptor descriptor)
+    internal Task OnPostCopyAsync(Descriptor descriptor)
     {
-        PostCopy?.Invoke(descriptor);
+        return PostCopy?.Invoke(descriptor) ?? Task.CompletedTask;
     }
 
-    internal void OnCopySkipped(Descriptor descriptor)
+    internal Task OnCopySkippedAsync(Descriptor descriptor)
     {
-        CopySkipped?.Invoke(descriptor);
+        return CopySkipped?.Invoke(descriptor) ?? Task.CompletedTask;
     }
 }
