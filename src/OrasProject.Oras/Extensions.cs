@@ -78,7 +78,7 @@ public static class Extensions
         // check if node exists in target
         if (await dst.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
         {
-            await copyGraphOptions.OnCopySkippedAsync(node);
+            await copyGraphOptions.OnCopySkippedAsync(node).ConfigureAwait(false);
             return;
         }
 
@@ -92,12 +92,11 @@ public static class Extensions
         }
 
         // perform the copy
-        await copyGraphOptions.OnPreCopyAsync(node);
+        await copyGraphOptions.OnPreCopyAsync(node).ConfigureAwait(false);
         var dataStream = await src.FetchAsync(node, cancellationToken).ConfigureAwait(false);
         await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
         
         // we copied it
-        await copyGraphOptions.OnPostCopyAsync(node);
+        await copyGraphOptions.OnPostCopyAsync(node).ConfigureAwait(false);
     }
 }
-

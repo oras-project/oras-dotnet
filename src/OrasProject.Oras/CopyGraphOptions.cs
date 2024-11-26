@@ -25,27 +25,27 @@ public struct CopyGraphOptions
     /// <summary>
     /// PreCopy handles the current descriptor before it is copied.
     /// </summary>
-    public event Func<Descriptor, Task> PreCopy;
+    public event Func<Descriptor, Task>? PreCopy;
 
     /// <summary>
     /// PostCopy handles the current descriptor after it is copied.
     /// </summary>
-    public event Func<Descriptor, Task> PostCopy;
+    public event Func<Descriptor, Task>? PostCopy;
 
     /// <summary>
     /// CopySkipped will be called when the sub-DAG rooted by the current node
     /// is skipped.
     /// </summary>
-    public event Func<Descriptor, Task> CopySkipped;
+    public event Func<Descriptor, Task>? CopySkipped;
 
     internal Task OnPreCopyAsync(Descriptor descriptor)
     {
-        return PreCopy?.Invoke(descriptor) ?? Task.CompletedTask;
+        return PreCopy?.InvokeAsync(descriptor) ?? Task.CompletedTask;
     }
 
     internal Task OnPostCopyAsync(Descriptor descriptor)
     {
-        return PostCopy?.Invoke(descriptor) ?? Task.CompletedTask;
+        return PostCopy?.InvokeAsync(descriptor) ?? Task.CompletedTask;
     }
 
     internal Task OnCopySkippedAsync(Descriptor descriptor)
