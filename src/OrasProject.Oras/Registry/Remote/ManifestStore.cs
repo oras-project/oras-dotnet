@@ -137,18 +137,17 @@ public class ManifestStore(Repository repository) : IManifestStore
     }
 
     /// <summary>
-    /// Pushes the content, matching the expected descriptor.
+    /// Pushes the manifest content, matching the expected descriptor.
     /// </summary>
     /// <param name="expected"></param>
     /// <param name="content"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
-        => await PushWithIndexingAsync(expected, content, expected.Digest, cancellationToken).ConfigureAwait(false);
-    
+        => await PushAsync(expected, content, expected.Digest, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
-    /// PushReferenceASync pushes the manifest with a reference tag.
+    /// Pushes the manifest content with a reference tag.
     /// </summary>
     /// <param name="expected"></param>
     /// <param name="content"></param>
@@ -157,8 +156,8 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, string reference, CancellationToken cancellationToken = default)
     {
-        var contentReference = Repository.ParseReference(reference).ContentReference!;
-        await PushWithIndexingAsync(expected, content, contentReference, cancellationToken).ConfigureAwait(false);
+        var remoteReference = Repository.ParseReference(reference);
+        await PushWithIndexingAsync(expected, content, remoteReference, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -171,7 +170,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="reference"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private async Task PushWithIndexingAsync(Descriptor expected, Stream content, string reference,
+    private async Task PushWithIndexingAsync(Descriptor expected, Stream content, Reference reference,
         CancellationToken cancellationToken = default)
     {
         switch (expected.MediaType) 
@@ -181,7 +180,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 if (Repository.ReferrersSupportLevel == Referrers.ReferrersSupportLevel.ReferrersSupported)
                 { 
                     // Push the manifest straightaway when the registry supports referrers API
-                    await InternalPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
+                    await DoPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
                     return;
                 }
                 
@@ -189,7 +188,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 using (var contentDuplicate = new MemoryStream(contentBytes))
                 {
                     // Push the manifest when ReferrerState is Unknown or NotSupported
-                    await InternalPushAsync(expected, contentDuplicate, reference, cancellationToken).ConfigureAwait(false);
+                    await DoPushAsync(expected, contentDuplicate, reference, cancellationToken).ConfigureAwait(false);
                 }
                 if (Repository.ReferrersSupportLevel == Referrers.ReferrersSupportLevel.ReferrersSupported)
                 {
@@ -207,7 +206,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 }
                 break;
             default:
-                await InternalPushAsync(expected, content, reference, cancellationToken);
+                await DoPushAsync(expected, content, reference, cancellationToken);
                 break;
         }
     }
@@ -284,7 +283,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             var (indexDesc, indexContent) = Index.GenerateIndex(updatedReferrers);
             using (var content = new MemoryStream(indexContent))
             {
-                await InternalPushAsync(indexDesc, content, referrersTag, cancellationToken).ConfigureAwait(false);
+                await DoPushAsync(indexDesc, content, Repository.ParseReference(referrersTag), cancellationToken).ConfigureAwait(false);
             }
         }
         
@@ -307,7 +306,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="referrersTag"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    internal async Task<(Descriptor, IList<Descriptor>)> PullReferrersIndexList(string referrersTag, CancellationToken cancellationToken = default)
+    internal async Task<(Descriptor, IList<Descriptor>)> PullReferrersIndexList(String referrersTag, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -333,9 +332,8 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="stream"></param>
     /// <param name="contentReference"></param>
     /// <param name="cancellationToken"></param>
-    private async Task InternalPushAsync(Descriptor expected, Stream stream, string contentReference, CancellationToken cancellationToken)
+    private async Task DoPushAsync(Descriptor expected, Stream stream, Reference remoteReference, CancellationToken cancellationToken)
     {
-        var remoteReference = Repository.ParseReference(contentReference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var request = new HttpRequestMessage(HttpMethod.Put, url);
         request.Content = new StreamContent(stream);
@@ -377,7 +375,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         var remoteReference = Repository.ParseReference(reference);
         using var contentStream = await FetchAsync(descriptor, cancellationToken).ConfigureAwait(false);
-        await InternalPushAsync(descriptor, contentStream, remoteReference.ContentReference!, cancellationToken).ConfigureAwait(false);
+        await DoPushAsync(descriptor, contentStream, remoteReference, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
