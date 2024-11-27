@@ -51,3 +51,6 @@ dotnet_naming_symbols.public_members.applicable_accessibilities = public
 dotnet_naming_symbols.public_members.required_modifiers = 
 
 dotnet_naming_style.public_uppercase_style.capitalization = pascal_case
+
+# CA2007: Consider calling ConfigureAwait on the awaited task
+dotnet_diagnostic.CA2007.severity = warning
