@@ -44,4 +44,4 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          file: ./tests/OrasProject.Oras.Tests/coverage.opencover.xml
+          files: ./tests/OrasProject.Oras.Tests/coverage.opencover.xml
