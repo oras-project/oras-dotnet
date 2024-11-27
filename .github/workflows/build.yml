@@ -40,7 +40,7 @@ jobs:
       - name: Run unit tests
         run: dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover ./tests/OrasProject.Oras.Tests
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
