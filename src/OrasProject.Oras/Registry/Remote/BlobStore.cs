@@ -148,7 +148,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
             url = location.IsAbsoluteUri ? location : new Uri(url, location);
         }
 
-        await CompletePushAsync(url, expected, content, cancellationToken);
+        await CompletePushAsync(url, expected, content, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -255,7 +255,8 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
             return stream;
         }
 
-        await using (var contents = await GetContentStream())
+        var contents = await GetContentStream().ConfigureAwait(false);
+        await using (contents.ConfigureAwait(false))
         {
             await CompletePushAsync(url, descriptor, contents, cancellationToken).ConfigureAwait(false);
         }
