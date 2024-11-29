@@ -198,15 +198,19 @@ public class CopyTest
 
         // Prepare copy options with OnCopySkippedAsync
         var skippedCount = 0;
+        var skippedAsyncCount = 0;
         var copyOptions = new CopyOptions
         {
             CopyGraphOptions = new CopyGraphOptions()
             {
             }
         };
-        copyOptions.CopyGraphOptions.CopySkipped += d =>
+
+        copyOptions.CopyGraphOptions.CopySkipped += _ => skippedCount++;
+
+        copyOptions.CopyGraphOptions.CopySkippedAsync += _ =>
         {
-            skippedCount++;
+            skippedAsyncCount++;
             return Task.CompletedTask;
         };
 
@@ -235,6 +239,7 @@ public class CopyTest
 
         // Verify the OnCopySkippedAsync invocation count
         Assert.Equal(1, skippedCount);
+        Assert.Equal(1, skippedAsyncCount);
     }
     
     [Fact]
@@ -416,6 +421,8 @@ public class CopyTest
         var dst = new MemoryStore();
         var preCopyCount = 0;
         var postCopyCount = 0;
+        var preCopyAsyncCount = 0;
+        var postCopyAsyncCount = 0;
         var copyOptions = new CopyOptions
         {
             CopyGraphOptions = new CopyGraphOptions
@@ -423,14 +430,17 @@ public class CopyTest
             }
         };
 
-        copyOptions.CopyGraphOptions.PreCopy += d =>
+        copyOptions.CopyGraphOptions.PreCopy += _ => preCopyCount++;
+        copyOptions.CopyGraphOptions.PreCopyAsync += d =>
         {
-            preCopyCount++;
+            preCopyAsyncCount++;
             return Task.CompletedTask;
         };
-        copyOptions.CopyGraphOptions.PostCopy += d =>
+
+        copyOptions.CopyGraphOptions.PostCopy += _ => postCopyCount++;
+        copyOptions.CopyGraphOptions.PostCopyAsync += d =>
         {
-            postCopyCount++;
+            postCopyAsyncCount++;
             return Task.CompletedTask;
         };
 
@@ -447,7 +457,9 @@ public class CopyTest
 
         // Verify API counts
         Assert.Equal(7, preCopyCount);
+        Assert.Equal(7, preCopyAsyncCount);
         Assert.Equal(7, postCopyCount);
+        Assert.Equal(7, postCopyAsyncCount);
     }
     
     private class StorageTracker : ITarget

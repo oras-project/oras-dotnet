@@ -23,33 +23,52 @@ namespace OrasProject.Oras;
 public struct CopyGraphOptions
 {
     /// <summary>
+    /// PreCopyAsync handles the current descriptor before it is copied.
+    /// </summary>
+    public event Func<Descriptor, Task>? PreCopyAsync;
+
+    /// <summary>
     /// PreCopy handles the current descriptor before it is copied.
     /// </summary>
-    public event Func<Descriptor, Task>? PreCopy;
+    public event Action<Descriptor>? PreCopy;
+
+    /// <summary>
+    /// PostCopyAsync handles the current descriptor after it is copied.
+    /// </summary>
+    public event Func<Descriptor, Task>? PostCopyAsync;
 
     /// <summary>
     /// PostCopy handles the current descriptor after it is copied.
     /// </summary>
-    public event Func<Descriptor, Task>? PostCopy;
+    public event Action<Descriptor>? PostCopy;
+
+    /// <summary>
+    /// CopySkippedAsync will be called when the sub-DAG rooted by the current node
+    /// is skipped.
+    /// </summary>
+    public event Func<Descriptor, Task>? CopySkippedAsync;
 
     /// <summary>
     /// CopySkipped will be called when the sub-DAG rooted by the current node
     /// is skipped.
     /// </summary>
-    public event Func<Descriptor, Task>? CopySkipped;
+    public event Action<Descriptor>? CopySkipped;
 
     internal Task OnPreCopyAsync(Descriptor descriptor)
     {
-        return PreCopy?.InvokeAsync(descriptor) ?? Task.CompletedTask;
+        PreCopy?.Invoke(descriptor);
+        return PreCopyAsync?.InvokeAsync(descriptor) ?? Task.CompletedTask;
     }
 
     internal Task OnPostCopyAsync(Descriptor descriptor)
     {
-        return PostCopy?.InvokeAsync(descriptor) ?? Task.CompletedTask;
+        PostCopy?.Invoke(descriptor);
+        return PostCopyAsync?.InvokeAsync(descriptor) ?? Task.CompletedTask;
     }
 
     internal Task OnCopySkippedAsync(Descriptor descriptor)
     {
-        return CopySkipped?.Invoke(descriptor) ?? Task.CompletedTask;
+        CopySkipped?.Invoke(descriptor);
+        return CopySkippedAsync?.Invoke(descriptor) ?? Task.CompletedTask;
     }
 }
