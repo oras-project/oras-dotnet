@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace OrasProject.Oras;
@@ -19,21 +20,20 @@ namespace OrasProject.Oras;
 internal static class AsyncInvocationExtensions
 {
     /// <summary>
-    /// Sequentially invokes an event that returns a <see cref="Task"/>.
-    /// Each event listener is executed in sequence, and it's returning
-    /// task awaited before executing the next one.
+    /// Asynchronously invokes all handlers from an event that returns a <see cref="Task"/>.
+    /// <remarks>All handlers are executed in parallel</remarks>
     /// </summary>
     /// <param name="eventDelegate"></param>
     /// <param name="args"></param>
     /// <typeparam name="TEventArgs"></typeparam>
-    internal static async Task InvokeAsync<TEventArgs>(
+    internal static Task InvokeAsync<TEventArgs>(
         this Func<TEventArgs, Task>? eventDelegate, TEventArgs args)
     {
-        if (eventDelegate == null) return;
+        if (eventDelegate == null) return Task.CompletedTask;
 
-        foreach (var handler in eventDelegate.GetInvocationList())
-        {
-            await ((Task?)handler.DynamicInvoke(args) ?? Task.CompletedTask);
-        }
+        var tasks = eventDelegate.GetInvocationList()
+            .Select(d => (Task?)d.DynamicInvoke(args) ?? Task.CompletedTask);
+
+        return Task.WhenAll(tasks);
     }
 }
