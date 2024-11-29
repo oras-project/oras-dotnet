@@ -167,14 +167,14 @@ public class ManifestStoreTest
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
         
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
         await store.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
         Assert.Equal(expectedManifestBytes, receivedManifest);
         
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
         await store.PushAsync(expectedConfigDesc, new MemoryStream(expectedConfigBytes), cancellationToken);
         Assert.Equal(expectedConfigBytes, receivedManifest);
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
     }
     
     
@@ -254,15 +254,15 @@ public class ManifestStoreTest
         var store = new ManifestStore(repo);
         
         // first push with image manifest
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
         await store.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
         Assert.Equal(expectedManifestBytes, receivedManifest);
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
         
         // second push with index manifest
         await store.PushAsync(expectedIndexManifestDesc, new MemoryStream(expectedIndexManifestBytes), cancellationToken);
         Assert.Equal(expectedIndexManifestBytes, receivedManifest);
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
     }
     
     
@@ -377,18 +377,18 @@ public class ManifestStoreTest
         var store = new ManifestStore(repo);
     
         // First push with referrer tag schema
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
         await store.PushAsync(firstExpectedManifestDesc, new MemoryStream(firstExpectedManifestBytes), cancellationToken);
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersNotSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
         Assert.Equal(firstExpectedManifestBytes, receivedManifestContent);
         Assert.True(oldIndexDeleted);
         Assert.Equal(firstExpectedIndexReferrersBytes, receivedIndexContent);
         
         
         // Second push with referrer tag schema
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersNotSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
         await store.PushAsync(secondExpectedManifestDesc, new MemoryStream(secondExpectedManifestBytes), cancellationToken);
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersNotSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
         Assert.Equal(secondExpectedManifestBytes, receivedManifestContent);
         Assert.True(firstIndexDeleted);
         Assert.Equal(secondExpectedIndexReferrersBytes, receivedIndexContent);
@@ -460,9 +460,9 @@ public class ManifestStoreTest
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
     
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
         await store.PushAsync(expectedIndexManifestDesc, new MemoryStream(expectedIndexManifestBytes), cancellationToken);
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersNotSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
         Assert.Equal(expectedIndexManifestBytes, receivedIndexManifestContent);
         Assert.Equal(expectedIndexReferrersBytes, receivedIndexReferrersContent);
     }
@@ -547,9 +547,9 @@ public class ManifestStoreTest
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
     
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
         await store.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersNotSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
         Assert.Equal(expectedManifestBytes, receivedManifestContent);
     }
 }

@@ -156,17 +156,6 @@ public class ReferrersTest
     }
     
     [Fact]
-    public void ApplyReferrerChanges_ThrowsWhenOldAndNewReferrersAreNull()
-    {
-        IList<Descriptor> oldReferrers = null;
-        Referrers.ReferrerChange referrerChange = null;
-        
-        var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
-        Assert.Empty(updatedReferrers); 
-        Assert.False(updateRequired);
-    }
-    
-    [Fact]
     public void ApplyReferrerChanges_ThrowsWhenOldAndNewReferrersAreEmpty()
     {
         var oldReferrers = new List<Descriptor>();

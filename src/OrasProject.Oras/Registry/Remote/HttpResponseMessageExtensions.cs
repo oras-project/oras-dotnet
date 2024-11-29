@@ -112,7 +112,7 @@ internal static class HttpResponseMessageExtensions
         if (response.Headers.TryGetValues("OCI-Subject", out var values))
         {
             // Set it to ReferrerSupported when the response header contains OCI-Subject
-            repository.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersSupported);
+            repository.SetReferrersState(Referrers.ReferrersState.ReferrersSupported);
         }
         
         // If the "OCI-Subject" header is NOT set, it means that either the manifest

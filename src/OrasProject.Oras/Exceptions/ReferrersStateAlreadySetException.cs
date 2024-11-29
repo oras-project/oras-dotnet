@@ -15,18 +15,18 @@ using System;
 
 namespace OrasProject.Oras.Exceptions;
 
-public class ReferrersSupportLevelAlreadySetException : Exception
+public class ReferrersStateAlreadySetException : Exception
 {
-    public ReferrersSupportLevelAlreadySetException()
+    public ReferrersStateAlreadySetException()
     {
     }
 
-    public ReferrersSupportLevelAlreadySetException(string? message)
+    public ReferrersStateAlreadySetException(string? message)
         : base(message)
     {
     }
 
-    public ReferrersSupportLevelAlreadySetException(string? message, Exception? inner)
+    public ReferrersStateAlreadySetException(string? message, Exception? inner)
         : base(message, inner)
     {
     }

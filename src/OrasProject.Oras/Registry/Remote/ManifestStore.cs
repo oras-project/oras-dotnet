@@ -177,7 +177,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         {   
             case MediaType.ImageManifest:
             case MediaType.ImageIndex:
-                if (Repository.ReferrersSupportLevel == Referrers.ReferrersSupportLevel.ReferrersSupported)
+                if (Repository.ReferrersState == Referrers.ReferrersState.ReferrersSupported)
                 { 
                     // Push the manifest straightaway when the registry supports referrers API
                     await DoPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
@@ -190,7 +190,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                     // Push the manifest when ReferrerState is Unknown or NotSupported
                     await DoPushAsync(expected, contentDuplicate, reference, cancellationToken).ConfigureAwait(false);
                 }
-                if (Repository.ReferrersSupportLevel == Referrers.ReferrersSupportLevel.ReferrersSupported)
+                if (Repository.ReferrersState == Referrers.ReferrersState.ReferrersSupported)
                 {
                     // Early exit when the registry supports Referrers API
                     // No need to index referrers list
@@ -244,7 +244,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 return;
         }
         
-        Repository.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersNotSupported);
+        Repository.SetReferrersState(Referrers.ReferrersState.ReferrersNotSupported);
         await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.ReferrerAdd), cancellationToken);
     }
 

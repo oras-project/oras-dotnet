@@ -2546,40 +2546,38 @@ public class RepositoryTest
     }
     
     [Fact]
-    public void SetReferrersSupportLevel_ShouldSet_WhenInitiallyUnknown()
+    public void SetReferrersState_ShouldSet_WhenInitiallyUnknown()
     {
         var repo = new Repository("localhost:5000/test2");
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
-        repo.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersSupported);
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        repo.SetReferrersState(Referrers.ReferrersState.ReferrersSupported);
+        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
     }
     
     [Fact]
-    public void SetReferrersSupportLevel_ShouldThrowException_WhenChangingAfterSet()
+    public void SetReferrersState_ShouldThrowException_WhenChangingAfterSet()
     {
         var repo = new Repository("localhost:5000/test2");
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
-        repo.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersSupported);
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        repo.SetReferrersState(Referrers.ReferrersState.ReferrersSupported);
+        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
         
-        var exception = Assert.Throws<ReferrersSupportLevelAlreadySetException>(() =>
-            repo.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersNotSupported)
+        var exception = Assert.Throws<ReferrersStateAlreadySetException>(() =>
+            repo.SetReferrersState(Referrers.ReferrersState.ReferrersNotSupported)
         );
 
-        Assert.Equal("current support level: ReferrersSupported, latest support level: ReferrersNotSupported", exception.Message);
+        Assert.Equal("current referrers state: ReferrersSupported, latest referrers state: ReferrersNotSupported", exception.Message);
     }
     
     [Fact]
-    public void SetReferrersSupportLevel_ShouldNotThrowException_WhenSettingSameValue()
+    public void SetReferrersState_ShouldNotThrowException_WhenSettingSameValue()
     {
         var repo = new Repository("localhost:5000/test2");
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersUnknown, repo.ReferrersSupportLevel);
-        repo.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersSupported);
-        Assert.Equal(Referrers.ReferrersSupportLevel.ReferrersSupported, repo.ReferrersSupportLevel);
+        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        repo.SetReferrersState(Referrers.ReferrersState.ReferrersSupported);
+        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
         
-        var exception = Record.Exception(() => repo.SetReferrerSupportLevel(Referrers.ReferrersSupportLevel.ReferrersSupported));
+        var exception = Record.Exception(() => repo.SetReferrersState(Referrers.ReferrersState.ReferrersSupported));
         Assert.Null(exception);
     }
-
-    
 }

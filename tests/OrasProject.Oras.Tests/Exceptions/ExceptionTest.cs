@@ -53,8 +53,8 @@ public class ExceptionTest
     [Fact]
     public async Task ReferrersSupportLevelAlreadySetException()
     {
-        await Assert.ThrowsAsync<ReferrersSupportLevelAlreadySetException>(() => throw new ReferrersSupportLevelAlreadySetException());
-        await Assert.ThrowsAsync<ReferrersSupportLevelAlreadySetException>(() => throw new ReferrersSupportLevelAlreadySetException("Referrers support level has already been set"));
-        await Assert.ThrowsAsync<ReferrersSupportLevelAlreadySetException>(() => throw new ReferrersSupportLevelAlreadySetException("Referrers support level has already been set", null));
+        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException());
+        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set"));
+        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set", null));
     }
 }

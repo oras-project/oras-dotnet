@@ -47,8 +47,14 @@ public class Repository : IRepository
 
     public RepositoryOptions Options => _opts;
     
-    internal Referrers.ReferrersSupportLevel ReferrersSupportLevel { get; set; } = Referrers.ReferrersSupportLevel.ReferrersUnknown;
-    
+    private int _referrersState = (int) Referrers.ReferrersState.ReferrersUnknown;
+
+    internal Referrers.ReferrersState ReferrersState
+    {
+        get => (Referrers.ReferrersState) _referrersState;
+        private set => _referrersState = (int) value;
+    }
+
     internal static readonly string[] DefaultManifestMediaTypes =
     [
         Docker.MediaType.Manifest,
@@ -88,28 +94,26 @@ public class Repository : IRepository
     }
 
     /// <summary>
-    /// SetReferrerSupportLevel indicates the Referrers API support level of the remote repository.
+    /// SetReferrersState indicates the Referrers API state of the remote repository.
     ///
-    /// SetReferrerSupportLevel is valid only when it is called for the first time.
-    /// SetReferrerSupportLevel returns ReferrersSupportLevelAlreadySetException if the
-    /// Referrers API support level has been already set.
-    ///   - When the level is set to ReferrersSupported, the Referrers() function will always
+    /// SetReferrersState is valid only when it is called for the first time.
+    /// SetReferrersState returns ReferrersStateAlreadySetException if the
+    /// Referrers API state has been already set.
+    ///   - When the state is set to ReferrersSupported, the Referrers() function will always
     ///     request the Referrers API. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
-    ///   - When the level is set to ReferrersNotSupported, the Referrers() function will always
+    ///   - When the state is set to ReferrersNotSupported, the Referrers() function will always
     ///     request the Referrers Tag. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#referrers-tag-schema
-    ///  - When the capability is not set, the Referrers() function will automatically
+    ///  - When the state is not set, the Referrers() function will automatically
     ///     determine which API to use.
     /// </summary>
-    /// <param name="level"></param>
-    /// <exception cref="ReferrersSupportLevelAlreadySetException"></exception>
-    internal void SetReferrerSupportLevel(Referrers.ReferrersSupportLevel level)
+    /// <param name="state"></param>
+    /// <exception cref="ReferrersStateAlreadySetException"></exception>
+    internal void SetReferrersState(Referrers.ReferrersState state)
     {
-        if (ReferrersSupportLevel == Referrers.ReferrersSupportLevel.ReferrersUnknown)
+        var originalReferrersState = (Referrers.ReferrersState) Interlocked.CompareExchange(ref _referrersState, (int)state, (int)Referrers.ReferrersState.ReferrersUnknown);
+        if (originalReferrersState != Referrers.ReferrersState.ReferrersUnknown && _referrersState != (int) state)
         {
-            ReferrersSupportLevel = level;
-        } else if (ReferrersSupportLevel != level)
-        {
-            throw new ReferrersSupportLevelAlreadySetException($"current support level: {ReferrersSupportLevel}, latest support level: {level}");
+            throw new ReferrersStateAlreadySetException($"current referrers state: {ReferrersState}, latest referrers state: {state}");
         }
     }
 

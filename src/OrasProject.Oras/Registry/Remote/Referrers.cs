@@ -20,11 +20,11 @@ namespace OrasProject.Oras.Registry.Remote;
 
 public class Referrers
 {
-    internal enum ReferrersSupportLevel
+    internal enum ReferrersState
     {
-        ReferrersUnknown,
-        ReferrersSupported,
-        ReferrersNotSupported
+        ReferrersUnknown = 0,
+        ReferrersSupported = 1,
+        ReferrersNotSupported = 2
     }
     
     internal record ReferrerChange(Descriptor Referrer, ReferrerOperation ReferrerOperation);
@@ -51,10 +51,6 @@ public class Referrers
     /// <returns>The updated referrers list, updateRequired</returns>
     internal static (IList<Descriptor>, bool) ApplyReferrerChanges(IList<Descriptor> oldReferrers, ReferrerChange referrerChange)
     {
-        if (oldReferrers == null || referrerChange == null)
-        {
-            return (new List<Descriptor>(), false);
-        }
         // updatedReferrers is a list to store the updated referrers
         var updatedReferrers = new List<Descriptor>();
         // referrerIndexMap is a Dictionary to store referrer as the key
@@ -79,10 +75,24 @@ public class Referrers
             }
             // Update the updatedReferrers list
             // Add referrer index in the referrerIndexMap
+            
+            // delete
+            // ......
+            if (referrerChange.ReferrerOperation == ReferrerOperation.ReferrerDelete)
+            {
+                var toBeDeletedBasicDesc = referrerChange.Referrer.BasicDescriptor;
+                if (basicDesc == toBeDeletedBasicDesc)
+                {
+                    updateRequired = true;
+                    continue;
+                }
+            }
             updatedReferrers.Add(oldReferrer);
             referrerIndexMap[basicDesc] = updatedReferrers.Count - 1;
         }
         
+        // old => 1, 1
+        // new => nil
         if (!Descriptor.IsEmptyOrNull(referrerChange.Referrer))
         {
             var basicDesc = referrerChange.Referrer.BasicDescriptor;
@@ -101,6 +111,8 @@ public class Referrers
                     if (referrerIndexMap.TryGetValue(basicDesc, out var index))
                     {
                         // Delete the referrer only when it existed in the referrerIndexMap
+                        // updatedReferrers.Remove(basicDesc);
+                        
                         updatedReferrers[index] = Descriptor.EmptyDescriptor();
                         referrerIndexMap.Remove(basicDesc);
                     }
