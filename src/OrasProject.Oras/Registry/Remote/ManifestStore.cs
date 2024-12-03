@@ -184,7 +184,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                     return;
                 }
                 
-                var contentBytes = await content.ReadAllAsync(expected, cancellationToken);
+                var contentBytes = await content.ReadAllAsync(expected, cancellationToken).ConfigureAwait(false);
                 using (var contentDuplicate = new MemoryStream(contentBytes))
                 {
                     // Push the manifest when ReferrerState is Unknown or NotSupported
@@ -202,11 +202,11 @@ public class ManifestStore(Repository repository) : IManifestStore
                     // 1. Index the referrers list using referrers tag schema when manifest contains a subject field
                     //    And the ReferrerState is not supported
                     // 2. Or do nothing when the manifest does not contain a subject field when ReferrerState is not supported/unknown
-                    await ProcessReferrersAndPushIndex(expected, contentDuplicate, cancellationToken);
+                    await ProcessReferrersAndPushIndex(expected, contentDuplicate, cancellationToken).ConfigureAwait(false);
                 }
                 break;
             default:
-                await DoPushAsync(expected, content, reference, cancellationToken);
+                await DoPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
                 break;
         }
     }
@@ -245,7 +245,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
         
         Repository.SetReferrersState(Referrers.ReferrersState.ReferrersNotSupported);
-        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.ReferrerAdd), cancellationToken);
+        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.ReferrerAdd), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -265,7 +265,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         // 1. pull the original referrers index list using referrers tag schema
         var referrersTag = Referrers.BuildReferrersTag(subject);
-        var (oldDesc, oldReferrers) = await PullReferrersIndexList(referrersTag, cancellationToken);
+        var (oldDesc, oldReferrers) = await PullReferrersIndexList(referrersTag, cancellationToken).ConfigureAwait(false);
         
         // 2. apply the referrer change to referrers list
         var (updatedReferrers, updateRequired) =
@@ -287,7 +287,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             }
         }
         
-        if (repository.Options.SkipReferrersGC || Descriptor.IsEmptyOrNull(oldDesc))
+        if (repository.Options.SkipReferrersGC || Descriptor.IsEmptyOrInvalid(oldDesc))
         {
             // Skip the delete process if SkipReferrersGC is set to true or the old Descriptor is empty or null
             return;
@@ -310,7 +310,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         try
         {
-            var (desc, content) = await FetchAsync(referrersTag, cancellationToken);
+            var (desc, content) = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
             var index = JsonSerializer.Deserialize<Index>(content);
             if (index == null)
             {

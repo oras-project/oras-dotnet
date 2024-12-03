@@ -52,6 +52,11 @@ public class Referrers
     /// <returns>The updated referrers list, updateRequired</returns>
     internal static (IList<Descriptor>, bool) ApplyReferrerChanges(IList<Descriptor> oldReferrers, ReferrerChange referrerChange)
     {
+        if (Descriptor.IsEmptyOrInvalid(referrerChange.Referrer))
+        {
+            return (oldReferrers, false);
+        }
+        
         // updatedReferrers is a list to store the updated referrers
         var updatedReferrers = new List<Descriptor>();
         // updatedReferrersSet is a HashSet to store unique referrers
@@ -60,7 +65,7 @@ public class Referrers
         var updateRequired = false;
         foreach (var oldReferrer in oldReferrers)
         {
-            if (Descriptor.IsEmptyOrNull(oldReferrer))
+            if (Descriptor.IsEmptyOrInvalid(oldReferrer))
             {
                 // Skip any empty or null referrers
                 updateRequired = true;
@@ -84,19 +89,18 @@ public class Referrers
             updatedReferrersSet.Add(basicDesc);
         }
         
-        if (!Descriptor.IsEmptyOrNull(referrerChange.Referrer))
+
+        var basicReferrerDesc = referrerChange.Referrer.BasicDescriptor;
+        if (referrerChange.ReferrerOperation == ReferrerOperation.ReferrerAdd)
         {
-            var basicDesc = referrerChange.Referrer.BasicDescriptor;
-            if (referrerChange.ReferrerOperation == ReferrerOperation.ReferrerAdd)
+            if (!updatedReferrersSet.Contains(basicReferrerDesc))
             {
-                if (!updatedReferrersSet.Contains(basicDesc))
-                {
-                    // Add the new referrer only when it has not already existed in the updatedReferrersSet
-                    updatedReferrers.Add(referrerChange.Referrer);
-                    updatedReferrersSet.Add(basicDesc);
-                }
+                // Add the new referrer only when it has not already existed in the updatedReferrersSet
+                updatedReferrers.Add(referrerChange.Referrer);
+                updatedReferrersSet.Add(basicReferrerDesc);
             }
         }
+    
         
         // Skip unnecessary update
         if (!updateRequired && updatedReferrersSet.Count == oldReferrers.Count)

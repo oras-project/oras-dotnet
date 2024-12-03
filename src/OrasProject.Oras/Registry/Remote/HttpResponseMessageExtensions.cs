@@ -107,7 +107,7 @@ internal static class HttpResponseMessageExtensions
     /// </summary>
     /// <param name="response"></param>
     /// <param name="repository"></param>
-    public static void CheckOCISubjectHeader(this HttpResponseMessage response, Repository repository)
+    internal static void CheckOCISubjectHeader(this HttpResponseMessage response, Repository repository)
     {
         if (response.Headers.TryGetValues("OCI-Subject", out var values))
         {

@@ -72,7 +72,7 @@ public class Descriptor
 
     internal BasicDescriptor BasicDescriptor => new BasicDescriptor(MediaType, Digest, Size);
 
-    internal static bool IsEmptyOrNull(Descriptor? descriptor)
+    internal static bool IsEmptyOrInvalid(Descriptor? descriptor)
     {
         return descriptor == null || descriptor.Size == 0 || string.IsNullOrEmpty(descriptor.Digest) || string.IsNullOrEmpty(descriptor.MediaType);
     }

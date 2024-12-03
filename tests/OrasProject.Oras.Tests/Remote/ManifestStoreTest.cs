@@ -100,7 +100,7 @@ public class ManifestStoreTest
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
         var (receivedDesc, receivedManifests) = await store.PullReferrersIndexList("test", cancellationToken);
-        Assert.True(Descriptor.IsEmptyOrNull(receivedDesc));
+        Assert.True(Descriptor.IsEmptyOrInvalid(receivedDesc));
         Assert.Empty(receivedManifests);
     }
     
