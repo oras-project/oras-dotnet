@@ -14,6 +14,7 @@
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
+using Index = OrasProject.Oras.Oci.Index;
 using System.Text;
 using System.Text.Json;
 using Xunit;
@@ -195,7 +196,7 @@ public class MemoryStoreTest
 
         var generateIndex = (List<Descriptor> manifests) =>
         {
-            var index = new Oci.Index
+            var index = new Index
             {
                 Manifests = manifests
             };

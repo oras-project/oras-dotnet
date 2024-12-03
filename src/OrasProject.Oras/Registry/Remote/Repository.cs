@@ -46,6 +46,14 @@ public class Repository : IRepository
     public IManifestStore Manifests => new ManifestStore(this);
 
     public RepositoryOptions Options => _opts;
+    
+    private int _referrersState = (int) Referrers.ReferrersState.ReferrersUnknown;
+
+    internal Referrers.ReferrersState ReferrersState
+    {
+        get => (Referrers.ReferrersState) _referrersState;
+        private set => _referrersState = (int) value;
+    }
 
     internal static readonly string[] DefaultManifestMediaTypes =
     [
@@ -83,6 +91,30 @@ public class Repository : IRepository
             throw new InvalidReferenceException("Missing repository");
         }
         _opts = options;
+    }
+
+    /// <summary>
+    /// SetReferrersState indicates the Referrers API state of the remote repository.
+    ///
+    /// SetReferrersState is valid only when it is called for the first time.
+    /// SetReferrersState returns ReferrersStateAlreadySetException if the
+    /// Referrers API state has been already set.
+    ///   - When the state is set to ReferrersSupported, the Referrers() function will always
+    ///     request the Referrers API. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
+    ///   - When the state is set to ReferrersNotSupported, the Referrers() function will always
+    ///     request the Referrers Tag. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#referrers-tag-schema
+    ///  - When the state is not set, the Referrers() function will automatically
+    ///     determine which API to use.
+    /// </summary>
+    /// <param name="state"></param>
+    /// <exception cref="ReferrersStateAlreadySetException"></exception>
+    internal void SetReferrersState(Referrers.ReferrersState state)
+    {
+        var originalReferrersState = (Referrers.ReferrersState) Interlocked.CompareExchange(ref _referrersState, (int)state, (int)Referrers.ReferrersState.ReferrersUnknown);
+        if (originalReferrersState != Referrers.ReferrersState.ReferrersUnknown && _referrersState != (int) state)
+        {
+            throw new ReferrersStateAlreadySetException($"current referrers state: {ReferrersState}, latest referrers state: {state}");
+        }
     }
 
     /// <summary>
