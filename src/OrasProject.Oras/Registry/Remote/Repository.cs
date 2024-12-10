@@ -65,6 +65,8 @@ public class Repository : IRepository
 
     private RepositoryOptions _opts;
 
+    private static readonly Object _referrersPingLock = new();
+
     /// <summary>
     /// Creates a client to the remote repository identified by a reference
     /// Example: localhost:5000/hello-world
@@ -381,4 +383,53 @@ public class Repository : IRepository
     /// <returns></returns>
     public async Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent = null, CancellationToken cancellationToken = default) 
         => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// PingReferrers returns true if the Referrers API is available for the repository,
+    /// otherwise returns false
+    /// </summary>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="ResponseException"></exception>
+    /// <exception cref="Exception"></exception>
+    internal bool PingReferrers(CancellationToken cancellationToken = default)
+    {
+        if (ReferrersState == Referrers.ReferrersState.ReferrersSupported) return true;
+        if (ReferrersState == Referrers.ReferrersState.ReferrersNotSupported) return false;
+
+        lock (_referrersPingLock)
+        {
+            // referrers state is unknown
+            // lock to limit the rate of pinging referrers API
+            if (ReferrersState == Referrers.ReferrersState.ReferrersSupported) return true;
+            if (ReferrersState == Referrers.ReferrersState.ReferrersNotSupported) return false;
+            
+            // var reference = Options.Reference.ContentReference; // ???
+            Options.Reference.ContentReference = Referrers.ZeroDigest;
+            var url = new UriFactory(Options.Reference, Options.PlainHttp).BuildReferrersUrl();
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var response = Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(true).GetAwaiter().GetResult();
+            // Options.Reference.ContentReference = reference;
+            
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    var supported = response.Content.Headers.ContentType?.MediaType == MediaType.ImageIndex;
+                    SetReferrersState(supported ? Referrers.ReferrersState.ReferrersSupported : Referrers.ReferrersState.ReferrersNotSupported);
+                    return supported;
+                case HttpStatusCode.NotFound:
+                    var err = (ResponseException) response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(true).GetAwaiter().GetResult();
+                    if (err.Errors?.First().Code == ResponseException.ErrorCodeNameUnknown)
+                    {
+                        // referrer state is unknown because the repository is not found
+                        throw err;
+                    }
+                    
+                    SetReferrersState(Referrers.ReferrersState.ReferrersNotSupported);
+                    return false;
+                default:
+                    throw response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(true).GetAwaiter().GetResult();
+            }
+        }
+    }
 }

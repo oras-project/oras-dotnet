@@ -40,7 +40,7 @@ public class Util
         ).ReturnsAsync(func);
         return new HttpClient(moqHandler.Object);
     }
-
+    
     public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
     {
         var moqHandler = new Mock<DelegatingHandler>();

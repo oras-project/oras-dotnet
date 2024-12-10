@@ -36,6 +36,10 @@ public class Referrers
         ReferrerDelete,
     }
     
+    // zeroDigest represents a digest that consists of zeros. zeroDigest is used
+    // for pinging Referrers API.
+    internal static readonly string ZeroDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    
     internal static string BuildReferrersTag(Descriptor descriptor)
     {
         var validatedDigest = Digest.Validate(descriptor.Digest);

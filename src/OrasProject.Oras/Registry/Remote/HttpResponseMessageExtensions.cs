@@ -97,7 +97,7 @@ internal static class HttpResponseMessageExtensions
         }
         if (contentDigest != expected)
         {
-            throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {digestStr}");
+            throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {expected}");
         }
     }
     
@@ -109,6 +109,7 @@ internal static class HttpResponseMessageExtensions
     /// <param name="repository"></param>
     internal static void CheckOCISubjectHeader(this HttpResponseMessage response, Repository repository)
     {
+        // response.Content.Headers.TryGetValues ??
         if (response.Headers.TryGetValues("OCI-Subject", out var values))
         {
             // Set it to ReferrerSupported when the response header contains OCI-Subject
