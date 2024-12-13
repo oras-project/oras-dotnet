@@ -177,7 +177,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         {   
             case MediaType.ImageManifest:
             case MediaType.ImageIndex:
-                if (Repository.ReferrersState == Referrers.ReferrersState.ReferrersSupported)
+                if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
                 { 
                     // Push the manifest straightaway when the registry supports referrers API
                     await DoPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
@@ -190,7 +190,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                     // Push the manifest when ReferrerState is Unknown or NotSupported
                     await DoPushAsync(expected, contentDuplicate, reference, cancellationToken).ConfigureAwait(false);
                 }
-                if (Repository.ReferrersState == Referrers.ReferrersState.ReferrersSupported)
+                if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
                 {
                     // Early exit when the registry supports Referrers API
                     // No need to index referrers list
@@ -228,14 +228,20 @@ public class ManifestStore(Repository repository) : IManifestStore
         {
             case MediaType.ImageIndex:
                 var indexManifest = JsonSerializer.Deserialize<Index>(content);
-                if (indexManifest?.Subject == null) return;
+                if (indexManifest?.Subject == null)
+                {
+                    return;
+                }
                 subject = indexManifest.Subject;
                 desc.ArtifactType = indexManifest.ArtifactType;
                 desc.Annotations = indexManifest.Annotations;
                 break;
             case MediaType.ImageManifest:
-                var imageManifest = JsonSerializer.Deserialize<Manifest>(content); 
-                if (imageManifest?.Subject == null) return;
+                var imageManifest = JsonSerializer.Deserialize<Manifest>(content);
+                if (imageManifest?.Subject == null)
+                {
+                    return;
+                }
                 subject = imageManifest.Subject;
                 desc.ArtifactType = string.IsNullOrEmpty(imageManifest.ArtifactType) ? imageManifest.Config.MediaType : imageManifest.ArtifactType;
                 desc.Annotations = imageManifest.Annotations;
@@ -244,7 +250,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 return;
         }
         
-        Repository.SetReferrersState(Referrers.ReferrersState.ReferrersNotSupported);
+        Repository.ReferrersState = Referrers.ReferrersState.NotSupported;
         await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.ReferrerAdd), cancellationToken).ConfigureAwait(false);
     }
 
@@ -306,7 +312,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="referrersTag"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    internal async Task<(Descriptor, IList<Descriptor>)> PullReferrersIndexList(String referrersTag, CancellationToken cancellationToken = default)
+    internal async Task<(Descriptor?, IList<Descriptor>)> PullReferrersIndexList(String referrersTag, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -320,7 +326,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
         catch (NotFoundException)
         {
-            return (Descriptor.EmptyDescriptor(), new List<Descriptor>());
+            return (null, new List<Descriptor>());
         }
     }
     

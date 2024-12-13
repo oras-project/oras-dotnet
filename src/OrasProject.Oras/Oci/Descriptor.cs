@@ -74,10 +74,10 @@ public class Descriptor
 
     internal static bool IsEmptyOrInvalid(Descriptor? descriptor)
     {
-        return descriptor == null || descriptor.Size == 0 || string.IsNullOrEmpty(descriptor.Digest) || string.IsNullOrEmpty(descriptor.MediaType);
+        return descriptor == null || string.IsNullOrEmpty(descriptor.Digest) || string.IsNullOrEmpty(descriptor.MediaType);
     }
     
-    internal static Descriptor EmptyDescriptor() => new ()
+    internal static Descriptor ZeroDescriptor() => new ()
     {
         MediaType = "",
         Digest = "",

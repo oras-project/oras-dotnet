@@ -19,13 +19,13 @@ using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-public class Referrers
+internal static class Referrers
 {
     internal enum ReferrersState
     {
-        ReferrersUnknown = 0,
-        ReferrersSupported = 1,
-        ReferrersNotSupported = 2
+        Unknown = 0,
+        Supported = 1,
+        NotSupported = 2
     }
     
     internal record ReferrerChange(Descriptor Referrer, ReferrerOperation ReferrerOperation);
@@ -38,8 +38,7 @@ public class Referrers
     
     internal static string BuildReferrersTag(Descriptor descriptor)
     {
-        var validatedDigest = Digest.Validate(descriptor.Digest);
-        return validatedDigest.Substring(0, validatedDigest.IndexOf(':')) + "-" + validatedDigest.Substring(validatedDigest.IndexOf(':') + 1);
+        return Digest.Validate(descriptor.Digest).Replace(':', '-');
     }
     
     /// <summary>

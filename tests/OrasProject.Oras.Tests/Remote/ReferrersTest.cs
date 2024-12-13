@@ -230,7 +230,7 @@ public class ReferrersTest
     [Fact]
     public void ApplyReferrerChanges_ShouldNotKeepOldEmptyReferrers()
     {
-        var emptyDesc1 = Descriptor.EmptyDescriptor();
+        var emptyDesc1 = Descriptor.ZeroDescriptor();
         Descriptor? emptyDesc2 = null;
         var newDescriptor = RandomDescriptor();
 
@@ -261,7 +261,7 @@ public class ReferrersTest
     public void ApplyReferrerChanges_NoUpdateWhenOldAndNewReferrersAreEmpty()
     {
         var oldReferrers = new List<Descriptor>();
-        var referrerChange = new Referrers.ReferrerChange(Descriptor.EmptyDescriptor(), Referrers.ReferrerOperation.ReferrerAdd);
+        var referrerChange = new Referrers.ReferrerChange(Descriptor.ZeroDescriptor(), Referrers.ReferrerOperation.ReferrerAdd);
         
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
         Assert.Empty(updatedReferrers); 
