@@ -51,7 +51,7 @@ public struct RepositoryOptions
     /// </summary>
     public int TagListPageSize { get; set; }
 
-    // SkipReferrersGC specifies whether to delete the dangling referrers
+    // SkipReferrersGc specifies whether to delete the dangling referrers
     // index when referrers tag schema is utilized.
     //  - If false, the old referrers index will be deleted after the new one is successfully uploaded.
     //  - If true, the old referrers index is kept.
@@ -59,5 +59,5 @@ public struct RepositoryOptions
     //  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#referrers-tag-schema
     //  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#pushing-manifests-with-subject
     //  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#deleting-manifests
-    public bool SkipReferrersGC { get; set; }
+    public bool SkipReferrersGc { get; set; }
 }

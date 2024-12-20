@@ -107,9 +107,9 @@ internal static class HttpResponseMessageExtensions
     /// </summary>
     /// <param name="response"></param>
     /// <param name="repository"></param>
-    internal static void CheckOCISubjectHeader(this HttpResponseMessage response, Repository repository)
+    internal static void CheckOciSubjectHeader(this HttpResponseMessage response, Repository repository)
     {
-        if (response.Headers.TryGetValues("OCI-Subject", out var values))
+        if (response.Headers.Contains("OCI-Subject"))
         {
             // Set it to Supported when the response header contains OCI-Subject
             repository.ReferrersState = Referrers.ReferrersState.Supported;

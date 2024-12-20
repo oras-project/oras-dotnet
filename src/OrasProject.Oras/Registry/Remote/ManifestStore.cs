@@ -15,9 +15,11 @@ using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -251,7 +253,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
         
         Repository.ReferrersState = Referrers.ReferrersState.NotSupported;
-        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.ReferrerAdd), cancellationToken).ConfigureAwait(false);
+        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.Add), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -276,10 +278,13 @@ public class ManifestStore(Repository repository) : IManifestStore
         // 2. apply the referrer change to referrers list
         var (updatedReferrers, updateRequired) =
             Referrers.ApplyReferrerChanges(oldReferrers,  referrerChange);
-        if (!updateRequired) return;
+        if (!updateRequired)
+        {
+            return;
+        }
 
         // 3. push the updated referrers list using referrers tag schema
-        if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGC)
+        if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGc)
         {
             // push a new index in either case:
             // 1. the referrers list has been updated with a non-zero size
@@ -293,9 +298,9 @@ public class ManifestStore(Repository repository) : IManifestStore
             }
         }
         
-        if (repository.Options.SkipReferrersGC || Descriptor.IsEmptyOrInvalid(oldDesc))
+        if (repository.Options.SkipReferrersGc || Descriptor.IsNullOrInvalid(oldDesc))
         {
-            // Skip the delete process if SkipReferrersGC is set to true or the old Descriptor is empty or null
+            // Skip the delete process if SkipReferrersGc is set to true or the old Descriptor is empty or null
             return;
         }
         
@@ -326,7 +331,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
         catch (NotFoundException)
         {
-            return (null, new List<Descriptor>());
+            return (null, ImmutableArray<Descriptor>.Empty);
         }
     }
     
@@ -351,7 +356,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
-        response.CheckOCISubjectHeader(Repository);
+        response.CheckOciSubjectHeader(Repository);
         response.VerifyContentDigest(expected.Digest);
     }
 

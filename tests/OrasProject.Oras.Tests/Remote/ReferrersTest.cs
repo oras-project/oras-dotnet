@@ -59,7 +59,7 @@ public class ReferrersTest
         };
         var referrerChange = new Referrers.ReferrerChange(
             newDescriptor, 
-            Referrers.ReferrerOperation.ReferrerAdd
+            Referrers.ReferrerOperation.Add
         );
 
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
@@ -92,7 +92,7 @@ public class ReferrersTest
         };
         var referrerChange = new Referrers.ReferrerChange(
             oldDescriptor2, 
-            Referrers.ReferrerOperation.ReferrerDelete
+            Referrers.ReferrerOperation.Delete
         );
 
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
@@ -129,7 +129,7 @@ public class ReferrersTest
         };
         var referrerChange = new Referrers.ReferrerChange(
             oldDescriptor3, 
-            Referrers.ReferrerOperation.ReferrerDelete
+            Referrers.ReferrerOperation.Delete
         );
 
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
@@ -161,7 +161,7 @@ public class ReferrersTest
         };
         var referrerChange = new Referrers.ReferrerChange(
             oldDescriptor3, 
-            Referrers.ReferrerOperation.ReferrerDelete
+            Referrers.ReferrerOperation.Delete
         );
 
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
@@ -196,7 +196,7 @@ public class ReferrersTest
         };
         var referrerChange = new Referrers.ReferrerChange(
             newDescriptor1,
-            Referrers.ReferrerOperation.ReferrerAdd
+            Referrers.ReferrerOperation.Add
         );
 
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
@@ -220,7 +220,7 @@ public class ReferrersTest
         };
         var referrerChange = new Referrers.ReferrerChange(
             oldDescriptor1,
-            Referrers.ReferrerOperation.ReferrerAdd
+            Referrers.ReferrerOperation.Add
         );
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
         Assert.Equal(2, updatedReferrers.Count); 
@@ -245,7 +245,7 @@ public class ReferrersTest
         };
         var referrerChange = new Referrers.ReferrerChange(
             newDescriptor,
-            Referrers.ReferrerOperation.ReferrerAdd
+            Referrers.ReferrerOperation.Add
         );
         
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
@@ -261,7 +261,7 @@ public class ReferrersTest
     public void ApplyReferrerChanges_NoUpdateWhenOldAndNewReferrersAreEmpty()
     {
         var oldReferrers = new List<Descriptor>();
-        var referrerChange = new Referrers.ReferrerChange(Descriptor.ZeroDescriptor(), Referrers.ReferrerOperation.ReferrerAdd);
+        var referrerChange = new Referrers.ReferrerChange(Descriptor.ZeroDescriptor(), Referrers.ReferrerOperation.Add);
         
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
         Assert.Empty(updatedReferrers); 

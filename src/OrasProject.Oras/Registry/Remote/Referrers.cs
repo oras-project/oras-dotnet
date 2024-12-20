@@ -32,8 +32,8 @@ internal static class Referrers
 
     internal enum ReferrerOperation
     {
-        ReferrerAdd,
-        ReferrerDelete,
+        Add,
+        Delete,
     }
     
     internal static string BuildReferrersTag(Descriptor descriptor)
@@ -51,7 +51,7 @@ internal static class Referrers
     /// <returns>The updated referrers list, updateRequired</returns>
     internal static (IList<Descriptor>, bool) ApplyReferrerChanges(IList<Descriptor> oldReferrers, ReferrerChange referrerChange)
     {
-        if (Descriptor.IsEmptyOrInvalid(referrerChange.Referrer))
+        if (Descriptor.IsNullOrInvalid(referrerChange.Referrer))
         {
             return (oldReferrers, false);
         }
@@ -64,7 +64,7 @@ internal static class Referrers
         var updateRequired = false;
         foreach (var oldReferrer in oldReferrers)
         {
-            if (Descriptor.IsEmptyOrInvalid(oldReferrer))
+            if (Descriptor.IsNullOrInvalid(oldReferrer))
             {
                 // Skip any empty or null referrers
                 updateRequired = true;
@@ -79,7 +79,7 @@ internal static class Referrers
             }
             // Update the updatedReferrers list
             // Add referrer index in the updatedReferrersSet
-            if (referrerChange.ReferrerOperation == ReferrerOperation.ReferrerDelete && Descriptor.Equals(basicDesc, referrerChange.Referrer.BasicDescriptor))
+            if (referrerChange.ReferrerOperation == ReferrerOperation.Delete && Descriptor.Equals(basicDesc, referrerChange.Referrer.BasicDescriptor))
             {
                 updateRequired = true;
                 continue;
@@ -88,9 +88,8 @@ internal static class Referrers
             updatedReferrersSet.Add(basicDesc);
         }
         
-
         var basicReferrerDesc = referrerChange.Referrer.BasicDescriptor;
-        if (referrerChange.ReferrerOperation == ReferrerOperation.ReferrerAdd)
+        if (referrerChange.ReferrerOperation == ReferrerOperation.Add)
         {
             if (!updatedReferrersSet.Contains(basicReferrerDesc))
             {
@@ -99,7 +98,6 @@ internal static class Referrers
                 updatedReferrersSet.Add(basicReferrerDesc);
             }
         }
-    
         
         // Skip unnecessary update
         if (!updateRequired && updatedReferrersSet.Count == oldReferrers.Count)
