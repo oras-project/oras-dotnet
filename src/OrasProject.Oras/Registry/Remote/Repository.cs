@@ -46,6 +46,25 @@ public class Repository : IRepository
     public IManifestStore Manifests => new ManifestStore(this);
 
     public RepositoryOptions Options => _opts;
+    
+    private int _referrersState = (int) Referrers.ReferrersState.Unknown;
+
+    /// <summary>
+    /// ReferrersState indicates the Referrers API state of the remote repository.
+    /// ReferrersState can be set only once, otherwise it throws ReferrersStateAlreadySetException.
+    /// </summary>
+    internal Referrers.ReferrersState ReferrersState
+    {
+        get => (Referrers.ReferrersState) _referrersState;
+        set
+        {
+            var originalReferrersState = (Referrers.ReferrersState) Interlocked.CompareExchange(ref _referrersState, (int)value, (int)Referrers.ReferrersState.Unknown);
+            if (originalReferrersState != Referrers.ReferrersState.Unknown && _referrersState != (int)value)
+            {
+                throw new ReferrersStateAlreadySetException($"current referrers state: {ReferrersState}, latest referrers state: {value}");
+            }
+        }
+    }
 
     internal static readonly string[] DefaultManifestMediaTypes =
     [
