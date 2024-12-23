@@ -76,11 +76,4 @@ public class Descriptor
     {
         return descriptor == null || string.IsNullOrEmpty(descriptor.Digest) || string.IsNullOrEmpty(descriptor.MediaType);
     }
-    
-    internal static Descriptor ZeroDescriptor() => new ()
-    {
-        MediaType = "",
-        Digest = "",
-        Size = 0
-    };
 }
