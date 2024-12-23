@@ -26,6 +26,7 @@ namespace OrasProject.Oras.Registry.Remote;
 internal static class HttpResponseMessageExtensions
 {
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
+
     /// <summary>
     /// Parses the error returned by the remote registry.
     /// </summary>
@@ -100,7 +101,7 @@ internal static class HttpResponseMessageExtensions
             throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {digestStr}");
         }
     }
-    
+
     /// <summary>
     /// CheckOciSubjectHeader checks if the response header contains "OCI-Subject",
     /// repository ReferrerState is set to supported if it is present
@@ -114,7 +115,7 @@ internal static class HttpResponseMessageExtensions
             // Set it to Supported when the response header contains OCI-Subject
             repository.ReferrersState = Referrers.ReferrersState.Supported;
         }
-        
+
         // If the "OCI-Subject" header is NOT set, it means that either the manifest
         // has no subject OR the referrers API is NOT supported by the registry.
         // Since we don't know whether the pushed manifest has a subject or not,
