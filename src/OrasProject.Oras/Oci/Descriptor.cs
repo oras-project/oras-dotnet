@@ -13,10 +13,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Text;
 using System.Text.Json.Serialization;
-using OrasProject.Oras.Content;
 
 namespace OrasProject.Oras.Oci;
 
