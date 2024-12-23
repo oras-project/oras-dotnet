@@ -394,22 +394,35 @@ public class Repository : IRepository
     /// <exception cref="Exception"></exception>
     internal bool PingReferrers(CancellationToken cancellationToken = default)
     {
-        if (ReferrersState == Referrers.ReferrersState.ReferrersSupported) return true;
-        if (ReferrersState == Referrers.ReferrersState.ReferrersNotSupported) return false;
+        if (ReferrersState == Referrers.ReferrersState.ReferrersSupported)
+        {
+            return true;
+        }
+
+        if (ReferrersState == Referrers.ReferrersState.ReferrersNotSupported)
+        {
+            return false;
+        }
 
         lock (_referrersPingLock)
         {
             // referrers state is unknown
             // lock to limit the rate of pinging referrers API
-            if (ReferrersState == Referrers.ReferrersState.ReferrersSupported) return true;
-            if (ReferrersState == Referrers.ReferrersState.ReferrersNotSupported) return false;
-            
-            // var reference = Options.Reference.ContentReference; // ???
-            Options.Reference.ContentReference = Referrers.ZeroDigest;
-            var url = new UriFactory(Options.Reference, Options.PlainHttp).BuildReferrersUrl();
+            if (ReferrersState == Referrers.ReferrersState.ReferrersSupported)
+            {
+                return true;
+            }
+
+            if (ReferrersState == Referrers.ReferrersState.ReferrersNotSupported)
+            {
+                return false;
+            }
+
+            var reference = Options.Reference.Clone();
+            reference.ContentReference = Referrers.ZeroDigest;
+            var url = new UriFactory(reference, Options.PlainHttp).BuildReferrersUrl();
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             var response = Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(true).GetAwaiter().GetResult();
-            // Options.Reference.ContentReference = reference;
             
             switch (response.StatusCode)
             {

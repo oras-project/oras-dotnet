@@ -410,9 +410,9 @@ public class ManifestStore(Repository repository) : IManifestStore
                 await IndexReferrersForDelete(target, manifest, cancellationToken).ConfigureAwait(false);
                 break;
         }
-        await Repository.DeleteAsync(target, true, cancellationToken).ConfigureAwait(false); // isManifest true??
-
+        await Repository.DeleteAsync(target, true, cancellationToken).ConfigureAwait(false);
     }
+    
     /// <summary>
     /// IndexReferrersForDelete indexes referrers for manifests with a subject field on manifest delete.
     /// References:
