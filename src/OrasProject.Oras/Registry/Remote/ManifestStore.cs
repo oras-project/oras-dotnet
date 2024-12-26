@@ -273,7 +273,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         if (!updateRequired) return;
 
         // 3. push the updated referrers list using referrers tag schema
-        if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGC)
+        if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGc)
         {
             // push a new index in either case:
             // 1. the referrers list has been updated with a non-zero size
@@ -287,9 +287,9 @@ public class ManifestStore(Repository repository) : IManifestStore
             }
         }
         
-        if (repository.Options.SkipReferrersGC || Descriptor.IsEmptyOrInvalid(oldDesc))
+        if (repository.Options.SkipReferrersGc || Descriptor.IsEmptyOrInvalid(oldDesc))
         {
-            // Skip the delete process if SkipReferrersGC is set to true or the old Descriptor is empty or null
+            // Skip the delete process if SkipReferrersGc is set to true or the old Descriptor is empty or null
             return;
         }
         
