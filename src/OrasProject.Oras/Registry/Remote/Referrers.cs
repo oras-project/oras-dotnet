@@ -103,25 +103,6 @@ internal static class Referrers
             }
         }
         
-        // Skip unnecessary update
-        if (!updateRequired)
-        {
-            // Check for any new referrers in the updatedReferrersSet that are not present in the oldReferrers list
-            foreach (var oldReferrer in oldReferrers)
-            {
-                var basicDesc = oldReferrer.BasicDescriptor;
-                if (!updatedReferrersSet.Contains(basicDesc))
-                {
-                    updateRequired = true;
-                    break;
-                }
-            }
-
-            if (!updateRequired)
-            {
-                return (updatedReferrers, false);
-            }
-        }
-        return (updatedReferrers, true);
+        return (updatedReferrers, updateRequired);
     }
 }

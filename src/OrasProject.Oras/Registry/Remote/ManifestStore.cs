@@ -251,6 +251,8 @@ public class ManifestStore(Repository repository) : IManifestStore
                 return;
         }
         
+        // In this case, the manifest contains a subject field and OCI-Subject Header is not set after pushing the manifest to the registry,
+        // which indicates that the registry does not support referrers API
         Repository.SetReferrersState(false);
         await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.Add), cancellationToken).ConfigureAwait(false);
     }
@@ -324,7 +326,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             var index = JsonSerializer.Deserialize<Index>(content);
             if (index == null)
             {
-                throw new JsonException("null index manifests list");
+                throw new JsonException($"null index manifests list when pulling referrers index list for referrers tag {referrersTag}");
             }
             return (desc, index.Manifests);
         }
