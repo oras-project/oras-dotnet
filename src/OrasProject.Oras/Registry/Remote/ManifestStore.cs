@@ -251,7 +251,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 return;
         }
         
-        Repository.ReferrersState = Referrers.ReferrersState.NotSupported;
+        Repository.SetReferrersState(false);
         await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.Add), cancellationToken).ConfigureAwait(false);
     }
 

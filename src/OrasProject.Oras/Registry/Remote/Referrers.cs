@@ -70,37 +70,41 @@ internal static class Referrers
                 updateRequired = true;
                 continue;
             }
+            
             var basicDesc = oldReferrer.BasicDescriptor;
+            if (referrerChange.ReferrerOperation == ReferrerOperation.Delete && Equals(basicDesc, referrerChange.Referrer.BasicDescriptor))
+            {
+                updateRequired = true;
+                continue;
+            }
+            
             if (updatedReferrersSet.Contains(basicDesc))
             {
                 // Skip any duplicate referrers
                 updateRequired = true;
                 continue;
             }
+            
             // Update the updatedReferrers list
-            // Add referrer index in the updatedReferrersSet
-            if (referrerChange.ReferrerOperation == ReferrerOperation.Delete && Descriptor.Equals(basicDesc, referrerChange.Referrer.BasicDescriptor))
-            {
-                updateRequired = true;
-                continue;
-            }
+            // Add referrer into the updatedReferrersSet
             updatedReferrers.Add(oldReferrer);
             updatedReferrersSet.Add(basicDesc);
         }
         
-        var basicReferrerDesc = referrerChange.Referrer.BasicDescriptor;
         if (referrerChange.ReferrerOperation == ReferrerOperation.Add)
         {
+            var basicReferrerDesc = referrerChange.Referrer.BasicDescriptor;
             if (!updatedReferrersSet.Contains(basicReferrerDesc))
             {
                 // Add the new referrer only when it has not already existed in the updatedReferrersSet
                 updatedReferrers.Add(referrerChange.Referrer);
                 updatedReferrersSet.Add(basicReferrerDesc);
+                updateRequired = true;
             }
         }
         
         // Skip unnecessary update
-        if (!updateRequired && updatedReferrersSet.Count == oldReferrers.Count)
+        if (!updateRequired)
         {
             // Check for any new referrers in the updatedReferrersSet that are not present in the oldReferrers list
             foreach (var oldReferrer in oldReferrers)
