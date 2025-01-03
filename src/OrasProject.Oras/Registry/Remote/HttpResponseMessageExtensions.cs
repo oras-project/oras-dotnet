@@ -103,6 +103,26 @@ internal static class HttpResponseMessageExtensions
     }
 
     /// <summary>
+    /// CheckOciSubjectHeader checks if the response header contains "OCI-Subject",
+    /// repository ReferrerState is set to supported if it is present
+    /// </summary>
+    /// <param name="response"></param>
+    /// <param name="repository"></param>
+    internal static void CheckOciSubjectHeader(this HttpResponseMessage response, Repository repository)
+    {
+        if (repository.ReferrersState == Referrers.ReferrersState.Unknown && response.Headers.Contains("OCI-Subject"))
+        {
+            // Set it to Supported when the response header contains OCI-Subject
+            repository.SetReferrersState(true);
+        }
+
+        // If the "OCI-Subject" header is NOT set, it means that either the manifest
+        // has no subject OR the referrers API is NOT supported by the registry.
+        // Since we don't know whether the pushed manifest has a subject or not,
+        // we do not set the ReferrerState to NotSupported here.
+    }
+
+    /// <summary>
     /// Returns a descriptor generated from the response.
     /// </summary>
     /// <param name="response"></param>

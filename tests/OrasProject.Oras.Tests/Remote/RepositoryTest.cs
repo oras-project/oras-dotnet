@@ -11,8 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Moq;
-using Moq.Protected;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
@@ -27,6 +25,8 @@ using System.Text.RegularExpressions;
 using System.Web;
 using Xunit;
 using static OrasProject.Oras.Content.Digest;
+using static OrasProject.Oras.Tests.Remote.Util.Util;
+using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 
 namespace OrasProject.Oras.Tests.Remote;
 
@@ -122,39 +122,6 @@ public class RepositoryTest
                 ErrExpectedOnGET = true
             }
         };
-    }
-
-    /// <summary>
-    /// AreDescriptorsEqual compares two descriptors and returns true if they are equal.
-    /// </summary>
-    /// <param name="a"></param>
-    /// <param name="b"></param>
-    /// <returns></returns>
-    public bool AreDescriptorsEqual(Descriptor a, Descriptor b)
-    {
-        return a.MediaType == b.MediaType && a.Digest == b.Digest && a.Size == b.Size;
-    }
-
-    public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
-    {
-        var moqHandler = new Mock<DelegatingHandler>();
-        moqHandler.Protected().Setup<Task<HttpResponseMessage>>(
-            "SendAsync",
-            ItExpr.IsAny<HttpRequestMessage>(),
-            ItExpr.IsAny<CancellationToken>()
-        ).ReturnsAsync(func);
-        return new HttpClient(moqHandler.Object);
-    }
-
-    private HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
-    {
-        var moqHandler = new Mock<DelegatingHandler>();
-        moqHandler.Protected().Setup<Task<HttpResponseMessage>>(
-            "SendAsync",
-            ItExpr.IsAny<HttpRequestMessage>(),
-            ItExpr.IsAny<CancellationToken>()
-        ).Returns(func);
-        return new HttpClient(moqHandler.Object);
     }
 
     /// <summary>
@@ -1668,12 +1635,12 @@ public class RepositoryTest
     [Fact]
     public async Task ManifestStore_PushAsync()
     {
-        var manifest = """{"layers":[]}"""u8.ToArray();
+        var (_, manifestBytes) = RandomManifest();
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifest),
-            Size = manifest.Length
+            Digest = ComputeSHA256(manifestBytes),
+            Size = manifestBytes.Length
         };
         byte[]? gotManifest = null;
 
@@ -1687,7 +1654,6 @@ public class RepositoryTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-
                 if (req.Content?.Headers?.ContentLength != null)
                 {
                     var buf = new byte[req.Content.Headers.ContentLength.Value];
@@ -1711,8 +1677,8 @@ public class RepositoryTest
         });
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
-        await store.PushAsync(manifestDesc, new MemoryStream(manifest), cancellationToken);
-        Assert.Equal(manifest, gotManifest);
+        await store.PushAsync(manifestDesc, new MemoryStream(manifestBytes), cancellationToken);
+        Assert.Equal(manifestBytes, gotManifest);
     }
 
     /// <summary>
@@ -2078,14 +2044,15 @@ public class RepositoryTest
     [Fact]
     public async Task ManifestStore_PushReferenceAsync()
     {
-        var index = """{"manifests":[]}"""u8.ToArray();
+        var index = RandomIndex();
+        var indexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(index));
         var indexDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(index),
-            Size = index.Length
+            Digest = ComputeSHA256(indexBytes),
+            Size = indexBytes.Length
         };
-        var gotIndex = new byte[index.Length];
+        var gotIndex = new byte[indexBytes.Length];
         var reference = "foobar";
 
         var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -2123,8 +2090,8 @@ public class RepositoryTest
         });
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
-        await store.PushAsync(indexDesc, new MemoryStream(index), reference, cancellationToken);
-        Assert.Equal(index, gotIndex);
+        await store.PushAsync(indexDesc, new MemoryStream(indexBytes), reference, cancellationToken);
+        Assert.Equal(indexBytes, gotIndex);
     }
 
     /// <summary>
@@ -2576,5 +2543,41 @@ public class RepositoryTest
 
         Assert.Equal(testErr, ex);
         Assert.Equal("post ", sequence);
+    }
+    
+    [Fact]
+    public void SetReferrersState_ShouldSet_WhenInitiallyUnknown()
+    {
+        var repo = new Repository("localhost:5000/test2");
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        repo.ReferrersState = Referrers.ReferrersState.Supported;
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
+    }
+    
+    [Fact]
+    public void SetReferrersState_ShouldThrowException_WhenChangingAfterSet()
+    {
+        var repo = new Repository("localhost:5000/test2");
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        repo.ReferrersState = Referrers.ReferrersState.Supported;
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
+        
+        var exception = Assert.Throws<ReferrersStateAlreadySetException>(() =>
+            repo.ReferrersState = Referrers.ReferrersState.NotSupported
+        );
+
+        Assert.Equal("current referrers state: Supported, latest referrers state: NotSupported", exception.Message);
+    }
+    
+    [Fact]
+    public void SetReferrersState_ShouldNotThrowException_WhenSettingSameValue()
+    {
+        var repo = new Repository("localhost:5000/test2");
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        repo.ReferrersState = Referrers.ReferrersState.Supported;
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
+        
+        var exception = Record.Exception(() => repo.ReferrersState = Referrers.ReferrersState.Supported);
+        Assert.Null(exception);
     }
 }
