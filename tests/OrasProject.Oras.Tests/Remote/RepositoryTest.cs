@@ -22,7 +22,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using Newtonsoft.Json;
 using Xunit;
 using Xunit.Abstractions;
 using static OrasProject.Oras.Content.Digest;
@@ -2571,35 +2570,35 @@ public class RepositoryTest
     public void SetReferrersState_ShouldSet_WhenInitiallyUnknown()
     {
         var repo = new Repository("localhost:5000/test2");
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
-        repo.SetReferrersState(Referrers.ReferrersState.ReferrersSupported);
-        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        repo.ReferrersState = Referrers.ReferrersState.Supported;
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
     
     [Fact]
     public void SetReferrersState_ShouldThrowException_WhenChangingAfterSet()
     {
         var repo = new Repository("localhost:5000/test2");
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
-        repo.SetReferrersState(Referrers.ReferrersState.ReferrersSupported);
-        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        repo.ReferrersState = Referrers.ReferrersState.Supported;
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
         
         var exception = Assert.Throws<ReferrersStateAlreadySetException>(() =>
-            repo.SetReferrersState(Referrers.ReferrersState.ReferrersNotSupported)
+            repo.ReferrersState = Referrers.ReferrersState.NotSupported
         );
 
-        Assert.Equal("current referrers state: ReferrersSupported, latest referrers state: ReferrersNotSupported", exception.Message);
+        Assert.Equal("current referrers state: Supported, latest referrers state: NotSupported", exception.Message);
     }
     
     [Fact]
     public void SetReferrersState_ShouldNotThrowException_WhenSettingSameValue()
     {
         var repo = new Repository("localhost:5000/test2");
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
-        repo.SetReferrersState(Referrers.ReferrersState.ReferrersSupported);
-        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        repo.ReferrersState = Referrers.ReferrersState.Supported;
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
         
-        var exception = Record.Exception(() => repo.SetReferrersState(Referrers.ReferrersState.ReferrersSupported));
+        var exception = Record.Exception(() => repo.ReferrersState = Referrers.ReferrersState.Supported);
         Assert.Null(exception);
     }
 
@@ -2626,9 +2625,9 @@ public class RepositoryTest
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         Assert.True(repo.PingReferrers(cancellationToken));
-        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
     
     [Fact]
@@ -2653,9 +2652,9 @@ public class RepositoryTest
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         Assert.False(repo.PingReferrers(cancellationToken));
-        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
     }
     
     [Fact]
@@ -2695,9 +2694,9 @@ public class RepositoryTest
             HttpClient = CustomClient(mockHttpRequestHandler),
             PlainHttp = true,
         });
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         Assert.Throws<ResponseException>(() => repo.PingReferrers(cancellationToken));
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         
         // referrer API is not supported
         var repo1 = new Repository(new RepositoryOptions()
@@ -2706,9 +2705,9 @@ public class RepositoryTest
             HttpClient = CustomClient(mockHttpRequestHandler),
             PlainHttp = true,
         });
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo1.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo1.ReferrersState);
         Assert.False(repo1.PingReferrers(cancellationToken));
-        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo1.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo1.ReferrersState);
     }
     
     [Fact]
@@ -2728,8 +2727,8 @@ public class RepositoryTest
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         Assert.Throws<ResponseException>(() => repo.PingReferrers(cancellationToken));
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
     }
 }

@@ -13,10 +13,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Text;
 using System.Text.Json.Serialization;
-using OrasProject.Oras.Content;
 
 namespace OrasProject.Oras.Oci;
 
@@ -71,16 +68,9 @@ public class Descriptor
     };
 
     internal BasicDescriptor BasicDescriptor => new BasicDescriptor(MediaType, Digest, Size);
-
-    internal static bool IsEmptyOrInvalid(Descriptor? descriptor)
-    {
-        return descriptor == null || descriptor.Size == 0 || string.IsNullOrEmpty(descriptor.Digest) || string.IsNullOrEmpty(descriptor.MediaType);
-    }
     
-    internal static Descriptor EmptyDescriptor() => new ()
+    internal static bool IsNullOrInvalid(Descriptor? descriptor)
     {
-        MediaType = "",
-        Digest = "",
-        Size = 0
-    };
+        return descriptor == null || string.IsNullOrEmpty(descriptor.Digest) || string.IsNullOrEmpty(descriptor.MediaType);
+    }
 }

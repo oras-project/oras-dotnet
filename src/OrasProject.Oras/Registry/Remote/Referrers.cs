@@ -12,38 +12,34 @@
 // limitations under the License.
 
 using System.Collections.Generic;
-using System.Linq;
 using OrasProject.Oras.Content;
-using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-public class Referrers
+
+internal static class Referrers
 {
     internal enum ReferrersState
     {
-        ReferrersUnknown = 0,
-        ReferrersSupported = 1,
-        ReferrersNotSupported = 2
+        Unknown = 0,
+        Supported = 1,
+        NotSupported = 2
     }
     
     internal record ReferrerChange(Descriptor Referrer, ReferrerOperation ReferrerOperation);
+   
+    internal static readonly string ZeroDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
     internal enum ReferrerOperation
     {
-        ReferrerAdd,
-        ReferrerDelete,
+        Add,
+        Delete,
     }
-    
-    // zeroDigest represents a digest that consists of zeros. zeroDigest is used
-    // for pinging Referrers API.
-    internal static readonly string ZeroDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
     
     internal static string BuildReferrersTag(Descriptor descriptor)
     {
-        var validatedDigest = Digest.Validate(descriptor.Digest);
-        return validatedDigest.Substring(0, validatedDigest.IndexOf(':')) + "-" + validatedDigest.Substring(validatedDigest.IndexOf(':') + 1);
+        return Digest.Validate(descriptor.Digest).Replace(':', '-');
     }
     
     /// <summary>
@@ -56,7 +52,7 @@ public class Referrers
     /// <returns>The updated referrers list, updateRequired</returns>
     internal static (IList<Descriptor>, bool) ApplyReferrerChanges(IList<Descriptor> oldReferrers, ReferrerChange referrerChange)
     {
-        if (Descriptor.IsEmptyOrInvalid(referrerChange.Referrer))
+        if (Descriptor.IsNullOrInvalid(referrerChange.Referrer))
         {
             return (oldReferrers, false);
         }
@@ -69,62 +65,47 @@ public class Referrers
         var updateRequired = false;
         foreach (var oldReferrer in oldReferrers)
         {
-            if (Descriptor.IsEmptyOrInvalid(oldReferrer))
+
+            if (Descriptor.IsNullOrInvalid(oldReferrer))
             {
                 // Skip any empty or null referrers
                 updateRequired = true;
                 continue;
             }
+            
             var basicDesc = oldReferrer.BasicDescriptor;
+            if (referrerChange.ReferrerOperation == ReferrerOperation.Delete && Equals(basicDesc, referrerChange.Referrer.BasicDescriptor))
+            {
+                updateRequired = true;
+                continue;
+            }
+            
             if (updatedReferrersSet.Contains(basicDesc))
             {
                 // Skip any duplicate referrers
                 updateRequired = true;
                 continue;
             }
+            
             // Update the updatedReferrers list
-            // Add referrer index in the updatedReferrersSet
-            if (referrerChange.ReferrerOperation == ReferrerOperation.ReferrerDelete && Descriptor.Equals(basicDesc, referrerChange.Referrer.BasicDescriptor))
-            {
-                updateRequired = true;
-                continue;
-            }
+            // Add referrer into the updatedReferrersSet
             updatedReferrers.Add(oldReferrer);
             updatedReferrersSet.Add(basicDesc);
         }
         
-
-        var basicReferrerDesc = referrerChange.Referrer.BasicDescriptor;
-        if (referrerChange.ReferrerOperation == ReferrerOperation.ReferrerAdd)
+        if (referrerChange.ReferrerOperation == ReferrerOperation.Add)
         {
+            var basicReferrerDesc = referrerChange.Referrer.BasicDescriptor;
             if (!updatedReferrersSet.Contains(basicReferrerDesc))
             {
                 // Add the new referrer only when it has not already existed in the updatedReferrersSet
                 updatedReferrers.Add(referrerChange.Referrer);
                 updatedReferrersSet.Add(basicReferrerDesc);
-            }
-        }
-    
-        
-        // Skip unnecessary update
-        if (!updateRequired && updatedReferrersSet.Count == oldReferrers.Count)
-        {
-            // Check for any new referrers in the updatedReferrersSet that are not present in the oldReferrers list
-            foreach (var oldReferrer in oldReferrers)
-            {
-                var basicDesc = oldReferrer.BasicDescriptor;
-                if (!updatedReferrersSet.Contains(basicDesc))
-                {
-                    updateRequired = true;
-                    break;
-                }
-            }
 
-            if (!updateRequired)
-            {
-                return (updatedReferrers, false);
+                updateRequired = true;
             }
         }
-        return (updatedReferrers, true);
+        
+        return (updatedReferrers, updateRequired);
     }
 }

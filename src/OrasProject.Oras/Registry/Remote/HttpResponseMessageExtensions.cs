@@ -26,6 +26,7 @@ namespace OrasProject.Oras.Registry.Remote;
 internal static class HttpResponseMessageExtensions
 {
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
+    
     /// <summary>
     /// Parses the error returned by the remote registry.
     /// </summary>
@@ -100,27 +101,25 @@ internal static class HttpResponseMessageExtensions
             throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {expected}");
         }
     }
-    
+
     /// <summary>
     /// CheckOciSubjectHeader checks if the response header contains "OCI-Subject",
     /// repository ReferrerState is set to supported if it is present
     /// </summary>
     /// <param name="response"></param>
     /// <param name="repository"></param>
-    internal static void CheckOCISubjectHeader(this HttpResponseMessage response, Repository repository)
+    internal static void CheckOciSubjectHeader(this HttpResponseMessage response, Repository repository)
     {
-        // response.Content.Headers.TryGetValues ??
-        if (response.Headers.TryGetValues("OCI-Subject", out var values))
+        if (repository.ReferrersState == Referrers.ReferrersState.Unknown && response.Headers.Contains("OCI-Subject"))
         {
-            // Set it to ReferrerSupported when the response header contains OCI-Subject
-            repository.SetReferrersState(Referrers.ReferrersState.ReferrersSupported);
+            // Set it to Supported when the response header contains OCI-Subject
+            repository.SetReferrersState(true);
         }
-        
+
         // If the "OCI-Subject" header is NOT set, it means that either the manifest
         // has no subject OR the referrers API is NOT supported by the registry.
-        //
         // Since we don't know whether the pushed manifest has a subject or not,
-        // we do not set the ReferrerState to ReferrerNotSupported here.
+        // we do not set the ReferrerState to NotSupported here.
     }
 
     /// <summary>

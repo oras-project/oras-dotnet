@@ -15,13 +15,14 @@ using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
+using OrasProject.Oras.Content;
+using System.Collections.Immutable;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using OrasProject.Oras.Content;
 using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -177,7 +178,8 @@ public class ManifestStore(Repository repository) : IManifestStore
         {   
             case MediaType.ImageManifest:
             case MediaType.ImageIndex:
-                if (Repository.ReferrersState == Referrers.ReferrersState.ReferrersSupported)
+
+                if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
                 { 
                     // Push the manifest straightaway when the registry supports referrers API
                     await DoPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
@@ -190,7 +192,8 @@ public class ManifestStore(Repository repository) : IManifestStore
                     // Push the manifest when ReferrerState is Unknown or NotSupported
                     await DoPushAsync(expected, contentDuplicate, reference, cancellationToken).ConfigureAwait(false);
                 }
-                if (Repository.ReferrersState == Referrers.ReferrersState.ReferrersSupported)
+
+                if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
                 {
                     // Early exit when the registry supports Referrers API
                     // No need to index referrers list
@@ -228,14 +231,20 @@ public class ManifestStore(Repository repository) : IManifestStore
         {
             case MediaType.ImageIndex:
                 var indexManifest = JsonSerializer.Deserialize<Index>(content);
-                if (indexManifest?.Subject == null) return;
+                if (indexManifest?.Subject == null)
+                {
+                    return;
+                }
                 subject = indexManifest.Subject;
                 desc.ArtifactType = indexManifest.ArtifactType;
                 desc.Annotations = indexManifest.Annotations;
                 break;
             case MediaType.ImageManifest:
-                var imageManifest = JsonSerializer.Deserialize<Manifest>(content); 
-                if (imageManifest?.Subject == null) return;
+                var imageManifest = JsonSerializer.Deserialize<Manifest>(content);
+                if (imageManifest?.Subject == null)
+                {
+                    return;
+                }
                 subject = imageManifest.Subject;
                 desc.ArtifactType = string.IsNullOrEmpty(imageManifest.ArtifactType) ? imageManifest.Config.MediaType : imageManifest.ArtifactType;
                 desc.Annotations = imageManifest.Annotations;
@@ -244,8 +253,10 @@ public class ManifestStore(Repository repository) : IManifestStore
                 return;
         }
         
-        Repository.SetReferrersState(Referrers.ReferrersState.ReferrersNotSupported);
-        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.ReferrerAdd), cancellationToken).ConfigureAwait(false);
+        // In this case, the manifest contains a subject field and OCI-Subject Header is not set after pushing the manifest to the registry,
+        // which indicates that the registry does not support referrers API
+        Repository.SetReferrersState(false);
+        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.Add), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -270,7 +281,10 @@ public class ManifestStore(Repository repository) : IManifestStore
         // 2. apply the referrer change to referrers list
         var (updatedReferrers, updateRequired) =
             Referrers.ApplyReferrerChanges(oldReferrers,  referrerChange);
-        if (!updateRequired) return;
+        if (!updateRequired)
+        {
+            return;
+        }
 
         // 3. push the updated referrers list using referrers tag schema
         if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGc)
@@ -287,7 +301,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             }
         }
         
-        if (repository.Options.SkipReferrersGc || Descriptor.IsEmptyOrInvalid(oldDesc))
+        if (repository.Options.SkipReferrersGc || Descriptor.IsNullOrInvalid(oldDesc))
         {
             // Skip the delete process if SkipReferrersGc is set to true or the old Descriptor is empty or null
             return;
@@ -306,7 +320,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="referrersTag"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    internal async Task<(Descriptor, IList<Descriptor>)> PullReferrersIndexList(String referrersTag, CancellationToken cancellationToken = default)
+    internal async Task<(Descriptor?, IList<Descriptor>)> PullReferrersIndexList(String referrersTag, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -314,13 +328,14 @@ public class ManifestStore(Repository repository) : IManifestStore
             var index = JsonSerializer.Deserialize<Index>(content);
             if (index == null)
             {
-                throw new JsonException("null index manifests list");
+                throw new JsonException($"null index manifests list when pulling referrers index list for referrers tag {referrersTag}");
             }
             return (desc, index.Manifests);
         }
         catch (NotFoundException)
         {
-            return (Descriptor.EmptyDescriptor(), new List<Descriptor>());
+
+            return (null, ImmutableArray<Descriptor>.Empty);
         }
     }
     
@@ -345,7 +360,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
-        response.CheckOCISubjectHeader(Repository);
+        response.CheckOciSubjectHeader(Repository);
         response.VerifyContentDigest(expected.Digest);
     }
 
@@ -400,7 +415,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         {
             case MediaType.ImageManifest:
             case MediaType.ImageIndex:
-                if (Repository.ReferrersState == Referrers.ReferrersState.ReferrersSupported)
+                if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
                 {
                     // referrers API is available, no client-side indexing needed
                     await Repository.DeleteAsync(target, true, cancellationToken).ConfigureAwait(false);
@@ -455,7 +470,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             // referrers API is available, no client-side indexing needed
             return;
         }
-        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(target, Referrers.ReferrerOperation.ReferrerDelete), cancellationToken)
+        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(target, Referrers.ReferrerOperation.Delete), cancellationToken)
             .ConfigureAwait(false);
     }
 }

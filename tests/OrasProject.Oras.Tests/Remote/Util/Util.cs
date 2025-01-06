@@ -51,4 +51,11 @@ public class Util
         ).Returns(func);
         return new HttpClient(moqHandler.Object);
     }
+    
+    public static Descriptor ZeroDescriptor() => new()
+    {
+        MediaType = "",
+        Digest = "",
+        Size = 0
+    };
 }

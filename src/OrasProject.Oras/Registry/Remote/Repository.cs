@@ -47,12 +47,23 @@ public class Repository : IRepository
 
     public RepositoryOptions Options => _opts;
     
-    private int _referrersState = (int) Referrers.ReferrersState.ReferrersUnknown;
+    private int _referrersState = (int) Referrers.ReferrersState.Unknown;
 
+    /// <summary>
+    /// ReferrersState indicates the Referrers API state of the remote repository.
+    /// ReferrersState can be set only once, otherwise it throws ReferrersStateAlreadySetException.
+    /// </summary>
     internal Referrers.ReferrersState ReferrersState
     {
         get => (Referrers.ReferrersState) _referrersState;
-        private set => _referrersState = (int) value;
+        set
+        {
+            var originalReferrersState = (Referrers.ReferrersState) Interlocked.CompareExchange(ref _referrersState, (int)value, (int)Referrers.ReferrersState.Unknown);
+            if (originalReferrersState != Referrers.ReferrersState.Unknown && _referrersState != (int)value)
+            {
+                throw new ReferrersStateAlreadySetException($"current referrers state: {ReferrersState}, latest referrers state: {value}");
+            }
+        }
     }
 
     internal static readonly string[] DefaultManifestMediaTypes =
@@ -93,30 +104,6 @@ public class Repository : IRepository
             throw new InvalidReferenceException("Missing repository");
         }
         _opts = options;
-    }
-
-    /// <summary>
-    /// SetReferrersState indicates the Referrers API state of the remote repository.
-    ///
-    /// SetReferrersState is valid only when it is called for the first time.
-    /// SetReferrersState returns ReferrersStateAlreadySetException if the
-    /// Referrers API state has been already set.
-    ///   - When the state is set to ReferrersSupported, the Referrers() function will always
-    ///     request the Referrers API. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
-    ///   - When the state is set to ReferrersNotSupported, the Referrers() function will always
-    ///     request the Referrers Tag. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#referrers-tag-schema
-    ///  - When the state is not set, the Referrers() function will automatically
-    ///     determine which API to use.
-    /// </summary>
-    /// <param name="state"></param>
-    /// <exception cref="ReferrersStateAlreadySetException"></exception>
-    internal void SetReferrersState(Referrers.ReferrersState state)
-    {
-        var originalReferrersState = (Referrers.ReferrersState) Interlocked.CompareExchange(ref _referrersState, (int)state, (int)Referrers.ReferrersState.ReferrersUnknown);
-        if (originalReferrersState != Referrers.ReferrersState.ReferrersUnknown && _referrersState != (int) state)
-        {
-            throw new ReferrersStateAlreadySetException($"current referrers state: {ReferrersState}, latest referrers state: {state}");
-        }
     }
 
     /// <summary>
@@ -394,12 +381,12 @@ public class Repository : IRepository
     /// <exception cref="Exception"></exception>
     internal bool PingReferrers(CancellationToken cancellationToken = default)
     {
-        if (ReferrersState == Referrers.ReferrersState.ReferrersSupported)
+        if (ReferrersState == Referrers.ReferrersState.Supported)
         {
             return true;
         }
 
-        if (ReferrersState == Referrers.ReferrersState.ReferrersNotSupported)
+        if (ReferrersState == Referrers.ReferrersState.NotSupported)
         {
             return false;
         }
@@ -408,12 +395,12 @@ public class Repository : IRepository
         {
             // referrers state is unknown
             // lock to limit the rate of pinging referrers API
-            if (ReferrersState == Referrers.ReferrersState.ReferrersSupported)
+            if (ReferrersState == Referrers.ReferrersState.Supported)
             {
                 return true;
             }
 
-            if (ReferrersState == Referrers.ReferrersState.ReferrersNotSupported)
+            if (ReferrersState == Referrers.ReferrersState.NotSupported)
             {
                 return false;
             }
@@ -422,27 +409,47 @@ public class Repository : IRepository
             reference.ContentReference = Referrers.ZeroDigest;
             var url = new UriFactory(reference, Options.PlainHttp).BuildReferrersUrl();
             var request = new HttpRequestMessage(HttpMethod.Get, url);
-            var response = Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(true).GetAwaiter().GetResult();
-            
+            var response = Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(true).GetAwaiter()
+                .GetResult();
+
             switch (response.StatusCode)
             {
                 case HttpStatusCode.OK:
                     var supported = response.Content.Headers.ContentType?.MediaType == MediaType.ImageIndex;
-                    SetReferrersState(supported ? Referrers.ReferrersState.ReferrersSupported : Referrers.ReferrersState.ReferrersNotSupported);
+                    SetReferrersState(supported);
                     return supported;
                 case HttpStatusCode.NotFound:
-                    var err = (ResponseException) response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(true).GetAwaiter().GetResult();
+                    var err = (ResponseException)response.ParseErrorResponseAsync(cancellationToken)
+                        .ConfigureAwait(true).GetAwaiter().GetResult();
                     if (err.Errors?.First().Code == ResponseException.ErrorCodeNameUnknown)
                     {
                         // referrer state is unknown because the repository is not found
                         throw err;
                     }
-                    
-                    SetReferrersState(Referrers.ReferrersState.ReferrersNotSupported);
+
+                    SetReferrersState(false);
                     return false;
                 default:
-                    throw response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(true).GetAwaiter().GetResult();
+                    throw response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(true).GetAwaiter()
+                        .GetResult();
             }
         }
+    }
+
+    /// <summary>
+    /// SetReferrersState indicates the Referrers API state of the remote repository. true: supported; false: not supported.
+    /// SetReferrersState is valid only when it is called for the first time.
+    /// SetReferrersState returns ReferrersStateAlreadySetException if the Referrers API state has been already set.
+    ///   - When the state is set to true, the relevant functions will always
+    ///     request the Referrers API. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
+    ///   - When the state is set to false, the relevant functions will always
+    ///     request the Referrers Tag. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#referrers-tag-schema
+    ///   - When the state is not set, the relevant functions will automatically
+    ///     determine which API to use.
+    /// </summary>
+    /// <param name="isSupported"></param>
+    public void SetReferrersState(bool isSupported)
+    {
+        ReferrersState = isSupported ? Referrers.ReferrersState.Supported : Referrers.ReferrersState.NotSupported;
     }
 }

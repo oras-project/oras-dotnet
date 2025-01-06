@@ -24,18 +24,12 @@ using Index = OrasProject.Oras.Oci.Index;
 using Xunit;
 using Xunit.Abstractions;
 
+
 namespace OrasProject.Oras.Tests.Remote;
 
 public class ManifestStoreTest
 {
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
-    
-    private readonly ITestOutputHelper _output;
-
-    public ManifestStoreTest(ITestOutputHelper output)
-    {
-        _output = output;
-    }
     
     [Fact]
     public async Task ManifestStore_PullReferrersIndexListSuccessfully()
@@ -108,7 +102,7 @@ public class ManifestStoreTest
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
         var (receivedDesc, receivedManifests) = await store.PullReferrersIndexList("test", cancellationToken);
-        Assert.True(Descriptor.IsEmptyOrInvalid(receivedDesc));
+        Assert.Null(receivedDesc);
         Assert.Empty(receivedManifests);
     }
     
@@ -175,14 +169,14 @@ public class ManifestStoreTest
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
         
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         await store.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
         Assert.Equal(expectedManifestBytes, receivedManifest);
         
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         await store.PushAsync(expectedConfigDesc, new MemoryStream(expectedConfigBytes), cancellationToken);
         Assert.Equal(expectedConfigBytes, receivedManifest);
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
     }
     
     
@@ -262,15 +256,15 @@ public class ManifestStoreTest
         var store = new ManifestStore(repo);
         
         // first push with image manifest
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         await store.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
         Assert.Equal(expectedManifestBytes, receivedManifest);
-        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
         
         // second push with index manifest
         await store.PushAsync(expectedIndexManifestDesc, new MemoryStream(expectedIndexManifestBytes), cancellationToken);
         Assert.Equal(expectedIndexManifestBytes, receivedManifest);
-        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
     
     
@@ -310,7 +304,6 @@ public class ManifestStoreTest
         };
         var secondExpectedReferrersList = new List<Descriptor>(oldIndex.Manifests);
         secondExpectedReferrersList.Add(secondExpectedManifestDesc);
-
         var (secondExpectedIndexReferrersDesc, secondExpectedIndexReferrersBytes) = Index.GenerateIndex(secondExpectedReferrersList);
         
         byte[]? receivedManifestContent = null;
@@ -352,7 +345,7 @@ public class ManifestStoreTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-
+                
                 response.Content = new ByteArrayContent(oldIndexBytes);
                 response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
                 if (oldIndexDeleted) response.Headers.Add(_dockerContentDigestHeader, new string[] { firstExpectedIndexReferrersDesc.Digest });
@@ -383,6 +376,7 @@ public class ManifestStoreTest
                 response.Headers.Add(_dockerContentDigestHeader, new string[] { firstExpectedIndexReferrersDesc.Digest });
                 response.StatusCode = HttpStatusCode.OK;
                 return response;
+
             } else if (req.Method == HttpMethod.Delete && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{oldIndexDesc.Digest}")
             {
                 response.Headers.Add(_dockerContentDigestHeader, new[] { oldIndexDesc.Digest });
@@ -411,18 +405,18 @@ public class ManifestStoreTest
         var store = new ManifestStore(repo);
     
         // First push with referrer tag schema
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         await store.PushAsync(firstExpectedManifestDesc, new MemoryStream(firstExpectedManifestBytes), cancellationToken);
-        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
         Assert.Equal(firstExpectedManifestBytes, receivedManifestContent);
         Assert.True(oldIndexDeleted);
         Assert.Equal(firstExpectedIndexReferrersBytes, receivedIndexContent);
         
         
         // Second push with referrer tag schema
-        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
         await store.PushAsync(secondExpectedManifestDesc, new MemoryStream(secondExpectedManifestBytes), cancellationToken);
-        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
         Assert.Equal(secondExpectedManifestBytes, receivedManifestContent);
         Assert.True(firstIndexDeleted);
         Assert.Equal(secondExpectedIndexReferrersBytes, receivedIndexContent);
@@ -493,10 +487,10 @@ public class ManifestStoreTest
     
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
-    
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         await store.PushAsync(expectedIndexManifestDesc, new MemoryStream(expectedIndexManifestBytes), cancellationToken);
-        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
         Assert.Equal(expectedIndexManifestBytes, receivedIndexManifestContent);
         Assert.Equal(expectedIndexReferrersBytes, receivedIndexReferrersContent);
     }
@@ -581,12 +575,11 @@ public class ManifestStoreTest
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
     
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         await store.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
-        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
         Assert.Equal(expectedManifestBytes, receivedManifestContent);
     }
-    
     
     [Fact]
     public async Task ManifestStore_DeleteWithSubjectWhenReferrersAPISupported()
@@ -621,12 +614,12 @@ public class ManifestStoreTest
             HttpClient = CustomClient(httpHandler),
             PlainHttp = true,
         });
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
-        repo.SetReferrersState(Referrers.ReferrersState.ReferrersSupported);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        repo.SetReferrersState(true);
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
         await store.DeleteAsync(manifestDesc, cancellationToken);
-        Assert.Equal(Referrers.ReferrersState.ReferrersSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
         Assert.True(manifestDeleted);
     }
     
@@ -675,11 +668,11 @@ public class ManifestStoreTest
             HttpClient = CustomClient(httpHandler),
             PlainHttp = true,
         });
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
         await store.DeleteAsync(manifestDesc, cancellationToken);
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         Assert.True(manifestDeleted);
     }
     
@@ -871,17 +864,17 @@ public class ManifestStoreTest
         var store = new ManifestStore(repo);
         
         // first delete the image manifest
-        Assert.Equal(Referrers.ReferrersState.ReferrersUnknown, repo.ReferrersState); 
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState); 
         await store.DeleteAsync(manifestToDeleteDesc, cancellationToken);
-        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
         Assert.True(manifestDeleted);
         Assert.True(oldIndexDeleted);
         Assert.Equal(firstUpdatedIndexReferrersBytes, receivedIndexContent);
         
         // then delete the image index
-        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState); 
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState); 
         await store.DeleteAsync(indexToDeleteDesc, cancellationToken);
-        Assert.Equal(Referrers.ReferrersState.ReferrersNotSupported, repo.ReferrersState);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
         Assert.True(imageIndexDeleted);
         Assert.True(firstUpdatedIndexDeleted);
         Assert.Equal(secondUpdatedIndexReferrersBytes, receivedIndexContent);
