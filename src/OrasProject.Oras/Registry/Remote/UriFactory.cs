@@ -128,6 +128,4 @@ internal class UriFactory : UriBuilder
         };
         return builder;
     }
-    
-    
 }

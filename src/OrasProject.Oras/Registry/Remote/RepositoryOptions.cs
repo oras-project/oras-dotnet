@@ -51,7 +51,6 @@ public struct RepositoryOptions
     /// </summary>
     public int TagListPageSize { get; set; }
 
-
     /// <summary>
     /// SkipReferrersGc specifies whether to delete the dangling referrers
     /// index when referrers tag schema is utilized.

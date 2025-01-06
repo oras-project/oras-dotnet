@@ -17,7 +17,6 @@ using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-
 internal static class Referrers
 {
     internal enum ReferrersState
@@ -65,7 +64,6 @@ internal static class Referrers
         var updateRequired = false;
         foreach (var oldReferrer in oldReferrers)
         {
-
             if (Descriptor.IsNullOrInvalid(oldReferrer))
             {
                 // Skip any empty or null referrers
@@ -101,7 +99,6 @@ internal static class Referrers
                 // Add the new referrer only when it has not already existed in the updatedReferrersSet
                 updatedReferrers.Add(referrerChange.Referrer);
                 updatedReferrersSet.Add(basicReferrerDesc);
-
                 updateRequired = true;
             }
         }

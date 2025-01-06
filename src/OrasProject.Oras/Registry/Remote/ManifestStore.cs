@@ -178,7 +178,6 @@ public class ManifestStore(Repository repository) : IManifestStore
         {   
             case MediaType.ImageManifest:
             case MediaType.ImageIndex:
-
                 if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
                 { 
                     // Push the manifest straightaway when the registry supports referrers API
@@ -192,7 +191,6 @@ public class ManifestStore(Repository repository) : IManifestStore
                     // Push the manifest when ReferrerState is Unknown or NotSupported
                     await DoPushAsync(expected, contentDuplicate, reference, cancellationToken).ConfigureAwait(false);
                 }
-
                 if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
                 {
                     // Early exit when the registry supports Referrers API
@@ -334,7 +332,6 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
         catch (NotFoundException)
         {
-
             return (null, ImmutableArray<Descriptor>.Empty);
         }
     }
