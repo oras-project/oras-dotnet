@@ -49,4 +49,12 @@ public class ExceptionTest
         await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException("Not found"));
         await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException("Not found", null));
     }
+    
+    [Fact]
+    public async Task ReferrersSupportLevelAlreadySetException()
+    {
+        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException());
+        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set"));
+        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set", null));
+    }
 }

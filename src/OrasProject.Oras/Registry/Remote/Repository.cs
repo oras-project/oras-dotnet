@@ -46,6 +46,25 @@ public class Repository : IRepository
     public IManifestStore Manifests => new ManifestStore(this);
 
     public RepositoryOptions Options => _opts;
+    
+    private int _referrersState = (int) Referrers.ReferrersState.Unknown;
+
+    /// <summary>
+    /// ReferrersState indicates the Referrers API state of the remote repository.
+    /// ReferrersState can be set only once, otherwise it throws ReferrersStateAlreadySetException.
+    /// </summary>
+    internal Referrers.ReferrersState ReferrersState
+    {
+        get => (Referrers.ReferrersState) _referrersState;
+        set
+        {
+            var originalReferrersState = (Referrers.ReferrersState) Interlocked.CompareExchange(ref _referrersState, (int)value, (int)Referrers.ReferrersState.Unknown);
+            if (originalReferrersState != Referrers.ReferrersState.Unknown && _referrersState != (int)value)
+            {
+                throw new ReferrersStateAlreadySetException($"current referrers state: {ReferrersState}, latest referrers state: {value}");
+            }
+        }
+    }
 
     internal static readonly string[] DefaultManifestMediaTypes =
     [
@@ -349,4 +368,21 @@ public class Repository : IRepository
     /// <returns></returns>
     public async Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent = null, CancellationToken cancellationToken = default) 
         => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// SetReferrersState indicates the Referrers API state of the remote repository. true: supported; false: not supported.
+    /// SetReferrersState is valid only when it is called for the first time.
+    /// SetReferrersState returns ReferrersStateAlreadySetException if the Referrers API state has been already set.
+    ///   - When the state is set to true, the relevant functions will always
+    ///     request the Referrers API. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
+    ///   - When the state is set to false, the relevant functions will always
+    ///     request the Referrers Tag. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#referrers-tag-schema
+    ///   - When the state is not set, the relevant functions will automatically
+    ///     determine which API to use.
+    /// </summary>
+    /// <param name="isSupported"></param>
+    public void SetReferrersState(bool isSupported)
+    {
+        ReferrersState = isSupported ? Referrers.ReferrersState.Supported : Referrers.ReferrersState.NotSupported;
+    }
 }

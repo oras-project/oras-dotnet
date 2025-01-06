@@ -146,12 +146,12 @@ public class PackerTest
                 Layers = layers
             };
             var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-            appendBlob(Oci.MediaType.ImageManifest, manifestBytes);
+            appendBlob(MediaType.ImageManifest, manifestBytes);
         };
         var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-        appendBlob(Oci.MediaType.ImageConfig, getBytes("config")); // blob 0
-        appendBlob(Oci.MediaType.ImageLayer, getBytes("hello world")); // blob 1
-        appendBlob(Oci.MediaType.ImageLayer, getBytes("goodbye world")); // blob 2
+        appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
+        appendBlob(MediaType.ImageLayer, getBytes("hello world")); // blob 1
+        appendBlob(MediaType.ImageLayer, getBytes("goodbye world")); // blob 2
         var layers = descs.GetRange(1, 2);
         var configBytes = Encoding.UTF8.GetBytes("{}");
         var configDesc = new Descriptor

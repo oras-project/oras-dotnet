@@ -14,11 +14,16 @@
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using OrasProject.Oras.Content;
+using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
 
@@ -153,9 +158,185 @@ public class ManifestStore(Repository repository) : IManifestStore
     public async Task PushAsync(Descriptor expected, Stream content, string reference, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReference(reference);
-        await DoPushAsync(expected, content, remoteReference, cancellationToken).ConfigureAwait(false);
+        await PushWithIndexingAsync(expected, content, remoteReference, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// PushWithIndexingAsync pushes the given manifest to the repository with indexing support.
+    /// If referrer support is not enabled, the function will first push the content, then process and update 
+    /// the referrers index before pushing the content again. It handles both image manifests and index manifests.
+    /// </summary>
+    /// <param name="expected"></param>
+    /// <param name="content"></param>
+    /// <param name="reference"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    private async Task PushWithIndexingAsync(Descriptor expected, Stream content, Reference reference,
+        CancellationToken cancellationToken = default)
+    {
+        switch (expected.MediaType) 
+        {   
+            case MediaType.ImageManifest:
+            case MediaType.ImageIndex:
+                if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
+                { 
+                    // Push the manifest straightaway when the registry supports referrers API
+                    await DoPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+                
+                var contentBytes = await content.ReadAllAsync(expected, cancellationToken).ConfigureAwait(false);
+                using (var contentDuplicate = new MemoryStream(contentBytes))
+                {
+                    // Push the manifest when ReferrerState is Unknown or NotSupported
+                    await DoPushAsync(expected, contentDuplicate, reference, cancellationToken).ConfigureAwait(false);
+                }
+                if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
+                {
+                    // Early exit when the registry supports Referrers API
+                    // No need to index referrers list
+                    return;
+                }
+
+                using (var contentDuplicate = new MemoryStream(contentBytes))
+                {
+                    // 1. Index the referrers list using referrers tag schema when manifest contains a subject field
+                    //    And the ReferrerState is not supported
+                    // 2. Or do nothing when the manifest does not contain a subject field when ReferrerState is not supported/unknown
+                    await ProcessReferrersAndPushIndex(expected, contentDuplicate, cancellationToken).ConfigureAwait(false);
+                }
+                break;
+            default:
+                await DoPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// ProcessReferrersAndPushIndex processes the referrers for the given descriptor by deserializing its content
+    /// (either as an image manifest or image index), extracting relevant metadata
+    /// such as the subject, artifact type, and annotations, and then updates the 
+    /// referrers index if applicable.
+    /// </summary>
+    /// <param name="desc"></param>
+    /// <param name="content"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    private async Task ProcessReferrersAndPushIndex(Descriptor desc, Stream content, CancellationToken cancellationToken = default)
+    {
+        Descriptor? subject = null;
+        switch (desc.MediaType)
+        {
+            case MediaType.ImageIndex:
+                var indexManifest = JsonSerializer.Deserialize<Index>(content);
+                if (indexManifest?.Subject == null)
+                {
+                    return;
+                }
+                subject = indexManifest.Subject;
+                desc.ArtifactType = indexManifest.ArtifactType;
+                desc.Annotations = indexManifest.Annotations;
+                break;
+            case MediaType.ImageManifest:
+                var imageManifest = JsonSerializer.Deserialize<Manifest>(content);
+                if (imageManifest?.Subject == null)
+                {
+                    return;
+                }
+                subject = imageManifest.Subject;
+                desc.ArtifactType = string.IsNullOrEmpty(imageManifest.ArtifactType) ? imageManifest.Config.MediaType : imageManifest.ArtifactType;
+                desc.Annotations = imageManifest.Annotations;
+                break;
+            default:
+                return;
+        }
+        
+        // In this case, the manifest contains a subject field and OCI-Subject Header is not set after pushing the manifest to the registry,
+        // which indicates that the registry does not support referrers API
+        Repository.SetReferrersState(false);
+        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.Add), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// UpdateReferrersIndex updates the referrers index for a given subject by applying the specified referrer changes.
+    /// If the referrers index is updated, the new index is pushed to the repository. If referrers 
+    /// garbage collection is not skipped, the old index is deleted.
+    /// References:
+    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#pushing-manifests-with-subject
+    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#deleting-manifests
+    /// </summary>
+    /// <param name="subject"></param>
+    /// <param name="referrerChange"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    private async Task UpdateReferrersIndex(Descriptor subject,
+       Referrers.ReferrerChange referrerChange, CancellationToken cancellationToken = default)
+    {
+        // 1. pull the original referrers index list using referrers tag schema
+        var referrersTag = Referrers.BuildReferrersTag(subject);
+        var (oldDesc, oldReferrers) = await PullReferrersIndexList(referrersTag, cancellationToken).ConfigureAwait(false);
+        
+        // 2. apply the referrer change to referrers list
+        var (updatedReferrers, updateRequired) =
+            Referrers.ApplyReferrerChanges(oldReferrers,  referrerChange);
+        if (!updateRequired)
+        {
+            return;
+        }
+
+        // 3. push the updated referrers list using referrers tag schema
+        if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGc)
+        {
+            // push a new index in either case:
+            // 1. the referrers list has been updated with a non-zero size
+            // 2. OR the updated referrers list is empty but referrers GC
+            //    is skipped, in this case an empty index should still be pushed
+            //    as the old index won't get deleted
+            var (indexDesc, indexContent) = Index.GenerateIndex(updatedReferrers);
+            using (var content = new MemoryStream(indexContent))
+            {
+                await DoPushAsync(indexDesc, content, Repository.ParseReference(referrersTag), cancellationToken).ConfigureAwait(false);
+            }
+        }
+        
+        if (repository.Options.SkipReferrersGc || Descriptor.IsNullOrInvalid(oldDesc))
+        {
+            // Skip the delete process if SkipReferrersGc is set to true or the old Descriptor is empty or null
+            return;
+        }
+        
+        // 4. delete the dangling original referrers index, if applicable
+        await DeleteAsync(oldDesc, cancellationToken).ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// PullReferrersIndexList retrieves the referrers index list associated with the given referrers tag.
+    /// It fetches the index manifest from the repository, deserializes it into an `Index` object, 
+    /// and returns the descriptor along with the list of manifests (referrers). If the referrers index is not found, 
+    /// an empty descriptor and an empty list are returned.
+    /// </summary>
+    /// <param name="referrersTag"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    internal async Task<(Descriptor?, IList<Descriptor>)> PullReferrersIndexList(String referrersTag, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var (desc, content) = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
+            var index = JsonSerializer.Deserialize<Index>(content);
+            if (index == null)
+            {
+                throw new JsonException($"null index manifests list when pulling referrers index list for referrers tag {referrersTag}");
+            }
+            return (desc, index.Manifests);
+        }
+        catch (NotFoundException)
+        {
+            return (null, ImmutableArray<Descriptor>.Empty);
+        }
+    }
+    
+    
     /// <summary>
     /// Pushes the manifest content, matching the expected descriptor.
     /// </summary>
@@ -176,6 +357,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
+        response.CheckOciSubjectHeader(Repository);
         response.VerifyContentDigest(expected.Digest);
     }
 
