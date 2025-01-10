@@ -69,8 +69,7 @@ public class ManifestStoreTest
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
-        var store = new ManifestStore(repo);
-        var (receivedDesc, receivedManifests) = await store.PullReferrersIndexList(expectedIndexDesc.Digest, cancellationToken);
+        var (receivedDesc, receivedManifests) = await repo.PullReferrersIndexList(expectedIndexDesc.Digest, cancellationToken);
         Assert.True(AreDescriptorsEqual(expectedIndexDesc, receivedDesc));
         for (var i = 0; i < receivedManifests.Count; ++i)
         {
@@ -98,8 +97,7 @@ public class ManifestStoreTest
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
-        var store = new ManifestStore(repo);
-        var (receivedDesc, receivedManifests) = await store.PullReferrersIndexList("test", cancellationToken);
+        var (receivedDesc, receivedManifests) = await repo.PullReferrersIndexList("test", cancellationToken);
         Assert.Null(receivedDesc);
         Assert.Empty(receivedManifests);
     }

@@ -101,6 +101,14 @@ internal class UriFactory : UriBuilder
         builder.Path += "/blobs/uploads/";
         return builder.Uri;
     }
+    
+    public Uri BuildReferrersUrl(string? artifactType = null)
+    {
+        var query = string.IsNullOrEmpty(artifactType) ? "" : $"?artifactType={artifactType}";
+        var builder = NewRepositoryBaseBuilder();
+        builder.Path += $"/referrers/{_reference.ContentReference}{query}";
+        return builder.Uri;
+    }
 
     /// <summary>
     /// Generates a UriBuilder with the base endpoint of the remote repository.

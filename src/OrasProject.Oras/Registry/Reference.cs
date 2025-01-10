@@ -200,6 +200,11 @@ public class Reference
             return false;
         }
     }
+    
+    public Reference Clone()
+    {
+        return new Reference(Registry, Repository, ContentReference);
+    }
 
     public Reference(string registry) => _registry = ValidateRegistry(registry);
 

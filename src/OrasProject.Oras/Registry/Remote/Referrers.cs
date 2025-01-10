@@ -13,6 +13,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.VisualBasic;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
@@ -120,4 +121,39 @@ internal static class Referrers
         }
         return (updatedReferrers, true);
     }
+    
+    /// <summary>
+    /// IsReferrersFilterApplied checks if requstedFilter is in the applied filters list.
+    /// </summary>
+    /// <param name="appliedFilters"></param>
+    /// <param name="requestedFilter"></param>
+    /// <returns></returns>
+    internal static bool IsReferrersFilterApplied(string? appliedFilters, string requestedFilter) {
+        if (string.IsNullOrEmpty(appliedFilters) || string.IsNullOrEmpty(requestedFilter))
+        {
+            return false;
+        }
+
+        var filters = Strings.Split(appliedFilters, ",");
+        for (int i = 0; i < filters.Length; ++i)
+        {
+            if (filters[i] == requestedFilter)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal static IList<Descriptor> FilterReferrers(IList<Descriptor> referrers, string artifactType)
+    {
+        if (string.IsNullOrEmpty(artifactType))
+        {
+            return referrers;
+        }
+        return referrers.Where(referrer => referrer.ArtifactType == artifactType).ToList();
+    }
 }
+
+
