@@ -15,7 +15,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualBasic;
 using OrasProject.Oras.Content;
-using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -71,55 +70,40 @@ internal static class Referrers
                 updateRequired = true;
                 continue;
             }
+            
             var basicDesc = oldReferrer.BasicDescriptor;
+            if (referrerChange.ReferrerOperation == ReferrerOperation.Delete && Equals(basicDesc, referrerChange.Referrer.BasicDescriptor))
+            {
+                updateRequired = true;
+                continue;
+            }
+            
             if (updatedReferrersSet.Contains(basicDesc))
             {
                 // Skip any duplicate referrers
                 updateRequired = true;
                 continue;
             }
+            
             // Update the updatedReferrers list
-            // Add referrer index in the updatedReferrersSet
-            if (referrerChange.ReferrerOperation == ReferrerOperation.Delete && Descriptor.Equals(basicDesc, referrerChange.Referrer.BasicDescriptor))
-            {
-                updateRequired = true;
-                continue;
-            }
+            // Add referrer into the updatedReferrersSet
             updatedReferrers.Add(oldReferrer);
             updatedReferrersSet.Add(basicDesc);
         }
         
-        var basicReferrerDesc = referrerChange.Referrer.BasicDescriptor;
         if (referrerChange.ReferrerOperation == ReferrerOperation.Add)
         {
+            var basicReferrerDesc = referrerChange.Referrer.BasicDescriptor;
             if (!updatedReferrersSet.Contains(basicReferrerDesc))
             {
                 // Add the new referrer only when it has not already existed in the updatedReferrersSet
                 updatedReferrers.Add(referrerChange.Referrer);
                 updatedReferrersSet.Add(basicReferrerDesc);
+                 updateRequired = true;
             }
         }
         
-        // Skip unnecessary update
-        if (!updateRequired && updatedReferrersSet.Count == oldReferrers.Count)
-        {
-            // Check for any new referrers in the updatedReferrersSet that are not present in the oldReferrers list
-            foreach (var oldReferrer in oldReferrers)
-            {
-                var basicDesc = oldReferrer.BasicDescriptor;
-                if (!updatedReferrersSet.Contains(basicDesc))
-                {
-                    updateRequired = true;
-                    break;
-                }
-            }
-
-            if (!updateRequired)
-            {
-                return (updatedReferrers, false);
-            }
-        }
-        return (updatedReferrers, true);
+        return (updatedReferrers, updateRequired);
     }
     
     /// <summary>
@@ -155,5 +139,4 @@ internal static class Referrers
         return referrers.Where(referrer => referrer.ArtifactType == artifactType).ToList();
     }
 }
-
 

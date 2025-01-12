@@ -14,8 +14,6 @@
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -188,7 +186,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 var contentBytes = await content.ReadAllAsync(expected, cancellationToken).ConfigureAwait(false);
                 using (var contentDuplicate = new MemoryStream(contentBytes))
                 {
-                    // Push the manifest when ReferrerState is Unknown or NotSupportedException
+                    // Push the manifest when ReferrerState is Unknown or NotSupported
                     await DoPushAsync(expected, contentDuplicate, reference, cancellationToken).ConfigureAwait(false);
                 }
                 if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
@@ -251,7 +249,9 @@ public class ManifestStore(Repository repository) : IManifestStore
                 return;
         }
         
-        Repository.ReferrersState = Referrers.ReferrersState.NotSupported;
+        // In this case, the manifest contains a subject field and OCI-Subject Header is not set after pushing the manifest to the registry,
+        // which indicates that the registry does not support referrers API
+        Repository.SetReferrersState(false);
         await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(desc, Referrers.ReferrerOperation.Add), cancellationToken).ConfigureAwait(false);
     }
 
@@ -306,7 +306,6 @@ public class ManifestStore(Repository repository) : IManifestStore
         // 4. delete the dangling original referrers index, if applicable
         await DeleteAsync(oldDesc, cancellationToken).ConfigureAwait(false);
     }
-    
     
     /// <summary>
     /// Pushes the manifest content, matching the expected descriptor.

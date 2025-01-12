@@ -82,7 +82,7 @@ public class Repository : IRepository
     ///   - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
     /// </summary>
     private string _headerOciFiltersApplied = "OCI-Filters-Applied";
-
+    
     internal static readonly string[] DefaultManifestMediaTypes =
     [
         Docker.MediaType.Manifest,
@@ -386,6 +386,7 @@ public class Repository : IRepository
     public async Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent = null, CancellationToken cancellationToken = default) 
         => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
 
+
     public async Task ReferrersAsync(Descriptor descriptor, string artifactType, Action<IList<Descriptor>> fn, CancellationToken cancellationToken = default)
     {
         if (ReferrersState == Referrers.ReferrersState.NotSupported)
@@ -499,7 +500,7 @@ public class Repository : IRepository
             fn(filteredReferrers);
         }
     }
-    
+
     /// <summary>
     /// PullReferrersIndexList retrieves the referrers index list associated with the given referrers tag.
     /// It fetches the index manifest from the repository, deserializes it into an `Index` object, 
@@ -509,7 +510,8 @@ public class Repository : IRepository
     /// <param name="referrersTag"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    internal async Task<(Descriptor?, IList<Descriptor>)> PullReferrersIndexList(String referrersTag, CancellationToken cancellationToken = default)
+    internal async Task<(Descriptor?, IList<Descriptor>)> PullReferrersIndexList(String referrersTag,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -519,11 +521,29 @@ public class Repository : IRepository
             {
                 throw new JsonException($"null index manifests list for referrersTag {referrersTag}");
             }
+
             return (desc, index.Manifests);
         }
         catch (NotFoundException)
         {
             return (null, ImmutableArray<Descriptor>.Empty);
         }
+    }
+
+    /// <summary>
+    /// SetReferrersState indicates the Referrers API state of the remote repository. true: supported; false: not supported.
+    /// SetReferrersState is valid only when it is called for the first time.
+    /// SetReferrersState returns ReferrersStateAlreadySetException if the Referrers API state has been already set.
+    ///   - When the state is set to true, the relevant functions will always
+    ///     request the Referrers API. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
+    ///   - When the state is set to false, the relevant functions will always
+    ///     request the Referrers Tag. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#referrers-tag-schema
+    ///   - When the state is not set, the relevant functions will automatically
+    ///     determine which API to use.
+    /// </summary>
+    /// <param name="isSupported"></param>
+    public void SetReferrersState(bool isSupported)
+    {
+        ReferrersState = isSupported ? Referrers.ReferrersState.Supported : Referrers.ReferrersState.NotSupported;
     }
 }
