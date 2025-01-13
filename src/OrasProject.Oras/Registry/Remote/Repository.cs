@@ -81,7 +81,7 @@ public class Repository : IRepository
     /// Reference:
     ///   - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
     /// </summary>
-    private string _headerOciFiltersApplied = "OCI-Filters-Applied";
+    private const string _headerOciFiltersApplied = "OCI-Filters-Applied";
     
     internal static readonly string[] DefaultManifestMediaTypes =
     [
@@ -387,7 +387,7 @@ public class Repository : IRepository
         => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
 
 
-    public async Task ReferrersAsync(Descriptor descriptor, string artifactType, Action<IList<Descriptor>> fn, CancellationToken cancellationToken = default)
+    public async Task ReferrersAsync(Descriptor descriptor, string? artifactType, Action<IList<Descriptor>> fn, CancellationToken cancellationToken = default)
     {
         if (ReferrersState == Referrers.ReferrersState.NotSupported)
         {
@@ -413,7 +413,7 @@ public class Repository : IRepository
         ReferrersState = Referrers.ReferrersState.Supported;
     }
 
-    internal async Task ReferrersByApi(Descriptor descriptor, string artifactType,
+    internal async Task ReferrersByApi(Descriptor descriptor, string? artifactType,
         Action<IList<Descriptor>> fn,
         CancellationToken cancellationToken = default)
     {
@@ -423,18 +423,19 @@ public class Repository : IRepository
         var url = new UriFactory(reference).BuildReferrersUrl(artifactType);
         while (url != null)
         {
-            url = await ReferrersPageByApi(artifactType, url, fn, cancellationToken).ConfigureAwait(false);
+            url = await ReferrersPageByApi(descriptor, artifactType, url, fn, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    internal async Task<Uri?> ReferrersPageByApi(string artifactType, Uri url, Action<IList<Descriptor>> fn,
+    internal async Task<Uri?> ReferrersPageByApi(Descriptor descriptor, string? artifactType, Uri url, Action<IList<Descriptor>> fn,
         CancellationToken cancellationToken = default)
     {
         if (ReferrerListPageSize > 0)
         {
             var uriBuilder = new UriBuilder(url);
             var query = HttpUtility.ParseQueryString(uriBuilder.Query);
-            query["n"] = ReferrerListPageSize.ToString();
+            query.Add("n", ReferrerListPageSize.ToString());
+            uriBuilder.Query = query.ToString();
             url = uriBuilder.Uri;
         }
         using var response = await _opts.HttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
@@ -461,7 +462,7 @@ public class Repository : IRepository
         {
             throw new NotSupportedException($"unknown content returned {mediaType}, expecting image index");
         }
-
+        response.VerifyContentDigest(descriptor.Digest);
         using var content = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         var referrersIndex = JsonSerializer.Deserialize<Index>(content);
         if (referrersIndex == null)
@@ -478,6 +479,11 @@ public class Repository : IRepository
                     referrers = Referrers.FilterReferrers(referrers, artifactType);
                 }
             }
+            else
+            {
+                //TODO
+                referrers = Referrers.FilterReferrers(referrers, artifactType);
+            }
         }
 
         if (referrers.Count > 0)
@@ -487,12 +493,21 @@ public class Repository : IRepository
 
         return response.ParseLink();
     }
-
-    internal async Task ReferrersByTagSchema(Descriptor descriptor, string artifactType, Action<IList<Descriptor>> fn,
+    
+    /// <summary>
+    /// ReferrersByTagSchema retrieves referrers based on referrers tag schema, filters out referrers based on specified artifact type
+    /// and invoke callback function fn when referrers are returned.
+    /// 
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#backwards-compatibility
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="artifactType"></param>
+    /// <param name="fn"></param>
+    /// <param name="cancellationToken"></param>
+    internal async Task ReferrersByTagSchema(Descriptor descriptor, string? artifactType, Action<IList<Descriptor>> fn,
         CancellationToken cancellationToken = default)
     {
         var referrersTag = Referrers.BuildReferrersTag(descriptor);
-        // TODO: test empty referrers
         var (_, referrers) = await PullReferrersIndexList(referrersTag, cancellationToken).ConfigureAwait(false);
         var filteredReferrers = Referrers.FilterReferrers(referrers, artifactType);
         if (filteredReferrers.Count > 0)

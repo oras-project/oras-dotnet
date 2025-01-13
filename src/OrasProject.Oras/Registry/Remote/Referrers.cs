@@ -129,14 +129,16 @@ internal static class Referrers
 
         return false;
     }
-
-    internal static IList<Descriptor> FilterReferrers(IList<Descriptor> referrers, string artifactType)
+    
+    /// <summary>
+    /// FilterReferrers filters out a list of referrers based on the specified artifact type
+    /// </summary>
+    /// <param name="referrers"></param>
+    /// <param name="artifactType"></param>
+    /// <returns></returns>
+    internal static IList<Descriptor> FilterReferrers(IList<Descriptor> referrers, string? artifactType)
     {
-        if (string.IsNullOrEmpty(artifactType))
-        {
-            return referrers;
-        }
-        return referrers.Where(referrer => referrer.ArtifactType == artifactType).ToList();
+        return string.IsNullOrEmpty(artifactType) ? referrers : referrers.Where(referrer => referrer.ArtifactType == artifactType).ToList();
     }
 }
 
