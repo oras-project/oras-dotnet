@@ -262,7 +262,7 @@ public class ReferrersTest
     {
         var oldReferrers = new List<Descriptor>();
         var referrerChange = new Referrers.ReferrerChange(ZeroDescriptor(), Referrers.ReferrerOperation.Add);
-       
+        
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
         Assert.Empty(updatedReferrers); 
         Assert.False(updateRequired);
