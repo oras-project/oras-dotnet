@@ -23,7 +23,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
 using Xunit;
-using Xunit.Abstractions;
 using static OrasProject.Oras.Content.Digest;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
