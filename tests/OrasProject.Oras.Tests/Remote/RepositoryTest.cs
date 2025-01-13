@@ -46,14 +46,6 @@ public class RepositoryTest
     private const string _theAmazingBanDigest = "b526a4f2be963a2f9b0990c001255669eab8a254ab1a6e3f84f1820212ac7078";
 
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
-    
-    private readonly ITestOutputHelper _output;
-
-    public RepositoryTest(ITestOutputHelper output)
-    {
-        _output = output;
-    }
-
 
     // The following truth table aims to cover the expected GET/HEAD request outcome
     // for all possible permutations of the client/server "containing a digest", for
