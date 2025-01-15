@@ -2852,4 +2852,449 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         await repo.ReferrersByApi(desc, artifactType, fn, cancellationToken);
     }
+    
+    [Fact]
+    public async Task Repository_ReferrersByApi_ThrowsNotSupportedException_WhenReferrersApiNotSupported()
+    {
+        var desc = RandomDescriptor();
+
+        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockedHttpHandler),
+            PlainHttp = true,
+        });
+
+        var isInvoked = false;
+        var fn = (IList<Descriptor> referrers) =>
+        {
+            isInvoked = true;
+        };
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        await Assert.ThrowsAsync<NotSupportedException>(() => repo.ReferrersByApi(desc, null, fn, cancellationToken));
+        Assert.False(isInvoked);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
+    }
+    
+    [Fact]
+    public async Task Repository_ReferrersByApi_ThrowsResponseException_WhenRepoNotFound()
+    {
+        var desc = RandomDescriptor();
+        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            res.Content = new StringContent(@"{ ""errors"": [ { ""code"": ""NAME_UNKNOWN"", ""message"": ""some error"" } ] }");
+            res.StatusCode = HttpStatusCode.NotFound;
+            return res;
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockedHttpHandler),
+            PlainHttp = true,
+        });
+
+        var isInvoked = false;
+        var fn = (IList<Descriptor> referrers) =>
+        {
+            isInvoked = true;
+        };
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        var exception = await Assert.ThrowsAsync<ResponseException>(() => repo.ReferrersByApi(desc, null, fn, cancellationToken));
+        Assert.False(isInvoked);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        Assert.NotNull(exception.Errors);
+        Assert.Single(exception.Errors);
+        Assert.Equal("NAME_UNKNOWN", exception.Errors[0].Code);
+        Assert.Equal("some error", exception.Errors[0].Message);
+    }
+    
+    [Fact]
+    public async Task Repository_ReferrersByApi_ThrowsResponseException_WhenServerErrors()
+    {
+        var desc = RandomDescriptor();
+        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            res.Content = new StringContent(@"{ ""errors"": [ { ""code"": ""INTERNAL_SERVER_ERROR"", ""message"": ""some error"" } ] }");
+            res.StatusCode = HttpStatusCode.InternalServerError;
+            return res;
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockedHttpHandler),
+            PlainHttp = true,
+        });
+
+        var isInvoked = false;
+        var fn = (IList<Descriptor> referrers) =>
+        {
+            isInvoked = true;
+        };
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        var exception = await Assert.ThrowsAsync<ResponseException>(() => repo.ReferrersByApi(desc, null, fn, cancellationToken));
+        Assert.False(isInvoked);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        Assert.NotNull(exception.Errors);
+        Assert.Single(exception.Errors);
+        Assert.Equal("INTERNAL_SERVER_ERROR", exception.Errors[0].Code);
+        Assert.Equal("some error", exception.Errors[0].Message);
+    }
+    
+    [Fact]
+    public async Task Repository_ReferrersByApi_ThrowsNotSupportedException_WhenContentIsNotImageIndex()
+    {
+        var expectedReferrersList = new List<Descriptor>
+        {
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"doc/abc"),
+            RandomDescriptor(artifactType:"abc/abc"),
+            RandomDescriptor(artifactType:"abc/abc"),
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"doc/example"),
+        };
+        var expectedIndex = RandomIndex(expectedReferrersList);
+        var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
+        const string artifactType = "doc/example";
+        var desc = RandomDescriptor();
+
+        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            var expectedQuery = HttpUtility.ParseQueryString("");
+            expectedQuery["artifactType"] = artifactType;
+            var expectedQueryString = expectedQuery.ToString();
+            
+            if (req.RequestUri?.PathAndQuery == $"/v2/test/referrers/{desc.Digest}?{expectedQueryString}")
+            {
+                res.Content = new ByteArrayContent(expectedIndexBytes);
+                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockedHttpHandler),
+            PlainHttp = true,
+        });
+
+        var isInvoked = false;
+        var fn = (IList<Descriptor> referrers) =>
+        {
+            isInvoked = true;
+        };
+        var cancellationToken = new CancellationToken();
+        var exception = await Assert.ThrowsAsync<NotSupportedException>(() => repo.ReferrersByApi(desc, artifactType, fn, cancellationToken));
+        Assert.False(isInvoked);
+        Assert.Equal($"unknown content returned {MediaType.ImageManifest}, expecting image index", exception.Message);
+    }
+    
+    [Fact]
+    public async Task Repository_ReferrersAsync_SinglePage_ReferrersApiSupported()
+    {
+        var expectedReferrersList = new List<Descriptor>
+        {
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"doc/abc"),
+            RandomDescriptor(artifactType:"abc/abc"),
+            RandomDescriptor(artifactType:"abc/abc"),
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"doc/example"),
+        };
+        var expectedIndex = RandomIndex(expectedReferrersList);
+        var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
+        const string artifactType = "doc/example";
+        var desc = RandomDescriptor();
+
+        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            var expectedQuery = HttpUtility.ParseQueryString("");
+            expectedQuery["artifactType"] = artifactType;
+            var expectedQueryString = expectedQuery.ToString();
+            
+            if (req.RequestUri?.PathAndQuery == $"/v2/test/referrers/{desc.Digest}?{expectedQueryString}")
+            {
+                res.Content = new ByteArrayContent(expectedIndexBytes);
+                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
+                res.Headers.Add(_headerOciFiltersApplied, new string[] {"abc/abc"});
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockedHttpHandler),
+            PlainHttp = true,
+        });
+
+        // filter out referrers with artifact type "doc/example"
+        var fn = (IList<Descriptor> referrers) =>
+        {
+            Assert.True(referrers.All(referrer => referrer.ArtifactType == artifactType));
+            Assert.Equal(3, referrers.Count);
+        };
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        await repo.ReferrersAsync(desc, artifactType, fn, cancellationToken);
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
+
+    }
+    
+    [Fact]
+    public async Task Repository_ReferrersAsync_MultiplePages_ReferrersApiSupported()
+    {
+        var expectedReferrersList = new List<List<Descriptor>>
+        {
+            new (){
+                RandomDescriptor(artifactType: "first/example"),
+                RandomDescriptor(artifactType: "first/example"),
+                RandomDescriptor(artifactType: "first/example"),
+                RandomDescriptor(artifactType: "first/example")
+            },
+            new (){
+                RandomDescriptor(artifactType: "second/example"),
+                RandomDescriptor(artifactType: "second/example"),
+                RandomDescriptor(artifactType: "second/example"),
+                RandomDescriptor(artifactType: "second/example")
+            },
+            new (){
+                RandomDescriptor(artifactType: "third/example"),
+                RandomDescriptor(artifactType: "third/example"),
+                RandomDescriptor(artifactType: "third/example"),
+                RandomDescriptor(artifactType: "third/example")
+            },
+            
+        };
+        
+        var desc = RandomDescriptor();
+
+        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            var path = $"/v2/test/referrers/{desc.Digest}";
+            IList<Descriptor>? referrers = null;
+            if (req.RequestUri?.AbsolutePath == path)
+            {
+                var query = HttpUtility.ParseQueryString(req.RequestUri.Query);
+                switch (query.Get("test"))
+                {
+                    case "foo":
+                        res.Headers.Add("Link", new string?[]{ $"<{req.RequestUri.Scheme}://{req.RequestUri.Host}{path}?test=bar>; rel=\"next\"" });
+                        referrers = expectedReferrersList.ElementAtOrDefault(1);
+                        break;
+                    case "bar":
+                        referrers = expectedReferrersList.ElementAtOrDefault(2);
+                        break;
+                    default:
+                        referrers = expectedReferrersList.ElementAtOrDefault(0);
+                        res.Headers.Add("Link", new string?[]{ $"<{path}?test=foo>; rel=\"next\"" });
+                        break;
+                }
+                
+                var expectedIndex = RandomIndex(referrers);
+                var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
+                
+                res.Content = new ByteArrayContent(expectedIndexBytes);
+                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockedHttpHandler),
+            PlainHttp = true,
+        });
+
+        var invokedTimes = 0;
+        var fn = (IList<Descriptor> referrers) =>
+        {
+            Assert.Equivalent(expectedReferrersList.ElementAtOrDefault(invokedTimes), referrers);
+            ++invokedTimes;
+        };
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        await repo.ReferrersAsync(desc, null, fn, cancellationToken);
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
+        Assert.Equal(3, invokedTimes);
+    }
+    
+    [Fact]
+    public async Task Repository_ReferrersAsync_WhenReferrersApiNotSupported()
+    {
+        var referrersList = new List<Descriptor>
+        {
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"doc/abc"),
+            RandomDescriptor(artifactType:"abc/abc"),
+            RandomDescriptor(artifactType:"abc/abc"),
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"doc/example"),
+        };
+        var expectedIndex = RandomIndex(referrersList);
+        var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
+
+        var desc = RandomDescriptor();
+        var referrersTag = Referrers.BuildReferrersTag(desc);
+        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{referrersTag}")
+            {
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                res.Content = new ByteArrayContent(expectedIndexBytes);
+                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockedHttpHandler),
+            PlainHttp = true,
+        });
+        
+        // no artifact type filtering
+        var fn1 = (IList<Descriptor> referrers) =>
+        {
+            Assert.Equivalent(expectedIndex.Manifests, referrers);
+        };
+        var cancellationToken = new CancellationToken();
+        repo.SetReferrersState(false);
+        await repo.ReferrersAsync(desc, null, fn1, cancellationToken);
+        
+        // filter out referrers with artifact type doc/example
+        var artifactType2 = "doc/example";
+        var fn2 = (IList<Descriptor> referrers) =>
+        {
+            Assert.Equal(3, referrers.Count);
+            Assert.True(referrers.All(referrer => referrer.ArtifactType == artifactType2));
+        };
+        await repo.ReferrersAsync(desc, artifactType2, fn2, cancellationToken);
+        
+        // filter out non-existent referrers with artifact type non/non
+        var artifactType3 = "non/non";
+        var isInvoked = false;
+        var fn3 = (IList<Descriptor> referrers) =>
+        {
+            isInvoked = true;
+        };
+        await repo.ReferrersAsync(desc, artifactType3, fn3, cancellationToken);
+        Assert.False(isInvoked);
+    }
+    
+    [Fact]
+    public async Task Repository_ReferrersAsync_ReferrersStateUnknown_ReferrersApiNotSupported()
+    {
+        var referrersList = new List<Descriptor>
+        {
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"doc/abc"),
+            RandomDescriptor(artifactType:"abc/abc"),
+            RandomDescriptor(artifactType:"abc/abc"),
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"doc/example"),
+        };
+        var expectedIndex = RandomIndex(referrersList);
+        var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
+        var desc = RandomDescriptor();
+        var referrersTag = Referrers.BuildReferrersTag(desc);
+        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{desc.Digest}")
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{referrersTag}")
+            {
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                res.Content = new ByteArrayContent(expectedIndexBytes);
+                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockedHttpHandler),
+            PlainHttp = true,
+        });
+
+        var fn = (IList<Descriptor> referrers) =>
+        {
+            Assert.Equivalent(referrersList, referrers);
+        };
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        await repo.ReferrersAsync(desc, null, fn, cancellationToken);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
+    }
 }

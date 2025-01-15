@@ -405,12 +405,12 @@ public class Repository : IRepository
         }
         catch (NotSupportedException)
         {
-            ReferrersState = Referrers.ReferrersState.NotSupported;
+            SetReferrersState(false);
             await ReferrersByTagSchema(descriptor, artifactType, fn, cancellationToken).ConfigureAwait(false);
             return;
         }
         // Set it to supported when no exception was thrown
-        ReferrersState = Referrers.ReferrersState.Supported;
+        SetReferrersState(true);
     }
 
     internal async Task ReferrersByApi(Descriptor descriptor, string? artifactType,
@@ -427,7 +427,7 @@ public class Repository : IRepository
         }
     }
 
-    internal async Task<Uri?> ReferrersPageByApi(Descriptor descriptor, string? artifactType, Uri url, Action<IList<Descriptor>> fn,
+    private async Task<Uri?> ReferrersPageByApi(Descriptor descriptor, string? artifactType, Uri url, Action<IList<Descriptor>> fn,
         CancellationToken cancellationToken = default)
     {
         if (ReferrerListPageSize > 0)
@@ -450,8 +450,8 @@ public class Repository : IRepository
                     // Repository is not found, Referrers API status is unknown
                     throw err;
                 }
-
-                ReferrersState = Referrers.ReferrersState.NotSupported;
+                
+                SetReferrersState(false);
                 throw new NotSupportedException("failed to query referrers API");
             default:
                 throw (ResponseException) await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -472,16 +472,8 @@ public class Repository : IRepository
         var referrers = referrersIndex.Manifests;
         if (!string.IsNullOrEmpty(artifactType))
         {
-            if (response.Headers.TryGetValues(_headerOciFiltersApplied, out var values))
+            if (!response.Headers.TryGetValues(_headerOciFiltersApplied, out var values) || !Referrers.IsReferrersFilterApplied(values.FirstOrDefault(), artifactType))
             {
-                if (!Referrers.IsReferrersFilterApplied(values.FirstOrDefault(), artifactType))
-                {
-                    referrers = Referrers.FilterReferrers(referrers, artifactType);
-                }
-            }
-            else
-            {
-                //TODO
                 referrers = Referrers.FilterReferrers(referrers, artifactType);
             }
         }
