@@ -381,14 +381,12 @@ public class Repository : IRepository
     /// <exception cref="Exception"></exception>
     internal bool PingReferrers(CancellationToken cancellationToken = default)
     {
-        if (ReferrersState == Referrers.ReferrersState.Supported)
+        switch (ReferrersState)
         {
-            return true;
-        }
-
-        if (ReferrersState == Referrers.ReferrersState.NotSupported)
-        {
-            return false;
+            case Referrers.ReferrersState.Supported:
+                return true;
+            case Referrers.ReferrersState.NotSupported:
+                return false;
         }
 
         lock (_referrersPingLock)

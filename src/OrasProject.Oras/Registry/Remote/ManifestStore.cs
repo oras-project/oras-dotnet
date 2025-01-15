@@ -429,7 +429,6 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// IndexReferrersForDelete indexes referrers for manifests with a subject field on manifest delete.
     /// References:
     ///   - Latest spec: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#deleting-manifests
-    ///   - Compatible spec: https://github.com/opencontainers/distribution-spec/blob/v1.1.0-rc1/spec.md#deleting-manifests
     /// </summary>
     /// <param name="target"></param>
     /// <param name="manifestContent"></param>
