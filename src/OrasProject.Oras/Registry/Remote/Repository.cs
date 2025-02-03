@@ -386,11 +386,21 @@ public class Repository : IRepository
     public async Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent = null, CancellationToken cancellationToken = default) 
         => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
 
-
+    /// <summary>
+    /// ReferrersAsync retrieves referrers for the given descriptor and artifact type if specified
+    /// and executes a provided callback function with the list of descriptors.
+    /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
+    /// If the referrers are supported via an API, the state is updated accordingly.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="artifactType"></param>
+    /// <param name="fn"></param>
+    /// <param name="cancellationToken"></param>
     public async Task ReferrersAsync(Descriptor descriptor, string? artifactType, Action<IList<Descriptor>> fn, CancellationToken cancellationToken = default)
     {
         if (ReferrersState == Referrers.ReferrersState.NotSupported)
         {
+            // fall back to tag schema to retrieve referrers
             await ReferrersByTagSchema(descriptor, artifactType, fn, cancellationToken).ConfigureAwait(false);
             return;
         }
@@ -405,6 +415,7 @@ public class Repository : IRepository
         }
         catch (NotSupportedException)
         {
+            // fall back to tag schema to retrieve referrers if NotSupportedException was raised
             SetReferrersState(false);
             await ReferrersByTagSchema(descriptor, artifactType, fn, cancellationToken).ConfigureAwait(false);
             return;
@@ -412,26 +423,53 @@ public class Repository : IRepository
         // Set it to supported when no exception was thrown
         SetReferrersState(true);
     }
-
+    
+    /// <summary>
+    /// ReferrersByApi retrieves referrers for the given descriptor and artifact type if specified
+    /// and executes a provided callback function with the list of descriptors
+    /// only when referrers API is supported.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="artifactType"></param>
+    /// <param name="fn"></param>
+    /// <param name="cancellationToken"></param>
     internal async Task ReferrersByApi(Descriptor descriptor, string? artifactType,
         Action<IList<Descriptor>> fn,
         CancellationToken cancellationToken = default)
     {
         var reference = Options.Reference.Clone();
         reference.ContentReference = descriptor.Digest;
-
         var url = new UriFactory(reference).BuildReferrersUrl(artifactType);
         while (url != null)
         {
+            // Call ReferrersPageByApi to fetch a page of referrers, passing the URL and the callback function.
+            // The method will return the next URL (if available) for pagination.
             url = await ReferrersPageByApi(descriptor, artifactType, url, fn, cancellationToken).ConfigureAwait(false);
         }
     }
 
+    /// <summary>
+    /// ReferrersPageByApi retrieves a page of referrers from the specified URL, processes the response, and executes a callback with the referrers.
+    /// If the response content is valid and matches expected conditions (e.g., media type, digest),
+    /// the referrers are extracted and passed to the callback function.
+    /// The function handles pagination by returning the next URL for further referrers, if available.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="artifactType"></param>
+    /// <param name="url"></param>
+    /// <param name="fn"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="ResponseException"></exception>
+    /// <exception cref="NotSupportedException"></exception>
+    /// <exception cref="InvalidResponseException"></exception>
     private async Task<Uri?> ReferrersPageByApi(Descriptor descriptor, string? artifactType, Uri url, Action<IList<Descriptor>> fn,
         CancellationToken cancellationToken = default)
     {
+        // If ReferrerListPageSize is greater than 0, modify the URL to include the page size query parameter
         if (ReferrerListPageSize > 0)
         {
+            // TODO
             var uriBuilder = new UriBuilder(url);
             var query = HttpUtility.ParseQueryString(uriBuilder.Query);
             query.Add("n", ReferrerListPageSize.ToString());
@@ -442,8 +480,10 @@ public class Repository : IRepository
         switch (response.StatusCode)
         {
             case HttpStatusCode.OK:
+                // If the status code is OK, continue processing the response
                 break;
             case HttpStatusCode.NotFound:
+                // If the status code is NotFound, handle as an error, possibly a non-existent repository
                 var err = (ResponseException) await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
                 if (err.Errors?.First().Code == ResponseException.ErrorCodeNameUnknown)
                 {
@@ -454,6 +494,7 @@ public class Repository : IRepository
                 SetReferrersState(false);
                 throw new NotSupportedException("failed to query referrers API");
             default:
+                // For any other status code, parse and throw the error response
                 throw (ResponseException) await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -470,10 +511,13 @@ public class Repository : IRepository
             throw new InvalidResponseException($"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");
         }
         var referrers = referrersIndex.Manifests;
+        
+        // If artifactType is specified, apply any filters based on the artifact type
         if (!string.IsNullOrEmpty(artifactType))
         {
             if (!response.Headers.TryGetValues(_headerOciFiltersApplied, out var values) || !Referrers.IsReferrersFilterApplied(values.FirstOrDefault(), artifactType))
             {
+                // Filter the referrers based on the artifact type if necessary
                 referrers = Referrers.FilterReferrers(referrers, artifactType);
             }
         }
@@ -488,7 +532,7 @@ public class Repository : IRepository
     
     /// <summary>
     /// ReferrersByTagSchema retrieves referrers based on referrers tag schema, filters out referrers based on specified artifact type
-    /// and invoke callback function fn when referrers are returned.
+    /// and invoke callback function fn when referrers are returned when referrers API is not supported.
     /// 
     /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#backwards-compatibility
     /// </summary>
