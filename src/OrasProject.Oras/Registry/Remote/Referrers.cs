@@ -99,7 +99,7 @@ internal static class Referrers
                 // Add the new referrer only when it has not already existed in the updatedReferrersSet
                 updatedReferrers.Add(referrerChange.Referrer);
                 updatedReferrersSet.Add(basicReferrerDesc);
-                 updateRequired = true;
+                updateRequired = true;
             }
         }
         
