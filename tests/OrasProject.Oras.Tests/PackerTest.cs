@@ -17,7 +17,6 @@ using OrasProject.Oras.Exceptions;
 using System.Text;
 using System.Text.Json;
 using Xunit;
-using NotSupportedException = System.NotSupportedException;
 
 namespace OrasProject.Oras.Tests;
 
