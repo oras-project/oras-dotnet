@@ -57,4 +57,12 @@ public class ExceptionTest
         await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set"));
         await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set", null));
     }
+    
+    [Fact]
+    public async Task InvalidResponseException()
+    {
+        await Assert.ThrowsAsync<InvalidResponseException>(() => throw new InvalidResponseException());
+        await Assert.ThrowsAsync<InvalidResponseException>(() => throw new InvalidResponseException("Invalid response"));
+        await Assert.ThrowsAsync<InvalidResponseException>(() => throw new InvalidResponseException("Invalid response", null));
+    }
 }
