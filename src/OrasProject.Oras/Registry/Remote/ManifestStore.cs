@@ -406,7 +406,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="target">The target descriptor to delete.</param>
     /// <param name="cancellationToken">A cancellation token to cancel the operation if needed. Defaults to default.</param>
     /// <returns></returns>
-    internal async Task DeleteWithIndexing(Descriptor target, CancellationToken cancellationToken = default)
+    private async Task DeleteWithIndexing(Descriptor target, CancellationToken cancellationToken = default)
     {
         switch (target.MediaType)
         {

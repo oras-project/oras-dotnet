@@ -403,7 +403,7 @@ public class Repository : IRepository
                 return false;
             }
 
-            var reference = Options.Reference.Clone();
+            var reference = new Reference(Options.Reference);
             reference.ContentReference = Referrers.ZeroDigest;
             var url = new UriFactory(reference, Options.PlainHttp).BuildReferrersUrl();
             var request = new HttpRequestMessage(HttpMethod.Get, url);
