@@ -418,8 +418,11 @@ public class ManifestStore(Repository repository) : IManifestStore
                     await Repository.DeleteAsync(target, true, cancellationToken).ConfigureAwait(false);
                     return;
                 }
-                var manifest = await FetchAsync(target, cancellationToken).ConfigureAwait(false);
-                await IndexReferrersForDelete(target, manifest, cancellationToken).ConfigureAwait(false);
+
+                await using (var manifest = await FetchAsync(target, cancellationToken).ConfigureAwait(false))
+                {
+                    await IndexReferrersForDelete(target, manifest, cancellationToken).ConfigureAwait(false);
+                }
                 break;
         }
         await Repository.DeleteAsync(target, true, cancellationToken).ConfigureAwait(false);
