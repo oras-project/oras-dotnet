@@ -22,7 +22,10 @@ namespace OrasProject.Oras.Registry.Remote;
 
 public class ResponseException : HttpRequestException
 {
-    public static readonly string ErrorCodeNameUnknown = "NAME_UNKNOWN";
+    public enum ErrorCode
+    {
+        NAME_UNKNOWN
+    }
     public class Error
     {
         [JsonPropertyName("code")]

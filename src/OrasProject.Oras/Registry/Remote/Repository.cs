@@ -421,7 +421,7 @@ public class Repository : IRepository
                 case HttpStatusCode.NotFound:
                     var err = (ResponseException) await response.ParseErrorResponseAsync(cancellationToken)
                         .ConfigureAwait(false);
-                    if (err.Errors?.First().Code == ResponseException.ErrorCodeNameUnknown)
+                    if (err.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
                     {
                         // referrer state is unknown because the repository is not found
                         throw err;

@@ -2739,7 +2739,7 @@ public class RepositoryTest
                     new
                     {
                         message = "The repository could not be found.",
-                        code = ResponseException.ErrorCodeNameUnknown 
+                        code = nameof(ResponseException.ErrorCode.NAME_UNKNOWN)
                     }
                 }
             };
