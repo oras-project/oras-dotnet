@@ -77,6 +77,8 @@ public class Repository : IRepository
     private RepositoryOptions _opts;
 
     private static readonly Object _referrersPingLock = new();
+    
+    private readonly SemaphoreSlim _referrersPingSemaphore = new SemaphoreSlim(1, 1);
 
     /// <summary>
     /// Creates a client to the remote repository identified by a reference
@@ -379,7 +381,7 @@ public class Repository : IRepository
     /// <returns></returns>
     /// <exception cref="ResponseException"></exception>
     /// <exception cref="Exception"></exception>
-    internal bool PingReferrers(CancellationToken cancellationToken = default)
+    internal async Task<bool> PingReferrers(CancellationToken cancellationToken = default)
     {
         switch (ReferrersState)
         {
@@ -388,8 +390,9 @@ public class Repository : IRepository
             case Referrers.ReferrersState.NotSupported:
                 return false;
         }
-
-        lock (_referrersPingLock)
+        
+        await _referrersPingSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
             // referrers state is unknown
             // lock to limit the rate of pinging referrers API
@@ -407,8 +410,7 @@ public class Repository : IRepository
             reference.ContentReference = Referrers.ZeroDigest;
             var url = new UriFactory(reference, Options.PlainHttp).BuildReferrersUrl();
             var request = new HttpRequestMessage(HttpMethod.Get, url);
-            var response = Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(true).GetAwaiter()
-                .GetResult();
+            var response = await Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
             switch (response.StatusCode)
             {
@@ -417,8 +419,8 @@ public class Repository : IRepository
                     SetReferrersState(supported);
                     return supported;
                 case HttpStatusCode.NotFound:
-                    var err = (ResponseException)response.ParseErrorResponseAsync(cancellationToken)
-                        .ConfigureAwait(true).GetAwaiter().GetResult();
+                    var err = (ResponseException) await response.ParseErrorResponseAsync(cancellationToken)
+                        .ConfigureAwait(false);
                     if (err.Errors?.First().Code == ResponseException.ErrorCodeNameUnknown)
                     {
                         // referrer state is unknown because the repository is not found
@@ -428,9 +430,12 @@ public class Repository : IRepository
                     SetReferrersState(false);
                     return false;
                 default:
-                    throw response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(true).GetAwaiter()
-                        .GetResult();
+                    throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
             }
+        }
+        finally
+        {
+            _referrersPingSemaphore.Release();
         }
     }
 

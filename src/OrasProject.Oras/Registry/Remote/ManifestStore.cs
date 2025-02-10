@@ -463,7 +463,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 return;
         }
 
-        var isReferrersSupported = Repository.PingReferrers(cancellationToken);
+        var isReferrersSupported = await Repository.PingReferrers(cancellationToken).ConfigureAwait(false);
         if (isReferrersSupported)
         {
             // referrers API is available, no client-side indexing needed
