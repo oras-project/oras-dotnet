@@ -419,6 +419,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                     return;
                 }
 
+                Repository.LimitSize(target, Repository.Options.MaxMetadataBytes);
                 await using (var manifest = await FetchAsync(target, cancellationToken).ConfigureAwait(false))
                 {
                     await IndexReferrersForDelete(target, manifest, cancellationToken).ConfigureAwait(false);

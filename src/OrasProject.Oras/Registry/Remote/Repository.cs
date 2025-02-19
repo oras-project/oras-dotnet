@@ -75,8 +75,6 @@ public class Repository : IRepository
     ];
 
     private RepositoryOptions _opts;
-
-    private static readonly Object _referrersPingLock = new();
     
     private readonly SemaphoreSlim _referrersPingSemaphore = new SemaphoreSlim(1, 1);
 
@@ -394,17 +392,15 @@ public class Repository : IRepository
         await _referrersPingSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            switch (ReferrersState)
+            {
+                case Referrers.ReferrersState.Supported:
+                    return true;
+                case Referrers.ReferrersState.NotSupported:
+                    return false;
+            }
             // referrers state is unknown
             // lock to limit the rate of pinging referrers API
-            if (ReferrersState == Referrers.ReferrersState.Supported)
-            {
-                return true;
-            }
-
-            if (ReferrersState == Referrers.ReferrersState.NotSupported)
-            {
-                return false;
-            }
 
             var reference = new Reference(Options.Reference);
             reference.ContentReference = Referrers.ZeroDigest;
@@ -454,5 +450,20 @@ public class Repository : IRepository
     public void SetReferrersState(bool isSupported)
     {
         ReferrersState = isSupported ? Referrers.ReferrersState.Supported : Referrers.ReferrersState.NotSupported;
+    }
+    
+    
+    /// <summary>
+    /// LimitSize throws SizeLimitExceededException if the size of desc exceeds the limit limitSize.
+    /// If limitSize is less than or equal to zero, _defaultMaxMetadataBytes is used.
+    /// </summary>
+    /// <param name="desc"></param>
+    /// <param name="limitSize"></param>
+    /// <exception cref="SizeLimitExceededException"></exception>
+    internal static void LimitSize(Descriptor desc, long limitSize) {
+        if (desc.Size > limitSize)
+        {
+            throw new SizeLimitExceededException($"content size {desc.Size} exceeds MaxMetadataBytes {limitSize}");
+        }
     }
 }

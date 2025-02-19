@@ -2793,4 +2793,26 @@ public class RepositoryTest
         await Assert.ThrowsAsync<ResponseException>(async () => await repo.PingReferrers(cancellationToken));
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
     }
+    
+    [Fact]
+    public void LimitSize_ShouldThrowException_WhenSizeExceedsLimit()
+    {
+        var desc = RandomDescriptor();
+        desc.Size = 150;
+        long limitSize = 100;
+
+        var exception = Assert.Throws<SizeLimitExceededException>(() => Repository.LimitSize(desc, limitSize));
+        Assert.Equal("content size 150 exceeds MaxMetadataBytes 100", exception.Message);
+    }
+    
+    [Fact]
+    public void LimitSize_ShouldNotThrowException_WhenSizeIsWithinLimit()
+    {
+        var desc = RandomDescriptor();
+        desc.Size = 50;
+        long  limitSize = 100;
+
+        var exception = Record.Exception(() => Repository.LimitSize(desc, limitSize));
+        Assert.Null(exception); // No exception should be thrown
+    }
 }

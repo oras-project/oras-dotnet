@@ -14,6 +14,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
@@ -674,6 +675,41 @@ public class ManifestStoreTest
         await store.DeleteAsync(manifestDesc, cancellationToken);
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         Assert.True(manifestDeleted);
+    }
+    
+    [Fact]
+    public async Task ManifestStore_DeleteWhenTargetSizeExceedsLimit()
+    {
+        var (_, manifestBytes) = RandomManifest();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSHA256(manifestBytes),
+            Size = manifestBytes.Length
+        };
+        var httpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Delete && req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(httpHandler),
+            PlainHttp = true,
+            MaxMetadataBytes = manifestDesc.Size - 1,
+        });
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+        var exception = await Assert.ThrowsAsync<SizeLimitExceededException>(async () => await store.DeleteAsync(manifestDesc, cancellationToken));
+        Assert.Equal($"content size {manifestDesc.Size} exceeds MaxMetadataBytes {repo.Options.MaxMetadataBytes}", exception.Message);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
     }
     
     [Fact]
