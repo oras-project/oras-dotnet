@@ -522,7 +522,8 @@ public class Repository : IRepository
         // If artifactType is specified, apply any filters based on the artifact type
         if (!string.IsNullOrEmpty(artifactType))
         {
-            if (!response.Headers.TryGetValues(_headerOciFiltersApplied, out var values) || !Referrers.IsReferrersFilterApplied(values.FirstOrDefault(), _filterTypeArtifactType))
+            if (!response.Headers.TryGetValues(_headerOciFiltersApplied, out var values) 
+                || !Referrers.IsReferrersFilterApplied(values.FirstOrDefault(), _filterTypeArtifactType))
             {
                 // Filter the referrers based on the artifact type if necessary
                 referrers = Referrers.FilterReferrers(referrers, artifactType);
@@ -579,7 +580,7 @@ public class Repository : IRepository
                 var index = JsonSerializer.Deserialize<Index>(content);
                 if (index == null)
                 {
-                    throw new JsonException($"null index manifests list for referrersTag {referrersTag}");
+                    throw new JsonException($"error when deserialize index manifest for referrersTag {referrersTag}");
                 }
 
                 return (result.Item1, index.Manifests);

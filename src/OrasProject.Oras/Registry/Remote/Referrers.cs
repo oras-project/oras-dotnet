@@ -13,7 +13,6 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.VisualBasic;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Oci;
 
@@ -118,7 +117,7 @@ internal static class Referrers
             return false;
         }
 
-        var filters = Strings.Split(appliedFilters, ",");
+        var filters = appliedFilters.Split(",");
         foreach (var filter in filters)
         {
             if (filter == requestedFilter)
