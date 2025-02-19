@@ -420,9 +420,10 @@ public class ManifestStore(Repository repository) : IManifestStore
                 }
 
                 Repository.LimitSize(target, Repository.Options.MaxMetadataBytes);
-                await using (var manifest = await FetchAsync(target, cancellationToken).ConfigureAwait(false))
+                var manifest = await Repository.FetchAllAsync(target, cancellationToken).ConfigureAwait(false);
+                using (var manifestStream = new MemoryStream(manifest))
                 {
-                    await IndexReferrersForDelete(target, manifest, cancellationToken).ConfigureAwait(false);
+                    await IndexReferrersForDelete(target, manifestStream, cancellationToken).ConfigureAwait(false);
                 }
                 break;
         }

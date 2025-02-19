@@ -415,7 +415,7 @@ public class Repository : IRepository
                     SetReferrersState(supported);
                     return supported;
                 case HttpStatusCode.NotFound:
-                    var err = (ResponseException) await response.ParseErrorResponseAsync(cancellationToken)
+                    var err = await response.ParseErrorResponseAsync(cancellationToken)
                         .ConfigureAwait(false);
                     if (err.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
                     {
