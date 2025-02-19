@@ -272,7 +272,7 @@ public class ReferrersTest
     public void IsReferrersFilterApplied_AppliedFiltersNull_ReturnsFalse()
     {
         string? appliedFilters = null;
-        const string requestedFilter = "someFilter";
+        const string requestedFilter = "artifactType";
         var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
         Assert.False(result);
     }
@@ -281,7 +281,7 @@ public class ReferrersTest
     public void IsReferrersFilterApplied_AppliedFiltersEmpty_ReturnsFalse()
     {
         const string appliedFilters = "";
-        const string requestedFilter = "someFilter";
+        const string requestedFilter = "artifactType";
         var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
         Assert.False(result);
     }
@@ -289,7 +289,7 @@ public class ReferrersTest
     [Fact]
     public void IsReferrersFilterApplied_RequestedFilterNull_ReturnsFalse()
     {
-        const string appliedFilters = "filter1,filter2";
+        const string appliedFilters = "artifactType,annotation";
         string? requestedFilter = null;
         var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
         Assert.False(result);
@@ -298,7 +298,7 @@ public class ReferrersTest
     [Fact]
     public void IsReferrersFilterApplied_RequestedFilterEmpty_ReturnsFalse()
     {
-        const string appliedFilters = "filter1,filter2";
+        const string appliedFilters = "artifactType,annotation";
         const string requestedFilter = "";
         var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
         Assert.False(result);
@@ -307,8 +307,8 @@ public class ReferrersTest
     [Fact]
     public void IsReferrersFilterApplied_RequestedFilterMatches_ReturnsTrue()
     {
-        const string appliedFilters = "filter1,filter2";
-        const string requestedFilter = "filter1";
+        const string appliedFilters = "artifactType,annotation";
+        const string requestedFilter = "artifactType";
 
         var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
         Assert.True(result);

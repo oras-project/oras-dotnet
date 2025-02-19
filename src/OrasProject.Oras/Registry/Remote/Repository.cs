@@ -50,6 +50,14 @@ public class Repository : IRepository
     public RepositoryOptions Options => _opts;
     
     private int _referrersState = (int) Referrers.ReferrersState.Unknown;
+    
+    /// <summary>
+    ///  _filterTypeArtifactType is the "artifactType" filter applied on the list of referrers.
+    ///
+    /// References:
+    ///   - Latest spec: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
+    /// </summary>
+    private const string _filterTypeArtifactType = "artifactType";
 
     /// <summary>
     /// ReferrersState indicates the Referrers API state of the remote repository.
@@ -71,7 +79,7 @@ public class Repository : IRepository
     /// <summary>
     /// ReferrerListPageSize specifies the page size when invoking the Referrers API.
     /// If zero, the page size is determined by the remote registry.
-    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     /// </summary>
     public int ReferrerListPageSize; 
     
@@ -79,7 +87,7 @@ public class Repository : IRepository
     /// _headerOciFiltersApplied is the "OCI-Filters-Applied" header.
     /// If present on the response, it contains a comma-separated list of the applied filters.
     /// Reference:
-    ///   - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
+    ///   - https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     /// </summary>
     private const string _headerOciFiltersApplied = "OCI-Filters-Applied";
     
@@ -469,7 +477,6 @@ public class Repository : IRepository
         // If ReferrerListPageSize is greater than 0, modify the URL to include the page size query parameter
         if (ReferrerListPageSize > 0)
         {
-            // TODO
             var uriBuilder = new UriBuilder(url);
             var query = HttpUtility.ParseQueryString(uriBuilder.Query);
             query.Add("n", ReferrerListPageSize.ToString());
@@ -515,7 +522,7 @@ public class Repository : IRepository
         // If artifactType is specified, apply any filters based on the artifact type
         if (!string.IsNullOrEmpty(artifactType))
         {
-            if (!response.Headers.TryGetValues(_headerOciFiltersApplied, out var values) || !Referrers.IsReferrersFilterApplied(values.FirstOrDefault(), artifactType))
+            if (!response.Headers.TryGetValues(_headerOciFiltersApplied, out var values) || !Referrers.IsReferrersFilterApplied(values.FirstOrDefault(), _filterTypeArtifactType))
             {
                 // Filter the referrers based on the artifact type if necessary
                 referrers = Referrers.FilterReferrers(referrers, artifactType);
@@ -566,14 +573,17 @@ public class Repository : IRepository
     {
         try
         {
-            var (desc, content) = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
-            var index = JsonSerializer.Deserialize<Index>(content);
-            if (index == null)
+            var result = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
+            using (var content = result.Item2)
             {
-                throw new JsonException($"null index manifests list for referrersTag {referrersTag}");
-            }
+                var index = JsonSerializer.Deserialize<Index>(content);
+                if (index == null)
+                {
+                    throw new JsonException($"null index manifests list for referrersTag {referrersTag}");
+                }
 
-            return (desc, index.Manifests);
+                return (result.Item1, index.Manifests);
+            }
         }
         catch (NotFoundException)
         {

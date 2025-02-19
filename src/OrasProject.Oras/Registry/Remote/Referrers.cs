@@ -119,14 +119,14 @@ internal static class Referrers
         }
 
         var filters = Strings.Split(appliedFilters, ",");
-        for (int i = 0; i < filters.Length; ++i)
+        foreach (var filter in filters)
         {
-            if (filters[i] == requestedFilter)
+            if (filter == requestedFilter)
             {
                 return true;
             }
         }
-
+        
         return false;
     }
     
