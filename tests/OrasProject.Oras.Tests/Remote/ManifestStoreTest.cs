@@ -303,7 +303,7 @@ public class ManifestStoreTest
             Size = secondExpectedManifestBytes.Length,
             ArtifactType = MediaType.ImageConfig,
         };
-        var secondExpectedReferrersList = new List<Descriptor>(oldIndex.Manifests);
+        var secondExpectedReferrersList = new List<Descriptor>(firstExpectedReferrersList);
         secondExpectedReferrersList.Add(secondExpectedManifestDesc);
         var (secondExpectedIndexReferrersDesc, secondExpectedIndexReferrersBytes) = Index.GenerateIndex(secondExpectedReferrersList);
         
@@ -347,7 +347,8 @@ public class ManifestStoreTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 
-                response.Content = new ByteArrayContent(oldIndexBytes);
+                if (oldIndexDeleted) response.Content = new ByteArrayContent(firstExpectedIndexReferrersBytes);
+                else response.Content = new ByteArrayContent(oldIndexBytes);
                 response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
                 if (oldIndexDeleted) response.Headers.Add(_dockerContentDigestHeader, new string[] { firstExpectedIndexReferrersDesc.Digest });
                 else response.Headers.Add(_dockerContentDigestHeader, new string[] { oldIndexDesc.Digest });
@@ -372,7 +373,7 @@ public class ManifestStoreTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-                response.Content = new ByteArrayContent(oldIndexBytes);
+                response.Content = new ByteArrayContent(firstExpectedIndexReferrersBytes);
                 response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
                 response.Headers.Add(_dockerContentDigestHeader, new string[] { firstExpectedIndexReferrersDesc.Digest });
                 response.StatusCode = HttpStatusCode.OK;
