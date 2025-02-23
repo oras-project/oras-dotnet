@@ -372,14 +372,14 @@ public class Repository : IRepository
         => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
-    /// PingReferrers returns true if the Referrers API is available for the repository,
+    /// PingReferrersAsync returns true if the Referrers API is available for the repository,
     /// otherwise returns false
     /// </summary>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="ResponseException"></exception>
     /// <exception cref="Exception"></exception>
-    internal async Task<bool> PingReferrers(CancellationToken cancellationToken = default)
+    internal async Task<bool> PingReferrersAsync(CancellationToken cancellationToken = default)
     {
         switch (ReferrersState)
         {
@@ -455,7 +455,6 @@ public class Repository : IRepository
     
     /// <summary>
     /// LimitSize throws SizeLimitExceededException if the size of desc exceeds the limit limitSize.
-    /// If limitSize is less than or equal to zero, _defaultMaxMetadataBytes is used.
     /// </summary>
     /// <param name="desc"></param>
     /// <param name="limitSize"></param>

@@ -2617,7 +2617,7 @@ public class RepositoryTest
         });
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
-        var result = await repo.PingReferrers(cancellationToken);
+        var result = await repo.PingReferrersAsync(cancellationToken);
         Assert.True(result);
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
@@ -2646,9 +2646,9 @@ public class RepositoryTest
         });
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
-        var ping1 = repo.PingReferrers(cancellationToken);
+        var ping1 = repo.PingReferrersAsync(cancellationToken);
         await Task.Delay(50, cancellationToken);
-        var ping2 = repo.PingReferrers(cancellationToken);
+        var ping2 = repo.PingReferrersAsync(cancellationToken);
         Assert.True(ping1.IsCompletedSuccessfully);
         Assert.True(ping2.IsCompletedSuccessfully);
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
@@ -2682,7 +2682,7 @@ public class RepositoryTest
         var tasks = new List<Task<bool>>();
         for (int i = 0; i < 5; ++i)
         {
-            tasks.Add(repo.PingReferrers(cancellationToken));
+            tasks.Add(repo.PingReferrersAsync(cancellationToken));
         }
 
         var results = await Task.WhenAll(tasks);
@@ -2713,7 +2713,7 @@ public class RepositoryTest
         });
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
-        var result = await repo.PingReferrers(cancellationToken);
+        var result = await repo.PingReferrersAsync(cancellationToken);
         Assert.False(result);
         Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
     }
@@ -2756,7 +2756,7 @@ public class RepositoryTest
             PlainHttp = true,
         });
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
-        await Assert.ThrowsAsync<ResponseException>(async () => await repo.PingReferrers(cancellationToken));
+        await Assert.ThrowsAsync<ResponseException>(async () => await repo.PingReferrersAsync(cancellationToken));
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         
         // referrer API is not supported
@@ -2767,7 +2767,7 @@ public class RepositoryTest
             PlainHttp = true,
         });
         Assert.Equal(Referrers.ReferrersState.Unknown, repo1.ReferrersState);
-        var result = await repo1.PingReferrers(cancellationToken);
+        var result = await repo1.PingReferrersAsync(cancellationToken);
         Assert.False(result);
         Assert.Equal(Referrers.ReferrersState.NotSupported, repo1.ReferrersState);
     }
@@ -2790,7 +2790,7 @@ public class RepositoryTest
         });
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
-        await Assert.ThrowsAsync<ResponseException>(async () => await repo.PingReferrers(cancellationToken));
+        await Assert.ThrowsAsync<ResponseException>(async () => await repo.PingReferrersAsync(cancellationToken));
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
     }
     
