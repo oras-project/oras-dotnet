@@ -20,7 +20,7 @@ using System.Text.Json.Serialization;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-internal class ResponseException : HttpRequestException
+public class ResponseException : HttpRequestException
 {
     public enum ErrorCode
     {
@@ -39,7 +39,7 @@ internal class ResponseException : HttpRequestException
         public JsonElement? Detail { get; set; }
     }
 
-    public class ErrorResponse
+    private class ErrorResponse
     {
         [JsonPropertyName("errors")]
         public required IList<Error> Errors { get; set; }
