@@ -2604,6 +2604,11 @@ public class RepositoryTest
         };
         var expectedIndex = RandomIndex(referrersList);
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
+        var expectedIndexDesc = new Descriptor()
+        {
+            Digest = ComputeSHA256(expectedIndexBytes),
+            MediaType = MediaType.ImageIndex,
+        };
 
         var desc = RandomDescriptor();
         var referrersTag = Referrers.BuildReferrersTag(desc);
@@ -2623,7 +2628,7 @@ public class RepositoryTest
                 }
                 res.Content = new ByteArrayContent(expectedIndexBytes);
                 res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedIndexDesc.Digest });
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -3179,6 +3184,11 @@ public class RepositoryTest
         };
         var expectedIndex = RandomIndex(referrersList);
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
+        var expectedIndexDesc = new Descriptor()
+        {
+            Digest = ComputeSHA256(expectedIndexBytes),
+            MediaType = MediaType.ImageIndex,
+        };
 
         var desc = RandomDescriptor();
         var referrersTag = Referrers.BuildReferrersTag(desc);
@@ -3198,7 +3208,7 @@ public class RepositoryTest
                 }
                 res.Content = new ByteArrayContent(expectedIndexBytes);
                 res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedIndexDesc.Digest });
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);

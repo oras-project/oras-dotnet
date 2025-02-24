@@ -26,6 +26,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using OrasProject.Oras.Content;
 using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -575,15 +576,19 @@ public class Repository : IRepository
         try
         {
             var result = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
-            using (var content = result.Item2)
+            using (var stream = result.Stream)
             {
-                var index = JsonSerializer.Deserialize<Index>(content);
-                if (index == null)
+                var indexBytes = await stream.ReadAllAsync(result.Descriptor, cancellationToken).ConfigureAwait(false);
+                using (var content = new MemoryStream(indexBytes))
                 {
-                    throw new JsonException($"error when deserialize index manifest for referrersTag {referrersTag}");
+                    var index = JsonSerializer.Deserialize<Index>(content);
+                    if (index == null)
+                    {
+                        throw new JsonException($"error when deserialize index manifest for referrersTag {referrersTag}");
+                    }
+                    
+                    return (result.Descriptor, index.Manifests);
                 }
-
-                return (result.Item1, index.Manifests);
             }
         }
         catch (NotFoundException)
