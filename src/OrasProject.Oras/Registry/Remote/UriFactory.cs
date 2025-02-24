@@ -13,6 +13,7 @@
 
 using OrasProject.Oras.Exceptions;
 using System;
+using System.Web;
 
 namespace OrasProject.Oras.Registry.Remote;
 
@@ -102,6 +103,26 @@ internal class UriFactory : UriBuilder
         return builder.Uri;
     }
 
+    /// <summary>
+    /// Builds the URL for accessing the Referrers API
+    /// Format: <scheme>://<registry>/v2/<repository>/referrers/<reference>?artifactType=<artifactType>
+    /// </summary>
+    /// <param name="artifactType"></param>
+    /// <returns></returns>
+    public Uri BuildReferrersUrl(string? artifactType = null)
+    {
+        var builder = NewRepositoryBaseBuilder();
+        builder.Path += $"/referrers/{_reference.ContentReference}";
+        if (!string.IsNullOrEmpty(artifactType))
+        {
+            var query = HttpUtility.ParseQueryString(builder.Query);
+            query.Add("artifactType", artifactType);
+            builder.Query = query.ToString();
+        }
+
+        return builder.Uri;
+    }
+    
     /// <summary>
     /// Generates a UriBuilder with the base endpoint of the remote repository.
     /// Format: <scheme>://<registry>/v2/<repository>

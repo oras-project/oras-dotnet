@@ -14,6 +14,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
@@ -22,6 +23,8 @@ using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Content.Digest;
 using Index = OrasProject.Oras.Oci.Index;
 using Xunit;
+using Xunit.Abstractions;
+
 
 namespace OrasProject.Oras.Tests.Remote;
 
@@ -300,7 +303,7 @@ public class ManifestStoreTest
             Size = secondExpectedManifestBytes.Length,
             ArtifactType = MediaType.ImageConfig,
         };
-        var secondExpectedReferrersList = new List<Descriptor>(oldIndex.Manifests);
+        var secondExpectedReferrersList = new List<Descriptor>(firstExpectedReferrersList);
         secondExpectedReferrersList.Add(secondExpectedManifestDesc);
         var (secondExpectedIndexReferrersDesc, secondExpectedIndexReferrersBytes) = Index.GenerateIndex(secondExpectedReferrersList);
         
@@ -343,12 +346,39 @@ public class ManifestStoreTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-                response.Content = new ByteArrayContent(oldIndexBytes);
+                
+                if (oldIndexDeleted) response.Content = new ByteArrayContent(firstExpectedIndexReferrersBytes);
+                else response.Content = new ByteArrayContent(oldIndexBytes);
                 response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
                 if (oldIndexDeleted) response.Headers.Add(_dockerContentDigestHeader, new string[] { firstExpectedIndexReferrersDesc.Digest });
                 else response.Headers.Add(_dockerContentDigestHeader, new string[] { oldIndexDesc.Digest });
                 response.StatusCode = HttpStatusCode.OK;
                 return response;
+            } 
+            else if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{oldIndexDesc.Digest}")
+            {   
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                response.Content = new ByteArrayContent(oldIndexBytes);
+                response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                response.Headers.Add(_dockerContentDigestHeader, new string[] { oldIndexDesc.Digest });
+                response.StatusCode = HttpStatusCode.OK;
+                return response;
+            } 
+            else if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{firstExpectedIndexReferrersDesc.Digest}")
+            {   
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                response.Content = new ByteArrayContent(firstExpectedIndexReferrersBytes);
+                response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                response.Headers.Add(_dockerContentDigestHeader, new string[] { firstExpectedIndexReferrersDesc.Digest });
+                response.StatusCode = HttpStatusCode.OK;
+                return response;
+
             } else if (req.Method == HttpMethod.Delete && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{oldIndexDesc.Digest}")
             {
                 response.Headers.Add(_dockerContentDigestHeader, new[] { oldIndexDesc.Digest });
@@ -459,7 +489,7 @@ public class ManifestStoreTest
     
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
-    
+        
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         await store.PushAsync(expectedIndexManifestDesc, new MemoryStream(expectedIndexManifestBytes), cancellationToken);
         Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
@@ -551,5 +581,339 @@ public class ManifestStoreTest
         await store.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
         Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
         Assert.Equal(expectedManifestBytes, receivedManifestContent);
+    }
+    
+    [Fact]
+    public async Task ManifestStore_DeleteWithSubjectWhenReferrersAPISupported()
+    {
+        var (_, manifestBytes) = RandomManifestWithSubject();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSHA256(manifestBytes),
+            Size = manifestBytes.Length
+        };
+        var manifestDeleted = false;
+        var httpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Delete && req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.Method == HttpMethod.Delete && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+            {
+                manifestDeleted = true;
+                res.StatusCode = HttpStatusCode.Accepted;
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(httpHandler),
+            PlainHttp = true,
+        });
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        repo.SetReferrersState(true);
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+        await store.DeleteAsync(manifestDesc, cancellationToken);
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
+        Assert.True(manifestDeleted);
+    }
+    
+    [Fact]
+    public async Task ManifestStore_DeleteWithoutSubjectWhenReferrersAPIUnknown()
+    {
+        var (_, manifestBytes) = RandomManifest();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSHA256(manifestBytes),
+            Size = manifestBytes.Length
+        };
+        var manifestDeleted = false;
+        var httpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Delete && req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.Method == HttpMethod.Delete && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+            {
+                manifestDeleted = true;
+                res.StatusCode = HttpStatusCode.Accepted;
+                return res;
+            }
+            
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+            {
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                res.Content = new ByteArrayContent(manifestBytes);
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
+                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(httpHandler),
+            PlainHttp = true,
+        });
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+        await store.DeleteAsync(manifestDesc, cancellationToken);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        Assert.True(manifestDeleted);
+    }
+    
+    [Fact]
+    public async Task ManifestStore_DeleteWhenTargetSizeExceedsLimit()
+    {
+        var (_, manifestBytes) = RandomManifest();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSHA256(manifestBytes),
+            Size = manifestBytes.Length
+        };
+        var httpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Delete && req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(httpHandler),
+            PlainHttp = true,
+            MaxMetadataBytes = manifestDesc.Size - 1,
+        });
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+        var exception = await Assert.ThrowsAsync<SizeLimitExceededException>(async () => await store.DeleteAsync(manifestDesc, cancellationToken));
+        Assert.Equal($"content size {manifestDesc.Size} exceeds MaxMetadataBytes {repo.Options.MaxMetadataBytes}", exception.Message);
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+    }
+    
+    [Fact]
+    public async Task ManifestStore_DeleteWithSubjectWhenReferrersAPINotSupported()
+    {
+        // first delete image manifest
+        var (manifestToDelete, manifestToDeleteBytes) = RandomManifestWithSubject();
+        var manifestToDeleteDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSHA256(manifestToDeleteBytes),
+            Size = manifestToDeleteBytes.Length
+        };
+        
+        // then delete image index
+        var indexToDelete = RandomIndex();
+        indexToDelete.Subject = manifestToDelete.Subject;
+        var indexToDeleteBytes = JsonSerializer.SerializeToUtf8Bytes(indexToDelete);
+        var indexToDeleteDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageIndex,
+            Digest = ComputeSHA256(indexToDeleteBytes),
+            Size = indexToDeleteBytes.Length
+        };
+        
+        // original referrers list
+        var oldReferrersList = RandomIndex();
+        oldReferrersList.Manifests.Add(manifestToDeleteDesc);
+        oldReferrersList.Manifests.Add(indexToDeleteDesc);
+        var oldReferrersBytes = JsonSerializer.SerializeToUtf8Bytes(oldReferrersList);
+        var oldReferrersDesc = new Descriptor()
+        {
+            Digest = ComputeSHA256(oldReferrersBytes),
+            MediaType = MediaType.ImageIndex,
+            Size = oldReferrersBytes.Length
+        };
+
+        // referrers list after deleting the image manifest
+        var firstUpdatedReferrersList = new List<Descriptor>(oldReferrersList.Manifests);
+        firstUpdatedReferrersList.Remove(manifestToDeleteDesc);
+        var (firstUpdatedIndexReferrersDesc, firstUpdatedIndexReferrersBytes) = Index.GenerateIndex(firstUpdatedReferrersList);
+
+        // referrers list after deleting the index manifest
+        var secondUpdatedReferrersList = new List<Descriptor>(firstUpdatedReferrersList);
+        secondUpdatedReferrersList.Remove(indexToDeleteDesc);
+        var (secondUpdatedIndexReferrersDesc, secondUpdatedIndexReferrersBytes) = Index.GenerateIndex(secondUpdatedReferrersList);
+        
+        
+        var manifestDeleted = false;
+        var oldIndexDeleted = false;
+        var firstUpdatedIndexDeleted = false;
+        var imageIndexDeleted = false;
+        var referrersTag = Referrers.BuildReferrersTag(manifestToDelete.Subject);
+        byte[]? receivedIndexContent = null;
+        var httpHandler = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var response = new HttpResponseMessage();
+            response.RequestMessage = req;
+            if (req.Method != HttpMethod.Delete && req.Method != HttpMethod.Get && req.Method != HttpMethod.Put)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            
+            if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{referrersTag}")
+            {
+                if (req.Content?.Headers?.ContentLength != null)
+                {
+                    var buffer = new byte[req.Content.Headers.ContentLength.Value];
+                    (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buffer, 0); 
+                    receivedIndexContent = buffer;
+                }
+
+                if (oldIndexDeleted)
+                {
+                    response.Headers.Add(_dockerContentDigestHeader, new[] { secondUpdatedIndexReferrersDesc.Digest });
+                }
+                else
+                {
+                    response.Headers.Add(_dockerContentDigestHeader, new[] { firstUpdatedIndexReferrersDesc.Digest });
+                }
+                response.StatusCode = HttpStatusCode.Created;
+                return response;
+            }
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{referrersTag}")
+            {   
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+
+                if (oldIndexDeleted)
+                {
+                    response.Content = new ByteArrayContent(firstUpdatedIndexReferrersBytes);
+                    response.Headers.Add(_dockerContentDigestHeader, new string[] { firstUpdatedIndexReferrersDesc.Digest });
+                }
+                else
+                {
+                    response.Content = new ByteArrayContent(oldReferrersBytes);
+                    response.Headers.Add(_dockerContentDigestHeader, new string[] { oldReferrersDesc.Digest });
+                }
+                
+                response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                response.StatusCode = HttpStatusCode.OK;
+                return response;
+            } 
+            
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestToDeleteDesc.Digest}")
+            {
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                response.Content = new ByteArrayContent(manifestToDeleteBytes);
+                response.Headers.Add(_dockerContentDigestHeader, new string[] { manifestToDeleteDesc.Digest });
+                response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
+                return response;
+            }
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{indexToDeleteDesc.Digest}")
+            {
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                response.Content = new ByteArrayContent(indexToDeleteBytes);
+                response.Headers.Add(_dockerContentDigestHeader, new string[] { indexToDeleteDesc.Digest });
+                response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                return response;
+            }
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{oldReferrersDesc.Digest}")
+            {
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                response.Content = new ByteArrayContent(oldReferrersBytes);
+                response.Headers.Add(_dockerContentDigestHeader, new string[] { oldReferrersDesc.Digest });
+                response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                return response;
+            }
+            
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{firstUpdatedIndexReferrersDesc.Digest}")
+            {
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                response.Content = new ByteArrayContent(firstUpdatedIndexReferrersBytes);
+                response.Headers.Add(_dockerContentDigestHeader, new string[] { firstUpdatedIndexReferrersDesc.Digest });
+                response.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                return response;
+            }
+            if (req.Method == HttpMethod.Delete && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{oldReferrersDesc.Digest}")
+            {
+                response.Headers.Add(_dockerContentDigestHeader, new[] { oldReferrersDesc.Digest });
+                response.StatusCode = HttpStatusCode.Accepted;
+                oldIndexDeleted = true;
+                return response;
+            } 
+            if (req.Method == HttpMethod.Delete && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{firstUpdatedIndexReferrersDesc.Digest}")
+            {
+                response.Headers.Add(_dockerContentDigestHeader, new[] { firstUpdatedIndexReferrersDesc.Digest });
+                response.StatusCode = HttpStatusCode.Accepted;
+                firstUpdatedIndexDeleted = true;
+                return response;
+            } 
+            
+            if (req.Method == HttpMethod.Delete && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestToDeleteDesc.Digest}")
+            {
+                manifestDeleted = true;
+                response.StatusCode = HttpStatusCode.Accepted;
+                return response;
+            }
+            if (req.Method == HttpMethod.Delete && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{indexToDeleteDesc.Digest}")
+            {
+                imageIndexDeleted = true;
+                response.StatusCode = HttpStatusCode.Accepted;
+                return response;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(httpHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+        
+        // first delete the image manifest
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState); 
+        await store.DeleteAsync(manifestToDeleteDesc, cancellationToken);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
+        Assert.True(manifestDeleted);
+        Assert.True(oldIndexDeleted);
+        Assert.Equal(firstUpdatedIndexReferrersBytes, receivedIndexContent);
+        
+        // then delete the image index
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState); 
+        await store.DeleteAsync(indexToDeleteDesc, cancellationToken);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
+        Assert.True(imageIndexDeleted);
+        Assert.True(firstUpdatedIndexDeleted);
+        Assert.Equal(secondUpdatedIndexReferrersBytes, receivedIndexContent);
     }
 }

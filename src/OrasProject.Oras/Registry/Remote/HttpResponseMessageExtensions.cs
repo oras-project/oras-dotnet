@@ -32,7 +32,7 @@ internal static class HttpResponseMessageExtensions
     /// </summary>
     /// <param name="response"></param>
     /// <returns></returns>
-    public static async Task<Exception> ParseErrorResponseAsync(this HttpResponseMessage response, CancellationToken cancellationToken)
+    public static async Task<ResponseException> ParseErrorResponseAsync(this HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return new ResponseException(response, body);
@@ -98,7 +98,7 @@ internal static class HttpResponseMessageExtensions
         }
         if (contentDigest != expected)
         {
-            throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {digestStr}");
+            throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {expected}");
         }
     }
 

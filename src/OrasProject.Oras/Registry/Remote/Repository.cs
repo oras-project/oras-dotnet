@@ -75,6 +75,8 @@ public class Repository : IRepository
     ];
 
     private RepositoryOptions _opts;
+    
+    private readonly SemaphoreSlim _referrersPingSemaphore = new SemaphoreSlim(1, 1);
 
     /// <summary>
     /// Creates a client to the remote repository identified by a reference
@@ -370,6 +372,70 @@ public class Repository : IRepository
         => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
+    /// PingReferrersAsync returns true if the Referrers API is available for the repository,
+    /// otherwise returns false
+    /// </summary>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="ResponseException"></exception>
+    /// <exception cref="Exception"></exception>
+    internal async Task<bool> PingReferrersAsync(CancellationToken cancellationToken = default)
+    {
+        switch (ReferrersState)
+        {
+            case Referrers.ReferrersState.Supported:
+                return true;
+            case Referrers.ReferrersState.NotSupported:
+                return false;
+        }
+        
+        await _referrersPingSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            switch (ReferrersState)
+            {
+                case Referrers.ReferrersState.Supported:
+                    return true;
+                case Referrers.ReferrersState.NotSupported:
+                    return false;
+            }
+            // referrers state is unknown
+            // lock to limit the rate of pinging referrers API
+
+            var reference = new Reference(Options.Reference);
+            reference.ContentReference = Referrers.ZeroDigest;
+            var url = new UriFactory(reference, Options.PlainHttp).BuildReferrersUrl();
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var response = await Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    var supported = response.Content.Headers.ContentType?.MediaType == MediaType.ImageIndex;
+                    SetReferrersState(supported);
+                    return supported;
+                case HttpStatusCode.NotFound:
+                    var err = await response.ParseErrorResponseAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    if (err.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
+                    {
+                        // referrer state is unknown because the repository is not found
+                        throw err;
+                    }
+
+                    SetReferrersState(false);
+                    return false;
+                default:
+                    throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _referrersPingSemaphore.Release();
+        }
+    }
+
+    /// <summary>
     /// SetReferrersState indicates the Referrers API state of the remote repository. true: supported; false: not supported.
     /// SetReferrersState is valid only when it is called for the first time.
     /// SetReferrersState returns ReferrersStateAlreadySetException if the Referrers API state has been already set.
@@ -384,5 +450,19 @@ public class Repository : IRepository
     public void SetReferrersState(bool isSupported)
     {
         ReferrersState = isSupported ? Referrers.ReferrersState.Supported : Referrers.ReferrersState.NotSupported;
+    }
+    
+    
+    /// <summary>
+    /// LimitSize throws SizeLimitExceededException if the size of desc exceeds the limit limitSize.
+    /// </summary>
+    /// <param name="desc"></param>
+    /// <param name="limitSize"></param>
+    /// <exception cref="SizeLimitExceededException"></exception>
+    internal static void LimitSize(Descriptor desc, long limitSize) {
+        if (desc.Size > limitSize)
+        {
+            throw new SizeLimitExceededException($"content size {desc.Size} exceeds MaxMetadataBytes {limitSize}");
+        }
     }
 }

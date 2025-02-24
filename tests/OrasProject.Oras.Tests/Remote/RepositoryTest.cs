@@ -20,13 +20,13 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 using Xunit;
 using static OrasProject.Oras.Content.Digest;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace OrasProject.Oras.Tests.Remote;
 
@@ -391,12 +391,12 @@ public class RepositoryTest
         {
             var res = new HttpResponseMessage();
             res.RequestMessage = req;
-            if (req.Method != HttpMethod.Delete)
+            if (req.Method != HttpMethod.Delete && req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
             }
 
-            if (req.RequestUri!.AbsolutePath == "/v2/test/blobs/" + blobDesc.Digest)
+            if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath == "/v2/test/blobs/" + blobDesc.Digest)
             {
                 blobDeleted = true;
                 res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
@@ -404,11 +404,23 @@ public class RepositoryTest
                 return res;
             }
 
-            if (req.RequestUri!.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
+            if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
             {
                 indexDeleted = true;
                 // no dockerContentDigestHeader header for manifest deletion
                 res.StatusCode = HttpStatusCode.Accepted;
+                return res;
+            }
+            
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{indexDesc.Digest}")
+            {
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                res.Content = new ByteArrayContent(index);
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { indexDesc.Digest });
+                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
                 return res;
             }
 
@@ -1745,12 +1757,12 @@ public class RepositoryTest
     [Fact]
     public async Task ManifestStore_DeleteAsync()
     {
-        var manifest = """{"layers":[]}"""u8.ToArray();
+        var (_, manifestBytes) = RandomManifest();
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifest),
-            Size = manifest.Length
+            Digest = ComputeSHA256(manifestBytes),
+            Size = manifestBytes.Length
         };
         var manifestDeleted = false;
         var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1773,7 +1785,7 @@ public class RepositoryTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-                res.Content = new ByteArrayContent(manifest);
+                res.Content = new ByteArrayContent(manifestBytes);
                 res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
                 res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
                 return res;
@@ -2579,5 +2591,228 @@ public class RepositoryTest
         
         var exception = Record.Exception(() => repo.ReferrersState = Referrers.ReferrersState.Supported);
         Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task PingReferrers_ShouldReturnTrueWhenReferrersAPISupported()
+    {
+        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{Referrers.ZeroDigest}")
+            {
+                res.Content.Headers.Add("Content-Type", MediaType.ImageIndex);
+                res.StatusCode = HttpStatusCode.OK;
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.Forbidden);
+        };
+        
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockHttpRequestHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        var result = await repo.PingReferrersAsync(cancellationToken);
+        Assert.True(result);
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
+    }
+    
+    [Fact]
+    public async Task PingReferrers_WaitsForSemaphoreRelease()
+    {
+        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{Referrers.ZeroDigest}")
+            {
+                res.Content.Headers.Add("Content-Type", MediaType.ImageIndex);
+                res.StatusCode = HttpStatusCode.OK;
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.Forbidden);
+        };
+        
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockHttpRequestHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        var ping1 = repo.PingReferrersAsync(cancellationToken);
+        await Task.Delay(50, cancellationToken);
+        var ping2 = repo.PingReferrersAsync(cancellationToken);
+        Assert.True(ping1.IsCompletedSuccessfully);
+        Assert.True(ping2.IsCompletedSuccessfully);
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
+    }
+    
+    [Fact]
+    public async Task PingReferrers_LimitsConcurrency()
+    {
+        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{Referrers.ZeroDigest}")
+            {
+                res.Content.Headers.Add("Content-Type", MediaType.ImageIndex);
+                res.StatusCode = HttpStatusCode.OK;
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.Forbidden);
+        };
+        
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockHttpRequestHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+
+        var tasks = new List<Task<bool>>();
+        for (int i = 0; i < 5; ++i)
+        {
+            tasks.Add(repo.PingReferrersAsync(cancellationToken));
+        }
+
+        var results = await Task.WhenAll(tasks);
+        Assert.All(results, result => Assert.True(result));
+        Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
+    }
+    
+    [Fact]
+    public async Task PingReferrers_ShouldReturnFalseWhenReferrersAPINotSupportedNoContentTypeHeader()
+    {
+        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{Referrers.ZeroDigest}")
+            {
+                res.StatusCode = HttpStatusCode.OK;
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.Forbidden);
+        };
+        
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockHttpRequestHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        var result = await repo.PingReferrersAsync(cancellationToken);
+        Assert.False(result);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
+    }
+    
+    [Fact]
+    public async Task PingReferrers_ShouldFailWhenReturnNotFound()
+    {
+        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            res.StatusCode = HttpStatusCode.NotFound;
+
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{Referrers.ZeroDigest}")
+            {
+                return res;
+            }
+
+            var errors = new
+            {
+                errors = new[]
+                {
+                    new
+                    {
+                        message = "The repository could not be found.",
+                        code = nameof(ResponseException.ErrorCode.NAME_UNKNOWN)
+                    }
+                }
+            };
+            res.Content = new StringContent(JsonSerializer.Serialize(errors), Encoding.UTF8, "application/json");
+            return res;
+        };
+        var cancellationToken = new CancellationToken();
+
+        // repo abc is not found
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/abc"),
+            HttpClient = CustomClient(mockHttpRequestHandler),
+            PlainHttp = true,
+        });
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        await Assert.ThrowsAsync<ResponseException>(async () => await repo.PingReferrersAsync(cancellationToken));
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        
+        // referrer API is not supported
+        var repo1 = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockHttpRequestHandler),
+            PlainHttp = true,
+        });
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo1.ReferrersState);
+        var result = await repo1.PingReferrersAsync(cancellationToken);
+        Assert.False(result);
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo1.ReferrersState);
+    }
+    
+    [Fact]
+    public async Task PingReferrers_ShouldFailWhenBadRequestReturns()
+    {
+        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            return new HttpResponseMessage(HttpStatusCode.BadRequest);
+        };
+        
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockHttpRequestHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        await Assert.ThrowsAsync<ResponseException>(async () => await repo.PingReferrersAsync(cancellationToken));
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+    }
+    
+    [Fact]
+    public void LimitSize_ShouldThrowException_WhenSizeExceedsLimit()
+    {
+        var desc = RandomDescriptor();
+        desc.Size = 150;
+        long limitSize = 100;
+
+        var exception = Assert.Throws<SizeLimitExceededException>(() => Repository.LimitSize(desc, limitSize));
+        Assert.Equal("content size 150 exceeds MaxMetadataBytes 100", exception.Message);
+    }
+    
+    [Fact]
+    public void LimitSize_ShouldNotThrowException_WhenSizeIsWithinLimit()
+    {
+        var desc = RandomDescriptor();
+        desc.Size = 50;
+        long  limitSize = 100;
+
+        var exception = Record.Exception(() => Repository.LimitSize(desc, limitSize));
+        Assert.Null(exception); // No exception should be thrown
     }
 }

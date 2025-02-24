@@ -12,9 +12,7 @@
 // limitations under the License.
 
 using System.Collections.Generic;
-using System.Linq;
 using OrasProject.Oras.Content;
-using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -29,6 +27,8 @@ internal static class Referrers
     }
     
     internal record ReferrerChange(Descriptor Referrer, ReferrerOperation ReferrerOperation);
+   
+    internal const string ZeroDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
     internal enum ReferrerOperation
     {
