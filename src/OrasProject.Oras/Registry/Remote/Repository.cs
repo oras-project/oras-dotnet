@@ -101,6 +101,8 @@ public class Repository : IRepository
     ];
 
     private RepositoryOptions _opts;
+    
+    private readonly SemaphoreSlim _referrersPingSemaphore = new SemaphoreSlim(1, 1);
 
     /// <summary>
     /// Creates a client to the remote repository identified by a reference
@@ -483,7 +485,7 @@ public class Repository : IRepository
                     // If the status code is NotFound, handle as an error, possibly a non-existent repository
                     var err = (ResponseException)await response.ParseErrorResponseAsync(cancellationToken)
                         .ConfigureAwait(false);
-                    if (err.Errors?.First().Code == ResponseException.ErrorCodeNameUnknown)
+                    if (err.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
                     {
                         // Repository is not found, Referrers API status is unknown
                         // Propagate the exception to the caller
@@ -580,9 +582,10 @@ public class Repository : IRepository
                     var index = JsonSerializer.Deserialize<Index>(content);
                     if (index == null)
                     {
-                        throw new JsonException($"error when deserialize index manifest for referrersTag {referrersTag}");
+                        throw new JsonException(
+                            $"error when deserialize index manifest for referrersTag {referrersTag}");
                     }
-                    
+
                     return (result.Descriptor, index.Manifests);
                 }
             }
@@ -590,6 +593,70 @@ public class Repository : IRepository
         catch (NotFoundException)
         {
             return (null, ImmutableArray<Descriptor>.Empty);
+        }
+    }
+
+    /// <summary>
+    /// PingReferrersAsync returns true if the Referrers API is available for the repository,
+    /// otherwise returns false
+    /// </summary>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="ResponseException"></exception>
+    /// <exception cref="Exception"></exception>
+    internal async Task<bool> PingReferrersAsync(CancellationToken cancellationToken = default)
+    {
+        switch (ReferrersState)
+        {
+            case Referrers.ReferrersState.Supported:
+                return true;
+            case Referrers.ReferrersState.NotSupported:
+                return false;
+        }
+        
+        await _referrersPingSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            switch (ReferrersState)
+            {
+                case Referrers.ReferrersState.Supported:
+                    return true;
+                case Referrers.ReferrersState.NotSupported:
+                    return false;
+            }
+            // referrers state is unknown
+            // lock to limit the rate of pinging referrers API
+
+            var reference = new Reference(Options.Reference);
+            reference.ContentReference = Referrers.ZeroDigest;
+            var url = new UriFactory(reference, Options.PlainHttp).BuildReferrersUrl();
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var response = await Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    var supported = response.Content.Headers.ContentType?.MediaType == MediaType.ImageIndex;
+                    SetReferrersState(supported);
+                    return supported;
+                case HttpStatusCode.NotFound:
+                    var err = await response.ParseErrorResponseAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    if (err.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
+                    {
+                        // referrer state is unknown because the repository is not found
+                        throw err;
+                    }
+
+                    SetReferrersState(false);
+                    return false;
+                default:
+                    throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _referrersPingSemaphore.Release();
         }
     }
 
@@ -608,5 +675,19 @@ public class Repository : IRepository
     public void SetReferrersState(bool isSupported)
     {
         ReferrersState = isSupported ? Referrers.ReferrersState.Supported : Referrers.ReferrersState.NotSupported;
+    }
+    
+    
+    /// <summary>
+    /// LimitSize throws SizeLimitExceededException if the size of desc exceeds the limit limitSize.
+    /// </summary>
+    /// <param name="desc"></param>
+    /// <param name="limitSize"></param>
+    /// <exception cref="SizeLimitExceededException"></exception>
+    internal static void LimitSize(Descriptor desc, long limitSize) {
+        if (desc.Size > limitSize)
+        {
+            throw new SizeLimitExceededException($"content size {desc.Size} exceeds MaxMetadataBytes {limitSize}");
+        }
     }
 }

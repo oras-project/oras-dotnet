@@ -57,12 +57,22 @@ public class ExceptionTest
         await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set"));
         await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set", null));
     }
-    
+
     [Fact]
     public async Task InvalidResponseException()
     {
         await Assert.ThrowsAsync<InvalidResponseException>(() => throw new InvalidResponseException());
-        await Assert.ThrowsAsync<InvalidResponseException>(() => throw new InvalidResponseException("Invalid response"));
-        await Assert.ThrowsAsync<InvalidResponseException>(() => throw new InvalidResponseException("Invalid response", null));
+        await Assert.ThrowsAsync<InvalidResponseException>(() =>
+            throw new InvalidResponseException("Invalid response"));
+        await Assert.ThrowsAsync<InvalidResponseException>(() =>
+            throw new InvalidResponseException("Invalid response", null));
+    }
+    
+    [Fact]
+    public async Task SizeLimitExceededException()
+    {
+        await Assert.ThrowsAsync<SizeLimitExceededException>(() => throw new SizeLimitExceededException());
+        await Assert.ThrowsAsync<SizeLimitExceededException>(() => throw new SizeLimitExceededException("Size limit exceeded"));
+        await Assert.ThrowsAsync<SizeLimitExceededException>(() => throw new SizeLimitExceededException("Size limit exceeded", null));
     }
 }

@@ -123,7 +123,7 @@ internal class UriFactory : UriBuilder
         
         return builder.Uri;
     }
-
+    
     /// <summary>
     /// Generates a UriBuilder with the base endpoint of the remote repository.
     /// Format: <scheme>://<registry>/v2/<repository>

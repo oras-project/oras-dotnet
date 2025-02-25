@@ -367,5 +367,81 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task DeleteAsync(Descriptor target, CancellationToken cancellationToken = default)
-        => await Repository.DeleteAsync(target, true, cancellationToken).ConfigureAwait(false);
+        => await DeleteWithIndexing(target, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// DeleteWithIndexing deletes the specified target (Descriptor) from the repository,
+    /// handling referrer indexing if necessary.
+    /// </summary>
+    /// <param name="target">The target descriptor to delete.</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation if needed. Defaults to default.</param>
+    /// <returns></returns>
+    private async Task DeleteWithIndexing(Descriptor target, CancellationToken cancellationToken = default)
+    {
+        switch (target.MediaType)
+        {
+            case MediaType.ImageManifest:
+            case MediaType.ImageIndex:
+                if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
+                {
+                    // referrers API is available, no client-side indexing needed
+                    await Repository.DeleteAsync(target, true, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+
+                Repository.LimitSize(target, Repository.Options.MaxMetadataBytes);
+                var manifest = await Repository.FetchAllAsync(target, cancellationToken).ConfigureAwait(false);
+                using (var manifestStream = new MemoryStream(manifest))
+                {
+                    await IndexReferrersForDelete(target, manifestStream, cancellationToken).ConfigureAwait(false);
+                }
+                break;
+        }
+        await Repository.DeleteAsync(target, true, cancellationToken).ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// IndexReferrersForDelete indexes referrers for manifests with a subject field on manifest delete.
+    /// References:
+    ///   - Latest spec: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#deleting-manifests
+    /// </summary>
+    /// <param name="target"></param>
+    /// <param name="manifestContent"></param>
+    /// <param name="cancellationToken"></param>
+    private async Task IndexReferrersForDelete(Descriptor target, Stream manifestContent, CancellationToken cancellationToken = default)
+    {
+        Descriptor subject;
+        switch (target.MediaType)
+        {
+            case MediaType.ImageManifest:
+                var imageManifest = JsonSerializer.Deserialize<Manifest>(manifestContent);
+                if (imageManifest?.Subject == null)
+                {
+                    // no subject, no indexing needed
+                    return;
+                }
+                subject = imageManifest.Subject;
+                break;
+            case MediaType.ImageIndex:
+                var imageIndex = JsonSerializer.Deserialize<Index>(manifestContent);
+                if (imageIndex?.Subject == null)
+                {
+                    // no subject, no indexing needed
+                    return;
+                }
+                subject = imageIndex.Subject;
+                break;
+            default:
+                return;
+        }
+
+        var isReferrersSupported = await Repository.PingReferrersAsync(cancellationToken).ConfigureAwait(false);
+        if (isReferrersSupported)
+        {
+            // referrers API is available, no client-side indexing needed
+            return;
+        }
+        await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(target, Referrers.ReferrerOperation.Delete), cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

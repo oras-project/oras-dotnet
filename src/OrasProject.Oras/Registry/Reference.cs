@@ -206,6 +206,18 @@ public class Reference
         return new Reference(Registry, Repository, ContentReference);
     }
 
+    public Reference(Reference other)
+    {
+        if (other == null)
+        {
+            throw new ArgumentNullException(nameof(other));
+        }
+        
+        _registry = other.Registry;
+        _repository = other.Repository;
+        ContentReference = other.ContentReference;
+    }
+
     public Reference(string registry) => _registry = ValidateRegistry(registry);
 
     public Reference(string registry, string? repository) : this(registry)

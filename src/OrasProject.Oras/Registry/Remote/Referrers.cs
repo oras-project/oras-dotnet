@@ -28,6 +28,8 @@ internal static class Referrers
     }
     
     internal record ReferrerChange(Descriptor Referrer, ReferrerOperation ReferrerOperation);
+   
+    internal const string ZeroDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
     internal enum ReferrerOperation
     {
