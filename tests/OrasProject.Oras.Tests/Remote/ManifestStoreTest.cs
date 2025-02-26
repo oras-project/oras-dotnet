@@ -80,6 +80,51 @@ public class ManifestStoreTest
     }
     
     [Fact]
+    public async Task ManifestStore_PullReferrersIndexList_ExceedSizeLimit()
+    {
+        var expectedIndex = RandomIndex();
+        var expectedIndexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedIndex));
+        var expectedIndexDesc = new Descriptor()
+        {
+            Digest = ComputeSHA256(expectedIndexBytes),
+            MediaType = MediaType.ImageIndex,
+            Size = expectedIndexBytes.Length
+        };
+        
+        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        {
+            var res = new HttpResponseMessage();
+            res.RequestMessage = req;
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedIndexDesc.Digest}")
+            {
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                res.Content = new ByteArrayContent(expectedIndexBytes);
+                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedIndexDesc.Digest });
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        };
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient(mockedHttpHandler),
+            PlainHttp = true,
+            MaxMetadataBytes = expectedIndexDesc.Size - 1
+        });
+        var cancellationToken = new CancellationToken();
+        var exception = await Assert.ThrowsAsync<SizeLimitExceededException>(async () => await repo.PullReferrersIndexList(expectedIndexDesc.Digest, cancellationToken));
+        Assert.Equal($"content size {expectedIndexDesc.Size} exceeds MaxMetadataBytes {repo.Options.MaxMetadataBytes}", exception.Message);
+    }
+    
+    [Fact]
     public async Task ManifestStore_PullReferrersIndexListNotFound()
     {
         var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>

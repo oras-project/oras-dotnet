@@ -201,11 +201,6 @@ public class Reference
         }
     }
     
-    public Reference Clone()
-    {
-        return new Reference(Registry, Repository, ContentReference);
-    }
-
     public Reference(Reference other)
     {
         if (other == null)

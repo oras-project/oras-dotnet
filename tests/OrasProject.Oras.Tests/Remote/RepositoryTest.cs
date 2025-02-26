@@ -3164,7 +3164,7 @@ public class RepositoryTest
             }
         });
         Assert.False(isInvoked);
-        Assert.Equal($"unknown content returned {MediaType.ImageManifest}, expecting image index", exception.Message);
+        Assert.Equal($"unknown content returned {MediaType.ImageManifest}, expecting {MediaType.ImageIndex}", exception.Message);
     }
     
     [Fact]

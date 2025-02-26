@@ -438,12 +438,7 @@ public class Repository : IRepository
             {
                 yield return referrer;
             }
-            
-            yield break;
         }
-        
-        // Set ReferrersState to true as ReferrersState is not NotSupported/Unknown
-        SetReferrersState(true);
     }
 
     /// <summary>
@@ -459,8 +454,10 @@ public class Repository : IRepository
     internal async IAsyncEnumerable<Descriptor> ReferrersByApi(Descriptor descriptor, string? artifactType,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var reference = Options.Reference.Clone();
-        reference.ContentReference = descriptor.Digest;
+        var reference = new Reference(Options.Reference)
+        {
+            ContentReference = descriptor.Digest
+        };
         var nextPageUrl = new UriFactory(reference).BuildReferrersUrl(artifactType);
         
         while (nextPageUrl != null)
@@ -480,16 +477,18 @@ public class Repository : IRepository
             {
                 case HttpStatusCode.OK:
                     // If the status code is OK, continue processing the response
+                    // Set ReferrerState to Supported
+                    SetReferrersState(true);
                     break;
                 case HttpStatusCode.NotFound:
                     // If the status code is NotFound, handle as an error, possibly a non-existent repository
-                    var err = (ResponseException)await response.ParseErrorResponseAsync(cancellationToken)
+                    var exception = await response.ParseErrorResponseAsync(cancellationToken)
                         .ConfigureAwait(false);
-                    if (err.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
+                    if (exception.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
                     {
                         // Repository is not found, Referrers API status is unknown
                         // Propagate the exception to the caller
-                        throw err;
+                        throw exception;
                     }
 
                     // Set ReferrerState to false and return earlier
@@ -497,24 +496,19 @@ public class Repository : IRepository
                     yield break;
                 default:
                     // For any other status code, parse and throw the error response
-                    throw (ResponseException)await response.ParseErrorResponseAsync(cancellationToken)
+                    throw await response.ParseErrorResponseAsync(cancellationToken)
                         .ConfigureAwait(false);
             }
 
             var mediaType = response.Content.Headers.ContentType?.MediaType;
             if (mediaType != MediaType.ImageIndex)
             {
-                throw new NotSupportedException($"unknown content returned {mediaType}, expecting image index");
+                throw new NotSupportedException($"unknown content returned {mediaType}, expecting {MediaType.ImageIndex}");
             }
 
-            response.VerifyContentDigest(descriptor.Digest);
             using var content = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            var referrersIndex = JsonSerializer.Deserialize<Index>(content);
-            if (referrersIndex == null)
-            {
-                throw new InvalidResponseException(
-                    $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");
-            }
+            var referrersIndex = JsonSerializer.Deserialize<Index>(content) ?? throw new InvalidResponseException(
+                $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");
 
             var referrers = referrersIndex.Manifests;
             // If artifactType is specified, apply any filters based on the artifact type
@@ -574,20 +568,14 @@ public class Repository : IRepository
         try
         {
             var result = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
+            LimitSize(result.Descriptor, Options.MaxMetadataBytes);
             using (var stream = result.Stream)
             {
                 var indexBytes = await stream.ReadAllAsync(result.Descriptor, cancellationToken).ConfigureAwait(false);
-                using (var content = new MemoryStream(indexBytes))
-                {
-                    var index = JsonSerializer.Deserialize<Index>(content);
-                    if (index == null)
-                    {
-                        throw new JsonException(
-                            $"error when deserialize index manifest for referrersTag {referrersTag}");
-                    }
-
-                    return (result.Descriptor, index.Manifests);
-                }
+                using var content = new MemoryStream(indexBytes);
+                var index = JsonSerializer.Deserialize<Index>(content) ?? throw new JsonException(
+                    $"error when deserialize index manifest for referrersTag {referrersTag}");
+                return (result.Descriptor, index.Manifests);
             }
         }
         catch (NotFoundException)
