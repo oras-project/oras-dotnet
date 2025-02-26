@@ -421,6 +421,7 @@ public class Repository : IRepository
             yield break;
         }
         
+        // referrers state is unknown or supported
         await foreach (var referrer in ReferrersByApi(descriptor, artifactType, cancellationToken)
                            .ConfigureAwait(false))
         {
@@ -432,7 +433,7 @@ public class Repository : IRepository
         
         if (ReferrersState == Referrers.ReferrersState.NotSupported)
         {
-            // fall back to tag schema to retrieve referrers
+            // referrers state is set to NotSupported by ReferrersByApi, fall back to tag schema to retrieve referrers
             await foreach (var referrer in ReferrersByTagSchema(descriptor, artifactType, cancellationToken)
                                .ConfigureAwait(false))
             {
@@ -500,7 +501,7 @@ public class Repository : IRepository
             var mediaType = response.Content.Headers.ContentType?.MediaType;
             if (mediaType != MediaType.ImageIndex)
             {
-                // Referrers API is not supported, set it to false and return early
+                // Referrers API is not properly supported, set it to false and return early
                 SetReferrersState(false);
                 yield break;
             }
