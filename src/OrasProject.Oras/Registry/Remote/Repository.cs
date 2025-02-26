@@ -575,8 +575,7 @@ public class Repository : IRepository
             using (var stream = result.Stream)
             {
                 var indexBytes = await stream.ReadAllAsync(result.Descriptor, cancellationToken).ConfigureAwait(false);
-                using var content = new MemoryStream(indexBytes);
-                var index = JsonSerializer.Deserialize<Index>(content) ?? throw new JsonException(
+                var index = JsonSerializer.Deserialize<Index>(indexBytes) ?? throw new JsonException(
                     $"error when deserialize index manifest for referrersTag {referrersTag}");
                 return (result.Descriptor, index.Manifests);
             }
