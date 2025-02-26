@@ -477,8 +477,6 @@ public class Repository : IRepository
             {
                 case HttpStatusCode.OK:
                     // If the status code is OK, continue processing the response
-                    // Set ReferrerState to Supported
-                    SetReferrersState(true);
                     break;
                 case HttpStatusCode.NotFound:
                     // If the status code is NotFound, handle as an error, possibly a non-existent repository
@@ -510,6 +508,9 @@ public class Repository : IRepository
             var referrersIndex = JsonSerializer.Deserialize<Index>(content) ?? throw new InvalidResponseException(
                 $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");
 
+            // Set ReferrerState to Supported
+            SetReferrersState(true);
+            
             var referrers = referrersIndex.Manifests;
             // If artifactType is specified, apply any filters based on the artifact type
             if (!string.IsNullOrEmpty(artifactType))
