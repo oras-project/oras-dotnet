@@ -448,7 +448,6 @@ public class Repository : IRepository
     /// <param name="artifactType"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    /// <exception cref="ResponseException"></exception>
     /// <exception cref="NotSupportedException"></exception>
     /// <exception cref="InvalidResponseException"></exception>
     internal async IAsyncEnumerable<Descriptor> ReferrersByApi(Descriptor descriptor, string? artifactType,
@@ -501,7 +500,9 @@ public class Repository : IRepository
             var mediaType = response.Content.Headers.ContentType?.MediaType;
             if (mediaType != MediaType.ImageIndex)
             {
-                throw new NotSupportedException($"unknown content returned {mediaType}, expecting {MediaType.ImageIndex}");
+                // Referrers API is not supported, set it to false and return early
+                SetReferrersState(false);
+                yield break;
             }
 
             using var content = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);

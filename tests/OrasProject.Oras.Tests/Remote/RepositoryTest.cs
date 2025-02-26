@@ -3111,7 +3111,7 @@ public class RepositoryTest
     }
     
     [Fact]
-    public async Task Repository_ReferrersByApi_ThrowsNotSupportedException_WhenContentIsNotImageIndex()
+    public async Task Repository_ReferrersByApi_WhenContentIsNotImageIndex()
     {
         var expectedReferrersList = new List<Descriptor>
         {
@@ -3154,17 +3154,15 @@ public class RepositoryTest
             PlainHttp = true,
         });
     
-        var isInvoked = false;
         var cancellationToken = new CancellationToken();
-        var exception = await Assert.ThrowsAsync<NotSupportedException>(async () =>
+        var returnedReferrers = new List<Descriptor>();
+        Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
+        await foreach (var referrer in repo.ReferrersByApi(desc, artifactType, cancellationToken))
         {
-            await foreach (var _ in repo.ReferrersByApi(desc, artifactType, cancellationToken))
-            {
-                isInvoked = true;
-            }
-        });
-        Assert.False(isInvoked);
-        Assert.Equal($"unknown content returned {MediaType.ImageManifest}, expecting {MediaType.ImageIndex}", exception.Message);
+            returnedReferrers.Add(referrer);
+        }
+        Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
+        Assert.Empty(returnedReferrers);
     }
     
     [Fact]
