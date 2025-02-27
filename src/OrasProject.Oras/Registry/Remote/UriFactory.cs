@@ -102,10 +102,11 @@ internal class UriFactory : UriBuilder
         builder.Path += "/blobs/uploads/";
         return builder.Uri;
     }
-
+    
     /// <summary>
-    /// Builds the URL for accessing the Referrers API
-    /// Format: <scheme>://<registry>/v2/<repository>/referrers/<reference>?artifactType=<artifactType>
+    /// BuildReferrersUrl builds the URL for accessing referrers API
+    /// Format: <scheme>://<registry>/v2/<repository>/referrers/<digest>?artifactType=<artifactType>
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
     /// </summary>
     /// <param name="artifactType"></param>
     /// <returns></returns>
@@ -119,7 +120,7 @@ internal class UriFactory : UriBuilder
             query.Add("artifactType", artifactType);
             builder.Query = query.ToString();
         }
-
+        
         return builder.Uri;
     }
     

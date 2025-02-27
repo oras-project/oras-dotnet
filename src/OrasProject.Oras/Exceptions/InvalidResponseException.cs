@@ -1,4 +1,4 @@
-// Copyright The ORAS Authors.
+﻿// Copyright The ORAS Authors.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,20 +16,20 @@ using System;
 namespace OrasProject.Oras.Exceptions;
 
 /// <summary>
-/// InvalidReferenceException is thrown when the reference is invalid.
+/// InvalidResponseException is thrown when the response is invalid.
 /// </summary>
-public class InvalidReferenceException : FormatException
+public class InvalidResponseException : FormatException
 {
-    public InvalidReferenceException()
+    public InvalidResponseException()
     {
     }
 
-    public InvalidReferenceException(string? message)
+    public InvalidResponseException(string? message)
         : base(message)
     {
     }
 
-    public InvalidReferenceException(string? message, Exception? inner)
+    public InvalidResponseException(string? message, Exception? inner)
         : base(message, inner)
     {
     }

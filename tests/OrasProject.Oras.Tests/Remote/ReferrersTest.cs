@@ -267,4 +267,121 @@ public class ReferrersTest
         Assert.Empty(updatedReferrers); 
         Assert.False(updateRequired);
     }
+    
+    [Fact]
+    public void IsReferrersFilterApplied_AppliedFiltersNull_ReturnsFalse()
+    {
+        string? appliedFilters = null;
+        const string requestedFilter = "artifactType";
+        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
+        Assert.False(result);
+    }
+    
+    [Fact]
+    public void IsReferrersFilterApplied_AppliedFiltersEmpty_ReturnsFalse()
+    {
+        const string appliedFilters = "";
+        const string requestedFilter = "artifactType";
+        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
+        Assert.False(result);
+    }
+    
+    [Fact]
+    public void IsReferrersFilterApplied_RequestedFilterNull_ReturnsFalse()
+    {
+        const string appliedFilters = "artifactType,annotation";
+        string? requestedFilter = null;
+        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsReferrersFilterApplied_RequestedFilterEmpty_ReturnsFalse()
+    {
+        const string appliedFilters = "artifactType,annotation";
+        const string requestedFilter = "";
+        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
+        Assert.False(result);
+    }
+    
+    [Fact]
+    public void IsReferrersFilterApplied_RequestedFilterMatches_ReturnsTrue()
+    {
+        const string appliedFilters = "artifactType,annotation";
+        const string requestedFilter = "artifactType";
+
+        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
+        Assert.True(result);
+    }
+    
+    [Fact]
+    public void IsReferrersFilterApplied_SingleAppliedFiltersRequestedFilterMatches_ReturnsTrue()
+    {
+        const string appliedFilters = "filter1";
+        const string requestedFilter = "filter1";
+        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
+        Assert.True(result);
+    }
+    
+    [Fact]
+    public void IsReferrersFilterApplied_RequestedFilterDoesNotMatch_ReturnsFalse()
+    {
+        const string appliedFilters = "filter1,filter2";
+        const string requestedFilter = "filter3";
+        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
+        Assert.False(result);
+    }
+    
+    [Fact]
+    public void FilterReferrers_WithNullOrEmptyArtifactType_ShouldReturnAllReferrers()
+    {
+        var referrers = new List<Descriptor>
+        {
+            RandomDescriptor(),
+            RandomDescriptor(),
+            RandomDescriptor(),
+        };
+        string? artifactType = null;
+        var result = Referrers.FilterReferrers(referrers, artifactType);
+        Assert.Equal(3, result.Count);
+        Assert.Equal(referrers, result);
+        
+        artifactType = "";
+        result = Referrers.FilterReferrers(referrers, artifactType);
+        Assert.Equal(3, result.Count);
+        Assert.Equal(referrers, result);
+    }
+    
+    [Fact]
+    public void FilterReferrers_WithValidArtifactType_ShouldReturnMatchingReferrers()
+    {
+        var referrers = new List<Descriptor>
+        {
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"doc/abc"),
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"abc/abc"),
+        };
+        const string artifactType = "doc/example";
+        var result = Referrers.FilterReferrers(referrers, artifactType);
+
+        Assert.Equal(2, result.Count);
+        Assert.True(result.All(r => r.ArtifactType == artifactType));
+    }
+    
+    [Fact]
+    public void FilterReferrers_WithArtifactTypeThatDoesNotExist_ShouldReturnEmptyList()
+    {
+        var referrers = new List<Descriptor>
+        {
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"doc/abc"),
+            RandomDescriptor(artifactType:"doc/example"),
+            RandomDescriptor(artifactType:"abc/abc"),
+        };
+        const string artifactType = "NonExistentType";
+        var result = Referrers.FilterReferrers(referrers, artifactType);
+        Assert.Empty(result); 
+    }
+    
 }

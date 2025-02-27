@@ -38,11 +38,11 @@ public class RandomDataGenerator
         return new string(stringChars);
     }
     
-    public static Descriptor RandomDescriptor(string mediaType = MediaType.ImageManifest)
+    public static Descriptor RandomDescriptor(string mediaType = MediaType.ImageManifest, string artifactType = "")
     {
         var randomBytes = RandomBytes();
         return new Descriptor
-            { MediaType = mediaType, Digest = Digest.ComputeSHA256(randomBytes), Size = randomBytes.Length };
+            { MediaType = mediaType, Digest = Digest.ComputeSHA256(randomBytes), Size = randomBytes.Length, ArtifactType = artifactType };
     }
 
     public static (Manifest, byte[]) RandomManifest()
@@ -72,15 +72,20 @@ public class RandomDataGenerator
         return Encoding.UTF8.GetBytes(RandomString());
     }
 
-    public static Index RandomIndex()
+    public static Index RandomIndex(IList<Descriptor>? manifests = null)
     {
-        return new Index()
+        if (manifests == null)
         {
-            Manifests = new List<Descriptor>
+            manifests = new List<Descriptor>
             {
                 RandomDescriptor(),
                 RandomDescriptor(),
-            },
+                RandomDescriptor(),
+            };
+        }
+        return new Index()
+        {
+            Manifests = manifests,
             MediaType = MediaType.ImageIndex,
         };
     }

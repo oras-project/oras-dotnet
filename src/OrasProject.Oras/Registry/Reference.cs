@@ -200,7 +200,7 @@ public class Reference
             return false;
         }
     }
-
+    
     public Reference(Reference other)
     {
         if (other == null)

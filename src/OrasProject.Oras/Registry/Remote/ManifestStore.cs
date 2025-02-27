@@ -14,8 +14,6 @@
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -274,7 +272,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         // 1. pull the original referrers index list using referrers tag schema
         var referrersTag = Referrers.BuildReferrersTag(subject);
-        var (oldDesc, oldReferrers) = await PullReferrersIndexList(referrersTag, cancellationToken).ConfigureAwait(false);
+        var (oldDesc, oldReferrers) = await Repository.PullReferrersIndexList(referrersTag, cancellationToken).ConfigureAwait(false);
         
         // 2. apply the referrer change to referrers list
         var (updatedReferrers, updateRequired) =
@@ -308,34 +306,6 @@ public class ManifestStore(Repository repository) : IManifestStore
         // 4. delete the dangling original referrers index, if applicable
         await DeleteAsync(oldDesc, cancellationToken).ConfigureAwait(false);
     }
-    
-    /// <summary>
-    /// PullReferrersIndexList retrieves the referrers index list associated with the given referrers tag.
-    /// It fetches the index manifest from the repository, deserializes it into an `Index` object, 
-    /// and returns the descriptor along with the list of manifests (referrers). If the referrers index is not found, 
-    /// an empty descriptor and an empty list are returned.
-    /// </summary>
-    /// <param name="referrersTag"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    internal async Task<(Descriptor?, IList<Descriptor>)> PullReferrersIndexList(String referrersTag, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var (desc, content) = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
-            var index = JsonSerializer.Deserialize<Index>(content);
-            if (index == null)
-            {
-                throw new JsonException($"null index manifests list when pulling referrers index list for referrers tag {referrersTag}");
-            }
-            return (desc, index.Manifests);
-        }
-        catch (NotFoundException)
-        {
-            return (null, ImmutableArray<Descriptor>.Empty);
-        }
-    }
-    
     
     /// <summary>
     /// Pushes the manifest content, matching the expected descriptor.
