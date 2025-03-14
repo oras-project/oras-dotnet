@@ -1,12 +1,12 @@
-# Oras Authentication Model
+# ORAS Authentication Model
 
 ## Abstract
 
-This design document outlines the initial design of the bearer token authentication model in Oras, as well as the authentication workflow between the registry and the authorization server.
+This design document outlines the initial approach for implementing bearer token authentication in ORAS, as well as the authentication workflow between the registry and the authorization server. Bearer token authentication is preferred over basic authentication because it offers better security, scalability, and flexibility, allowing for smoother integration with modern authentication protocols and reducing the risk of exposing sensitive credentials. Supporting bearer token authentication aligns with OAuth2 standards, which are widely adopted by modern registries, providing a secure and efficient way to authenticate users and manage access.
 
 ## Introduction
 
-Currently, the Oras .NET SDK does not fully implement an authentication model for registries. This design document outlines the plan to complete the authentication model by implementing Bearer Authentication, enabling support for bearer token authentication, and detailing the authentication workflow between the registry and the authorization server.
+Currently, the ORAS .NET SDK does not fully implement an authentication model for registries. This design document outlines the high-level design for implementing bearer token Authentication, enabling support for secure user authentication, and detailing the authentication workflow between the registry and the authorization server.
 
 
 ## Design
@@ -47,7 +47,7 @@ Currently, the Oras .NET SDK does not fully implement an authentication model fo
 ```mermaid
 graph TD;
     subgraph Client
-      A[Oras Client]
+      A[ORAS Client]
     end
 
     subgraph Auth
@@ -55,7 +55,7 @@ graph TD;
     end
 
     subgraph Registry
-      B[registry]
+      B[OCI registry]
     end
 
     A -->|1| B
@@ -66,13 +66,13 @@ graph TD;
     B --> |6| A
 ```
 
-1. Oras client attempts to begin a push/pull operation with the registry.
+1. ORAS client attempts to begin a push/pull operation with the registry.
 2. If the registry requires authorization, it will return a 401 Unauthorized HTTP response with information, i.e. Www-Authenticate header, on how to authenticate
-3. The Oras client makes a request to the authorization service for a Bearer token.
+3. The ORAS client makes a request to the authorization service for a Bearer token.
 4. The authorization service returns an opaque Bearer token representing the client’s authorized access.
-5. The Oras client retries the original request with the Bearer token embedded in the request’s Authorization header.
+5. The ORAS client retries the original request with the Bearer token embedded in the request’s Authorization header.
 6. The Registry authorizes the client by validating the Bearer token and the claim set embedded within it and begins the push/pull session as usual.
 
 
-#### Note: 
-  The current Azure ACR .NET SDK does not provide a public method to obtain an ACR refresh token from the Azure client. I have already reached out to the relevant stakeholders to explore any potential workarounds for this limitation. Alternatively, another solution could be to introduce a separate package dedicated to handling Azure-specific tasks.
+#### Note:
+The current .NET SDK does not provide a public method to obtain a refresh token from the client. One solution could be to introduce a separate package dedicated to handling platform-specific tasks, such as those required for Azure Container Registry (ACR).
