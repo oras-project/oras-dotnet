@@ -18,8 +18,8 @@ Currently, the ORAS .NET SDK does not fully implement an authentication model fo
     Client {
         boolean ForceAttemptOAuth2
         string ClientId
-        Cache
-        Credential
+        Cache Cache
+        CredentialFunc(string registry) => Credential
     }
 
     Credential {
