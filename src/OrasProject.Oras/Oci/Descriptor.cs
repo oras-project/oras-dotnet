@@ -71,8 +71,6 @@ public class Descriptor
 
     internal static bool IsNullOrInvalid(Descriptor? descriptor)
     {
-        return descriptor == null || 
-               string.IsNullOrWhiteSpace(descriptor.Digest) ||
-               string.IsNullOrWhiteSpace(descriptor.MediaType);
+        return descriptor == null || string.IsNullOrWhiteSpace(descriptor.Digest) || string.IsNullOrWhiteSpace(descriptor.MediaType);
     }
 }

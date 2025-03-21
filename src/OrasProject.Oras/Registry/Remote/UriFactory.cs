@@ -103,6 +103,12 @@ internal class UriFactory : UriBuilder
         return builder.Uri;
     }
 
+    /// <summary>
+    /// BuildReferrersUrl builds the URL for accessing referrers API
+    /// Format: <scheme>://<registry>/v2/<repository>/referrers/<digest>
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
+    /// </summary>
+    /// <returns></returns>
     public Uri BuildReferrersUrl()
     {
         return BuildReferrersUrl(string.Empty);
