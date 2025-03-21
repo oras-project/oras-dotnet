@@ -113,7 +113,7 @@ internal static class Referrers
     /// <param name="appliedFilters"></param>
     /// <param name="requestedFilter"></param>
     /// <returns></returns>
-    internal static bool IsReferrersFilterApplied(string? appliedFilters, string requestedFilter) {
+    internal static bool IsReferrersFilterApplied(string appliedFilters, string requestedFilter) {
         if (string.IsNullOrEmpty(appliedFilters) || string.IsNullOrEmpty(requestedFilter))
         {
             return false;

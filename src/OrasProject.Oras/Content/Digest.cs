@@ -52,7 +52,7 @@ internal static class Digest
     /// </summary>
     /// <param name="content"></param>
     /// <returns></returns>
-    internal static string ComputeSHA256(byte[] content)
+    internal static string ComputeSha256(byte[] content)
     {
         using var sha256 = SHA256.Create();
         var hash = sha256.ComputeHash(content);

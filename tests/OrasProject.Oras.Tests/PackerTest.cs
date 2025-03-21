@@ -52,7 +52,7 @@ public class PackerTest
         var expectedConfig = new Descriptor
         {
             MediaType = artifactType,
-            Digest = Digest.ComputeSHA256(expectedConfigData),
+            Digest = Digest.ComputeSha256(expectedConfigData),
             Size = expectedConfigData.Length
         };
         var expectedConfigBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedConfig));
@@ -133,7 +133,7 @@ public class PackerTest
             var desc = new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length
             };
             descs.Add(desc);
@@ -157,7 +157,7 @@ public class PackerTest
         var configDesc = new Descriptor
                             {
                                 MediaType = "application/vnd.test.config",
-                                Digest = Digest.ComputeSHA256(configBytes),
+                                Digest = Digest.ComputeSha256(configBytes),
                                 Size = configBytes.Length
                             };
         var configAnnotations = new Dictionary<string, string> { { "foo", "bar" } };
@@ -199,7 +199,7 @@ public class PackerTest
         var expectedManifestDesc = new Descriptor
                                         {
                                             MediaType = expectedManifest.MediaType,
-                                            Digest = Digest.ComputeSHA256(expectedManifestBytes),
+                                            Digest = Digest.ComputeSha256(expectedManifestBytes),
                                             Size = expectedManifestBytes.Length
         };
         expectedManifestDesc.ArtifactType = expectedManifest.Config.MediaType;
@@ -220,7 +220,7 @@ public class PackerTest
         var expectedConfigDesc = new Descriptor
                                     {
                                         MediaType = artifactType,
-                                        Digest = Digest.ComputeSHA256(configBytes),
+                                        Digest = Digest.ComputeSha256(configBytes),
                                         Annotations = configAnnotations,
                                         Size = configBytes.Length
                                     };
@@ -244,7 +244,7 @@ public class PackerTest
         expectedManifestDesc = new Descriptor
                                 {
                                     MediaType = expectedManifest.MediaType,
-                                    Digest = Digest.ComputeSHA256(expectedManifestBytes),
+                                    Digest = Digest.ComputeSha256(expectedManifestBytes),
                                     Size = expectedManifestBytes.Length
                                 };
         expectedManifestDesc.ArtifactType = expectedManifest.Config.MediaType;
@@ -263,7 +263,7 @@ public class PackerTest
         var subjectDesc = new Descriptor
         {
             MediaType = "application/vnd.oci.image.manifest.v1+json",
-            Digest = Digest.ComputeSHA256(subjectManifest),
+            Digest = Digest.ComputeSha256(subjectManifest),
             Size = subjectManifest.Length
         };
 
@@ -313,7 +313,7 @@ public class PackerTest
         var configDesc = new Descriptor
                             {
                                 MediaType = "application/vnd.test.config",
-                                Digest = Digest.ComputeSHA256(configBytes),
+                                Digest = Digest.ComputeSha256(configBytes),
                                 Size = configBytes.Length
                             };
         var opts = new PackManifestOptions
@@ -335,7 +335,7 @@ public class PackerTest
         configDesc = new Descriptor
                             {
                                 MediaType = "random",
-                                Digest = Digest.ComputeSHA256(configBytes),
+                                Digest = Digest.ComputeSha256(configBytes),
                                 Size = configBytes.Length
                             };
         opts = new PackManifestOptions
@@ -399,8 +399,8 @@ public class PackerTest
 
         // Verify layers
         var emptyConfigBytes = Encoding.UTF8.GetBytes("{}");
-        var emptyJSON = Descriptor.Empty;
-        var expectedLayers = new List<Descriptor> { emptyJSON };
+        var emptyJson = Descriptor.Empty;
+        var expectedLayers = new List<Descriptor> { emptyJson };
         Assert.Equal(JsonSerializer.SerializeToUtf8Bytes(expectedLayers), JsonSerializer.SerializeToUtf8Bytes(manifest!.Layers));
     }
 
@@ -424,14 +424,14 @@ public class PackerTest
 
         // Verify layers
         var emptyConfigBytes = Encoding.UTF8.GetBytes("{}");
-        var emptyJSON = new Descriptor
+        var emptyJson = new Descriptor
         {
             MediaType = "application/vnd.oci.empty.v1+json",
             Digest = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
             Size = emptyConfigBytes.Length,
             Data = emptyConfigBytes
         };
-        var expectedLayers = new List<Descriptor> { emptyJSON };
+        var expectedLayers = new List<Descriptor> { emptyJson };
         Assert.Equal(JsonSerializer.SerializeToUtf8Bytes(expectedLayers), JsonSerializer.SerializeToUtf8Bytes(manifest!.Layers));
     }
 
@@ -450,14 +450,14 @@ public class PackerTest
             {
                 MediaType = "test",
                 Data = hellogBytes,
-                Digest = Digest.ComputeSHA256(hellogBytes),
+                Digest = Digest.ComputeSha256(hellogBytes),
                 Size = hellogBytes.Length
             },
             new Descriptor
             {
                 MediaType = "test",
                 Data = goodbyeBytes,
-                Digest = Digest.ComputeSHA256(goodbyeBytes),
+                Digest = Digest.ComputeSha256(goodbyeBytes),
                 Size = goodbyeBytes.Length
             }
         };
@@ -466,7 +466,7 @@ public class PackerTest
         {
             MediaType = "application/vnd.test",
             Data = configBytes,
-            Digest = Digest.ComputeSHA256(configBytes),
+            Digest = Digest.ComputeSha256(configBytes),
             Size = configBytes.Length
         };
         var configAnnotations = new Dictionary<string, string> { { "foo", "bar" } };
@@ -480,7 +480,7 @@ public class PackerTest
         var subjectDesc = new Descriptor
         {
             MediaType = "application/vnd.oci.image.manifest.v1+json",
-            Digest = Digest.ComputeSHA256(subjectManifest),
+            Digest = Digest.ComputeSha256(subjectManifest),
             Size = subjectManifest.Length
         };
 
@@ -515,7 +515,7 @@ public class PackerTest
         var expectedManifestDesc = new Descriptor
                                         {
                                             MediaType = expectedManifest.MediaType,
-                                            Digest = Digest.ComputeSHA256(expectedManifestBytes),
+                                            Digest = Digest.ComputeSha256(expectedManifestBytes),
                                             Size = expectedManifestBytes.Length
         };
         expectedManifestDesc.ArtifactType = expectedManifest.Config.MediaType;
@@ -545,7 +545,7 @@ public class PackerTest
         expectedManifestDesc = new Descriptor
                                 {
                                     MediaType = expectedManifest.MediaType,
-                                    Digest = Digest.ComputeSHA256(expectedManifestBytes),
+                                    Digest = Digest.ComputeSha256(expectedManifestBytes),
                                     Size = expectedManifestBytes.Length
                                 };
         expectedManifestDesc.Annotations = expectedManifest.Annotations;
@@ -562,14 +562,14 @@ public class PackerTest
 
         manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, artifactType, opts, cancellationToken);
         var emptyConfigBytes = Encoding.UTF8.GetBytes("{}");
-        var emptyJSON = new Descriptor
+        var emptyJson = new Descriptor
                             {
                                 MediaType = "application/vnd.oci.empty.v1+json",
                                 Digest = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
                                 Size = emptyConfigBytes.Length,
                                 Data = emptyConfigBytes
                             };
-        var expectedConfigDesc = emptyJSON;
+        var expectedConfigDesc = emptyJson;
         expectedManifest.ArtifactType = artifactType;
         expectedManifest.Config = expectedConfigDesc;
         expectedManifestBytes = JsonSerializer.SerializeToUtf8Bytes(expectedManifest);
@@ -581,7 +581,7 @@ public class PackerTest
         expectedManifestDesc = new Descriptor
                                 {
                                     MediaType = expectedManifest.MediaType,
-                                    Digest = Digest.ComputeSHA256(expectedManifestBytes),
+                                    Digest = Digest.ComputeSha256(expectedManifestBytes),
                                     Size = expectedManifestBytes.Length
                                 };
         expectedManifestDesc.ArtifactType = artifactType;
@@ -639,7 +639,7 @@ public class PackerTest
         var configDesc = new Descriptor
                             {
                                 MediaType = "application/vnd.test.config",
-                                Digest = Digest.ComputeSHA256(configBytes),
+                                Digest = Digest.ComputeSha256(configBytes),
                                 Size = configBytes.Length
                             };
         var opts = new PackManifestOptions
@@ -661,7 +661,7 @@ public class PackerTest
         configDesc = new Descriptor
                             {
                                 MediaType = "random",
-                                Digest = Digest.ComputeSHA256(configBytes),
+                                Digest = Digest.ComputeSha256(configBytes),
                                 Size = configBytes.Length
                             };
         opts = new PackManifestOptions

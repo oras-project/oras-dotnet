@@ -397,8 +397,27 @@ public class Repository : IRepository
     public async Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent = null, CancellationToken cancellationToken = default) 
         => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
 
+
     /// <summary>
-    /// ReferrersAsync retrieves referrers for the given descriptor and artifact type if specified
+    /// FetchReferrersAsync retrieves referrers for the given descriptor
+    /// and return a streaming of descriptors asynchronously for consumption.
+    /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
+    /// If the referrers are supported via an API, the state is updated accordingly.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async IAsyncEnumerable<Descriptor> FetchReferrersAsync(Descriptor descriptor,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var referrer in FetchReferrersAsync(descriptor, null, cancellationToken).ConfigureAwait(false))
+        {
+            yield return referrer;
+        }
+    }
+
+    /// <summary>
+    /// FetchReferrersAsync retrieves referrers for the given descriptor and artifact type
     /// and return a streaming of descriptors asynchronously for consumption.
     /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
     /// If the referrers are supported via an API, the state is updated accordingly.
@@ -406,13 +425,13 @@ public class Repository : IRepository
     /// <param name="descriptor"></param>
     /// <param name="artifactType"></param>
     /// <param name="cancellationToken"></param>
-    public async IAsyncEnumerable<Descriptor> ReferrersAsync(Descriptor descriptor, string? artifactType,
+    public async IAsyncEnumerable<Descriptor> FetchReferrersAsync(Descriptor descriptor, string? artifactType,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (ReferrersState == Referrers.ReferrersState.NotSupported)
         {
             // fall back to tag schema to retrieve referrers
-            await foreach (var referrer in ReferrersByTagSchema(descriptor, artifactType, cancellationToken)
+            await foreach (var referrer in FetchReferrersByTagSchema(descriptor, artifactType, cancellationToken)
                                .ConfigureAwait(false))
             {
                 yield return referrer;
@@ -422,7 +441,7 @@ public class Repository : IRepository
         }
         
         // referrers state is unknown or supported
-        await foreach (var referrer in ReferrersByApi(descriptor, artifactType, cancellationToken)
+        await foreach (var referrer in FetchReferrersByApi(descriptor, artifactType, cancellationToken)
                            .ConfigureAwait(false))
         {
             // If Referrers API is supported, then it would return referrers continuously
@@ -434,7 +453,7 @@ public class Repository : IRepository
         if (ReferrersState == Referrers.ReferrersState.NotSupported)
         {
             // referrers state is set to NotSupported by ReferrersByApi, fall back to tag schema to retrieve referrers
-            await foreach (var referrer in ReferrersByTagSchema(descriptor, artifactType, cancellationToken)
+            await foreach (var referrer in FetchReferrersByTagSchema(descriptor, artifactType, cancellationToken)
                                .ConfigureAwait(false))
             {
                 yield return referrer;
@@ -443,7 +462,23 @@ public class Repository : IRepository
     }
 
     /// <summary>
-    /// ReferrersByApi retrieves a collection of referrers asynchronously based on the given descriptor and optional artifact type.
+    /// ReferrersByApi retrieves a collection of referrers asynchronously based on the given descriptor.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    internal async IAsyncEnumerable<Descriptor> FetchReferrersByApi(Descriptor descriptor,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var referrer in FetchReferrersByApi(descriptor, null, cancellationToken)
+                               .ConfigureAwait(false))
+        {
+            yield return referrer;
+        }
+    }
+
+    /// <summary>
+    /// ReferrersByApi retrieves a collection of referrers asynchronously based on the given descriptor and artifact type.
     /// </summary>
     /// <param name="descriptor"></param>
     /// <param name="artifactType"></param>
@@ -451,7 +486,7 @@ public class Repository : IRepository
     /// <returns></returns>
     /// <exception cref="NotSupportedException"></exception>
     /// <exception cref="InvalidResponseException"></exception>
-    internal async IAsyncEnumerable<Descriptor> ReferrersByApi(Descriptor descriptor, string? artifactType,
+    internal async IAsyncEnumerable<Descriptor> FetchReferrersByApi(Descriptor descriptor, string? artifactType,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var reference = new Reference(Options.Reference)
@@ -518,7 +553,7 @@ public class Repository : IRepository
             if (!string.IsNullOrEmpty(artifactType))
             {
                 if (!response.Headers.TryGetValues(_headerOciFiltersApplied, out var values)
-                    || !Referrers.IsReferrersFilterApplied(values.FirstOrDefault(), _filterTypeArtifactType))
+                    || !Referrers.IsReferrersFilterApplied(values.FirstOrDefault(string.Empty), _filterTypeArtifactType))
                 {
                     // Filter the referrers based on the artifact type if necessary
                     referrers = Referrers.FilterReferrers(referrers, artifactType);
@@ -535,16 +570,34 @@ public class Repository : IRepository
             nextPageUrl = response.ParseLink();
         }
     }
-    
+
     /// <summary>
-    /// ReferrersByTagSchema retrieves referrers based on referrers tag schema, filters out referrers based on specified artifact type
+    /// FetchReferrersByTagSchema retrieves referrers based on referrers tag schema,
+    /// and return a collection of referrers asynchronously when referrers API is not supported.
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#backwards-compatibility
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    internal async IAsyncEnumerable<Descriptor> FetchReferrersByTagSchema(Descriptor descriptor,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var referrer in FetchReferrersByTagSchema(descriptor, null, cancellationToken)
+                               .ConfigureAwait(false))
+        {
+            yield return referrer;
+        }
+    }
+
+    /// <summary>
+    /// FetchReferrersByTagSchema retrieves referrers based on referrers tag schema, filters out referrers based on specified artifact type
     /// and return a collection of referrers asynchronously when referrers API is not supported.
     /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#backwards-compatibility
     /// </summary>
     /// <param name="descriptor"></param>
     /// <param name="artifactType"></param>
     /// <param name="cancellationToken"></param>
-    internal async IAsyncEnumerable<Descriptor> ReferrersByTagSchema(Descriptor descriptor, string? artifactType,
+    internal async IAsyncEnumerable<Descriptor> FetchReferrersByTagSchema(Descriptor descriptor, string? artifactType,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var referrersTag = Referrers.BuildReferrersTag(descriptor);

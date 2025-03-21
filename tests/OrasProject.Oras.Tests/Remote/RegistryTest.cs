@@ -54,7 +54,7 @@ public class RegistryTest
     [Fact]
     public async Task PingAsync()
     {
-        var V2Implemented = true;
+        var v2Implemented = true;
         var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
         {
             var res = new HttpResponseMessage();
@@ -66,7 +66,7 @@ public class RegistryTest
                 return res;
             }
 
-            if (V2Implemented)
+            if (v2Implemented)
             {
                 res.StatusCode = HttpStatusCode.OK;
                 return res;
@@ -85,7 +85,7 @@ public class RegistryTest
         });
         var cancellationToken = new CancellationToken();
         await registry.PingAsync(cancellationToken);
-        V2Implemented = false;
+        v2Implemented = false;
         await Assert.ThrowsAnyAsync<Exception>(
             async () => await registry.PingAsync(cancellationToken));
     }

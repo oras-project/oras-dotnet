@@ -42,7 +42,7 @@ public class RandomDataGenerator
     {
         var randomBytes = RandomBytes();
         return new Descriptor
-            { MediaType = mediaType, Digest = Digest.ComputeSHA256(randomBytes), Size = randomBytes.Length, ArtifactType = artifactType };
+            { MediaType = mediaType, Digest = Digest.ComputeSha256(randomBytes), Size = randomBytes.Length, ArtifactType = artifactType };
     }
 
     public static (Manifest, byte[]) RandomManifest()
