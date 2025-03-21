@@ -2655,7 +2655,7 @@ public class RepositoryTest
         // no artifact type filtering
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.FetchReferrersByTagSchema(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByTagSchema(desc, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -2700,7 +2700,7 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.FetchReferrersByTagSchema(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByTagSchema(desc, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -2750,7 +2750,7 @@ public class RepositoryTest
         // no artifact type specified
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.FetchReferrersByApi(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByApi(desc, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -2894,7 +2894,7 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.FetchReferrersByApi(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByApi(desc, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -3055,7 +3055,7 @@ public class RepositoryTest
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var exception = await Assert.ThrowsAsync<ResponseException>(async () =>
         {
-            await foreach (var _ in repo.FetchReferrersByApi(desc, null, cancellationToken))
+            await foreach (var _ in repo.FetchReferrersByApi(desc, cancellationToken))
             {
                 isInvoked = true;
             }
@@ -3097,7 +3097,7 @@ public class RepositoryTest
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var exception = await Assert.ThrowsAsync<ResponseException>(async () =>
         {
-            await foreach (var _ in repo.FetchReferrersByApi(desc, null, cancellationToken))
+            await foreach (var _ in repo.FetchReferrersByApi(desc, cancellationToken))
             {
                 isInvoked = true;
             }
@@ -3300,7 +3300,7 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var returnedReferrers = new List<Descriptor>();
-        await foreach (var referrer in repo.FetchReferrersAsync(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersAsync(desc, cancellationToken))
         {
             returnedReferrers.Add(referrer);
         }
@@ -3365,7 +3365,7 @@ public class RepositoryTest
         };
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.FetchReferrersAsync(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersAsync(desc, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -3447,7 +3447,7 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var returnedReferrers = new List<Descriptor>();
-        await foreach (var referrer in repo.FetchReferrersAsync(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersAsync(desc, cancellationToken))
         {
             returnedReferrers.Add(referrer);
         }
