@@ -13,13 +13,45 @@ Currently, the ORAS .NET SDK does not fully implement an authentication model fo
 
 ### The high level auth client design is as follows:
 
+In this design, the Client class is structured with several key variables: ForceAttemptOAuth2, ClientId, Cache, Credential, and ScopeManager.
+
+Cache: This component is responsible for storing the access token retrieved from the authorization server, specifically for each repository, to optimize repeated token requests.
+
+Credential: The Credential variable leverages an interface that provides a Resolve method to retrieve credentials. Users can implement concrete credential retrieval logic based on different cloud providers, ensuring flexibility and extensibility.
+
+ScopeManager: This service is responsible for managing scopes across the entire application context per repository. It follows the Singleton pattern to ensure a single, thread-safe instance is used throughout the application.
+
+ForceAttemptOAuth2: This variable acts as a toggle to enable or disable OAuth2 authentication, giving the user control over the authentication method.
+
+ClientId: The ClientId is the identifier used when sending requests to the registries.
+
+
+ICredentialHelper is an interface that defines a Resolve method, which must be implemented by the user. This approach provides flexibility and extendability, allowing for seamless integration with different cloud providers.
+
+
+ScopeManager is a service responsible for managing scopes across the entire application context. It employs the Singleton pattern, utilizing the Lazy<T> class to ensure that only a single instance is created. This approach guarantees thread-safety and supports lazy loading, initializing the instance only when it is first needed.
+
 ```mermaid
   erDiagram
     Client {
         boolean ForceAttemptOAuth2
         string ClientId
         Cache Cache
-        CredentialFunc Credential
+        ICredentialHelper Credential
+        ScopeManager ScopeManager
+    }
+
+    Repository {
+    }
+    
+    ICredentialHelper {
+        Task(Credential) Resolve(registry)
+    }
+    
+    ScopeManager {
+        Lazy(ScopeManager) _instance
+        ScopeManager Instance
+        Dictionary Scopes
     }
 
     Credential {
@@ -36,34 +68,31 @@ Currently, the ORAS .NET SDK does not fully implement an authentication model fo
 
     Client ||--o| Credential : contains
     Client ||--o| Cache : contains
+    Client ||--o| ICredentialHelper : contains
+    Client ||--o| ScopeManager : contains
+    Repository ||--o| ScopeManager : contains
     
     Client ||--o| SendAsync : overrides
     Client ||--o| FetchBasicAuth : method
     Client ||--o| FetchBearerAuth : method
+    ScopeManager ||--o| AddScope : method
+    ScopeManager ||--o| GetScope : method
 ```
 
 ### The Authentication workflow is as follows:
 
 ```mermaid
-graph TD;
-    subgraph Client
-      A[ORAS Client]
-    end
+sequenceDiagram
+  participant Client as ORAS Client
+  participant Registry as OCI Registry
+  participant Auth as Authorization Service
 
-    subgraph Auth
-      C[Authorization Service]
-    end
-
-    subgraph Registry
-      B[OCI registry]
-    end
-
-    A -->|1| B
-    B -->|2| A
-    A --> |3| C
-    C --> |4| A
-    A --> |5| B
-    B --> |6| A
+  Client->>Registry: 1. Begin push/pull operation
+  Registry-->>Client: 2. 401 Unauthorized (Www-Authenticate header)
+  Client->>Auth: 3. Request Bearer token
+  Auth-->>Client: 4. Return Bearer token
+  Client->>Registry: 5. Retry with Bearer token
+  Registry-->>Client: 6. Authorize and begin session
 ```
 
 1. ORAS client attempts to begin a push/pull operation with the registry.
@@ -72,7 +101,3 @@ graph TD;
 4. The authorization service returns an opaque Bearer token representing the client’s authorized access.
 5. The ORAS client retries the original request with the Bearer token embedded in the request’s Authorization header.
 6. The Registry authorizes the client by validating the Bearer token and the claim set embedded within it and begins the push/pull session as usual.
-
-
-#### Note:
-The current .NET SDK does not provide a public method to obtain a refresh token from the client. One solution could be to introduce a separate package dedicated to handling platform-specific tasks, such as those required for Azure Container Registry (ACR).
