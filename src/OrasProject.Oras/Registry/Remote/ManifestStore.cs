@@ -21,6 +21,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Registry.Remote.Auth;
 using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -43,6 +44,10 @@ public class ManifestStore(Repository repository) : IManifestStore
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(target.MediaType);
+        // SET SCOPE HERE!  
+        // Repository.Options.HttpClient
+        // Scope.Scopes.Add("nginx", Scope.Action.Push);
+        
         var response = await Repository.Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         try
         {
