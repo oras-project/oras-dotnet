@@ -31,7 +31,7 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace OrasProject.Oras.Tests.Remote;
 
-public class RepositoryTest
+public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 {
     public struct TestIoStruct
     {
@@ -42,16 +42,12 @@ public class RepositoryTest
         public bool ErrExpectedOnGet;
     }
 
-    private ITestOutputHelper _iTestOutputHelper;
-    public RepositoryTest(ITestOutputHelper iTestOutputHelper)
-    {
-        _iTestOutputHelper = iTestOutputHelper;
-    }
-    private byte[] _theAmazingBanClan = "Ban Gu, Ban Chao, Ban Zhao"u8.ToArray();
+    private readonly ITestOutputHelper _iTestOutputHelper = iTestOutputHelper;
+    private readonly byte[] _theAmazingBanClan = "Ban Gu, Ban Chao, Ban Zhao"u8.ToArray();
     private const string _theAmazingBanDigest = "b526a4f2be963a2f9b0990c001255669eab8a254ab1a6e3f84f1820212ac7078";
 
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
-    
+
     private const string _headerOciFiltersApplied = "OCI-Filters-Applied";
 
 
@@ -154,10 +150,12 @@ public class RepositoryTest
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var resp = new HttpResponseMessage();
-            resp.RequestMessage = req;
+            var resp = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 Debug.WriteLine("Expected GET request");
@@ -191,7 +189,7 @@ public class RepositoryTest
 
             resp.StatusCode = HttpStatusCode.NotFound;
             return resp;
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -201,11 +199,11 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         var stream = await repo.FetchAsync(blobDesc, cancellationToken);
         var buf = new byte[stream.Length];
-        await stream.ReadAsync(buf, cancellationToken);
+        await stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(blob, buf);
         stream = await repo.FetchAsync(indexDesc, cancellationToken);
         buf = new byte[stream.Length];
-        await stream.ReadAsync(buf, cancellationToken);
+        await stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(index, buf);
 
     }
@@ -234,10 +232,12 @@ public class RepositoryTest
         var uuid = Guid.NewGuid().ToString();
         var gotBlob = new byte[blobDesc.Size];
         var gotIndex = new byte[indexDesc.Size];
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var resp = new HttpResponseMessage();
-            resp.RequestMessage = req;
+            var resp = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test/blobs/uploads/")
             {
                 resp.Headers.Location = new Uri("http://localhost:5000/v2/test/blobs/uploads/" + uuid);
@@ -264,7 +264,7 @@ public class RepositoryTest
                 }
 
                 var stream = req.Content!.ReadAsStream(cancellationToken);
-                stream.Read(gotBlob);
+                stream.ReadExactly(gotBlob);
                 resp.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 resp.StatusCode = HttpStatusCode.Created;
                 return resp;
@@ -282,7 +282,7 @@ public class RepositoryTest
                 }
 
                 var stream = req.Content!.ReadAsStream(cancellationToken);
-                stream.Read(gotIndex);
+                stream.ReadExactly(gotIndex);
                 resp.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
                 resp.StatusCode = HttpStatusCode.Created;
                 return resp;
@@ -291,7 +291,7 @@ public class RepositoryTest
             resp.StatusCode = HttpStatusCode.Forbidden;
             return resp;
 
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -327,10 +327,12 @@ public class RepositoryTest
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Head)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -359,7 +361,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -396,10 +398,12 @@ public class RepositoryTest
             Size = index.Length
         };
         var indexDeleted = false;
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Delete && req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -420,7 +424,7 @@ public class RepositoryTest
                 res.StatusCode = HttpStatusCode.Accepted;
                 return res;
             }
-            
+
             if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{indexDesc.Digest}")
             {
                 if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageIndex))
@@ -428,13 +432,13 @@ public class RepositoryTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 res.Content = new ByteArrayContent(index);
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { indexDesc.Digest });
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
+                res.Headers.Add(_dockerContentDigestHeader, [indexDesc.Digest]);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
                 return res;
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -471,10 +475,12 @@ public class RepositoryTest
         };
         var reference = "foobar";
 
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Head)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -502,7 +508,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -550,10 +556,12 @@ public class RepositoryTest
         byte[]? gotIndex = null;
         var reference = "foobar";
 
-        var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        async Task<HttpResponseMessage> func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Get &&
                 req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + blobDesc.Digest)
             {
@@ -595,7 +603,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -628,10 +636,12 @@ public class RepositoryTest
         byte[]? gotIndex = null;
         var reference = "foobar";
 
-        var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        async Task<HttpResponseMessage> func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + reference)
             {
                 if (req.Headers.TryGetValues("Content-Type", out var values) &&
@@ -642,7 +652,7 @@ public class RepositoryTest
 
                 if (req.Content != null)
                 {
-                    gotIndex = await req.Content.ReadAsByteArrayAsync();
+                    gotIndex = await req.Content.ReadAsByteArrayAsync(cancellationToken);
                 }
                 res.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
                 res.StatusCode = HttpStatusCode.Created;
@@ -650,7 +660,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -686,10 +696,12 @@ public class RepositoryTest
         };
         var reference = "foobar";
 
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -716,7 +728,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.Found);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -733,14 +745,14 @@ public class RepositoryTest
         var data = await repo.FetchAsync(indexDesc.Digest, cancellationToken);
         Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
         var buf = new byte[data.Stream.Length];
-        await data.Stream.ReadAsync(buf, cancellationToken);
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(index, buf);
 
         // test with manifest tag
         data = await repo.FetchAsync(reference, cancellationToken);
         Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
         buf = new byte[data.Stream.Length];
-        await data.Stream.ReadAsync(buf, cancellationToken);
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(index, buf);
 
         // test with manifest tag@digest
@@ -748,7 +760,7 @@ public class RepositoryTest
         data = await repo.FetchAsync(tagDigestRef, cancellationToken);
         Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
         buf = new byte[data.Stream.Length];
-        await data.Stream.ReadAsync(buf, cancellationToken);
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(index, buf);
 
         // test with manifest FQDN
@@ -757,7 +769,7 @@ public class RepositoryTest
         Assert.True(AreDescriptorsEqual(indexDesc, data.Descriptor));
 
         buf = new byte[data.Stream.Length];
-        await data.Stream.ReadAsync(buf, cancellationToken);
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(index, buf);
     }
 
@@ -776,10 +788,12 @@ public class RepositoryTest
             new() {"jumps", "over", "the", "lazy"},
             new() {"dog"}
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get ||
                 req.RequestUri?.AbsolutePath != "/v2/test/tags/list"
                )
@@ -818,12 +832,12 @@ public class RepositoryTest
 
             var listOfTags = new Repository.TagList
             {
-                Tags = tags.ToArray()
+                Tags = [.. tags]
             };
             res.Content = new StringContent(JsonSerializer.Serialize(listOfTags));
             return res;
 
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -862,10 +876,12 @@ public class RepositoryTest
             Digest = ComputeSha256(blob),
             Size = blob.Length
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -880,7 +896,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -892,7 +908,7 @@ public class RepositoryTest
         var store = new BlobStore(repo);
         var stream = await store.FetchAsync(blobDesc, cancellationToken);
         var buf = new byte[stream.Length];
-        await stream.ReadAsync(buf, cancellationToken);
+        await stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(blob, buf);
 
     }
@@ -912,10 +928,12 @@ public class RepositoryTest
             Size = blob.Length
         };
         var seekable = false;
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -973,7 +991,7 @@ public class RepositoryTest
             res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
             res.StatusCode = HttpStatusCode.NotFound;
             return res;
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -985,18 +1003,18 @@ public class RepositoryTest
         var store = new BlobStore(repo);
         var stream = await store.FetchAsync(blobDesc, cancellationToken);
         var buf = new byte[stream.Length];
-        await stream.ReadAsync(buf, cancellationToken);
+        await stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(blob, buf);
 
         seekable = true;
         stream = await store.FetchAsync(blobDesc, cancellationToken);
         buf = new byte[stream.Length];
-        await stream.ReadAsync(buf, cancellationToken);
+        await stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(blob, buf);
 
         buf = new byte[stream.Length - 3];
         stream.Seek(3, SeekOrigin.Begin);
-        await stream.ReadAsync(buf, cancellationToken);
+        await stream.ReadExactlyAsync(buf, cancellationToken);
         var seg = blob[3..];
         Assert.Equal(seg, buf);
     }
@@ -1015,10 +1033,12 @@ public class RepositoryTest
             Digest = ComputeSha256(blob),
             Size = blob.Length
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -1037,7 +1057,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -1049,7 +1069,7 @@ public class RepositoryTest
         var store = new BlobStore(repo);
         var stream = await store.FetchAsync(blobDesc, cancellationToken);
         var buf = new byte[stream.Length];
-        await stream.ReadAsync(buf, cancellationToken);
+        await stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(blob, buf);
     }
 
@@ -1071,10 +1091,12 @@ public class RepositoryTest
         var uuid = Guid.NewGuid().ToString();
         var existingQueryParameter = "existingParam=value";
 
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Post && req.RequestUri?.AbsolutePath == $"/v2/test/blobs/uploads/")
             {
                 res.StatusCode = HttpStatusCode.Accepted;
@@ -1101,14 +1123,14 @@ public class RepositoryTest
 
                 // read content into buffer
                 var stream = req.Content!.ReadAsStream(cancellationToken);
-                stream.Read(gotBlob);
+                stream.ReadExactly(gotBlob);
                 res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 res.StatusCode = HttpStatusCode.Created;
                 return res;
             }
 
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1142,10 +1164,12 @@ public class RepositoryTest
             Digest = ComputeSha256(content),
             Size = content.Length
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Head)
             {
                 res.StatusCode = HttpStatusCode.MethodNotAllowed;
@@ -1161,7 +1185,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1191,10 +1215,12 @@ public class RepositoryTest
             Size = blob.Length
         };
         var blobDeleted = false;
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Delete)
             {
                 res.StatusCode = HttpStatusCode.MethodNotAllowed;
@@ -1210,7 +1236,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1246,10 +1272,12 @@ public class RepositoryTest
             Digest = ComputeSha256(blob),
             Size = blob.Length
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Head)
             {
                 res.StatusCode = HttpStatusCode.MethodNotAllowed;
@@ -1265,7 +1293,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1307,10 +1335,12 @@ public class RepositoryTest
             Digest = ComputeSha256(blob),
             Size = blob.Length
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 res.StatusCode = HttpStatusCode.MethodNotAllowed;
@@ -1326,7 +1356,7 @@ public class RepositoryTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -1343,7 +1373,7 @@ public class RepositoryTest
         Assert.Equal(blobDesc.Size, gotDesc.Descriptor.Size);
 
         var buf = new byte[gotDesc.Descriptor.Size];
-        await gotDesc.Stream.ReadAsync(buf, cancellationToken);
+        await gotDesc.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(blob, buf);
 
         // test with FQDN reference
@@ -1379,10 +1409,12 @@ public class RepositoryTest
             Size = blob.Length
         };
         var seekable = false;
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -1428,7 +1460,7 @@ public class RepositoryTest
             res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
             res.StatusCode = HttpStatusCode.NotFound;
             return res;
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -1448,7 +1480,7 @@ public class RepositoryTest
         Assert.Equal(data.Descriptor.Size, blobDesc.Size);
 
         var buf = new byte[data.Descriptor.Size];
-        await data.Stream.ReadAsync(buf, cancellationToken);
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(blob, buf);
 
         // test seekable content
@@ -1459,7 +1491,7 @@ public class RepositoryTest
 
         data.Stream.Seek(3, SeekOrigin.Begin);
         buf = new byte[data.Descriptor.Size - 3];
-        await data.Stream.ReadAsync(buf, cancellationToken);
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(blob[3..], buf);
     }
 
@@ -1480,7 +1512,7 @@ public class RepositoryTest
             {
                 continue;
             }
-            HttpMethod[] methods = new HttpMethod[] { HttpMethod.Get, HttpMethod.Head };
+            HttpMethod[] methods = [HttpMethod.Get, HttpMethod.Head];
             foreach ((int i, HttpMethod method) in methods.Select((value, i) => (i, value)))
             {
                 reference.ContentReference = dcdIOStruct.ClientSuppliedReference;
@@ -1488,13 +1520,13 @@ public class RepositoryTest
                 if (method == HttpMethod.Get)
                 {
                     resp.Content = new ByteArrayContent(_theAmazingBanClan);
-                    resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.ServerCalculatedDigest });
+                    resp.Content.Headers.Add("Content-Type", ["application/vnd.docker.distribution.manifest.v2+json"]);
+                    resp.Headers.Add(_dockerContentDigestHeader, [dcdIOStruct.ServerCalculatedDigest]);
                 }
                 if (!resp.Headers.TryGetValues(_dockerContentDigestHeader, out IEnumerable<string>? values))
                 {
-                    resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.ServerCalculatedDigest });
+                    resp.Content.Headers.Add("Content-Type", ["application/vnd.docker.distribution.manifest.v2+json"]);
+                    resp.Headers.Add(_dockerContentDigestHeader, [dcdIOStruct.ServerCalculatedDigest]);
                     resp.RequestMessage = new HttpRequestMessage()
                     {
                         Method = method
@@ -1568,10 +1600,12 @@ public class RepositoryTest
             Size = manifest.Length
         };
 
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -1583,12 +1617,12 @@ public class RepositoryTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 res.Content = new ByteArrayContent(manifest);
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1599,7 +1633,7 @@ public class RepositoryTest
         var store = new ManifestStore(repo);
         var data = await store.FetchAsync(manifestDesc, cancellationToken);
         var buf = new byte[data.Length];
-        await data.ReadAsync(buf, cancellationToken);
+        await data.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(manifest, buf);
 
         var content = """{"manifests":[]}"""u8.ToArray();
@@ -1615,10 +1649,12 @@ public class RepositoryTest
     [Fact]
     public async Task ManifestStore_FetchAsync_ManifestUnknown()
     {
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage(HttpStatusCode.Unauthorized);
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -1629,7 +1665,7 @@ public class RepositoryTest
             }
             res.Content = new StringContent("""{"errors":[{"code":"UNAUTHORIZED","message":"authentication required","detail":[{"Type":"repository","Class":"","Name":"repo","Action":"pull"}]}]}""");
             return res;
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1665,10 +1701,12 @@ public class RepositoryTest
         };
         byte[]? gotManifest = null;
 
-        var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        async Task<HttpResponseMessage> func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
             {
                 if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
@@ -1678,10 +1716,10 @@ public class RepositoryTest
                 if (req.Content?.Headers?.ContentLength != null)
                 {
                     var buf = new byte[req.Content.Headers.ContentLength.Value];
-                    (await req.Content.ReadAsByteArrayAsync()).CopyTo(buf, 0);
+                    (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buf, 0);
                     gotManifest = buf;
                 }
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
                 res.StatusCode = HttpStatusCode.Created;
                 return res;
             }
@@ -1689,7 +1727,7 @@ public class RepositoryTest
             {
                 return new HttpResponseMessage(HttpStatusCode.Forbidden);
             }
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1716,10 +1754,12 @@ public class RepositoryTest
             Digest = ComputeSha256(manifest),
             Size = manifest.Length
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Head)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -1730,13 +1770,13 @@ public class RepositoryTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
-                res.Content.Headers.Add("Content-Length", new string[] { manifest.Length.ToString() });
+                res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                res.Content.Headers.Add("Content-Length", [manifest.Length.ToString()]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1774,10 +1814,12 @@ public class RepositoryTest
             Size = manifestBytes.Length
         };
         var manifestDeleted = false;
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Delete && req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -1795,12 +1837,12 @@ public class RepositoryTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 res.Content = new ByteArrayContent(manifestBytes);
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
+                res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1837,10 +1879,12 @@ public class RepositoryTest
             Size = manifest.Length
         };
         var reference = "foobar";
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Head)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -1851,13 +1895,13 @@ public class RepositoryTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
-                res.Content.Headers.Add("Content-Length", new string[] { manifest.Length.ToString() });
+                res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                res.Content.Headers.Add("Content-Length", [manifest.Length.ToString()]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1906,10 +1950,12 @@ public class RepositoryTest
             Size = manifest.Length
         };
         var reference = "foobar";
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -1921,12 +1967,12 @@ public class RepositoryTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 res.Content = new ByteArrayContent(manifest);
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { manifestDesc.Digest });
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
+                res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -1940,7 +1986,7 @@ public class RepositoryTest
         var data = await store.FetchAsync(reference, cancellationToken);
         Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
         var buf = new byte[manifest.Length];
-        await data.Stream.ReadAsync(buf, cancellationToken);
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(manifest, buf);
 
         // test with other tag
@@ -1952,7 +1998,7 @@ public class RepositoryTest
         Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
 
         buf = new byte[manifest.Length];
-        await data.Stream.ReadAsync(buf, cancellationToken);
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(manifest, buf);
 
         // test with tag@digest
@@ -1960,7 +2006,7 @@ public class RepositoryTest
         data = await store.FetchAsync(tagDigestRef, cancellationToken);
         Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
         buf = new byte[manifest.Length];
-        await data.Stream.ReadAsync(buf, cancellationToken);
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(manifest, buf);
 
         // test with FQDN
@@ -1968,7 +2014,7 @@ public class RepositoryTest
         data = await store.FetchAsync(fqdnRef, cancellationToken);
         Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
         buf = new byte[manifest.Length];
-        await data.Stream.ReadAsync(buf, cancellationToken);
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(manifest, buf);
     }
 
@@ -1996,10 +2042,12 @@ public class RepositoryTest
         var gotIndex = new byte[index.Length];
         var reference = "foobar";
 
-        var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        async Task<HttpResponseMessage> func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{blobDesc.Digest}")
             {
                 res.StatusCode = HttpStatusCode.NotFound;
@@ -2012,8 +2060,8 @@ public class RepositoryTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 res.Content = new ByteArrayContent(index);
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { indexDesc.Digest });
-                res.Content.Headers.Add("Content-Type", new string[] { indexDesc.MediaType });
+                res.Headers.Add(_dockerContentDigestHeader, [indexDesc.Digest]);
+                res.Content.Headers.Add("Content-Type", [indexDesc.MediaType]);
                 return res;
             }
             if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}" || req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{indexDesc.Digest}")
@@ -2026,18 +2074,18 @@ public class RepositoryTest
                 if (req.Content?.Headers?.ContentLength != null)
                 {
                     var buf = new byte[req.Content.Headers.ContentLength.Value];
-                    (await req.Content.ReadAsByteArrayAsync()).CopyTo(buf, 0);
+                    (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buf, 0);
                     gotIndex = buf;
                 }
 
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { indexDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, [indexDesc.Digest]);
                 res.StatusCode = HttpStatusCode.Created;
                 return res;
             }
 
             res.StatusCode = HttpStatusCode.Forbidden;
             return res;
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -2076,10 +2124,12 @@ public class RepositoryTest
         var gotIndex = new byte[indexBytes.Length];
         var reference = "foobar";
 
-        var func = async (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        async Task<HttpResponseMessage> func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
 
             if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
             {
@@ -2092,17 +2142,17 @@ public class RepositoryTest
                 if (req.Content?.Headers?.ContentLength != null)
                 {
                     var buf = new byte[req.Content.Headers.ContentLength.Value];
-                    (await req.Content.ReadAsByteArrayAsync()).CopyTo(buf, 0);
+                    (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buf, 0);
                     gotIndex = buf;
                 }
 
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { indexDesc.Digest });
+                res.Headers.Add(_dockerContentDigestHeader, [indexDesc.Digest]);
                 res.StatusCode = HttpStatusCode.Created;
                 return res;
             }
             res.StatusCode = HttpStatusCode.Forbidden;
             return res;
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -2131,10 +2181,12 @@ public class RepositoryTest
             Size = exampleManifest.Length
         };
         var exampleUploadUUid = new Guid().ToString();
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             var path = req.RequestUri != null ? req.RequestUri.AbsolutePath : string.Empty;
             var method = req.Method;
             if (path.Contains("/blobs/uploads/") && method == HttpMethod.Post)
@@ -2176,7 +2228,7 @@ public class RepositoryTest
             if (path.Contains("/blobs/") && (method == HttpMethod.Get || method == HttpMethod.Head))
             {
                 var arr = path.Split("/");
-                var digest = arr[arr.Length - 1];
+                var digest = arr[^1];
 
 
                 if (digest == exampleManifestDescriptor.Digest)
@@ -2199,7 +2251,7 @@ public class RepositoryTest
             }
 
             return res;
-        };
+        }
 
         var reg = new Registry.Remote.Registry(new RepositoryOptions()
         {
@@ -2221,7 +2273,7 @@ public class RepositoryTest
         foreach ((string testName, TestIoStruct dcdIOStruct) in tests)
         {
             var repo = new Repository(reference.Repository + "/" + reference.Repository);
-            HttpMethod[] methods = new HttpMethod[] { HttpMethod.Get, HttpMethod.Head };
+            HttpMethod[] methods = [HttpMethod.Get, HttpMethod.Head];
             var s = new ManifestStore(repo);
             foreach ((int i, HttpMethod method) in methods.Select((value, i) => (i, value)))
             {
@@ -2230,13 +2282,13 @@ public class RepositoryTest
                 if (method == HttpMethod.Get)
                 {
                     resp.Content = new ByteArrayContent(_theAmazingBanClan);
-                    resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.ServerCalculatedDigest });
+                    resp.Content.Headers.Add("Content-Type", ["application/vnd.docker.distribution.manifest.v2+json"]);
+                    resp.Headers.Add(_dockerContentDigestHeader, [dcdIOStruct.ServerCalculatedDigest]);
                 }
                 else
                 {
-                    resp.Content.Headers.Add("Content-Type", new string[] { "application/vnd.docker.distribution.manifest.v2+json" });
-                    resp.Headers.Add(_dockerContentDigestHeader, new string[] { dcdIOStruct.ServerCalculatedDigest });
+                    resp.Content.Headers.Add("Content-Type", ["application/vnd.docker.distribution.manifest.v2+json"]);
+                    resp.Headers.Add(_dockerContentDigestHeader, [dcdIOStruct.ServerCalculatedDigest]);
                 }
                 resp.RequestMessage = new HttpRequestMessage()
                 {
@@ -2268,8 +2320,8 @@ public class RepositoryTest
         }
 
     }
-    
-        /// <summary>
+
+    /// <summary>
     /// Repository_MountAsync tests the MountAsync method of the Repository
     /// </summary>
     /// <returns></returns>
@@ -2284,10 +2336,12 @@ public class RepositoryTest
             Size = (uint)blob.Length
         };
         var gotMount = 0;
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var resp = new HttpResponseMessage();
-            resp.RequestMessage = req;
+            var resp = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test2/blobs/uploads/")
             {
                 var queries = HttpUtility.ParseQueryString(req.RequestUri.Query);
@@ -2308,7 +2362,7 @@ public class RepositoryTest
             }
             resp.StatusCode = HttpStatusCode.InternalServerError;
             return resp;
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -2337,12 +2391,14 @@ public class RepositoryTest
             Size = (uint)blob.Length
         };
         string sequence = "";
-        byte[] gotBlob = Array.Empty<byte>();
+        byte[] gotBlob = [];
         var uuid = "4fd53bc9-565d-4527-ab80-3e051ac4880c";
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var resp = new HttpResponseMessage();
-            resp.RequestMessage = req;
+            var resp = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test2/blobs/uploads/")
             {
                 resp.Headers.Location = new Uri("/v2/test2/blobs/uploads/" + uuid, UriKind.Relative);
@@ -2379,7 +2435,7 @@ public class RepositoryTest
             }
             resp.StatusCode = HttpStatusCode.Forbidden;
             return resp;
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -2416,10 +2472,12 @@ public class RepositoryTest
             MediaType = "test",
             Size = (uint)blob.Length
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var resp = new HttpResponseMessage();
-            resp.RequestMessage = req;
+            var resp = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test/blobs/uploads/")
             {
                 resp.StatusCode = HttpStatusCode.BadRequest;
@@ -2428,7 +2486,7 @@ public class RepositoryTest
             }
             resp.StatusCode = HttpStatusCode.InternalServerError;
             return resp;
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -2465,12 +2523,14 @@ public class RepositoryTest
             Size = (uint)blob.Length
         };
         string sequence = "";
-        byte[] gotBlob = Array.Empty<byte>();
+        byte[] gotBlob = [];
         var uuid = "4fd53bc9-565d-4527-ab80-3e051ac4880c";
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var resp = new HttpResponseMessage();
-            resp.RequestMessage = req;
+            var resp = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test2/blobs/uploads/")
             {
                 resp.Headers.Location = new Uri("/v2/test2/blobs/uploads/" + uuid, UriKind.Relative);
@@ -2498,7 +2558,7 @@ public class RepositoryTest
             }
             resp.StatusCode = HttpStatusCode.Forbidden;
             return resp;
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -2533,10 +2593,12 @@ public class RepositoryTest
         };
         string sequence = "";
         var uuid = "4fd53bc9-565d-4527-ab80-3e051ac4880c";
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var resp = new HttpResponseMessage();
-            resp.RequestMessage = req;
+            var resp = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/v2/test2/blobs/uploads/")
             {
                 resp.Headers.Location = new Uri("/v2/test2/blobs/uploads/" + uuid, UriKind.Relative);
@@ -2546,7 +2608,7 @@ public class RepositoryTest
             }
             resp.StatusCode = HttpStatusCode.Forbidden;
             return resp;
-        };
+        }
 
         var repo = new Repository(new RepositoryOptions()
         {
@@ -2565,7 +2627,7 @@ public class RepositoryTest
         Assert.Equal(testErr, ex);
         Assert.Equal("post ", sequence);
     }
-    
+
     [Fact]
     public void SetReferrersState_ShouldSet_WhenInitiallyUnknown()
     {
@@ -2574,7 +2636,7 @@ public class RepositoryTest
         repo.ReferrersState = Referrers.ReferrersState.Supported;
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
-    
+
     [Fact]
     public void SetReferrersState_ShouldThrowException_WhenChangingAfterSet()
     {
@@ -2582,14 +2644,14 @@ public class RepositoryTest
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         repo.ReferrersState = Referrers.ReferrersState.Supported;
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
-        
+
         var exception = Assert.Throws<ReferrersStateAlreadySetException>(() =>
             repo.ReferrersState = Referrers.ReferrersState.NotSupported
         );
 
         Assert.Equal("current referrers state: Supported, latest referrers state: NotSupported", exception.Message);
     }
-    
+
     [Fact]
     public void SetReferrersState_ShouldNotThrowException_WhenSettingSameValue()
     {
@@ -2597,11 +2659,11 @@ public class RepositoryTest
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         repo.ReferrersState = Referrers.ReferrersState.Supported;
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
-        
+
         var exception = Record.Exception(() => repo.ReferrersState = Referrers.ReferrersState.Supported);
         Assert.Null(exception);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersByTagSchema_Successfully()
     {
@@ -2624,10 +2686,12 @@ public class RepositoryTest
 
         var desc = RandomDescriptor();
         var referrersTag = Referrers.BuildReferrersTag(desc);
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -2639,19 +2703,19 @@ public class RepositoryTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 res.Content = new ByteArrayContent(expectedIndexBytes);
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedIndexDesc.Digest });
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [expectedIndexDesc.Digest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-        
+
         // no artifact type filtering
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
@@ -2660,7 +2724,7 @@ public class RepositoryTest
             returnedReferrers1.Add(referrer);
         }
         Assert.Equivalent(expectedIndex.Manifests, returnedReferrers1);
-        
+
         // filter out referrers with artifact type doc/example
         var artifactType2 = "doc/example";
         var returnedReferrers2 = new List<Descriptor>();
@@ -2680,25 +2744,27 @@ public class RepositoryTest
         }
         Assert.Empty(returnedReferrers3);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersByTagSchema_ReferrersNotFound()
     {
         var desc = RandomDescriptor();
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
-        
+
         var returnedReferrers1 = new List<Descriptor>();
         await foreach (var referrer in repo.FetchReferrersByTagSchema(desc, cancellationToken))
         {
@@ -2706,7 +2772,7 @@ public class RepositoryTest
         }
         Assert.Empty(returnedReferrers1);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersByApi_SinglePageWithoutFilter_Successfully()
     {
@@ -2721,12 +2787,14 @@ public class RepositoryTest
         };
         var expectedIndex = RandomIndex(expectedReferrersList);
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
-    
+
         var desc = RandomDescriptor();
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -2734,19 +2802,19 @@ public class RepositoryTest
             if (req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{desc.Digest}")
             {
                 res.Content = new ByteArrayContent(expectedIndexBytes);
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [desc.Digest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-        
+
         // no artifact type specified
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
@@ -2756,7 +2824,7 @@ public class RepositoryTest
         }
         Assert.Equivalent(expectedReferrersList, returnedReferrers1);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersByApi_SinglePageWithServerSideFilter_Successfully()
     {
@@ -2770,11 +2838,13 @@ public class RepositoryTest
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
         const string artifactType = "doc/example";
         var desc = RandomDescriptor();
-    
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -2782,24 +2852,24 @@ public class RepositoryTest
             var expectedQuery = HttpUtility.ParseQueryString("");
             expectedQuery["artifactType"] = artifactType;
             var expectedQueryString = expectedQuery.ToString();
-            
+
             if (req.RequestUri?.PathAndQuery == $"/v2/test/referrers/{desc.Digest}?{expectedQueryString}")
             {
                 res.Content = new ByteArrayContent(expectedIndexBytes);
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
-                res.Headers.Add(_headerOciFiltersApplied, new string[] {"artifactType"});
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [desc.Digest]);
+                res.Headers.Add(_headerOciFiltersApplied, ["artifactType"]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-    
+
         // filter out referrers with artifact type "doc/example"
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
@@ -2807,11 +2877,11 @@ public class RepositoryTest
         {
             returnedReferrers1.Add(referrer);
         }
-       
+
         Assert.True(returnedReferrers1.All(referrer => referrer.ArtifactType == artifactType));
         Assert.Equal(3, returnedReferrers1.Count);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersByApi_SinglePageWithClientSideFilter_Successfully()
     {
@@ -2828,11 +2898,13 @@ public class RepositoryTest
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
         const string artifactType = "doc/example";
         var desc = RandomDescriptor();
-    
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -2840,24 +2912,24 @@ public class RepositoryTest
             var expectedQuery = HttpUtility.ParseQueryString("");
             expectedQuery["artifactType"] = artifactType;
             var expectedQueryString = expectedQuery.ToString();
-            
+
             if (req.RequestUri?.PathAndQuery == $"/v2/test/referrers/{desc.Digest}?{expectedQueryString}")
             {
                 res.Content = new ByteArrayContent(expectedIndexBytes);
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
-                res.Headers.Add(_headerOciFiltersApplied, new string[] {"abc/abc"});
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [desc.Digest]);
+                res.Headers.Add(_headerOciFiltersApplied, ["abc/abc"]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-    
+
         // filter out referrers with artifact type "doc/example"
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
@@ -2873,21 +2945,23 @@ public class RepositoryTest
     public async Task Repository_ReferrersByApi_ThrowsNotSupportedException_WhenReferrersApiNotSupported()
     {
         var desc = RandomDescriptor();
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -2905,10 +2979,12 @@ public class RepositoryTest
     [Fact]
     public async Task PingReferrers_ShouldReturnTrueWhenReferrersAPISupported()
     {
-        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage mockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{Referrers.ZeroDigest}")
             {
                 res.Content.Headers.Add("Content-Type", MediaType.ImageIndex);
@@ -2916,8 +2992,8 @@ public class RepositoryTest
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        };
-        
+        }
+
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -2930,14 +3006,16 @@ public class RepositoryTest
         Assert.True(result);
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
-    
+
     [Fact]
     public async Task PingReferrers_WaitsForSemaphoreRelease()
     {
-        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage mockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{Referrers.ZeroDigest}")
             {
                 res.Content.Headers.Add("Content-Type", MediaType.ImageIndex);
@@ -2945,8 +3023,8 @@ public class RepositoryTest
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        };
-        
+        }
+
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -2962,14 +3040,16 @@ public class RepositoryTest
         Assert.True(ping2.IsCompletedSuccessfully);
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
-    
+
     [Fact]
     public async Task PingReferrers_LimitsConcurrency()
     {
-        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage mockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{Referrers.ZeroDigest}")
             {
                 res.Content.Headers.Add("Content-Type", MediaType.ImageIndex);
@@ -2977,8 +3057,8 @@ public class RepositoryTest
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        };
-        
+        }
+
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -2998,22 +3078,24 @@ public class RepositoryTest
         Assert.All(results, result => Assert.True(result));
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
-    
+
     [Fact]
     public async Task PingReferrers_ShouldReturnFalseWhenReferrersAPINotSupportedNoContentTypeHeader()
     {
-        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage mockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{Referrers.ZeroDigest}")
             {
                 res.StatusCode = HttpStatusCode.OK;
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        };
-        
+        }
+
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -3026,15 +3108,17 @@ public class RepositoryTest
         Assert.False(result);
         Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersByApi_ThrowsResponseException_WhenRepoNotFound()
     {
         var desc = RandomDescriptor();
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -3042,14 +3126,14 @@ public class RepositoryTest
             res.Content = new StringContent(@"{ ""errors"": [ { ""code"": ""NAME_UNKNOWN"", ""message"": ""some error"" } ] }");
             res.StatusCode = HttpStatusCode.NotFound;
             return res;
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-    
+
         var isInvoked = false;
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
@@ -3060,7 +3144,7 @@ public class RepositoryTest
                 isInvoked = true;
             }
         });
-        
+
         Assert.False(isInvoked);
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         Assert.NotNull(exception.Errors);
@@ -3068,15 +3152,17 @@ public class RepositoryTest
         Assert.Equal("NAME_UNKNOWN", exception.Errors[0].Code);
         Assert.Equal("some error", exception.Errors[0].Message);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersByApi_ThrowsResponseException_WhenServerErrors()
     {
         var desc = RandomDescriptor();
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -3084,14 +3170,14 @@ public class RepositoryTest
             res.Content = new StringContent(@"{ ""errors"": [ { ""code"": ""INTERNAL_SERVER_ERROR"", ""message"": ""some error"" } ] }");
             res.StatusCode = HttpStatusCode.InternalServerError;
             return res;
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-    
+
         var isInvoked = false;
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
@@ -3109,7 +3195,7 @@ public class RepositoryTest
         Assert.Equal("INTERNAL_SERVER_ERROR", exception.Errors[0].Code);
         Assert.Equal("some error", exception.Errors[0].Message);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersByApi_WhenContentIsNotImageIndex()
     {
@@ -3126,11 +3212,13 @@ public class RepositoryTest
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
         const string artifactType = "doc/example";
         var desc = RandomDescriptor();
-    
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -3138,22 +3226,22 @@ public class RepositoryTest
             var expectedQuery = HttpUtility.ParseQueryString("");
             expectedQuery["artifactType"] = artifactType;
             var expectedQueryString = expectedQuery.ToString();
-            
+
             if (req.RequestUri?.PathAndQuery == $"/v2/test/referrers/{desc.Digest}?{expectedQueryString}")
             {
                 res.Content = new ByteArrayContent(expectedIndexBytes);
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageManifest });
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-    
+
         var cancellationToken = new CancellationToken();
         var returnedReferrers = new List<Descriptor>();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
@@ -3164,7 +3252,7 @@ public class RepositoryTest
         Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
         Assert.Empty(returnedReferrers);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersAsync_SinglePage_ReferrersApiSupported()
     {
@@ -3181,11 +3269,13 @@ public class RepositoryTest
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
         const string artifactType = "doc/example";
         var desc = RandomDescriptor();
-    
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -3193,24 +3283,24 @@ public class RepositoryTest
             var expectedQuery = HttpUtility.ParseQueryString("");
             expectedQuery["artifactType"] = artifactType;
             var expectedQueryString = expectedQuery.ToString();
-            
+
             if (req.RequestUri?.PathAndQuery == $"/v2/test/referrers/{desc.Digest}?{expectedQueryString}")
             {
                 res.Content = new ByteArrayContent(expectedIndexBytes);
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
-                res.Headers.Add(_headerOciFiltersApplied, new string[] {"abc/abc"});
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [desc.Digest]);
+                res.Headers.Add(_headerOciFiltersApplied, ["abc/abc"]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-    
+
         // filter out referrers with artifact type "doc/example"
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
@@ -3223,7 +3313,7 @@ public class RepositoryTest
         Assert.Equal(3, returnedReferrers.Count);
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersAsync_MultiplePages_ReferrersApiSupported()
     {
@@ -3247,15 +3337,17 @@ public class RepositoryTest
                 RandomDescriptor(artifactType: "third/example"),
                 RandomDescriptor(artifactType: "third/example")
             },
-            
+
         };
-        
+
         var desc = RandomDescriptor();
-    
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -3268,7 +3360,7 @@ public class RepositoryTest
                 switch (query.Get("test"))
                 {
                     case "foo":
-                        res.Headers.Add("Link", new string?[]{ $"<{req.RequestUri.Scheme}://{req.RequestUri.Host}{path}?test=bar>; rel=\"next\"" });
+                        res.Headers.Add("Link", [$"<{req.RequestUri.Scheme}://{req.RequestUri.Host}{path}?test=bar>; rel=\"next\""]);
                         referrers = expectedReferrersList.ElementAtOrDefault(1);
                         break;
                     case "bar":
@@ -3276,27 +3368,27 @@ public class RepositoryTest
                         break;
                     default:
                         referrers = expectedReferrersList.ElementAtOrDefault(0);
-                        res.Headers.Add("Link", new string?[]{ $"<{path}?test=foo>; rel=\"next\"" });
+                        res.Headers.Add("Link", [$"<{path}?test=foo>; rel=\"next\""]);
                         break;
                 }
-                
+
                 var expectedIndex = RandomIndex(referrers);
                 var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
-                
+
                 res.Content = new ByteArrayContent(expectedIndexBytes);
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { desc.Digest });
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [desc.Digest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-    
+
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var returnedReferrers = new List<Descriptor>();
@@ -3307,7 +3399,7 @@ public class RepositoryTest
         Assert.Equivalent(expectedReferrersList.SelectMany(list => list).ToList(), returnedReferrers);
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
-    
+
     [Fact]
     public async Task Repository_ReferrersAsync_WhenReferrersApiNotSupported()
     {
@@ -3327,13 +3419,16 @@ public class RepositoryTest
             Digest = ComputeSha256(expectedIndexBytes),
             MediaType = MediaType.ImageIndex,
         };
-    
+
         var desc = RandomDescriptor();
         var referrersTag = Referrers.BuildReferrersTag(desc);
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -3345,24 +3440,20 @@ public class RepositoryTest
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
                 res.Content = new ByteArrayContent(expectedIndexBytes);
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { expectedIndexDesc.Digest });
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [expectedIndexDesc.Digest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-        
-        // no artifact type filtering
-        var fn1 = (IList<Descriptor> referrers) =>
-        {
-            Assert.Equivalent(expectedIndex.Manifests, referrers);
-        };
+
+
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
         await foreach (var referrer in repo.FetchReferrersAsync(desc, cancellationToken))
@@ -3370,7 +3461,7 @@ public class RepositoryTest
             returnedReferrers1.Add(referrer);
         }
         Assert.Equivalent(expectedIndex.Manifests, returnedReferrers1);
-        
+
         // filter out referrers with artifact type doc/example
         var artifactType2 = "doc/example";
         var returnedReferrers2 = new List<Descriptor>();
@@ -3380,7 +3471,7 @@ public class RepositoryTest
         }
         Assert.Equal(3, returnedReferrers2.Count);
         Assert.True(returnedReferrers2.All(referrer => referrer.ArtifactType == artifactType2));
-        
+
         // filter out non-existent referrers with artifact type non/non
         var artifactType3 = "non/non";
         var returnedReferrers3 = new List<Descriptor>();
@@ -3407,10 +3498,13 @@ public class RepositoryTest
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
         var desc = RandomDescriptor();
         var referrersTag = Referrers.BuildReferrersTag(desc);
-        var mockedHttpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get)
             {
                 return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
@@ -3430,17 +3524,17 @@ public class RepositoryTest
                 }
 
                 res.Content = new ByteArrayContent(expectedIndexBytes);
-                res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { ComputeSha256(expectedIndexBytes) });
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [ComputeSha256(expectedIndexBytes)]);
                 return res;
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(mockedHttpHandler),
+            HttpClient = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -3459,11 +3553,13 @@ public class RepositoryTest
     [Fact]
     public async Task PingReferrers_ShouldFailWhenReturnNotFound()
     {
-        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage mockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
-            res.StatusCode = HttpStatusCode.NotFound;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req,
+                StatusCode = HttpStatusCode.NotFound
+            };
 
             if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{Referrers.ZeroDigest}")
             {
@@ -3483,7 +3579,7 @@ public class RepositoryTest
             };
             res.Content = new StringContent(JsonSerializer.Serialize(errors), Encoding.UTF8, "application/json");
             return res;
-        };
+        }
         var cancellationToken = new CancellationToken();
 
         // repo abc is not found
@@ -3496,7 +3592,7 @@ public class RepositoryTest
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         await Assert.ThrowsAsync<ResponseException>(async () => await repo.PingReferrersAsync(cancellationToken));
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
-        
+
         // referrer API is not supported
         var repo1 = new Repository(new RepositoryOptions()
         {
@@ -3509,17 +3605,19 @@ public class RepositoryTest
         Assert.False(result);
         Assert.Equal(Referrers.ReferrersState.NotSupported, repo1.ReferrersState);
     }
-    
+
     [Fact]
     public async Task PingReferrers_ShouldFailWhenBadRequestReturns()
     {
-        var mockHttpRequestHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        static HttpResponseMessage mockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             return new HttpResponseMessage(HttpStatusCode.BadRequest);
-        };
-        
+        }
+
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -3531,7 +3629,7 @@ public class RepositoryTest
         await Assert.ThrowsAsync<ResponseException>(async () => await repo.PingReferrersAsync(cancellationToken));
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
     }
-    
+
     [Fact]
     public void LimitSize_ShouldThrowException_WhenSizeExceedsLimit()
     {
@@ -3542,13 +3640,13 @@ public class RepositoryTest
         var exception = Assert.Throws<SizeLimitExceededException>(() => Repository.LimitSize(desc, limitSize));
         Assert.Equal("content size 150 exceeds MaxMetadataBytes 100", exception.Message);
     }
-    
+
     [Fact]
     public void LimitSize_ShouldNotThrowException_WhenSizeIsWithinLimit()
     {
         var desc = RandomDescriptor();
         desc.Size = 50;
-        long  limitSize = 100;
+        long limitSize = 100;
 
         var exception = Record.Exception(() => Repository.LimitSize(desc, limitSize));
         Assert.Null(exception); // No exception should be thrown

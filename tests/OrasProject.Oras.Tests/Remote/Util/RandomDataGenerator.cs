@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using OrasProject.Oras.Content;
@@ -25,7 +26,7 @@ public class RandomDataGenerator
     {
         return new Random().Next(min, max);
     }
-    
+
     public static string RandomString()
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -37,34 +38,48 @@ public class RandomDataGenerator
         }
         return new string(stringChars);
     }
-    
+
     public static Descriptor RandomDescriptor(string mediaType = MediaType.ImageManifest, string artifactType = "")
     {
         var randomBytes = RandomBytes();
         return new Descriptor
-            { MediaType = mediaType, Digest = Digest.ComputeSha256(randomBytes), Size = randomBytes.Length, ArtifactType = artifactType };
+        {
+            MediaType = mediaType,
+            Digest = Digest.ComputeSha256(randomBytes),
+            Size = randomBytes.Length,
+            ArtifactType = artifactType
+        };
     }
 
     public static (Manifest, byte[]) RandomManifest()
     {
-        var manifest = new Manifest
-        {
-            Layers = new List<Descriptor>(),
-            Config = new Descriptor{MediaType = MediaType.ImageConfig, Digest = Guid.NewGuid().ToString("N")},
-        };
+        var manifest = CreateRandomManifest();
         return (manifest, Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest)));
     }
-    
-    public static (Manifest, byte[]) RandomManifestWithSubject(Descriptor? subject = null)
+
+    public static (Manifest, byte[]) RandomManifestWithSubject([AllowNull] Descriptor subject)
     {
-        var manifest = new Manifest
-        {
-            Layers = new List<Descriptor>(),
-            Config = new Descriptor{MediaType = MediaType.ImageConfig, Digest = Guid.NewGuid().ToString("N")},
-        };
-        if (subject == null) manifest.Subject = RandomDescriptor();
-        else manifest.Subject = subject;
+        var manifest = CreateRandomManifest();
+        manifest.Subject = subject ?? RandomDescriptor();
         return (manifest, Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest)));
+    }
+
+    public static (Manifest, byte[]) RandomManifestWithSubject()
+    {
+        return RandomManifestWithSubject(RandomDescriptor());
+    }
+
+    private static Manifest CreateRandomManifest()
+    {
+        return new Manifest
+        {
+            Layers = [],
+            Config = new Descriptor
+            {
+                MediaType = MediaType.ImageConfig,
+                Digest = Guid.NewGuid().ToString("N")
+            },
+        };
     }
 
     public static byte[] RandomBytes()
@@ -74,21 +89,17 @@ public class RandomDataGenerator
 
     public static Index RandomIndex(IList<Descriptor>? manifests = null)
     {
-        if (manifests == null)
-        {
-            manifests = new List<Descriptor>
-            {
+        manifests ??=
+            [
                 RandomDescriptor(),
                 RandomDescriptor(),
                 RandomDescriptor(),
-            };
-        }
+            ];
+
         return new Index()
         {
             Manifests = manifests,
             MediaType = MediaType.ImageIndex,
         };
     }
-    
-    
 }

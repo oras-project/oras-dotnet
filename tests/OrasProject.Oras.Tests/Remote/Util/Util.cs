@@ -14,6 +14,7 @@
 using Moq;
 using Moq.Protected;
 using OrasProject.Oras.Oci;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OrasProject.Oras.Tests.Remote.Util;
 
@@ -25,11 +26,22 @@ public class Util
     /// <param name="a"></param>
     /// <param name="b"></param>
     /// <returns></returns>
-    public static bool AreDescriptorsEqual(Descriptor a, Descriptor b)
+    public static bool AreDescriptorsEqual([AllowNull] Descriptor a, [AllowNull] Descriptor b)
     {
-        return a.MediaType == b.MediaType && a.Digest == b.Digest && a.Size == b.Size;
+        if (a == null && b == null)
+        {
+            return true;
+        }
+        else if (a != null && b != null)
+        {
+            return a.MediaType == b.MediaType &&
+                   a.Digest == b.Digest &&
+                   a.Size == b.Size;
+        }
+
+        return false;
     }
-    
+
     public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
     {
         var moqHandler = new Mock<DelegatingHandler>();
