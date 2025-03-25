@@ -30,7 +30,7 @@ public class Descriptor
 
     [JsonPropertyName("urls")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public IList<string>? URLs { get; set; }
+    public IList<string>? Urls { get; set; }
 
     [JsonPropertyName("annotations")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -54,7 +54,7 @@ public class Descriptor
         return new Descriptor
         {
             MediaType = mediaType,
-            Digest = Content.Digest.ComputeSHA256(byteData),
+            Digest = Content.Digest.ComputeSha256(byteData),
             Size = byteData.Length
         };
     }
@@ -71,6 +71,6 @@ public class Descriptor
 
     internal static bool IsNullOrInvalid(Descriptor? descriptor)
     {
-        return descriptor == null || string.IsNullOrEmpty(descriptor.Digest) || string.IsNullOrEmpty(descriptor.MediaType);
+        return descriptor == null || string.IsNullOrWhiteSpace(descriptor.Digest) || string.IsNullOrWhiteSpace(descriptor.MediaType);
     }
 }

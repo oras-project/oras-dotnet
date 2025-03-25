@@ -45,7 +45,7 @@ public class IndexTest
         Assert.NotNull(generatedIndexDesc);
         Assert.Equal(MediaType.ImageIndex, generatedIndexDesc.MediaType);
         Assert.Equal(generatedIndexContent.Length, generatedIndexDesc.Size);
-        Assert.Equal(Digest.ComputeSHA256(generatedIndexContent), generatedIndexDesc.Digest);
+        Assert.Equal(Digest.ComputeSha256(generatedIndexContent), generatedIndexDesc.Digest);
 
         var generatedIndex = JsonSerializer.Deserialize<Index>(generatedIndexContent);
         Assert.NotNull(generatedIndex);
@@ -67,7 +67,7 @@ public class IndexTest
         Assert.NotNull(generatedIndexDesc);
         Assert.Equal(MediaType.ImageIndex, generatedIndexDesc.MediaType);
         Assert.Equal(generatedIndexContent.Length, generatedIndexDesc.Size);
-        Assert.Equal(Digest.ComputeSHA256(generatedIndexContent), generatedIndexDesc.Digest);
+        Assert.Equal(Digest.ComputeSha256(generatedIndexContent), generatedIndexDesc.Digest);
 
         var generatedIndex = JsonSerializer.Deserialize<Index>(generatedIndexContent);
         Assert.NotNull(generatedIndex);

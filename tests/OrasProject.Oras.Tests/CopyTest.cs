@@ -39,7 +39,7 @@ public class CopyTest
             var desc = new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length
             };
             descs.Add(desc);
@@ -102,7 +102,7 @@ public class CopyTest
             var desc = new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length
             };
             descs.Add(desc);

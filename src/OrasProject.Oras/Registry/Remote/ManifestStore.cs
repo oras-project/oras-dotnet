@@ -25,9 +25,11 @@ using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-public class ManifestStore(Repository repository) : IManifestStore
+public class ManifestStore : IManifestStore
 {
-    public Repository Repository { get; init; } = repository;
+    private Repository Repository { get; }
+    
+    public ManifestStore(Repository repository) => Repository = repository;
 
     /// <summary>
     /// Fetches the content identified by the descriptor.
@@ -283,7 +285,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
 
         // 3. push the updated referrers list using referrers tag schema
-        if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGc)
+        if (updatedReferrers.Count > 0 || Repository.Options.SkipReferrersGc)
         {
             // push a new index in either case:
             // 1. the referrers list has been updated with a non-zero size
@@ -297,14 +299,14 @@ public class ManifestStore(Repository repository) : IManifestStore
             }
         }
         
-        if (repository.Options.SkipReferrersGc || Descriptor.IsNullOrInvalid(oldDesc))
+        if (Repository.Options.SkipReferrersGc || Descriptor.IsNullOrInvalid(oldDesc))
         {
             // Skip the delete process if SkipReferrersGc is set to true or the old Descriptor is empty or null
             return;
         }
         
         // 4. delete the dangling original referrers index, if applicable
-        await DeleteAsync(oldDesc, cancellationToken).ConfigureAwait(false);
+        await DeleteAsync(oldDesc!, cancellationToken).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -312,7 +314,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// </summary>
     /// <param name="expected"></param>
     /// <param name="stream"></param>
-    /// <param name="contentReference"></param>
+    /// <param name="remoteReference"></param>
     /// <param name="cancellationToken"></param>
     private async Task DoPushAsync(Descriptor expected, Stream stream, Reference remoteReference, CancellationToken cancellationToken)
     {

@@ -31,7 +31,7 @@ public class MemoryStoreTest
     public async Task CanStoreData()
     {
         var content = Encoding.UTF8.GetBytes("Hello World");
-        string hash = Digest.ComputeSHA256(content);
+        string hash = Digest.ComputeSha256(content);
         var descriptor = new Descriptor
         {
             MediaType = "test",
@@ -67,7 +67,7 @@ public class MemoryStoreTest
     {
         var content = Encoding.UTF8.GetBytes("Hello World");
 
-        string hash = Digest.ComputeSHA256(content);
+        string hash = Digest.ComputeSha256(content);
         var descriptor = new Descriptor
         {
             MediaType = "test",
@@ -93,7 +93,7 @@ public class MemoryStoreTest
     public async Task ThrowsAlreadyExistsExceptionWhenSameDataIsPushedTwice()
     {
         var content = Encoding.UTF8.GetBytes("Hello World");
-        string hash = Digest.ComputeSHA256(content);
+        string hash = Digest.ComputeSha256(content);
         var descriptor = new Descriptor
         {
             MediaType = "test",
@@ -117,7 +117,7 @@ public class MemoryStoreTest
     {
         var content = Encoding.UTF8.GetBytes("Hello World");
         var wrongContent = Encoding.UTF8.GetBytes("Hello World!");
-        string hash = Digest.ComputeSHA256(content);
+        string hash = Digest.ComputeSha256(content);
         var descriptor = new Descriptor
         {
             MediaType = "test",
@@ -144,7 +144,7 @@ public class MemoryStoreTest
     {
         var content = Encoding.UTF8.GetBytes("Hello World");
         var wrongContent = Encoding.UTF8.GetBytes("Hello Danny");
-        string hash = Digest.ComputeSHA256(content);
+        string hash = Digest.ComputeSha256(content);
         var descriptor = new Descriptor
         {
             MediaType = "test",
@@ -178,7 +178,7 @@ public class MemoryStoreTest
             var desc = new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length
             };
             descs.Add(desc);

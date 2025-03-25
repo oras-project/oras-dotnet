@@ -33,13 +33,13 @@ namespace OrasProject.Oras.Tests.Remote;
 
 public class RepositoryTest
 {
-    public struct TestIOStruct
+    public struct TestIoStruct
     {
         public bool IsTag;
-        public bool ErrExpectedOnHEAD;
+        public bool ErrExpectedOnHead;
         public string ServerCalculatedDigest;
         public string ClientSuppliedReference;
-        public bool ErrExpectedOnGET;
+        public bool ErrExpectedOnGet;
     }
 
     private ITestOutputHelper _iTestOutputHelper;
@@ -92,43 +92,43 @@ public class RepositoryTest
     /// both Manifests and Blobs. 
     /// </summary>
     /// <returns></returns>
-    public static Dictionary<string, TestIOStruct> GetTestIOStructMapForGetDescriptorClass()
+    public static Dictionary<string, TestIoStruct> GetTestIOStructMapForGetDescriptorClass()
     {
         string correctDigest = $"sha256:{_theAmazingBanDigest}";
         string incorrectDigest = $"sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
-        return new Dictionary<string, TestIOStruct>
+        return new Dictionary<string, TestIoStruct>
         {
-            ["1. Client:Tag & Server:DigestMissing"] = new TestIOStruct
+            ["1. Client:Tag & Server:DigestMissing"] = new TestIoStruct
             {
                 IsTag = true,
-                ErrExpectedOnHEAD = true
+                ErrExpectedOnHead = true
             },
-            ["2. Client:Tag & Server:DigestValid"] = new TestIOStruct
+            ["2. Client:Tag & Server:DigestValid"] = new TestIoStruct
             {
                 IsTag = true,
                 ServerCalculatedDigest = correctDigest
             },
-            ["3. Client:Tag & Server:DigestWrongButSyntacticallyValid"] = new TestIOStruct
+            ["3. Client:Tag & Server:DigestWrongButSyntacticallyValid"] = new TestIoStruct
             {
                 IsTag = true,
                 ServerCalculatedDigest = incorrectDigest
             },
-            ["4. Client:DigestValid & Server:DigestMissing"] = new TestIOStruct
+            ["4. Client:DigestValid & Server:DigestMissing"] = new TestIoStruct
             {
                 ClientSuppliedReference = correctDigest
             },
-            ["5. Client:DigestValid & Server:DigestValid"] = new TestIOStruct
+            ["5. Client:DigestValid & Server:DigestValid"] = new TestIoStruct
             {
                 ClientSuppliedReference = correctDigest,
                 ServerCalculatedDigest = correctDigest
             },
-            ["6. Client:DigestValid & Server:DigestWrongButSyntacticallyValid"] = new TestIOStruct
+            ["6. Client:DigestValid & Server:DigestWrongButSyntacticallyValid"] = new TestIoStruct
             {
                 ClientSuppliedReference = correctDigest,
                 ServerCalculatedDigest = incorrectDigest,
-                ErrExpectedOnHEAD = true,
-                ErrExpectedOnGET = true
+                ErrExpectedOnHead = true,
+                ErrExpectedOnGet = true
             }
         };
     }
@@ -143,14 +143,14 @@ public class RepositoryTest
         var blob = Encoding.UTF8.GetBytes("hello world");
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
         var index = """{"manifests":[]}"""u8.ToArray();
         var indexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(index),
+            Digest = ComputeSha256(index),
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
@@ -220,14 +220,14 @@ public class RepositoryTest
         var blob = @"hello world"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
         var index = @"{""manifests"":[]}"u8.ToArray();
         var indexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(index),
+            Digest = ComputeSha256(index),
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
@@ -316,14 +316,14 @@ public class RepositoryTest
         var blob = @"hello world"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
         var index = @"{""manifests"":[]}"u8.ToArray();
         var indexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(index),
+            Digest = ComputeSha256(index),
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
@@ -383,7 +383,7 @@ public class RepositoryTest
         var blob = @"hello world"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
@@ -391,7 +391,7 @@ public class RepositoryTest
         var index = @"{""manifests"":[]}"u8.ToArray();
         var indexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(index),
+            Digest = ComputeSha256(index),
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
@@ -458,14 +458,14 @@ public class RepositoryTest
         var blob = @"hello world"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
         var index = @"{""manifests"":[]}"u8.ToArray();
         var indexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(index),
+            Digest = ComputeSha256(index),
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
@@ -536,14 +536,14 @@ public class RepositoryTest
         var blob = "hello"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
         var index = @"{""manifests"":[]}"u8.ToArray();
         var indexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(index),
+            Digest = ComputeSha256(index),
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
@@ -621,7 +621,7 @@ public class RepositoryTest
         var index = @"{""manifests"":[]}"u8.ToArray();
         var indexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(index),
+            Digest = ComputeSha256(index),
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
@@ -673,14 +673,14 @@ public class RepositoryTest
         var blob = "hello"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
         var index = @"{""manifests"":[]}"u8.ToArray();
         var indexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(index),
+            Digest = ComputeSha256(index),
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
@@ -859,7 +859,7 @@ public class RepositoryTest
         var blobDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             Size = blob.Length
         };
         var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -908,7 +908,7 @@ public class RepositoryTest
         var blobDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             Size = blob.Length
         };
         var seekable = false;
@@ -1012,7 +1012,7 @@ public class RepositoryTest
         var blobDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             Size = blob.Length
         };
         var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1064,7 +1064,7 @@ public class RepositoryTest
         var blobDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             Size = blob.Length
         };
         var gotBlob = new byte[blob.Length];
@@ -1132,14 +1132,14 @@ public class RepositoryTest
         var blobDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             Size = blob.Length
         };
         var content = "foobar"u8.ToArray();
         var contentDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(content),
+            Digest = ComputeSha256(content),
             Size = content.Length
         };
         var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1187,7 +1187,7 @@ public class RepositoryTest
         var blobDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             Size = blob.Length
         };
         var blobDeleted = false;
@@ -1226,7 +1226,7 @@ public class RepositoryTest
         var contentDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(content),
+            Digest = ComputeSha256(content),
             Size = content.Length
         };
         await Assert.ThrowsAsync<NotFoundException>(async () => await store.DeleteAsync(contentDesc, cancellationToken));
@@ -1243,7 +1243,7 @@ public class RepositoryTest
         var blobDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             Size = blob.Length
         };
         var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1286,7 +1286,7 @@ public class RepositoryTest
         var contentDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(content),
+            Digest = ComputeSha256(content),
             Size = content.Length
         };
         await Assert.ThrowsAsync<NotFoundException>(async () =>
@@ -1304,7 +1304,7 @@ public class RepositoryTest
         var blobDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             Size = blob.Length
         };
         var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1356,7 +1356,7 @@ public class RepositoryTest
         var contentDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(content),
+            Digest = ComputeSha256(content),
             Size = content.Length
         };
         // test with other digest
@@ -1375,7 +1375,7 @@ public class RepositoryTest
         var blobDesc = new Descriptor()
         {
             MediaType = "test",
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             Size = blob.Length
         };
         var seekable = false;
@@ -1474,7 +1474,7 @@ public class RepositoryTest
     {
         var reference = new Reference("eastern.haan.com", "from25to220ce");
         var tests = GetTestIOStructMapForGetDescriptorClass();
-        foreach ((string testName, TestIOStruct dcdIOStruct) in tests)
+        foreach ((string testName, TestIoStruct dcdIOStruct) in tests)
         {
             if (dcdIOStruct.IsTag)
             {
@@ -1520,7 +1520,7 @@ public class RepositoryTest
                         $"[Blob.{method}] {testName}; got digest from a tag reference unexpectedly");
                 }
 
-                var errExpected = new bool[] { dcdIOStruct.ErrExpectedOnGET, dcdIOStruct.ErrExpectedOnHEAD }[i];
+                var errExpected = new bool[] { dcdIOStruct.ErrExpectedOnGet, dcdIOStruct.ErrExpectedOnHead }[i];
                 if (d.Length == 0)
                 {
                     // To avoid an otherwise impossible scenario in the tested code
@@ -1564,7 +1564,7 @@ public class RepositoryTest
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifest),
+            Digest = ComputeSha256(manifest),
             Size = manifest.Length
         };
 
@@ -1606,7 +1606,7 @@ public class RepositoryTest
         var contentDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(content),
+            Digest = ComputeSha256(content),
             Size = content.Length
         };
         await Assert.ThrowsAsync<NotFoundException>(async () => await store.FetchAsync(contentDesc, cancellationToken));
@@ -1660,7 +1660,7 @@ public class RepositoryTest
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifestBytes),
+            Digest = ComputeSha256(manifestBytes),
             Size = manifestBytes.Length
         };
         byte[]? gotManifest = null;
@@ -1713,7 +1713,7 @@ public class RepositoryTest
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifest),
+            Digest = ComputeSha256(manifest),
             Size = manifest.Length
         };
         var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -1752,7 +1752,7 @@ public class RepositoryTest
         var contentDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(content),
+            Digest = ComputeSha256(content),
             Size = content.Length
         };
         exist = await store.ExistsAsync(contentDesc, cancellationToken);
@@ -1770,7 +1770,7 @@ public class RepositoryTest
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifestBytes),
+            Digest = ComputeSha256(manifestBytes),
             Size = manifestBytes.Length
         };
         var manifestDeleted = false;
@@ -1816,7 +1816,7 @@ public class RepositoryTest
         var contentDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(content),
+            Digest = ComputeSha256(content),
             Size = content.Length
         };
         await Assert.ThrowsAsync<NotFoundException>(async () => await store.DeleteAsync(contentDesc, cancellationToken));
@@ -1833,7 +1833,7 @@ public class RepositoryTest
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifest),
+            Digest = ComputeSha256(manifest),
             Size = manifest.Length
         };
         var reference = "foobar";
@@ -1883,7 +1883,7 @@ public class RepositoryTest
         var contentDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(content),
+            Digest = ComputeSha256(content),
             Size = content.Length
         };
 
@@ -1902,7 +1902,7 @@ public class RepositoryTest
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifest),
+            Digest = ComputeSha256(manifest),
             Size = manifest.Length
         };
         var reference = "foobar";
@@ -1983,14 +1983,14 @@ public class RepositoryTest
         var blobDesc = new Descriptor
         {
             MediaType = "test",
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             Size = blob.Length
         };
         var index = """{"manifests":[]}"""u8.ToArray();
         var indexDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(index),
+            Digest = ComputeSha256(index),
             Size = index.Length
         };
         var gotIndex = new byte[index.Length];
@@ -2070,7 +2070,7 @@ public class RepositoryTest
         var indexDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(indexBytes),
+            Digest = ComputeSha256(indexBytes),
             Size = indexBytes.Length
         };
         var gotIndex = new byte[indexBytes.Length];
@@ -2127,7 +2127,7 @@ public class RepositoryTest
         var exampleManifestDescriptor = new Descriptor
         {
             MediaType = MediaType.Descriptor,
-            Digest = ComputeSHA256(exampleManifest),
+            Digest = ComputeSha256(exampleManifest),
             Size = exampleManifest.Length
         };
         var exampleUploadUUid = new Guid().ToString();
@@ -2218,7 +2218,7 @@ public class RepositoryTest
     {
         var reference = new Reference("eastern.haan.com", "from25to220ce");
         var tests = GetTestIOStructMapForGetDescriptorClass();
-        foreach ((string testName, TestIOStruct dcdIOStruct) in tests)
+        foreach ((string testName, TestIoStruct dcdIOStruct) in tests)
         {
             var repo = new Repository(reference.Repository + "/" + reference.Repository);
             HttpMethod[] methods = new HttpMethod[] { HttpMethod.Get, HttpMethod.Head };
@@ -2243,7 +2243,7 @@ public class RepositoryTest
                     Method = method
                 };
 
-                var errExpected = new bool[] { dcdIOStruct.ErrExpectedOnGET, dcdIOStruct.ErrExpectedOnHEAD }[i];
+                var errExpected = new bool[] { dcdIOStruct.ErrExpectedOnGet, dcdIOStruct.ErrExpectedOnHead }[i];
 
                 var err = false;
                 try
@@ -2279,7 +2279,7 @@ public class RepositoryTest
         var blob = @"hello world"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
@@ -2332,7 +2332,7 @@ public class RepositoryTest
         var blob = @"hello world"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
@@ -2412,7 +2412,7 @@ public class RepositoryTest
         var blob = @"hello world"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
@@ -2460,7 +2460,7 @@ public class RepositoryTest
         var blob = @"hello world"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
@@ -2527,7 +2527,7 @@ public class RepositoryTest
         var blob = @"hello world"u8.ToArray();
         var blobDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(blob),
+            Digest = ComputeSha256(blob),
             MediaType = "test",
             Size = (uint)blob.Length
         };
@@ -2618,7 +2618,7 @@ public class RepositoryTest
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
         var expectedIndexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(expectedIndexBytes),
+            Digest = ComputeSha256(expectedIndexBytes),
             MediaType = MediaType.ImageIndex,
         };
 
@@ -2655,7 +2655,7 @@ public class RepositoryTest
         // no artifact type filtering
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersByTagSchema(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByTagSchema(desc, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -2664,7 +2664,7 @@ public class RepositoryTest
         // filter out referrers with artifact type doc/example
         var artifactType2 = "doc/example";
         var returnedReferrers2 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersByTagSchema(desc, artifactType2, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByTagSchema(desc, artifactType2, cancellationToken))
         {
             returnedReferrers2.Add(referrer);
         }
@@ -2674,7 +2674,7 @@ public class RepositoryTest
         // filter out non-existent referrers with artifact type non/non
         var artifactType3 = "non/non";
         var returnedReferrers3 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersByTagSchema(desc, artifactType3, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByTagSchema(desc, artifactType3, cancellationToken))
         {
             returnedReferrers3.Add(referrer);
         }
@@ -2700,7 +2700,7 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersByTagSchema(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByTagSchema(desc, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -2750,7 +2750,7 @@ public class RepositoryTest
         // no artifact type specified
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersByApi(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByApi(desc, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -2803,7 +2803,7 @@ public class RepositoryTest
         // filter out referrers with artifact type "doc/example"
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersByApi(desc, artifactType, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByApi(desc, artifactType, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -2861,7 +2861,7 @@ public class RepositoryTest
         // filter out referrers with artifact type "doc/example"
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersByApi(desc, artifactType, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByApi(desc, artifactType, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -2894,7 +2894,7 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersByApi(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByApi(desc, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -3055,7 +3055,7 @@ public class RepositoryTest
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var exception = await Assert.ThrowsAsync<ResponseException>(async () =>
         {
-            await foreach (var _ in repo.ReferrersByApi(desc, null, cancellationToken))
+            await foreach (var _ in repo.FetchReferrersByApi(desc, cancellationToken))
             {
                 isInvoked = true;
             }
@@ -3097,7 +3097,7 @@ public class RepositoryTest
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var exception = await Assert.ThrowsAsync<ResponseException>(async () =>
         {
-            await foreach (var _ in repo.ReferrersByApi(desc, null, cancellationToken))
+            await foreach (var _ in repo.FetchReferrersByApi(desc, cancellationToken))
             {
                 isInvoked = true;
             }
@@ -3157,7 +3157,7 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         var returnedReferrers = new List<Descriptor>();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
-        await foreach (var referrer in repo.ReferrersByApi(desc, artifactType, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersByApi(desc, artifactType, cancellationToken))
         {
             returnedReferrers.Add(referrer);
         }
@@ -3215,7 +3215,7 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var returnedReferrers = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersAsync(desc, artifactType, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersAsync(desc, artifactType, cancellationToken))
         {
             returnedReferrers.Add(referrer);
         }
@@ -3300,7 +3300,7 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var returnedReferrers = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersAsync(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersAsync(desc, cancellationToken))
         {
             returnedReferrers.Add(referrer);
         }
@@ -3324,7 +3324,7 @@ public class RepositoryTest
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
         var expectedIndexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(expectedIndexBytes),
+            Digest = ComputeSha256(expectedIndexBytes),
             MediaType = MediaType.ImageIndex,
         };
     
@@ -3365,7 +3365,7 @@ public class RepositoryTest
         };
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersAsync(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersAsync(desc, cancellationToken))
         {
             returnedReferrers1.Add(referrer);
         }
@@ -3374,7 +3374,7 @@ public class RepositoryTest
         // filter out referrers with artifact type doc/example
         var artifactType2 = "doc/example";
         var returnedReferrers2 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersAsync(desc, artifactType2, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersAsync(desc, artifactType2, cancellationToken))
         {
             returnedReferrers2.Add(referrer);
         }
@@ -3384,7 +3384,7 @@ public class RepositoryTest
         // filter out non-existent referrers with artifact type non/non
         var artifactType3 = "non/non";
         var returnedReferrers3 = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersAsync(desc, artifactType3, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersAsync(desc, artifactType3, cancellationToken))
         {
             returnedReferrers3.Add(referrer);
         }
@@ -3431,7 +3431,7 @@ public class RepositoryTest
 
                 res.Content = new ByteArrayContent(expectedIndexBytes);
                 res.Content.Headers.Add("Content-Type", new string[] { MediaType.ImageIndex });
-                res.Headers.Add(_dockerContentDigestHeader, new string[] { ComputeSHA256(expectedIndexBytes) });
+                res.Headers.Add(_dockerContentDigestHeader, new string[] { ComputeSha256(expectedIndexBytes) });
                 return res;
             }
 
@@ -3447,7 +3447,7 @@ public class RepositoryTest
         var cancellationToken = new CancellationToken();
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
         var returnedReferrers = new List<Descriptor>();
-        await foreach (var referrer in repo.ReferrersAsync(desc, null, cancellationToken))
+        await foreach (var referrer in repo.FetchReferrersAsync(desc, cancellationToken))
         {
             returnedReferrers.Add(referrer);
         }

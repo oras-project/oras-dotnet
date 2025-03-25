@@ -240,6 +240,6 @@ internal static class HttpResponseMessageExtensions
     private static async Task<string> CalculateDigestFromResponse(this HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-        return Digest.ComputeSHA256(bytes);
+        return Digest.ComputeSha256(bytes);
     }
 }

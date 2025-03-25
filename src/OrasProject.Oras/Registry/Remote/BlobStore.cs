@@ -25,9 +25,11 @@ using System.Web;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-public class BlobStore(Repository repository) : IBlobStore, IMounter
+public class BlobStore : IBlobStore, IMounter
 {
-    public Repository Repository { get; init; } = repository;
+    private Repository Repository { get; }
+
+    public BlobStore(Repository repository) => Repository = repository;
 
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
@@ -245,7 +247,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
             }
             else
             {
-                var referenceOptions = repository.Options with
+                var referenceOptions = Repository.Options with
                 {
                     Reference = Reference.Parse(fromRepository),
                 };

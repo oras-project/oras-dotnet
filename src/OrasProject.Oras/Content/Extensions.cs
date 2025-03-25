@@ -102,7 +102,7 @@ public static class Extensions
             throw new ArgumentOutOfRangeException("Descriptor size is less than content size");
         }
 
-        if (Digest.ComputeSHA256(buffer) != descriptor.Digest)
+        if (Digest.ComputeSha256(buffer) != descriptor.Digest)
         {
             throw new MismatchedDigestException("Descriptor digest is different from content digest");
         }

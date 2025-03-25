@@ -234,10 +234,10 @@ public class ReferrersTest
         Descriptor? emptyDesc2 = null;
         var newDescriptor = RandomDescriptor();
 
-        var oldReferrers = new List<Descriptor?>
+        var oldReferrers = new List<Descriptor>
         {
             emptyDesc1,
-            emptyDesc2,
+            emptyDesc2!,
         };        
         var expectedReferrers = new List<Descriptor>
         {
@@ -273,7 +273,7 @@ public class ReferrersTest
     {
         string? appliedFilters = null;
         const string requestedFilter = "artifactType";
-        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
+        var result = Referrers.IsReferrersFilterApplied(appliedFilters!, requestedFilter);
         Assert.False(result);
     }
     
@@ -291,7 +291,7 @@ public class ReferrersTest
     {
         const string appliedFilters = "artifactType,annotation";
         string? requestedFilter = null;
-        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
+        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter!);
         Assert.False(result);
     }
 

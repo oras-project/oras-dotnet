@@ -38,7 +38,7 @@ public class ManifestStoreTest
         var expectedIndexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedIndex));
         var expectedIndexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(expectedIndexBytes),
+            Digest = ComputeSha256(expectedIndexBytes),
             MediaType = MediaType.ImageIndex,
             Size = expectedIndexBytes.Length
         };
@@ -72,6 +72,7 @@ public class ManifestStoreTest
         });
         var cancellationToken = new CancellationToken();
         var (receivedDesc, receivedManifests) = await repo.PullReferrersIndexList(expectedIndexDesc.Digest, cancellationToken);
+        Assert.NotNull(receivedDesc);
         Assert.True(AreDescriptorsEqual(expectedIndexDesc, receivedDesc));
         for (var i = 0; i < receivedManifests.Count; ++i)
         {
@@ -86,7 +87,7 @@ public class ManifestStoreTest
         var expectedIndexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(expectedIndex));
         var expectedIndexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(expectedIndexBytes),
+            Digest = ComputeSha256(expectedIndexBytes),
             MediaType = MediaType.ImageIndex,
             Size = expectedIndexBytes.Length
         };
@@ -157,7 +158,7 @@ public class ManifestStoreTest
         var expectedManifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(expectedManifestBytes),
+            Digest = ComputeSha256(expectedManifestBytes),
             Size = expectedManifestBytes.Length
         };
         
@@ -166,7 +167,7 @@ public class ManifestStoreTest
         var expectedConfigDesc = new Descriptor
         {
             MediaType = MediaType.ImageConfig,
-            Digest = ComputeSHA256(expectedConfigBytes),
+            Digest = ComputeSha256(expectedConfigBytes),
             Size = expectedConfigBytes.Length
         };
         
@@ -234,7 +235,7 @@ public class ManifestStoreTest
         var expectedManifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(expectedManifestBytes),
+            Digest = ComputeSha256(expectedManifestBytes),
             Size = expectedManifestBytes.Length
         };
         
@@ -250,7 +251,7 @@ public class ManifestStoreTest
         var expectedIndexManifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(expectedIndexManifestBytes),
+            Digest = ComputeSha256(expectedIndexManifestBytes),
             Size = expectedIndexManifestBytes.Length,
             ArtifactType = MediaType.ImageIndex,
         };
@@ -318,17 +319,18 @@ public class ManifestStoreTest
         var oldIndexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(oldIndex));
         var oldIndexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(oldIndexBytes),
+            Digest = ComputeSha256(oldIndexBytes),
             MediaType = MediaType.ImageIndex,
             Size = oldIndexBytes.Length
         };
         
         // first push
         var (firstExpectedManifest, firstExpectedManifestBytes) = RandomManifestWithSubject();
+        Assert.NotNull(firstExpectedManifest.Subject);
         var firstExpectedManifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(firstExpectedManifestBytes),
+            Digest = ComputeSha256(firstExpectedManifestBytes),
             Size = firstExpectedManifestBytes.Length,
             ArtifactType = MediaType.ImageConfig,
         };
@@ -341,7 +343,7 @@ public class ManifestStoreTest
         var secondExpectedManifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(secondExpectedManifestBytes),
+            Digest = ComputeSha256(secondExpectedManifestBytes),
             Size = secondExpectedManifestBytes.Length,
             ArtifactType = MediaType.ImageConfig,
         };
@@ -481,7 +483,7 @@ public class ManifestStoreTest
         var expectedIndexManifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(expectedIndexManifestBytes),
+            Digest = ComputeSha256(expectedIndexManifestBytes),
             Size = expectedIndexManifestBytes.Length,
             ArtifactType = MediaType.ImageIndex,
         };
@@ -550,7 +552,7 @@ public class ManifestStoreTest
                 new ()
                 {
                     MediaType = MediaType.ImageManifest,
-                    Digest = ComputeSHA256(oldManifestBytes),
+                    Digest = ComputeSha256(oldManifestBytes),
                     Size = oldManifestBytes.Length,
                     ArtifactType = MediaType.ImageManifest,
                 }
@@ -560,17 +562,18 @@ public class ManifestStoreTest
         var oldIndexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(oldIndex));
         var oldIndexDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(oldIndexBytes),
+            Digest = ComputeSha256(oldIndexBytes),
             MediaType = MediaType.ImageIndex,
             Size = oldIndexBytes.Length
         };
 
         var expectedManifest = oldManifest;
+        Assert.NotNull(expectedManifest.Subject);
         var expectedManifestBytes = oldManifestBytes;
         var expectedManifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(oldManifestBytes),
+            Digest = ComputeSha256(oldManifestBytes),
             Size = oldManifestBytes.Length,
             ArtifactType = MediaType.ImageManifest,
         };
@@ -632,7 +635,7 @@ public class ManifestStoreTest
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifestBytes),
+            Digest = ComputeSha256(manifestBytes),
             Size = manifestBytes.Length
         };
         var manifestDeleted = false;
@@ -674,7 +677,7 @@ public class ManifestStoreTest
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifestBytes),
+            Digest = ComputeSha256(manifestBytes),
             Size = manifestBytes.Length
         };
         var manifestDeleted = false;
@@ -727,7 +730,7 @@ public class ManifestStoreTest
         var manifestDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifestBytes),
+            Digest = ComputeSha256(manifestBytes),
             Size = manifestBytes.Length
         };
         var httpHandler = (HttpRequestMessage req, CancellationToken cancellationToken) =>
@@ -760,10 +763,11 @@ public class ManifestStoreTest
     {
         // first delete image manifest
         var (manifestToDelete, manifestToDeleteBytes) = RandomManifestWithSubject();
+        Assert.NotNull(manifestToDelete.Subject);
         var manifestToDeleteDesc = new Descriptor
         {
             MediaType = MediaType.ImageManifest,
-            Digest = ComputeSHA256(manifestToDeleteBytes),
+            Digest = ComputeSha256(manifestToDeleteBytes),
             Size = manifestToDeleteBytes.Length
         };
         
@@ -774,7 +778,7 @@ public class ManifestStoreTest
         var indexToDeleteDesc = new Descriptor
         {
             MediaType = MediaType.ImageIndex,
-            Digest = ComputeSHA256(indexToDeleteBytes),
+            Digest = ComputeSha256(indexToDeleteBytes),
             Size = indexToDeleteBytes.Length
         };
         
@@ -785,7 +789,7 @@ public class ManifestStoreTest
         var oldReferrersBytes = JsonSerializer.SerializeToUtf8Bytes(oldReferrersList);
         var oldReferrersDesc = new Descriptor()
         {
-            Digest = ComputeSHA256(oldReferrersBytes),
+            Digest = ComputeSha256(oldReferrersBytes),
             MediaType = MediaType.ImageIndex,
             Size = oldReferrersBytes.Length
         };
