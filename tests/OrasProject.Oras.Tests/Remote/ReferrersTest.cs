@@ -237,7 +237,7 @@ public class ReferrersTest
         var oldReferrers = new List<Descriptor>
         {
             emptyDesc1,
-            emptyDesc2,
+            emptyDesc2!,
         };        
         var expectedReferrers = new List<Descriptor>
         {
@@ -273,7 +273,7 @@ public class ReferrersTest
     {
         string? appliedFilters = null;
         const string requestedFilter = "artifactType";
-        var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
+        var result = Referrers.IsReferrersFilterApplied(appliedFilters!, requestedFilter);
         Assert.False(result);
     }
     
