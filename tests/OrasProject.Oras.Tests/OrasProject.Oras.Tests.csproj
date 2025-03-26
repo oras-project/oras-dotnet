@@ -9,6 +9,8 @@
     
     <!-- Disable requiring ConfigureAwait(false) for awaited tasks -->
     <NoWarn>CA2007</NoWarn>
+    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
 
   <ItemGroup>

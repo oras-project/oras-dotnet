@@ -26,11 +26,10 @@ public class ReferrersTest
     public void BuildReferrersTag_ShouldReturnReferrersTagSuccessfully()
     {
         var desc = RandomDescriptor();
-        var index = desc.Digest.IndexOf(':');
-        var expected = desc.Digest.Substring(0, index) + "-" + desc.Digest.Substring(index + 1);
+        var expected = desc.Digest.Replace(":", "-");
         Assert.Equal(expected, Referrers.BuildReferrersTag(desc));
     }
-    
+
     [Fact]
     public void BuildReferrersTag_ShouldThrowInvalidDigestException()
     {
@@ -38,7 +37,7 @@ public class ReferrersTest
         desc.Digest = "sha123321";
         Assert.Throws<InvalidDigestException>(() => Referrers.BuildReferrersTag(desc));
     }
-    
+
     [Fact]
     public void ApplyReferrerChanges_ShouldAddNewReferrers()
     {
@@ -58,19 +57,19 @@ public class ReferrersTest
             newDescriptor,
         };
         var referrerChange = new Referrers.ReferrerChange(
-            newDescriptor, 
+            newDescriptor,
             Referrers.ReferrerOperation.Add
         );
 
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
-        Assert.Equal(3, updatedReferrers.Count); 
+        Assert.Equal(3, updatedReferrers.Count);
         for (var i = 0; i < updatedReferrers.Count; ++i)
         {
             Assert.True(AreDescriptorsEqual(updatedReferrers[i], expectedReferrers[i]));
         }
         Assert.True(updateRequired);
     }
-    
+
     [Fact]
     public void ApplyReferrerChanges_ShouldDeleteReferrers()
     {
@@ -91,20 +90,20 @@ public class ReferrersTest
             oldDescriptor3
         };
         var referrerChange = new Referrers.ReferrerChange(
-            oldDescriptor2, 
+            oldDescriptor2,
             Referrers.ReferrerOperation.Delete
         );
 
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
-        Assert.Equal(2, updatedReferrers.Count); 
+        Assert.Equal(2, updatedReferrers.Count);
         for (var i = 0; i < updatedReferrers.Count; ++i)
         {
             Assert.True(AreDescriptorsEqual(updatedReferrers[i], expectedReferrers[i]));
         }
         Assert.True(updateRequired);
     }
-    
-    
+
+
     [Fact]
     public void ApplyReferrerChanges_ShouldDeleteReferrersWithDuplicates()
     {
@@ -128,19 +127,19 @@ public class ReferrersTest
             oldDescriptor2
         };
         var referrerChange = new Referrers.ReferrerChange(
-            oldDescriptor3, 
+            oldDescriptor3,
             Referrers.ReferrerOperation.Delete
         );
 
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
-        Assert.Equal(2, updatedReferrers.Count); 
+        Assert.Equal(2, updatedReferrers.Count);
         for (var i = 0; i < updatedReferrers.Count; ++i)
         {
             Assert.True(AreDescriptorsEqual(updatedReferrers[i], expectedReferrers[i]));
         }
         Assert.True(updateRequired);
     }
-    
+
     [Fact]
     public void ApplyReferrerChanges_ShouldNotDeleteReferrersWhenNoUpdateRequired()
     {
@@ -160,19 +159,19 @@ public class ReferrersTest
             oldDescriptor2,
         };
         var referrerChange = new Referrers.ReferrerChange(
-            oldDescriptor3, 
+            oldDescriptor3,
             Referrers.ReferrerOperation.Delete
         );
 
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
-        Assert.Equal(2, updatedReferrers.Count); 
+        Assert.Equal(2, updatedReferrers.Count);
         for (var i = 0; i < updatedReferrers.Count; ++i)
         {
             Assert.True(AreDescriptorsEqual(updatedReferrers[i], expectedReferrers[i]));
         }
         Assert.False(updateRequired);
     }
-    
+
     [Fact]
     public void ApplyReferrerChanges_ShouldDiscardDuplicateReferrers()
     {
@@ -200,14 +199,14 @@ public class ReferrersTest
         );
 
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
-        Assert.Equal(3, updatedReferrers.Count); 
+        Assert.Equal(3, updatedReferrers.Count);
         for (var i = 0; i < updatedReferrers.Count; ++i)
         {
             Assert.True(AreDescriptorsEqual(updatedReferrers[i], expectedReferrers[i]));
         }
         Assert.True(updateRequired);
     }
-    
+
     [Fact]
     public void ApplyReferrerChanges_ShouldNotAddNewDuplicateReferrers()
     {
@@ -223,10 +222,10 @@ public class ReferrersTest
             Referrers.ReferrerOperation.Add
         );
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
-        Assert.Equal(2, updatedReferrers.Count); 
+        Assert.Equal(2, updatedReferrers.Count);
         Assert.False(updateRequired);
     }
-    
+
     [Fact]
     public void ApplyReferrerChanges_ShouldNotKeepOldEmptyReferrers()
     {
@@ -238,7 +237,7 @@ public class ReferrersTest
         {
             emptyDesc1,
             emptyDesc2!,
-        };        
+        };
         var expectedReferrers = new List<Descriptor>
         {
             newDescriptor,
@@ -247,27 +246,27 @@ public class ReferrersTest
             newDescriptor,
             Referrers.ReferrerOperation.Add
         );
-        
+
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
-        Assert.Single(updatedReferrers); 
+        Assert.Single(updatedReferrers);
         for (var i = 0; i < updatedReferrers.Count; ++i)
         {
             Assert.True(AreDescriptorsEqual(updatedReferrers[i], expectedReferrers[i]));
         }
         Assert.True(updateRequired);
     }
-    
+
     [Fact]
     public void ApplyReferrerChanges_NoUpdateWhenOldAndNewReferrersAreEmpty()
     {
         var oldReferrers = new List<Descriptor>();
         var referrerChange = new Referrers.ReferrerChange(ZeroDescriptor(), Referrers.ReferrerOperation.Add);
-        
+
         var (updatedReferrers, updateRequired) = Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
-        Assert.Empty(updatedReferrers); 
+        Assert.Empty(updatedReferrers);
         Assert.False(updateRequired);
     }
-    
+
     [Fact]
     public void IsReferrersFilterApplied_AppliedFiltersNull_ReturnsFalse()
     {
@@ -276,7 +275,7 @@ public class ReferrersTest
         var result = Referrers.IsReferrersFilterApplied(appliedFilters!, requestedFilter);
         Assert.False(result);
     }
-    
+
     [Fact]
     public void IsReferrersFilterApplied_AppliedFiltersEmpty_ReturnsFalse()
     {
@@ -285,7 +284,7 @@ public class ReferrersTest
         var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
         Assert.False(result);
     }
-    
+
     [Fact]
     public void IsReferrersFilterApplied_RequestedFilterNull_ReturnsFalse()
     {
@@ -303,7 +302,7 @@ public class ReferrersTest
         var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
         Assert.False(result);
     }
-    
+
     [Fact]
     public void IsReferrersFilterApplied_RequestedFilterMatches_ReturnsTrue()
     {
@@ -313,7 +312,7 @@ public class ReferrersTest
         var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
         Assert.True(result);
     }
-    
+
     [Fact]
     public void IsReferrersFilterApplied_SingleAppliedFiltersRequestedFilterMatches_ReturnsTrue()
     {
@@ -322,7 +321,7 @@ public class ReferrersTest
         var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
         Assert.True(result);
     }
-    
+
     [Fact]
     public void IsReferrersFilterApplied_RequestedFilterDoesNotMatch_ReturnsFalse()
     {
@@ -331,7 +330,7 @@ public class ReferrersTest
         var result = Referrers.IsReferrersFilterApplied(appliedFilters, requestedFilter);
         Assert.False(result);
     }
-    
+
     [Fact]
     public void FilterReferrers_WithNullOrEmptyArtifactType_ShouldReturnAllReferrers()
     {
@@ -345,13 +344,13 @@ public class ReferrersTest
         var result = Referrers.FilterReferrers(referrers, artifactType);
         Assert.Equal(3, result.Count);
         Assert.Equal(referrers, result);
-        
+
         artifactType = "";
         result = Referrers.FilterReferrers(referrers, artifactType);
         Assert.Equal(3, result.Count);
         Assert.Equal(referrers, result);
     }
-    
+
     [Fact]
     public void FilterReferrers_WithValidArtifactType_ShouldReturnMatchingReferrers()
     {
@@ -368,7 +367,7 @@ public class ReferrersTest
         Assert.Equal(2, result.Count);
         Assert.True(result.All(r => r.ArtifactType == artifactType));
     }
-    
+
     [Fact]
     public void FilterReferrers_WithArtifactTypeThatDoesNotExist_ShouldReturnEmptyList()
     {
@@ -381,7 +380,7 @@ public class ReferrersTest
         };
         const string artifactType = "NonExistentType";
         var result = Referrers.FilterReferrers(referrers, artifactType);
-        Assert.Empty(result); 
+        Assert.Empty(result);
     }
-    
+
 }

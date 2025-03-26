@@ -49,7 +49,7 @@ public class ExceptionTest
         await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException("Not found"));
         await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException("Not found", null));
     }
-    
+
     [Fact]
     public async Task ReferrersSupportLevelAlreadySetException()
     {
@@ -67,7 +67,7 @@ public class ExceptionTest
         await Assert.ThrowsAsync<InvalidResponseException>(() =>
             throw new InvalidResponseException("Invalid response", null));
     }
-    
+
     [Fact]
     public async Task SizeLimitExceededException()
     {

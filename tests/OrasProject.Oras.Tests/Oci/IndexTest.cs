@@ -57,7 +57,7 @@ public class IndexTest
         Assert.Equal(MediaType.ImageIndex, generatedIndex.MediaType);
         Assert.Equal(2, generatedIndex.SchemaVersion);
     }
-    
+
     [Fact]
     public void GenerateIndex_CorrectlyGeneratesIndexDescriptorWithEmptyManifests()
     {

@@ -20,7 +20,6 @@ namespace OrasProject.Oras.Tests.Content;
 
 public class CalculateDigest
 {
-    
     /// <summary>
     /// This method tests if the digest is calculated properly
     /// </summary>
