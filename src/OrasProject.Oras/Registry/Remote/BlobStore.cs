@@ -212,13 +212,13 @@ public class BlobStore : IBlobStore, IMounter
                     response.VerifyContentDigest(descriptor.Digest);
                     return;
                 case HttpStatusCode.Accepted:
-                {
-                    // 202, mounting failed. upload session has begun
-                    var location = response.Headers.Location ??
-                                   throw new HttpRequestException("missing location header");
-                    url = location.IsAbsoluteUri ? location : new Uri(url, location);
-                    break;
-                }
+                    {
+                        // 202, mounting failed. upload session has begun
+                        var location = response.Headers.Location ??
+                                       throw new HttpRequestException("missing location header");
+                        url = location.IsAbsoluteUri ? location : new Uri(url, location);
+                        break;
+                    }
                 default:
                     throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
             }

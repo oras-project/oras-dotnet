@@ -60,8 +60,10 @@ public class CalculateDigest
     /// This method tests if the digest validation throws an exception for various invalid digest formats
     /// </summary>
     [Theory]
+    [InlineData("")] // empty string
     [InlineData("sha256:")] // Missing encoded portion
     [InlineData("sha256+b64u!LCa0a2j_xo_5m0U8HTBBNBNCLXBkg7-g-YpeiGJm564")] // Invalid character in encoded portion
+    [InlineData(" sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b")] // Space prefixed
     public void Validate_ThrowsException_ForInvalidDigestFormats(string invalidDigest)
     {
         Assert.Throws<InvalidDigestException>(() => Digest.Validate(invalidDigest));

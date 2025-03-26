@@ -1531,7 +1531,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                     {
                         Method = method
                     };
-
                 }
                 else
                 {

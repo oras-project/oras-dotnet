@@ -13,10 +13,8 @@
 
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using OrasProject.Oras.Content;
 
 namespace OrasProject.Oras.Oci;
 
@@ -44,8 +42,8 @@ public class Index : Versioned
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public IDictionary<string, string>? Annotations { get; set; }
 
-    public Index() {}
-    
+    public Index() { }
+
     [SetsRequiredMembers]
     public Index(IList<Descriptor> manifests)
     {
@@ -53,7 +51,7 @@ public class Index : Versioned
         MediaType = Oci.MediaType.ImageIndex;
         SchemaVersion = 2;
     }
-    
+
     internal static (Descriptor, byte[]) GenerateIndex(IList<Descriptor> manifests)
     {
         var index = new Index(manifests);

@@ -131,10 +131,10 @@ internal class UriFactory : UriBuilder
             query.Add("artifactType", artifactType);
             builder.Query = query.ToString();
         }
-        
+
         return builder.Uri;
     }
-    
+
     /// <summary>
     /// Generates a UriBuilder with the base endpoint of the remote repository.
     /// Format: <scheme>://<registry>/v2/<repository>
