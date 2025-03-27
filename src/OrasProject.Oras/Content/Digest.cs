@@ -19,21 +19,24 @@ using System.Text.RegularExpressions;
 
 namespace OrasProject.Oras.Content;
 
-internal static class Digest
+internal static partial class Digest
 {
-    private const string _digestRegexPattern = @"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+";
-    private static readonly Regex _digestRegex = new Regex(_digestRegexPattern, RegexOptions.Compiled);
+    // Regular expression pattern for validating digest strings
+    // The pattern matches the following format:
+    // <algorithm>:<base64url-encoded digest>
+    [GeneratedRegex(@"[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+", RegexOptions.Compiled)]
+    private static partial Regex DigestRegex();
 
     // List of registered and supported algorithms as per the specification
-    private static readonly HashSet<string> _supportedAlgorithms = new HashSet<string> { "sha256", "sha512" };
+    private static readonly HashSet<string> _supportedAlgorithms = ["sha256", "sha512"];
 
     /// <summary>
     /// Verifies the digest header and throws an exception if it is invalid.
     /// </summary>
     /// <param name="digest"></param>
-    internal static string Validate(string? digest)
+    internal static string Validate(string digest)
     {
-        if (string.IsNullOrEmpty(digest) || !_digestRegex.IsMatch(digest))
+        if (string.IsNullOrEmpty(digest) || !DigestRegex().IsMatch(digest))
         {
             throw new InvalidDigestException($"Invalid digest: {digest}");
         }
@@ -54,9 +57,8 @@ internal static class Digest
     /// <returns></returns>
     internal static string ComputeSha256(byte[] content)
     {
-        using var sha256 = SHA256.Create();
-        var hash = sha256.ComputeHash(content);
-        var output = $"sha256:{BitConverter.ToString(hash).Replace("-", "")}";
+        var hash = SHA256.HashData(content);
+        var output = $"sha256:{Convert.ToHexString(hash)}";
         return output.ToLower();
     }
 }

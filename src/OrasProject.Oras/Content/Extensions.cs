@@ -18,8 +18,9 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-
+using Index = OrasProject.Oras.Oci.Index;
 namespace OrasProject.Oras.Content;
+
 
 public static class Extensions
 {
@@ -38,11 +39,8 @@ public static class Extensions
             case Oci.MediaType.ImageManifest:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
-                    var manifest = JsonSerializer.Deserialize<Manifest>(content);
-                    if (manifest == null)
-                    {
-                        throw new JsonException("null image manifest");
-                    }
+                    var manifest = JsonSerializer.Deserialize<Manifest>(content) ??
+                                        throw new JsonException("Failed to deserialize manifest");
                     var descriptors = new List<Descriptor>() { manifest.Config };
                     descriptors.AddRange(manifest.Layers);
                     return descriptors;
@@ -52,15 +50,12 @@ public static class Extensions
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
                     // docker manifest list and oci index are equivalent for successors.
-                    var index = JsonSerializer.Deserialize<Oci.Index>(content);
-                    if (index == null)
-                    {
-                        throw new JsonException("null image index");
-                    }
+                    var index = JsonSerializer.Deserialize<Index>(content) ??
+                                        throw new JsonException("Failed to deserialize manifest");
                     return index.Manifests;
                 }
         }
-        return Array.Empty<Descriptor>();
+        return [];
     }
 
     /// <summary>
@@ -95,11 +90,11 @@ public static class Extensions
         var buffer = new byte[descriptor.Size];
         try
         {
-            await stream.ReadAsync(buffer, 0, (int)stream.Length, cancellationToken).ConfigureAwait(false);
+            await stream.ReadAsync(buffer.AsMemory(0, (int)stream.Length), cancellationToken).ConfigureAwait(false);
         }
         catch (ArgumentOutOfRangeException)
         {
-            throw new ArgumentOutOfRangeException("Descriptor size is less than content size");
+            throw new MismatchedDigestException("Descriptor size is less than content size");
         }
 
         if (Digest.ComputeSha256(buffer) != descriptor.Digest)

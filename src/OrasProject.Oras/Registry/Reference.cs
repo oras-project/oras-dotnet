@@ -18,8 +18,34 @@ using System.Text.RegularExpressions;
 
 namespace OrasProject.Oras.Registry;
 
-public class Reference
+public partial class Reference
 {
+    private string _registry;
+    private string? _repository;
+    private string? _reference;
+    private bool _isTag;
+
+    /// <summary>
+    /// repositoryRegexp is adapted from the distribution implementation. The
+    /// repository name set under OCI distribution spec is a subset of the docker
+    /// repositoryRegexp is adapted from the distribution implementation. The
+    /// spec. For maximum compatability, the docker spec is verified client-side.
+    /// Further checks are left to the server-side.
+    /// References:
+    /// - https://github.com/distribution/distribution/blob/v2.7.1/reference/regexp.go#L53
+    /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
+    /// </summary>
+    [GeneratedRegex(@"^[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*)*$", RegexOptions.Compiled)]
+    private static partial Regex RepositoryRegex();
+
+    /// <summary>
+    /// tagRegexp checks the tag name.
+    /// The docker and OCI spec have the same regular expression.
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
+    /// </summary>
+    [GeneratedRegex(@"^[\w][\w.-]{0,127}$", RegexOptions.Compiled)]
+    private static partial Regex TagRegex();
+
     /// <summary>
     /// Registry is the name of the registry. It is usually the domain name of the registry optionally with a port.
     /// </summary>
@@ -112,31 +138,6 @@ public class Reference
         }
     }
 
-    private string _registry;
-    private string? _repository;
-    private string? _reference;
-    private bool _isTag;
-
-    /// <summary>
-    /// repositoryRegexp is adapted from the distribution implementation. The
-    /// repository name set under OCI distribution spec is a subset of the docker
-    /// repositoryRegexp is adapted from the distribution implementation. The
-    /// spec. For maximum compatability, the docker spec is verified client-side.
-    /// Further checks are left to the server-side.
-    /// References:
-    /// - https://github.com/distribution/distribution/blob/v2.7.1/reference/regexp.go#L53
-    /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
-    /// </summary>
-    private const string _repositoryRegexPattern = @"^[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]*)[a-z0-9]+)*)*$";
-    private static readonly Regex _repositoryRegex = new Regex(_repositoryRegexPattern, RegexOptions.Compiled);
-
-    /// <summary>
-    /// tagRegexp checks the tag name.
-    /// The docker and OCI spec have the same regular expression.
-    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pulling-manifests
-    /// </summary>
-    private const string _tagRegexPattern = @"^[\w][\w.-]{0,127}$";
-    private static readonly Regex _tagRegex = new Regex(_tagRegexPattern, RegexOptions.Compiled);
 
     public static Reference Parse(string reference)
     {
@@ -200,14 +201,11 @@ public class Reference
             return false;
         }
     }
-    
+
     public Reference(Reference other)
     {
-        if (other == null)
-        {
-            throw new ArgumentNullException(nameof(other));
-        }
-        
+        ArgumentNullException.ThrowIfNull(other);
+
         _registry = other.Registry;
         _repository = other.Repository;
         ContentReference = other.ContentReference;
@@ -233,18 +231,18 @@ public class Reference
 
     private static string ValidateRepository(string? repository)
     {
-        if (repository == null || !_repositoryRegex.IsMatch(repository))
+        if (string.IsNullOrEmpty(repository) || !RepositoryRegex().IsMatch(repository))
         {
             throw new InvalidReferenceException("Invalid respository");
         }
         return repository;
     }
 
-    private static string ValidateReferenceAsDigest(string? reference) => Content.Digest.Validate(reference);
+    private static string ValidateReferenceAsDigest(string reference) => Content.Digest.Validate(reference);
 
-    private static string ValidateReferenceAsTag(string? reference)
+    private static string ValidateReferenceAsTag(string reference)
     {
-        if (reference == null || !_tagRegex.IsMatch(reference))
+        if (!TagRegex().IsMatch(reference))
         {
             throw new InvalidReferenceException("Invalid tag");
         }

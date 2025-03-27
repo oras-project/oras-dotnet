@@ -26,9 +26,9 @@ internal static class Referrers
         Supported = 1,
         NotSupported = 2
     }
-    
+
     internal record ReferrerChange(Descriptor Referrer, ReferrerOperation ReferrerOperation);
-   
+
     internal const string ZeroDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
     internal enum ReferrerOperation
@@ -36,12 +36,12 @@ internal static class Referrers
         Add,
         Delete,
     }
-    
+
     internal static string BuildReferrersTag(Descriptor descriptor)
     {
         return Digest.Validate(descriptor.Digest).Replace(':', '-');
     }
-    
+
     /// <summary>
     /// ApplyReferrerChanges applies the specified referrer change (either add or delete) to the existing list of referrers. 
     /// It updates the list based on the operation defined in the provided `referrerChange`. 
@@ -56,12 +56,12 @@ internal static class Referrers
         {
             return (oldReferrers, false);
         }
-        
+
         // updatedReferrers is a list to store the updated referrers
         var updatedReferrers = new List<Descriptor>();
         // updatedReferrersSet is a HashSet to store unique referrers
         var updatedReferrersSet = new HashSet<BasicDescriptor>();
-        
+
         var updateRequired = false;
         foreach (var oldReferrer in oldReferrers)
         {
@@ -71,27 +71,27 @@ internal static class Referrers
                 updateRequired = true;
                 continue;
             }
-            
+
             var basicDesc = oldReferrer.BasicDescriptor;
             if (referrerChange.ReferrerOperation == ReferrerOperation.Delete && Equals(basicDesc, referrerChange.Referrer.BasicDescriptor))
             {
                 updateRequired = true;
                 continue;
             }
-            
+
             if (updatedReferrersSet.Contains(basicDesc))
             {
                 // Skip any duplicate referrers
                 updateRequired = true;
                 continue;
             }
-            
+
             // Update the updatedReferrers list
             // Add referrer into the updatedReferrersSet
             updatedReferrers.Add(oldReferrer);
             updatedReferrersSet.Add(basicDesc);
         }
-        
+
         if (referrerChange.ReferrerOperation == ReferrerOperation.Add)
         {
             var basicReferrerDesc = referrerChange.Referrer.BasicDescriptor;
@@ -103,17 +103,18 @@ internal static class Referrers
                 updateRequired = true;
             }
         }
-        
+
         return (updatedReferrers, updateRequired);
     }
-    
+
     /// <summary>
     /// IsReferrersFilterApplied checks if requstedFilter is in the applied filters list.
     /// </summary>
     /// <param name="appliedFilters"></param>
     /// <param name="requestedFilter"></param>
     /// <returns></returns>
-    internal static bool IsReferrersFilterApplied(string appliedFilters, string requestedFilter) {
+    internal static bool IsReferrersFilterApplied(string appliedFilters, string requestedFilter)
+    {
         if (string.IsNullOrEmpty(appliedFilters) || string.IsNullOrEmpty(requestedFilter))
         {
             return false;
@@ -127,10 +128,10 @@ internal static class Referrers
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /// <summary>
     /// FilterReferrers filters out a list of referrers based on the specified artifact type
     /// </summary>

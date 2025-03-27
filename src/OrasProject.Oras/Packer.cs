@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras;
 
-public static class Packer 
+public static class Packer
 {
     /// <summary>
     /// ErrInvalidDateTimeFormat is returned
@@ -176,7 +176,9 @@ public static class Packer
         if (string.IsNullOrEmpty(artifactType) && (options.Config == null || options.Config.MediaType == MediaType.EmptyJson))
         {
             throw new MissingArtifactTypeException(_errMissingArtifactType);
-        } else if (!string.IsNullOrEmpty(artifactType)) {
+        }
+        else if (!string.IsNullOrEmpty(artifactType))
+        {
             ValidateMediaType(artifactType);
         }
 
