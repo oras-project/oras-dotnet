@@ -13,21 +13,26 @@
 
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Registry;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace OrasProject.Oras.Tests.Remote;
 
 public class ReferenceTest
 {
-
     [Theory]
+    [InlineData("docker.io/repo", "registry-1.docker.io", "repo", "", "")]
+    [InlineData("example.com/repo", "example.com", "repo", "", "")]
     [InlineData("example.com/repo:tag", "example.com", "repo", "tag", "")]
-    [InlineData("example.com/repo@sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b", "example.com", "repo", "", "sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b")]
+    [InlineData("example.com/repo@sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b",
+        "example.com",
+        "repo",
+        "",
+        "sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b")]
+    [InlineData("example.com/repo:tag@sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b",
+        "example.com",
+        "repo",
+        "",
+        "sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b")]
     public void Reference_IsValid(string referenceString, string expectedHost, string expectedRepository, string expectedTag, string expectedDigest)
     {
         var reference = Reference.Parse(referenceString);
@@ -39,14 +44,33 @@ public class ReferenceTest
         else Assert.Equal(expectedTag, reference.Tag);
     }
 
-
     [Theory]
     [InlineData("")]
+    [InlineData("/test")]
     [InlineData("test")]
     [InlineData("test:test")]
+    [InlineData("-InvalidHost.com")]
+    [InlineData("invalid host.com/repo:tag")]
+    [InlineData("foo@example.com/repo:tag")]
+    [InlineData("example.com/")]
+    [InlineData("example.com/repo:")]
+    [InlineData("example.com/InvalidRepo")]
+    [InlineData("example.com/InvalidRepo:tag")]
+    [InlineData("example.com/InvalidRepo@sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b")]
+    [InlineData("example.com/repo:tag$$")]
+    [InlineData("example.com/repo@sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b:tag")]
+    [InlineData("example.com/repo@sha256:6c3c624b58dbbc$$")]
     public void Reference_NotValid(string referenceString)
     {
-        // Assert InvalidReferenceException
         Assert.Throws<InvalidReferenceException>(() => Reference.Parse(referenceString));
+    }
+
+    [Fact]
+    public void Reference_InvalidPropreryAssignment()
+    {
+        var reference = Reference.Parse("example.com/repo:tag");
+        Assert.Throws<InvalidReferenceException>(() => reference.Registry = "invalid registry");
+        Assert.Throws<InvalidReferenceException>(() => reference.Repository = "invalid repo");
+        Assert.Throws<InvalidReferenceException>(() => reference.ContentReference = "invalid tag");
     }
 }
