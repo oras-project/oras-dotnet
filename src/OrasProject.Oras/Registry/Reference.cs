@@ -12,18 +12,42 @@
 // limitations under the License.
 
 using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Registry.Remote;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
 namespace OrasProject.Oras.Registry;
 
+
+/// <summary>
+/// Reference represents a reference to a registry, repository, and content within the repository.
+/// 
+/// This class provides functionality to parse and validate references, which can be in the form of a tag or digest.
+/// It also provides properties to access the registry, repository, and content reference details.
+/// 
+/// Note: Use the <see cref="Parse"/> method to create an instance of this class from a string reference.
+/// </summary>
 public partial class Reference
 {
     private string _registry;
     private string? _repository;
+
+    // This can be the tag or digest part of the reference.
     private string? _reference;
-    private bool _isTag;
+
+
+    /// <summary>
+    /// ContentReferenceType is used to identify the type of <see cref="ContentReference"/>
+    /// </summary>
+    private enum ContentReferenceType
+    {
+        Empty,
+        Tag,
+        Digest
+    }
+
+    private ContentReferenceType _contentReferenceType;
 
     /// <summary>
     /// repositoryRegexp is adapted from the distribution implementation. The
@@ -65,12 +89,13 @@ public partial class Reference
     }
 
     /// <summary>
-    /// Reference is the reference of the object in the repository. This field
-    /// can take any one of the four valid forms (see ParseReference). In the
-    /// case where it's the empty string, it necessarily implies valid form D,
-    /// and where it is non-empty, then it is either a tag, or a digest
-    /// (implying one of valid forms A, B, or C).
+    /// ContentReference is the reference of the object in the repository.
+    /// This can be a digest or a tag.
+    /// The property can be set to null to indicate an empty content reference.
     /// </summary>
+    /// <exception cref="InvalidReferenceException">
+    /// If the ContentReference is not a digest.
+    /// </exception>
     public string? ContentReference
     {
         get => _reference;
@@ -79,19 +104,19 @@ public partial class Reference
             if (value == null)
             {
                 _reference = value;
-                _isTag = false;
+                _contentReferenceType = ContentReferenceType.Empty;
                 return;
             }
 
             if (value.Contains(':'))
             {
                 _reference = ValidateReferenceAsDigest(value);
-                _isTag = false;
+                _contentReferenceType = ContentReferenceType.Digest;
                 return;
             }
 
             _reference = ValidateReferenceAsTag(value);
-            _isTag = true;
+            _contentReferenceType = ContentReferenceType.Tag;
         }
     }
 
@@ -101,151 +126,335 @@ public partial class Reference
     public string Host => _registry == "docker.io" ? "registry-1.docker.io" : _registry;
 
     /// <summary>
-    /// Digest returns the reference as a Digest
+    /// Gets the digest component of the reference.
+    /// This property returns the digest part of the reference if it exists.
     /// </summary>
+    /// <exception cref="InvalidReferenceException">If the reference is not a digest.</exception>
     public string Digest
     {
         get
         {
-            if (_reference == null)
-            {
-                throw new InvalidReferenceException("Null content reference");
-            }
-            if (_isTag)
+            EnsureNotEmpty();
+
+            if (_contentReferenceType != ContentReferenceType.Digest)
             {
                 throw new InvalidReferenceException("Not a digest");
             }
-            return _reference;
+
+            return _reference!;
         }
     }
 
     /// <summary>
-    /// Digest returns the reference as a Tag
+    /// Gets the Tag component of the reference.
+    /// This property returns the tag part of the reference if it exists.
     /// </summary>
+    /// <exception cref="InvalidReferenceException">If the reference is not a tag.</exception>
     public string Tag
     {
         get
         {
-            if (_reference == null)
-            {
-                throw new InvalidReferenceException("Null content reference");
-            }
-            if (!_isTag)
+            EnsureNotEmpty();
+
+            if (_contentReferenceType != ContentReferenceType.Tag)
             {
                 throw new InvalidReferenceException("Not a tag");
             }
-            return _reference;
+
+            return _reference!;
         }
     }
 
-
-    public static Reference Parse(string reference)
+    /// <summary>
+    /// Used only internally to create an empty reference 
+    /// </summary>
+    private Reference()
     {
-        var parts = reference.Split('/', 2);
-        if (parts.Length == 1)
-        {
-            throw new InvalidReferenceException("Missing repository");
-        }
-        var registry = parts[0];
-        var path = parts[1];
-
-        var index = path.IndexOf('@');
-        if (index != -1)
-        {
-            // digest found; Valid From A (if not B)
-            var repository = path[..index];
-            var contentReference = path[(index + 1)..];
-            index = repository.IndexOf(':');
-            if (index != -1)
-            {
-                // tag found ( and now dropped without validation ) since the
-                // digest already present; Valid Form B
-                repository = repository[..index];
-            }
-            var instance = new Reference(registry, repository)
-            {
-                _reference = ValidateReferenceAsDigest(contentReference),
-                _isTag = false
-            };
-            return instance;
-        }
-
-        index = path.IndexOf(':');
-        if (index != -1)
-        {
-            // tag found; Valid Form C
-            var repository = path[..index];
-            var contentReference = path[(index + 1)..];
-            var instance = new Reference(registry, repository)
-            {
-                _reference = ValidateReferenceAsTag(contentReference),
-                _isTag = true
-            };
-            return instance;
-        }
-
-        // empty `reference`; Valid Form D
-        return new Reference(registry, path);
+        _registry = string.Empty;
+        _repository = null;
+        _reference = null;
+        _contentReferenceType = ContentReferenceType.Empty;
     }
 
-    public static bool TryParse(string reference, [NotNullWhen(true)] out Reference? parsedReference)
-    {
-        try
-        {
-            parsedReference = Parse(reference);
-            return true;
-        }
-        catch (InvalidReferenceException)
-        {
-            parsedReference = null;
-            return false;
-        }
-    }
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Reference"/> class by copying another instance.
+    /// </summary>
+    /// <param name="other">The other <see cref="Reference"/> instance to copy.</param>
+    /// <exception cref="ArgumentNullException">If the other instance is null.</exception>
     public Reference(Reference other)
     {
         ArgumentNullException.ThrowIfNull(other);
 
-        _registry = other.Registry;
-        _repository = other.Repository;
-        ContentReference = other.ContentReference;
+        _registry = other._registry;
+        _repository = other._repository;
+        _reference = other._reference;
+        _contentReferenceType = other._contentReferenceType;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Reference"/> class with the specified registry.
+    /// </summary>
+    /// <param name="registry">The registry name.</param>
+    /// <exception cref="InvalidReferenceException">If the registry name is invalid.</exception>
     public Reference(string registry) => _registry = ValidateRegistry(registry);
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Reference"/> class with the specified registry and repository.
+    /// </summary>
+    /// <param name="registry">The registry name.</param>
+    /// <param name="repository">The repository name.</param>
+    /// <exception cref="InvalidReferenceException">If the registry or repository name is invalid.</exception>
     public Reference(string registry, string? repository) : this(registry)
         => _repository = ValidateRepository(repository);
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Reference"/> class with the specified registry, repository, and reference.
+    /// </summary>
+    /// <param name="registry">The registry name.</param>
+    /// <param name="repository">The repository name.</param>
+    /// <param name="reference">The reference name.</param>
+    /// <exception cref="InvalidReferenceException">If the registry, repository, or reference name is invalid.</exception>
     public Reference(string registry, string? repository, string? reference) : this(registry, repository)
         => ContentReference = reference;
 
-    private static string ValidateRegistry(string registry)
+    /// <summary>
+    /// Parses the given reference string into a <see cref="Reference"/> object.
+    /// The reference string can be in one of the following forms:
+    /// <list type="bullet">
+    /// <item>
+    /// <description><c>&lt;registry&gt;/&lt;repository&gt;:&lt;tag&gt;</c> - A repository with a tag.</description>
+    /// </item>
+    /// <item>
+    /// <description><c>&lt;registry&gt;/&lt;repository&gt;@&lt;digest&gt;</c> - A repository with a digest.</description>
+    /// </item>
+    /// <item>
+    /// <description><c>&lt;registry&gt;/&lt;repository&gt;</c> - A repository without a tag or digest.</description>
+    /// </item>
+    /// </list>
+    /// </summary>
+    /// <param name="reference">The reference string to parse.</param>
+    /// <returns>The parsed <see cref="Reference"/> object.</returns>
+    /// <exception cref="InvalidReferenceException">If the reference string is invalid.</exception>
+    public static Reference Parse(string reference)
     {
-        var url = "dummy://" + registry;
-        if (!Uri.IsWellFormedUriString(url, UriKind.Absolute) || new Uri(url).Authority != registry)
-        {
-            throw new InvalidReferenceException("Invalid registry");
-        }
-        return registry;
+        return TryParseReference(reference, out var parsedReference, out string error) ?
+            parsedReference :
+            throw new InvalidReferenceException(error);
     }
 
-    private static string ValidateRepository(string? repository)
+    /// <summary>
+    /// Tries to parse the given reference string into a <see cref="Reference"/> object.
+    /// </summary>
+    /// <param name="reference">The reference string to parse.</param>
+    /// <param name="parsedReference">When this method returns, contains the parsed <see cref="Reference"/> object if the parsing succeeded, or null if it failed.</param>
+    /// <returns>True if the parsing succeeded; otherwise, false.</returns>
+    public static bool TryParse(string reference, [NotNullWhen(true)] out Reference? parsedReference)
     {
-        if (string.IsNullOrEmpty(repository) || !RepositoryRegex().IsMatch(repository))
+        return TryParseReference(reference, out parsedReference, out string _);
+    }
+
+    private static bool TryParseReference(string reference,
+                                            [NotNullWhen(true)] out Reference? parsedReference,
+                                            out string error)
+    {
+        parsedReference = null;
+        var parts = reference.Split('/', 2);
+
+        if (parts.Length == 1)
         {
-            throw new InvalidReferenceException("Invalid respository");
+            error = "Missing repository";
+            return false;
         }
-        return repository;
+
+        // Check for registry part
+        var registry = parts[0];
+        if (!TryValidateRegistry(registry, out error))
+        {
+            return false;
+        }
+
+        var path = parts[1]; // repository:tag or repository@digest
+
+        // Check for digest for form <repository>@<digest>
+        var index = path.IndexOf('@');
+        if (index != -1)
+        {
+            var repository = path[..index];
+            var contentReference = path[(index + 1)..]; // digest part
+            if (!Content.Digest.TryValidate(contentReference, out error))
+            {
+                return false;
+            }
+
+            // Check if the repository contains a tag
+            // for <repository>:<tag>@<digest> form
+            var tagIndex = repository.IndexOf(':');
+            if (tagIndex != -1)
+            {
+                // If the repository contains a tag, remove it
+                // and validate repository name without the tag.
+                repository = repository[..tagIndex];
+            }
+
+            if (!TryValidateRepository(repository, out error))
+            {
+                return false;
+            }
+
+            var instance = new Reference()
+            {
+                _registry = registry,
+                _repository = repository,
+                _reference = contentReference,
+                _contentReferenceType = ContentReferenceType.Digest
+            };
+
+            parsedReference = instance;
+            error = string.Empty;
+            return true;
+        }
+
+        // Check for tag for form <repository>:<tag>
+        index = path.IndexOf(':');
+        if (index != -1)
+        {
+            var repository = path[..index];
+            if (!TryValidateRepository(repository, out error))
+            {
+                return false;
+            }
+
+            var contentReference = path[(index + 1)..]; // tag part
+            if (!TryValidateTag(contentReference, out error))
+            {
+                return false;
+            }
+
+            var instance = new Reference()
+            {
+                _registry = registry,
+                _repository = repository,
+                _reference = contentReference,
+                _contentReferenceType = ContentReferenceType.Tag
+            };
+            parsedReference = instance;
+            error = string.Empty;
+            return true;
+        }
+
+        // No tag or digest and only respository name
+        if (!TryValidateRepository(path, out error))
+        {
+            return false;
+        }
+
+        parsedReference = new Reference()
+        {
+            _registry = registry,
+            _repository = path,
+            _contentReferenceType = ContentReferenceType.Empty
+        };
+
+        error = string.Empty;
+        return true;
+    }
+
+    private void EnsureNotEmpty()
+    {
+        if (_contentReferenceType == ContentReferenceType.Empty)
+        {
+            throw new InvalidReferenceException("Empty reference");
+        }
+    }
+
+    private static string ValidateRegistry(string registry)
+    {
+        return TryValidateRegistry(registry, out string error) ?
+             registry : throw new InvalidReferenceException(error);
+    }
+
+    private static bool TryValidateRegistry(string registry, out string error)
+    {
+        if (string.IsNullOrEmpty(registry))
+        {
+            error = "Registry is null or empty";
+            return false;
+        }
+
+
+        string uriStringWithScheme = "dummy://" + registry;
+        if (!Uri.IsWellFormedUriString(uriStringWithScheme, UriKind.Absolute))
+        {
+            error = $"Invalid registry: {registry} - not a valid URI";
+            return false;
+
+        }
+
+
+        // Check if the authority part of the URI matches the registry
+        // This is a workaround for the fact that Uri does not support
+        // validating the authority part of the URI when the scheme is not
+        // recognized. We add a dummy scheme to the URI to validate it.
+        // The authority part of the URI is the part after the scheme and
+        // before the path. For example, in the URI "dummy://registry/repo",
+        // the authority part is "registry".
+        // "foo@example.com" would be an example of where authority is not 
+        // the the registry value provided.
+        if (new Uri(uriStringWithScheme).Authority != registry)
+        {
+            error = $"Invalid registry: {registry} - not a valid authority";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    private static string? ValidateRepository(string? repository)
+    {
+        return TryValidateRepository(repository, out string error) ?
+            repository : throw new InvalidReferenceException(error);
+    }
+
+    private static bool TryValidateRepository(string? repository, out string error)
+    {
+        if (string.IsNullOrEmpty(repository))
+        {
+            error = "Repository is null or empty";
+            return false;
+        }
+        if (!RepositoryRegex().IsMatch(repository))
+        {
+            error = $"Invalid repository: {repository}";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
     }
 
     private static string ValidateReferenceAsDigest(string reference) => Content.Digest.Validate(reference);
 
     private static string ValidateReferenceAsTag(string reference)
     {
+        return TryValidateTag(reference, out string error) ?
+            reference : throw new InvalidReferenceException(error);
+    }
+
+    private static bool TryValidateTag(string reference, out string error)
+    {
+        if (string.IsNullOrEmpty(reference))
+        {
+            error = "Tag is null or empty";
+            return false;
+        }
         if (!TagRegex().IsMatch(reference))
         {
-            throw new InvalidReferenceException("Invalid tag");
+            error = $"Invalid tag: {reference}";
+            return false;
         }
-        return reference;
+
+        error = string.Empty;
+        return true;
     }
 }
