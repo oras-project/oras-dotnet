@@ -27,6 +27,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Registry.Remote.Auth;
 using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -225,6 +226,7 @@ public class Repository : IRepository
     /// <returns></returns>
     public async IAsyncEnumerable<string> ListTagsAsync(string? last = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        ScopeManager.Instance.SetActionsForRepository(Options.Reference, Scope.Action.Pull);
         var url = new UriFactory(_opts).BuildRepositoryTagList();
         do
         {
@@ -261,7 +263,8 @@ public class Repository : IRepository
             uriBuilder.Query = query.ToString();
         }
 
-        using var response = await _opts.HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.ToString());
+        using var response = await _opts.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -288,11 +291,13 @@ public class Repository : IRepository
     /// <exception cref="NotFoundException"></exception>
     internal async Task DeleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken)
     {
+        ScopeManager.Instance.SetActionsForRepository(Options.Reference, Scope.Action.Delete);
         var remoteReference = ParseReferenceFromDigest(target.Digest);
         var uriFactory = new UriFactory(remoteReference, _opts.PlainHttp);
         var url = isManifest ? uriFactory.BuildRepositoryManifest() : uriFactory.BuildRepositoryBlob();
 
-        using var resp = await _opts.HttpClient.DeleteAsync(url, cancellationToken).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Delete, url);
+        using var resp = await _opts.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.Accepted:
@@ -454,6 +459,7 @@ public class Repository : IRepository
     internal async IAsyncEnumerable<Descriptor> ReferrersByApi(Descriptor descriptor, string? artifactType,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        ScopeManager.Instance.SetActionsForRepository(Options.Reference, Scope.Action.Pull);
         var reference = new Reference(Options.Reference)
         {
             ContentReference = descriptor.Digest
@@ -472,7 +478,8 @@ public class Repository : IRepository
                 nextPageUrl = uriBuilder.Uri;
             }
 
-            using var response = await _opts.HttpClient.GetAsync(nextPageUrl, cancellationToken).ConfigureAwait(false);
+            using var request = new HttpRequestMessage(HttpMethod.Get, nextPageUrl);
+            using var response = await _opts.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
             switch (response.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -570,6 +577,7 @@ public class Repository : IRepository
     {
         try
         {
+            ScopeManager.Instance.SetActionsForRepository(Options.Reference, Scope.Action.Pull);
             var result = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
             LimitSize(result.Descriptor, Options.MaxMetadataBytes);
             using (var stream = result.Stream)
@@ -617,11 +625,12 @@ public class Repository : IRepository
             // referrers state is unknown
             // lock to limit the rate of pinging referrers API
 
+            ScopeManager.Instance.SetActionsForRepository(Options.Reference, Scope.Action.Pull);
             var reference = new Reference(Options.Reference);
             reference.ContentReference = Referrers.ZeroDigest;
             var url = new UriFactory(reference, Options.PlainHttp).BuildReferrersUrl();
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            var response = await Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            using var response = await Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
             switch (response.StatusCode)
             {

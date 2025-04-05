@@ -46,6 +46,11 @@ public class Scope : IComparable<Scope>
         All
     }
     
+    /// <summary>
+    /// ScopeRegistryCatalog is the scope for registry catalog access.
+    /// </summary>
+    public static readonly string ScopeRegistryCatalog = "registry:catalog:*";
+    
     public required string ResourceType { get; init; }
     public required string ResourceName { get; init; }
     public required HashSet<Action> Actions { get; init; }

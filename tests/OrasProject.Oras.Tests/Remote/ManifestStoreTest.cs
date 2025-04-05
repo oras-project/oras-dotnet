@@ -18,6 +18,7 @@ using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
+using OrasProject.Oras.Registry.Remote.Auth;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Content.Digest;
@@ -27,9 +28,14 @@ using Xunit;
 
 namespace OrasProject.Oras.Tests.Remote;
 
-public class ManifestStoreTest
+public class ManifestStoreTest : IDisposable
 {
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
+
+    public void Dispose()
+    {
+        ScopeManager.ResetInstance();
+    }
     
     [Fact]
     public async Task ManifestStore_PullReferrersIndexListSuccessfully()

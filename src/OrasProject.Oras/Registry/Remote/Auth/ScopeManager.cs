@@ -34,9 +34,9 @@ public class ScopeManager
     private ConcurrentDictionary<string, SortedSet<Scope>> Scopes { get; } = new ();
     
     /// <summary>
-    /// ResetInstanceForTesting resets the _instance for testing purpose
+    /// ResetInstance resets the _instance for testing purpose
     /// </summary>
-    internal static void ResetInstanceForTesting()
+    internal static void ResetInstance()
     {
         _instance = new Lazy<ScopeManager>(() => new ScopeManager());
     }
@@ -63,6 +63,31 @@ public class ScopeManager
         return Scopes.TryGetValue(registry, out var scopes) 
             ? scopes.Select(scope => scope.ToString()).ToList() 
             : new ();
+    }
+
+    /// <summary>
+    /// SetActionsForRepository sets the actions for a repository by creating a scope and associating it with the specified registry.
+    /// </summary>
+    /// <param name="reference">
+    /// The reference object containing the registry and repository information.
+    /// </param>
+    /// <param name="actions">
+    /// The actions to be associated with the repository scope.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when the registry or repository in the <paramref name="reference"/> is null.
+    /// </exception>
+    public void SetActionsForRepository(Reference reference, params Scope.Action[] actions)
+    {
+        var registry = reference.Registry ?? throw new ArgumentNullException(reference.Registry);
+        var repository = reference.Repository ?? throw new ArgumentNullException(reference.Repository);
+
+        var scope = new Scope(
+            resourceType: "repository",
+            resourceName: repository,
+            actions: new HashSet<Scope.Action>(actions));
+
+        SetScopeForRegistry(registry, scope);
     }
 
     /// <summary>

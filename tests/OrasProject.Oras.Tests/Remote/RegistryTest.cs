@@ -18,12 +18,18 @@ using OrasProject.Oras.Registry.Remote;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 
 namespace OrasProject.Oras.Tests.Remote;
 
-public class RegistryTest
+public class RegistryTest : IDisposable
 {
+    public void Dispose()
+    {
+        ScopeManager.ResetInstance();
+    }
+    
     public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
     {
         var moqHandler = new Mock<DelegatingHandler>();

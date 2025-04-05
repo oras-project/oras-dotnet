@@ -40,13 +40,11 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <exception cref="Exception"></exception>
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
+        ScopeManager.Instance.SetActionsForRepository(Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
-        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(target.MediaType);
-        // SET SCOPE HERE!  
-        // Repository.Options.HttpClient
-        // Scope.Scopes.Add("nginx", Scope.Action.Push);
         
         var response = await Repository.Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         try
@@ -88,11 +86,13 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
     {
+        ScopeManager.Instance.SetActionsForRepository(Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
-        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
         var response = await Repository.Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+       
         try
         {
             switch (response.StatusCode)
@@ -321,6 +321,10 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     private async Task DoPushAsync(Descriptor expected, Stream stream, Reference remoteReference, CancellationToken cancellationToken)
     {
+        // pushing usually requires both pull and push actions.
+        // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
+        ScopeManager.Instance.SetActionsForRepository(Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
+        
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var request = new HttpRequestMessage(HttpMethod.Put, url);
         request.Content = new StreamContent(stream);
@@ -338,9 +342,11 @@ public class ManifestStore(Repository repository) : IManifestStore
 
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
     {
+        ScopeManager.Instance.SetActionsForRepository(Repository.Options.Reference, Scope.Action.Pull);
+
         var remoteReference = Repository.ParseReference(reference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
-        var request = new HttpRequestMessage(HttpMethod.Head, url);
+        using var request = new HttpRequestMessage(HttpMethod.Head, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
         using var response = await Repository.Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         return response.StatusCode switch
