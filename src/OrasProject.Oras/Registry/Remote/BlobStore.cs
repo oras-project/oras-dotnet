@@ -29,6 +29,15 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
 {
     public Repository Repository { get; init; } = repository;
 
+    /// <summary>
+    /// FetchAsync fetches the blob by the given Descriptor target
+    /// </summary>
+    /// <param name="target"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="HttpIOException"></exception>
+    /// <exception cref="NotFoundException"></exception>
+    /// <exception cref="ResponseException"></exception>
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
         var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
@@ -59,7 +68,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     }
 
     /// <summary>
-    /// FetchReferenceAsync fetches the blob identified by the reference.
+    /// FetchAsync fetches the blob identified by the reference.
     /// The reference must be a digest.
     /// </summary>
     /// <param name="reference"></param>
@@ -137,7 +146,8 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
     {
         var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
-        using (var response = await Repository.Options.HttpClient.PostAsync(url, null, cancellationToken).ConfigureAwait(false))
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
+        using (var response = await Repository.Options.HttpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false))
         {
             if (response.StatusCode != HttpStatusCode.Accepted)
             {

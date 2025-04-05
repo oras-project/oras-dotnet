@@ -1,19 +1,66 @@
-﻿using System;
+﻿// Copyright The ORAS Authors.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System;
 using System.Collections.Generic;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Challenge
+public static class Challenge
 {
+    /// <summary>
+    /// Defines the supported authentication schemes.
+    /// </summary>
     public enum Scheme
     {
+        /// <summary>
+        /// Basic authentication scheme.
+        /// </summary>
         Basic,
+
+        /// <summary>
+        /// Bearer token authentication scheme.
+        /// </summary>
         Bearer,
+
+        /// <summary>
+        /// Unknown or unsupported authentication scheme.
+        /// </summary>
         Unknown,
     }
 
+    /// <summary>
+    /// ParseChallenge parses the "WWW-Authenticate" header returned by the remote registry
+    /// and extracts parameters if scheme is Bearer.
+    ///
+    /// Reference:
+    /// - https://datatracker.ietf.org/doc/html/rfc7235#section-2.1
+    /// </summary>
+    /// <param name="header">The authentication challenge header string.</param>
+    /// <returns>
+    /// A tuple containing the parsed <see cref="Scheme"/> and a dictionary of parameters, 
+    /// or <c>null</c> if no parameters are present.
+    /// </returns>
+    /// <exception cref="FormatException">Thrown when a quoted parameter value is not properly closed.</exception>
     public static (Scheme, Dictionary<string, string>?) ParseChallenge(string header)
     {
+        // as defined in RFC 7235 section 2.1, we have
+        //     challenge   = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+        //     auth-scheme = token
+        //     auth-param  = token BWS "=" BWS ( token / quoted-string )
+        //
+        // since we focus parameters only on Bearer, we have
+        //     challenge   = auth-scheme [ 1*SP #auth-param ]
         var (schemeString, rest) = ParseToken(header);
         var scheme = ParseScheme(schemeString);
 
@@ -29,42 +76,65 @@ public class Challenge
         }
         
         var paramsDictionary = new Dictionary<string, string>();
-        var parameters = rest.Split(",");
 
-        foreach (var parameter in parameters)
+        // parse params for bearer auth.
+        // combining RFC 7235 section 2.1 with RFC 7230 section 7, we have
+        //     #auth-param => auth-param *( OWS "," OWS auth-param )
+        while (!string.IsNullOrEmpty(rest))
         {
-            var (key, remaining) = ParseToken(parameter.Trim());
-            remaining = remaining.Trim();
-            if (string.IsNullOrEmpty(remaining) || !remaining.StartsWith("="))
-            {
-                continue;
-            }
+            // split the rest string by non-token char
+            var (key, remaining) = ParseToken(rest.Trim());
             
-            var value = remaining.Substring(1);
-            if (string.IsNullOrEmpty(value))
+            if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(remaining) || !remaining.StartsWith("="))
             {
-                continue;
+                break;
             }
-
-            if (value.StartsWith('"') && value.EndsWith('"'))
+            remaining = remaining.Substring(1).Trim();
+            string value;
+            
+            // extract value if it is quoted
+            if (remaining.StartsWith('"'))
             {
-                value = value.Substring(1, value.Length - 2).Trim();
-                if (string.IsNullOrEmpty(value))
+                var nextQuote = remaining.IndexOf('"', 1);
+                if (nextQuote == -1)
                 {
-                    continue;
+                    throw new FormatException("Quoted parameter value is not properly closed.");
                 }
-                paramsDictionary.Add(key, value);
+
+                value = remaining.Substring(1, nextQuote - 1).Trim();
+                rest = remaining.Substring(nextQuote + 1).Trim();
             }
             else
             {
-                paramsDictionary.Add(key, value);
+                (value, rest) = ParseToken(remaining.Trim());
+                if (string.IsNullOrEmpty(value))
+                {
+                    break;
+                }
             }
+            paramsDictionary.Add(key, value);
+            
+            rest = rest.Trim();
+            if (string.IsNullOrEmpty(rest) || !rest.StartsWith(','))
+            {
+                break;
+            }
+            
+            rest = rest.TrimStart(',');
         }
         
         return (scheme, paramsDictionary);
     }
     
-    private static Scheme ParseScheme(string schemeString)
+    /// <summary>
+    /// ParseScheme parses the authentication scheme from a string.
+    /// </summary>
+    /// <param name="schemeString">The string representation of the scheme.</param>
+    /// <returns>
+    /// The corresponding <see cref="Scheme"/> value, or <see cref="Scheme.Unknown"/> 
+    /// if the scheme is not recognized.
+    /// </returns>
+    internal static Scheme ParseScheme(string schemeString)
     {
         return schemeString.ToLower() switch
         {
@@ -74,18 +144,37 @@ public class Challenge
         };
     }
     
-    private static (string, string) ParseToken(string token)
+    /// <summary>
+    /// ParseToken parses a token from a string, splitting it into the token and the remaining string by non-token char.
+    /// </summary>
+    /// <param name="token">The token string to parse.</param>
+    /// <returns>
+    /// A tuple containing the parsed token and the remaining string.
+    /// </returns>
+    internal static (string Token, string Remaining) ParseToken(string token)
     {
-        var index = Array.FindIndex(token.ToCharArray(), c => IsNotTokenChar(c));
-        if (index == -1)
+        if (string.IsNullOrEmpty(token))
         {
-            return (token.Substring(0, index), token.Substring(index));
+            return (string.Empty, string.Empty);
         }
 
-        return (token, "");
+        var index = 0;
+        while (index < token.Length && !IsNotTokenChar(token[index]))
+        {
+            index++;
+        }
+
+        return (token[..index], token[index..]);
     }
     
-    private static bool IsNotTokenChar(char c)
+    /// <summary>
+    /// IsNotTokenChar determines whether a character is not a valid token character defined in RFC 7230 section 3.2.6.
+    /// </summary>
+    /// <param name="c">The character to check.</param>
+    /// <returns>
+    /// <c>true</c> if the character is not a valid token character; otherwise, <c>false</c>.
+    /// </returns>
+    internal static bool IsNotTokenChar(char c)
     {
         // Check if character is not in the valid ranges (A-Z, a-z, 0-9)
         if ((c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < '0' || c > '9'))

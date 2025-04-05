@@ -32,16 +32,27 @@ public class Util
     
     public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
     {
+        var moqHandler = CustomHandler(func);
+        return new HttpClient(moqHandler.Object);
+    }
+
+    public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
+    {
+        var moqHandler = CustomHandler(func);
+        return new HttpClient(moqHandler.Object);
+    }
+
+    public static Mock<DelegatingHandler> CustomHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
+    {
         var moqHandler = new Mock<DelegatingHandler>();
         moqHandler.Protected().Setup<Task<HttpResponseMessage>>(
             "SendAsync",
             ItExpr.IsAny<HttpRequestMessage>(),
             ItExpr.IsAny<CancellationToken>()
         ).ReturnsAsync(func);
-        return new HttpClient(moqHandler.Object);
+        return moqHandler;
     }
-
-    public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
+    public static Mock<DelegatingHandler> CustomHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
     {
         var moqHandler = new Mock<DelegatingHandler>();
         moqHandler.Protected().Setup<Task<HttpResponseMessage>>(
@@ -49,7 +60,7 @@ public class Util
             ItExpr.IsAny<HttpRequestMessage>(),
             ItExpr.IsAny<CancellationToken>()
         ).Returns(func);
-        return new HttpClient(moqHandler.Object);
+        return moqHandler;
     }
 
     public static Descriptor ZeroDescriptor() => new()
