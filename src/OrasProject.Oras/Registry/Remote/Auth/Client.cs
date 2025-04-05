@@ -71,7 +71,7 @@ public class Client : HttpClient
         this.AddUserAgent();
         Credential = credential;
     }
-    
+
     /// <summary>
     /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
     /// 
@@ -89,128 +89,139 @@ public class Client : HttpClient
     /// <exception cref="KeyNotFoundException">
     /// Thrown if required parameters (e.g., "realm" or "service") are missing in the authentication challenge.
     /// </exception>
-    public override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken)
+    public override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest,
+        CancellationToken cancellationToken)
     {
         if (originalRequest.Headers.Authorization != null)
         {
             return await base.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
 
-        var request = await originalRequest.CloneAsync().ConfigureAwait(false);
-        var attemptedKey = string.Empty;
-        var host = request.RequestUri?.Host ?? throw new ArgumentNullException(nameof(request.RequestUri));
-        
-        // attempt to send request with cached auth token
-        if (Cache.TryGetScheme(host, out var schemeFromCache))
+        HttpRequestMessage request = null;
+        try
         {
-            switch (schemeFromCache)
+            request = await originalRequest.CloneAsync().ConfigureAwait(false);
+            var attemptedKey = string.Empty;
+            var host = request.RequestUri?.Host ?? throw new ArgumentNullException(nameof(request.RequestUri));
+
+            // attempt to send request with cached auth token
+            if (Cache.TryGetScheme(host, out var schemeFromCache))
+            {
+                switch (schemeFromCache)
+                {
+                    case Challenge.Scheme.Basic:
+                    {
+                        if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken))
+                        {
+                            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
+                        }
+
+                        break;
+                    }
+                    case Challenge.Scheme.Bearer:
+                    {
+                        var scopes = ScopeManager.Instance.GetScopesStringForHost(host);
+                        attemptedKey = string.Join(" ", scopes);
+                        if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken))
+                        {
+                            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                        }
+
+                        break;
+                    }
+                }
+            }
+
+            var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            if (response.StatusCode != HttpStatusCode.Unauthorized)
+            {
+                return response;
+            }
+
+            var (schemeFromChallenge, parameters) =
+                Challenge.ParseChallenge(response.Headers.WwwAuthenticate.ToString());
+            // rewind the request as the request has been consumed
+            request = await originalRequest.CloneAsync().ConfigureAwait(false);
+
+            // attempt again with credentials for recognized schemes
+            switch (schemeFromChallenge)
             {
                 case Challenge.Scheme.Basic:
                 {
-                    if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken))
-                    {
-                        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
-                    }
-
+                    var basicAuthToken = await FetchBasicAuth(host, cancellationToken).ConfigureAwait(false);
+                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
                     break;
                 }
                 case Challenge.Scheme.Bearer:
                 {
-                    var scopes = ScopeManager.Instance.GetScopesStringForHost(host);
-                    attemptedKey = string.Join(" ", scopes);
-                    if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken))
-                    {
-                        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
-                    }
-
-                    break;
-                }
-            }
-        }
-
-        var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        if (response.StatusCode != HttpStatusCode.Unauthorized)
-        {
-            return response;
-        }
-        
-        var (schemeFromChallenge, parameters) = Challenge.ParseChallenge(response.Headers.WwwAuthenticate.ToString());
-        // rewind the request as the request has been consumed
-        request = await originalRequest.CloneAsync().ConfigureAwait(false);
-        
-        // attempt again with credentials for recognized schemes
-        switch (schemeFromChallenge)
-        {
-            case Challenge.Scheme.Basic:
-            {
-                var basicAuthToken = await FetchBasicAuth(host, cancellationToken).ConfigureAwait(false);
-                Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
-                break;
-            }
-            case Challenge.Scheme.Bearer:
-            {
-                if (parameters == null)
-                {
-                    return response;
-                }
-                
-                // consolidate the existing scopes with the challenge scopes
-                var existingScopes = ScopeManager.Instance.GetScopesForHost(host);
-                var newScopes = new SortedSet<Scope>(existingScopes);
-                if (parameters.TryGetValue("scope", out var scopesString))
-                {
-                    foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        if (Scope.TryParse(scopeStr, out var scope))
-                        {
-                            newScopes.Add(scope);
-                        }
-                    }
-                }
-                
-                // attempt to send request when the scope changes and a token cache hits
-                var newKey = string.Join(" ", newScopes.Select(newScope => newScope.ToString()));
-                if (newKey != attemptedKey && Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
-                {
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                    response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
-                    if (response.StatusCode != HttpStatusCode.Unauthorized)
+                    if (parameters == null)
                     {
                         return response;
                     }
-                }
 
-                if (!parameters.ContainsKey("realm"))
-                {
-                    throw new KeyNotFoundException("Realm was not present in the request.");
+                    // consolidate the existing scopes with the challenge scopes
+                    var existingScopes = ScopeManager.Instance.GetScopesForHost(host);
+                    var newScopes = new SortedSet<Scope>(existingScopes);
+                    if (parameters.TryGetValue("scope", out var scopesString))
+                    {
+                        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            if (Scope.TryParse(scopeStr, out var scope))
+                            {
+                                newScopes.Add(scope);
+                            }
+                        }
+                    }
+
+                    // attempt to send request when the scope changes and a token cache hits
+                    var newKey = string.Join(" ", newScopes.Select(newScope => newScope.ToString()));
+                    if (newKey != attemptedKey &&
+                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
+                    {
+                        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
+                        response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                        if (response.StatusCode != HttpStatusCode.Unauthorized)
+                        {
+                            return response;
+                        }
+                    }
+
+                    if (!parameters.ContainsKey("realm"))
+                    {
+                        throw new KeyNotFoundException("Realm was not present in the request.");
+                    }
+
+                    if (!parameters.ContainsKey("service"))
+                    {
+                        throw new KeyNotFoundException("Service was not present in the request.");
+                    }
+
+                    // try to fetch bearer token based on the challenge header
+                    var bearerAuthToken = await FetchBearerAuth(
+                        host,
+                        parameters["realm"],
+                        parameters["service"],
+                        newScopes.Select(newScope => newScope.ToString()).ToList(),
+                        cancellationToken
+                    ).ConfigureAwait(false);
+                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
+
+                    // rewind the request again as it may be consumed
+                    request = await originalRequest.CloneAsync().ConfigureAwait(false);
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
+                    break;
                 }
-                
-                if (!parameters.ContainsKey("service"))
-                {
-                    throw new KeyNotFoundException("Service was not present in the request.");
-                }
-                
-                // try to fetch bearer token based on the challenge header
-                var bearerAuthToken = await FetchBearerAuth(
-                    host, 
-                    parameters["realm"], 
-                    parameters["service"],
-                    newScopes.Select(newScope => newScope.ToString()).ToList(),
-                    cancellationToken
-                ).ConfigureAwait(false);
-                Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
-                
-                // rewind the request again as it may be consumed
-                request = await originalRequest.CloneAsync().ConfigureAwait(false);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
-                break;
+                default:
+                    return response;
             }
-            default:
-                return response;
+
+            return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
-        
-        return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        finally
+        {
+            request?.Dispose();
+        }
     }
 
     /// <summary>
