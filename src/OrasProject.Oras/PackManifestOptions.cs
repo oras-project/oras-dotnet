@@ -14,7 +14,6 @@
 using OrasProject.Oras.Oci;
 
 using System.Collections.Generic;
-using System.Threading;
 
 namespace OrasProject.Oras;
 

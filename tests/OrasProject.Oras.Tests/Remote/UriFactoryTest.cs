@@ -27,13 +27,13 @@ public class UriFactoryTest
 
         var reference = Reference.Parse("localhost:5000/test");
         reference.ContentReference = desc.Digest;
-        
+
         const string artifactType = "doc/example";
         var expectedPath = $"referrers/{reference.ContentReference}";
         const string expectedQuery = "artifactType=doc%2fexample";
         var result = new UriFactory(reference).BuildReferrersUrl(artifactType);
         Assert.Equal($"https://localhost:5000/v2/test/{expectedPath}?{expectedQuery}", result.ToString());
-    }    
+    }
 
     [Fact]
     public void BuildReferrersUrl_WithoutArtifactType()
@@ -44,5 +44,5 @@ public class UriFactoryTest
         var expectedPath = $"referrers/{reference.ContentReference}";
         var result = new UriFactory(reference).BuildReferrersUrl();
         Assert.Equal($"https://localhost:5000/v2/test/{expectedPath}", result.ToString());
-    }   
+    }
 }

@@ -22,15 +22,15 @@ public class Platform
     public required string Architecture { get; set; }
 
     [JsonPropertyName("os")]
-    public required string OS { get; set; }
+    public required string Os { get; set; }
 
     [JsonPropertyName("os.version")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public string? OSVersion { get; set; }
+    public string? OsVersion { get; set; }
 
     [JsonPropertyName("os.features")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public IList<string>? OSFeatures { get; set; }
+    public IList<string>? OsFeatures { get; set; }
 
     [JsonPropertyName("variant")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]

@@ -28,7 +28,7 @@ namespace OrasProject.Oras.Registry.Remote;
 
 public class ManifestStore(Repository repository) : IManifestStore
 {
-    public Repository Repository { get; init; } = repository;
+    private Repository Repository { get; } = repository;
 
     /// <summary>
     /// Fetches the content identified by the descriptor.
@@ -177,17 +177,17 @@ public class ManifestStore(Repository repository) : IManifestStore
     private async Task PushWithIndexingAsync(Descriptor expected, Stream content, Reference reference,
         CancellationToken cancellationToken = default)
     {
-        switch (expected.MediaType) 
-        {   
+        switch (expected.MediaType)
+        {
             case MediaType.ImageManifest:
             case MediaType.ImageIndex:
                 if (Repository.ReferrersState == Referrers.ReferrersState.Supported)
-                { 
+                {
                     // Push the manifest straightaway when the registry supports referrers API
                     await DoPushAsync(expected, content, reference, cancellationToken).ConfigureAwait(false);
                     return;
                 }
-                
+
                 var contentBytes = await content.ReadAllAsync(expected, cancellationToken).ConfigureAwait(false);
                 using (var contentDuplicate = new MemoryStream(contentBytes))
                 {
@@ -227,12 +227,13 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <returns></returns>
     private async Task ProcessReferrersAndPushIndex(Descriptor desc, Stream content, CancellationToken cancellationToken = default)
     {
-        Descriptor? subject = null;
+        Descriptor? subject;
         switch (desc.MediaType)
         {
             case MediaType.ImageIndex:
-                var indexManifest = JsonSerializer.Deserialize<Index>(content);
-                if (indexManifest?.Subject == null)
+                var indexManifest = JsonSerializer.Deserialize<Index>(content)
+                                        ?? throw new JsonException("Failed to deserialize index");
+                if (indexManifest.Subject == null)
                 {
                     return;
                 }
@@ -241,8 +242,9 @@ public class ManifestStore(Repository repository) : IManifestStore
                 desc.Annotations = indexManifest.Annotations;
                 break;
             case MediaType.ImageManifest:
-                var imageManifest = JsonSerializer.Deserialize<Manifest>(content);
-                if (imageManifest?.Subject == null)
+                var imageManifest = JsonSerializer.Deserialize<Manifest>(content) ??
+                                        throw new JsonException("Failed to deserialize manifest");
+                if (imageManifest.Subject == null)
                 {
                     return;
                 }
@@ -253,7 +255,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             default:
                 return;
         }
-        
+
         // In this case, the manifest contains a subject field and OCI-Subject Header is not set after pushing the manifest to the registry,
         // which indicates that the registry does not support referrers API
         Repository.SetReferrersState(false);
@@ -278,17 +280,17 @@ public class ManifestStore(Repository repository) : IManifestStore
         // 1. pull the original referrers index list using referrers tag schema
         var referrersTag = Referrers.BuildReferrersTag(subject);
         var (oldDesc, oldReferrers) = await Repository.PullReferrersIndexList(referrersTag, cancellationToken).ConfigureAwait(false);
-        
+
         // 2. apply the referrer change to referrers list
         var (updatedReferrers, updateRequired) =
-            Referrers.ApplyReferrerChanges(oldReferrers,  referrerChange);
+            Referrers.ApplyReferrerChanges(oldReferrers, referrerChange);
         if (!updateRequired)
         {
             return;
         }
 
         // 3. push the updated referrers list using referrers tag schema
-        if (updatedReferrers.Count > 0 || repository.Options.SkipReferrersGc)
+        if (updatedReferrers.Count > 0 || Repository.Options.SkipReferrersGc)
         {
             // push a new index in either case:
             // 1. the referrers list has been updated with a non-zero size
@@ -296,28 +298,26 @@ public class ManifestStore(Repository repository) : IManifestStore
             //    is skipped, in this case an empty index should still be pushed
             //    as the old index won't get deleted
             var (indexDesc, indexContent) = Index.GenerateIndex(updatedReferrers);
-            using (var content = new MemoryStream(indexContent))
-            {
-                await DoPushAsync(indexDesc, content, Repository.ParseReference(referrersTag), cancellationToken).ConfigureAwait(false);
-            }
+            using var content = new MemoryStream(indexContent);
+            await DoPushAsync(indexDesc, content, Repository.ParseReference(referrersTag), cancellationToken).ConfigureAwait(false);
         }
-        
-        if (repository.Options.SkipReferrersGc || Descriptor.IsNullOrInvalid(oldDesc))
+
+        if (Repository.Options.SkipReferrersGc || Descriptor.IsNullOrInvalid(oldDesc))
         {
             // Skip the delete process if SkipReferrersGc is set to true or the old Descriptor is empty or null
             return;
         }
-        
+
         // 4. delete the dangling original referrers index, if applicable
-        await DeleteAsync(oldDesc, cancellationToken).ConfigureAwait(false);
+        await DeleteAsync(oldDesc!, cancellationToken).ConfigureAwait(false);
     }
-    
+
     /// <summary>
     /// Pushes the manifest content, matching the expected descriptor.
     /// </summary>
     /// <param name="expected"></param>
     /// <param name="stream"></param>
-    /// <param name="contentReference"></param>
+    /// <param name="remoteReference"></param>
     /// <param name="cancellationToken"></param>
     private async Task DoPushAsync(Descriptor expected, Stream stream, Reference remoteReference, CancellationToken cancellationToken)
     {
@@ -326,8 +326,10 @@ public class ManifestStore(Repository repository) : IManifestStore
         ScopeManager.Instance.SetActionsForRepository(Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
         
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
-        var request = new HttpRequestMessage(HttpMethod.Put, url);
-        request.Content = new StreamContent(stream);
+        var request = new HttpRequestMessage(HttpMethod.Put, url)
+        {
+            Content = new StreamContent(stream)
+        };
         request.Content.Headers.ContentLength = expected.Size;
         request.Content.Headers.Add("Content-Type", expected.MediaType);
         var client = Repository.Options.HttpClient;
@@ -410,7 +412,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         }
         await Repository.DeleteAsync(target, true, cancellationToken).ConfigureAwait(false);
     }
-    
+
     /// <summary>
     /// IndexReferrersForDelete indexes referrers for manifests with a subject field on manifest delete.
     /// References:

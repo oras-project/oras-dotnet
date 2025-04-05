@@ -23,13 +23,20 @@ using Xunit;
 
 namespace OrasProject.Oras.Tests.Remote;
 
-public class RegistryTest : IDisposable
+public partial class RegistryTest : IDisposable
 {
     public void Dispose()
     {
         ScopeManager.ResetInstance();
     }
     
+
+    [GeneratedRegex(@"(?<=n=)\d+")]
+    private static partial Regex NQueryParam();
+
+    [GeneratedRegex(@"(?<=test=)\w+")]
+    private static partial Regex TestQueryParam();
+
     public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
     {
         var moqHandler = new Mock<DelegatingHandler>();
@@ -61,10 +68,13 @@ public class RegistryTest : IDisposable
     public async Task PingAsync()
     {
         var V2Implemented = true;
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
 
             if (req.Method != HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/")
             {
@@ -82,7 +92,7 @@ public class RegistryTest : IDisposable
                 res.StatusCode = HttpStatusCode.NotFound;
                 return res;
             }
-        };
+        }
         var registry = new Registry.Remote.Registry(new RepositoryOptions()
         {
             Reference = new Reference("localhost:5000"),
@@ -110,10 +120,12 @@ public class RegistryTest : IDisposable
             new() {"jumps", "over", "the", "lazy"},
             new() {"dog"}
         };
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            var res = new HttpResponseMessage();
-            res.RequestMessage = req;
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
             if (req.Method != HttpMethod.Get ||
                 req.RequestUri?.AbsolutePath != "/v2/_catalog"
                )
@@ -124,7 +136,7 @@ public class RegistryTest : IDisposable
             var q = req.RequestUri.Query;
             try
             {
-                var n = int.Parse(Regex.Match(q, @"(?<=n=)\d+").Value);
+                var n = int.Parse(NQueryParam().Match(q).Value);
                 if (n != 4) throw new Exception();
             }
             catch
@@ -134,7 +146,7 @@ public class RegistryTest : IDisposable
 
             var repos = new List<string>();
             var serverUrl = "http://localhost:5000";
-            var matched = Regex.Match(q, @"(?<=test=)\w+").Value;
+            var matched = TestQueryParam().Match(q).Value;
             switch (matched)
             {
                 case "foo":
@@ -152,12 +164,12 @@ public class RegistryTest : IDisposable
 
             var repositoryList = new Registry.Remote.Registry.RepositoryList
             {
-                Repositories = repos.ToArray()
+                Repositories = [.. repos]
             };
             res.Content = new StringContent(JsonSerializer.Serialize(repositoryList));
             return res;
 
-        };
+        }
 
         var registry = new Registry.Remote.Registry(new RepositoryOptions()
         {
@@ -180,4 +192,5 @@ public class RegistryTest : IDisposable
         }
         Assert.Equal(wantRepositories, gotRepositories);
     }
+
 }
