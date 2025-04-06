@@ -6,33 +6,36 @@ This design document outlines the initial approach for implementing bearer token
 
 ## Introduction
 
-Currently, the ORAS .NET SDK does not fully implement an authentication model for registries. This design document outlines the high-level design for implementing bearer token Authentication, enabling support for secure user authentication, and detailing the authentication workflow between the registry and the authorization server.
+Currently, the ORAS .NET SDK does not fully implement an authentication model for registries. This design document outlines the high-level design for implementing bearer token authentication, enabling support for secure user authentication, and detailing the authentication workflow between the registry and the authorization server.
 
 
 ## Design
 
-### The high level auth client design is as follows:
+### Auth Client Design:
 
-In this design, the Client class is structured with several key variables: ForceAttemptOAuth2, ClientId, Cache, Credential, and ScopeManager.
+In this design, the Client class, which inherits from HttpClient, is structured with several key variables: ForceAttemptOAuth2, ClientId, Cache, Credential, and ScopeManager.
 
-Cache: This component is responsible for storing the access token retrieved from the authorization server, specifically for each repository, to optimize repeated token requests.
+- **Cache**: This component is responsible for storing the access token retrieved from the authorization server, specifically for each repository, to optimize repeated token requests.
 
-Credential: The Credential variable leverages an interface that provides a Resolve method to retrieve credentials. Users can implement concrete credential retrieval logic based on different cloud providers, ensuring flexibility and extensibility.
+- **Credential**: The Credential variable leverages an interface that provides a Resolve method to retrieve credentials. Users can implement concrete credential retrieval logic based on different cloud providers, ensuring flexibility and extensibility.
 
-ScopeManager: This service is responsible for managing scopes across the entire application context per repository. It follows the Singleton pattern to ensure a single, thread-safe instance is used throughout the application.
+- **ScopeManager**: This service is responsible for managing scopes across the entire application context per repository. It follows the Singleton pattern to ensure a single, thread-safe instance is used throughout the application.
 
-ForceAttemptOAuth2: This variable acts as a toggle to enable or disable OAuth2 authentication, giving the user control over the authentication method.
+- **ForceAttemptOAuth2**: This variable acts as a toggle to enable or disable OAuth2 authentication, giving the user control over the authentication method.
 
-ClientId: The ClientId is the identifier used when sending requests to the registries.
-
-
-ICredentialHelper is an interface that defines a Resolve method, which must be implemented by the user. This approach provides flexibility and extendability, allowing for seamless integration with different cloud providers.
+- **ClientId**: The ClientId is the identifier used when sending requests to the registries.
 
 
-ScopeManager is a service responsible for managing scopes across the entire application context. It employs the Singleton pattern, utilizing the Lazy<T> class to ensure that only a single instance is created. This approach guarantees thread-safety and supports lazy loading, initializing the instance only when it is first needed.
+- **ICredentialHelper** is an interface that defines a Resolve method, which must be implemented by the user. This approach provides flexibility and extendability, allowing for seamless integration with different cloud providers.
+
+
+- **ScopeManager** is a service responsible for managing scopes across the entire application context. It employs the Singleton pattern, utilizing the Lazy<T> class to ensure that only a single instance is created. This approach guarantees thread-safety and supports lazy loading, initializing the instance only when it is first needed.
 
 ```mermaid
   erDiagram
+
+    HttpClient {}
+
     Client {
         boolean ForceAttemptOAuth2
         string ClientId
@@ -66,6 +69,7 @@ ScopeManager is a service responsible for managing scopes across the entire appl
         Dictionary SchemesCache
     }
 
+    HttpClient ||--o| Client : inherits
     Client ||--o| Credential : contains
     Client ||--o| Cache : contains
     Client ||--o| ICredentialHelper : contains
@@ -79,7 +83,7 @@ ScopeManager is a service responsible for managing scopes across the entire appl
     ScopeManager ||--o| GetScope : method
 ```
 
-### The Authentication workflow is as follows:
+### Authentication Workflow:
 
 ```mermaid
 sequenceDiagram
@@ -96,8 +100,14 @@ sequenceDiagram
 ```
 
 1. ORAS client attempts to begin a push/pull operation with the registry.
-2. If the registry requires authorization, it will return a 401 Unauthorized HTTP response with information, i.e. Www-Authenticate header, on how to authenticate
+2. If the registry requires authorization, it will return a 401 Unauthorized HTTP response with information, i.e. Www-Authenticate header, on how to authenticate, Ref: https://datatracker.ietf.org/doc/html/rfc7235#section-2.1
 3. The ORAS client makes a request to the authorization service for a Bearer token.
 4. The authorization service returns an opaque Bearer token representing the client’s authorized access.
 5. The ORAS client retries the original request with the Bearer token embedded in the request’s Authorization header.
 6. The Registry authorizes the client by validating the Bearer token and the claim set embedded within it and begins the push/pull session as usual.
+
+
+# Considerations
+1. The auth model provides a interface ICredentialHelper for the users to retrieve the credentials from different registries and return it back to ORAS to process it.
+2. To handle refresh token expiry, users can refresh tokens if the request returns 401 Unauthorized
+3. To handle access token expiry, ORAS SDK does have implemented retry logic for the cached access token just in case it is expired.
