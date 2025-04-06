@@ -1,4 +1,4 @@
-﻿// Copyright The ORAS Authors.
+// Copyright The ORAS Authors.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -45,7 +45,7 @@ public class IndexTest
         Assert.NotNull(generatedIndexDesc);
         Assert.Equal(MediaType.ImageIndex, generatedIndexDesc.MediaType);
         Assert.Equal(generatedIndexContent.Length, generatedIndexDesc.Size);
-        Assert.Equal(Digest.ComputeSHA256(generatedIndexContent), generatedIndexDesc.Digest);
+        Assert.Equal(Digest.ComputeSha256(generatedIndexContent), generatedIndexDesc.Digest);
 
         var generatedIndex = JsonSerializer.Deserialize<Index>(generatedIndexContent);
         Assert.NotNull(generatedIndex);
@@ -57,7 +57,7 @@ public class IndexTest
         Assert.Equal(MediaType.ImageIndex, generatedIndex.MediaType);
         Assert.Equal(2, generatedIndex.SchemaVersion);
     }
-    
+
     [Fact]
     public void GenerateIndex_CorrectlyGeneratesIndexDescriptorWithEmptyManifests()
     {
@@ -67,7 +67,7 @@ public class IndexTest
         Assert.NotNull(generatedIndexDesc);
         Assert.Equal(MediaType.ImageIndex, generatedIndexDesc.MediaType);
         Assert.Equal(generatedIndexContent.Length, generatedIndexDesc.Size);
-        Assert.Equal(Digest.ComputeSHA256(generatedIndexContent), generatedIndexDesc.Digest);
+        Assert.Equal(Digest.ComputeSha256(generatedIndexContent), generatedIndexDesc.Digest);
 
         var generatedIndex = JsonSerializer.Deserialize<Index>(generatedIndexContent);
         Assert.NotNull(generatedIndex);

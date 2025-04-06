@@ -33,18 +33,20 @@ public class CopyTest
         var cancellationToken = new CancellationToken();
         var blobs = new List<byte[]>();
         var descs = new List<Descriptor>();
-        var appendBlob = (string mediaType, byte[] blob) =>
+
+        void AppendBlob(string mediaType, byte[] blob)
         {
             blobs.Add(blob);
             var desc = new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length
             };
             descs.Add(desc);
-        };
-        var generateManifest = (Descriptor config, List<Descriptor> layers) =>
+        }
+
+        void GenerateManifest(Descriptor config, List<Descriptor> layers)
         {
             var manifest = new Manifest
             {
@@ -52,18 +54,19 @@ public class CopyTest
                 Layers = layers
             };
             var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-            appendBlob(MediaType.ImageManifest, manifestBytes);
-        };
-        var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-        appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
-        appendBlob(MediaType.ImageLayer, getBytes("foo")); // blob 1
-        appendBlob(MediaType.ImageLayer, getBytes("bar")); // blob 2
-        generateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
+            AppendBlob(MediaType.ImageManifest, manifestBytes);
+        }
+
+        byte[] GetBytes(string data) => Encoding.UTF8.GetBytes(data);
+
+        AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
+        AppendBlob(MediaType.ImageLayer, GetBytes("foo")); // blob 1
+        AppendBlob(MediaType.ImageLayer, GetBytes("bar")); // blob 2
+        GenerateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
 
         for (var i = 0; i < blobs.Count; i++)
         {
             await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
-
         }
 
         var root = descs[3];
@@ -96,18 +99,20 @@ public class CopyTest
         var cancellationToken = new CancellationToken();
         var blobs = new List<byte[]>();
         var descs = new List<Descriptor>();
-        var appendBlob = (string mediaType, byte[] blob) =>
+
+        void AppendBlob(string mediaType, byte[] blob)
         {
             blobs.Add(blob);
             var desc = new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length
             };
             descs.Add(desc);
-        };
-        var generateManifest = (Descriptor config, List<Descriptor> layers) =>
+        }
+
+        void GenerateManifest(Descriptor config, List<Descriptor> layers)
         {
             var manifest = new Manifest
             {
@@ -115,19 +120,21 @@ public class CopyTest
                 Layers = layers
             };
             var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-            appendBlob(MediaType.ImageManifest, manifestBytes);
-        };
-        var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-        appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
-        appendBlob(MediaType.ImageLayer, getBytes("foo")); // blob 1
-        appendBlob(MediaType.ImageLayer, getBytes("bar")); // blob 2
-        generateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
+            AppendBlob(MediaType.ImageManifest, manifestBytes);
+        }
+
+        byte[] GetBytes(string data) => Encoding.UTF8.GetBytes(data);
+
+        AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
+        AppendBlob(MediaType.ImageLayer, GetBytes("foo")); // blob 1
+        AppendBlob(MediaType.ImageLayer, GetBytes("bar")); // blob 2
+        GenerateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
 
         for (var i = 0; i < blobs.Count; i++)
         {
             await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
-
         }
+
         var root = descs[3];
         var destinationTarget = new MemoryStore();
         await sourceTarget.CopyGraphAsync(destinationTarget, root, cancellationToken);
@@ -139,7 +146,6 @@ public class CopyTest
             await fetchContent.CopyToAsync(memoryStream);
             var bytes = memoryStream.ToArray();
             Assert.Equal(blobs[i], bytes);
-
         }
     }
 }

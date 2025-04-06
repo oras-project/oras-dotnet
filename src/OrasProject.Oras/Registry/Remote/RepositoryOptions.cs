@@ -62,7 +62,7 @@ public struct RepositoryOptions
     ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#deleting-manifests
     /// </summary>
     public bool SkipReferrersGc { get; set; }
-    
+
     /// <summary>
     /// MaxMetadataBytes specifies a limit on how many response bytes are allowed
     /// in the server's response to the metadata APIs, such as catalog list, tag
@@ -74,7 +74,7 @@ public struct RepositoryOptions
         get => _maxMetadataBytes > 0 ? _maxMetadataBytes : _defaultMaxMetadataBytes;
         set => _maxMetadataBytes = value;
     }
-    
+
     private long _maxMetadataBytes;
 
     /// <summary>

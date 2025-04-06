@@ -25,9 +25,11 @@ using System.Web;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-public class BlobStore(Repository repository) : IBlobStore, IMounter
+public class BlobStore : IBlobStore, IMounter
 {
-    public Repository Repository { get; init; } = repository;
+    private Repository Repository { get; }
+
+    public BlobStore(Repository repository) => Repository = repository;
 
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
@@ -210,13 +212,13 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
                     response.VerifyContentDigest(descriptor.Digest);
                     return;
                 case HttpStatusCode.Accepted:
-                {
-                    // 202, mounting failed. upload session has begun
-                    var location = response.Headers.Location ??
-                                   throw new HttpRequestException("missing location header");
-                    url = location.IsAbsoluteUri ? location : new Uri(url, location);
-                    break;
-                }
+                    {
+                        // 202, mounting failed. upload session has begun
+                        var location = response.Headers.Location ??
+                                       throw new HttpRequestException("missing location header");
+                        url = location.IsAbsoluteUri ? location : new Uri(url, location);
+                        break;
+                    }
                 default:
                     throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -245,7 +247,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
             }
             else
             {
-                var referenceOptions = repository.Options with
+                var referenceOptions = Repository.Options with
                 {
                     Reference = Reference.Parse(fromRepository),
                 };
