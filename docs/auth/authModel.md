@@ -28,13 +28,6 @@ In this design, the Client class, which inherits from HttpClient, is structured 
 
 - **ICredentialHelper**: An interface that defines a Resolve method, which must be implemented by the user. This approach provides flexibility and extendability, allowing for seamless integration with different cloud providers.
 
-```c#
-public interface ICredentialHelper
-{
-    public Task<Credential> Resolve(string hostname, CancellationToken cancellationToken);
-}
-```
-
 - **ScopeManager** is a service responsible for managing scopes across the entire application context. It employs the Singleton pattern, utilizing the Lazy<T> class to ensure that only a single instance is created. This approach guarantees thread-safety and supports lazy loading, initializing the instance only when it is first needed.
 
 
