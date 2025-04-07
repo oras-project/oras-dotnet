@@ -28,8 +28,15 @@ In this design, the Client class, which inherits from HttpClient, is structured 
 
 - **ICredentialHelper** is an interface that defines a Resolve method, which must be implemented by the user. This approach provides flexibility and extendability, allowing for seamless integration with different cloud providers.
 
+```c#
+public interface ICredentialHelper
+{
+    public Task<Credential> Resolve(string hostname, CancellationToken cancellationToken);
+}
+```
 
 - **ScopeManager** is a service responsible for managing scopes across the entire application context. It employs the Singleton pattern, utilizing the Lazy<T> class to ensure that only a single instance is created. This approach guarantees thread-safety and supports lazy loading, initializing the instance only when it is first needed.
+
 
 ```mermaid
   erDiagram
@@ -43,9 +50,6 @@ In this design, the Client class, which inherits from HttpClient, is structured 
         ICredentialHelper Credential
         ScopeManager ScopeManager
     }
-
-    Repository {
-    }
     
     ICredentialHelper {
         Task(Credential) Resolve(registry)
@@ -54,7 +58,7 @@ In this design, the Client class, which inherits from HttpClient, is structured 
     ScopeManager {
         Lazy(ScopeManager) _instance
         ScopeManager Instance
-        Dictionary Scopes
+        ConcurrentDictionary Scopes
     }
 
     Credential {
@@ -65,22 +69,38 @@ In this design, the Client class, which inherits from HttpClient, is structured 
     }
 
     Cache {
-        Dictionary tokenCache
-        Dictionary SchemesCache
+        ConcurrentDictionary(CacheEntry) _caches
+    }
+
+    CacheEntry {
+        Scheme Scheme
+        Dictionary Tokens
+    }
+
+    Challenge {
+    }
+
+    Scheme {
+        string Basic "Basic authentication scheme"
+        string Bearer "Bearer token authentication scheme"
+        string Unknown "Unknown or unsupported authentication scheme"
     }
 
     HttpClient ||--o| Client : inherits
-    Client ||--o| Credential : contains
     Client ||--o| Cache : contains
     Client ||--o| ICredentialHelper : contains
-    Client ||--o| ScopeManager : contains
-    Repository ||--o| ScopeManager : contains
+    Cache ||--o| CacheEntry : contains
+    Challenge ||--o| Scheme : contains
     
     Client ||--o| SendAsync : overrides
     Client ||--o| FetchBasicAuth : method
     Client ||--o| FetchBearerAuth : method
-    ScopeManager ||--o| AddScope : method
-    ScopeManager ||--o| GetScope : method
+    ScopeManager ||--o| GetScopesStringForHost : method
+    ScopeManager ||--o| GetScopesForHost : method
+    ScopeManager ||--o| SetActionsForRepository : method
+    ScopeManager ||--o| SetScopeForRegistry : method
+    ICredentialHelper ||--o| Credential : returns
+    Challenge ||--o| ParseChallenge : method
 ```
 
 ### Authentication Workflow:
