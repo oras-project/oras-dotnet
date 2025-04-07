@@ -26,7 +26,7 @@ In this design, the Client class, which inherits from HttpClient, is structured 
 - **ClientId**: The ClientId is the identifier used when sending requests to the registries.
 
 
-- **ICredentialHelper** is an interface that defines a Resolve method, which must be implemented by the user. This approach provides flexibility and extendability, allowing for seamless integration with different cloud providers.
+- **ICredentialHelper**: An interface that defines a Resolve method, which must be implemented by the user. This approach provides flexibility and extendability, allowing for seamless integration with different cloud providers.
 
 ```c#
 public interface ICredentialHelper
@@ -48,7 +48,6 @@ public interface ICredentialHelper
         string ClientId
         Cache Cache
         ICredentialHelper Credential
-        ScopeManager ScopeManager
     }
     
     ICredentialHelper {
