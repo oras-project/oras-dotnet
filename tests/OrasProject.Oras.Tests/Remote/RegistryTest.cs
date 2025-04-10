@@ -18,13 +18,18 @@ using OrasProject.Oras.Registry.Remote;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 
 namespace OrasProject.Oras.Tests.Remote;
 
-public partial class RegistryTest
+public partial class RegistryTest : IDisposable
 {
-
+    public void Dispose()
+    {
+        ScopeManager.ResetInstance();
+    }
+    
 
     [GeneratedRegex(@"(?<=n=)\d+")]
     private static partial Regex NQueryParam();
