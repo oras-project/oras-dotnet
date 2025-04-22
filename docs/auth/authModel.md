@@ -15,21 +15,15 @@ Currently, the ORAS .NET SDK does not fully implement an authentication model fo
 
 In this design, the Client class, which inherits from HttpClient, is structured with several key variables: ForceAttemptOAuth2, ClientId, Cache, Credential, and ScopeManager.
 
+- **ICredentialHelper**: An interface that defines a Resolve method, which must be implemented by the user. This approach provides flexibility and extendability, allowing for seamless integration with different cloud providers.
+
 - **Cache**: This component is responsible for storing the access token retrieved from the authorization server, specifically for each repository, to optimize repeated token requests.
 
-- **Credential**: The Credential variable leverages an interface that provides a Resolve method to retrieve credentials. Users can implement concrete credential retrieval logic based on different cloud providers, ensuring flexibility and extensibility.
-
-- **ScopeManager**: This service is responsible for managing scopes across the entire application context per repository. It follows the Singleton pattern to ensure a single, thread-safe instance is used throughout the application.
+- **ScopeManager** is a service responsible for managing scopes across the entire application context. It employs the Singleton pattern, utilizing the Lazy<T> class to ensure that only a single instance is created. This approach guarantees thread-safety and supports lazy loading, initializing the instance only when it is first needed.
 
 - **ForceAttemptOAuth2**: This variable acts as a toggle to enable or disable OAuth2 authentication, giving the user control over the authentication method.
 
 - **ClientId**: The ClientId is the identifier used when sending requests to the registries.
-
-
-- **ICredentialHelper**: An interface that defines a Resolve method, which must be implemented by the user. This approach provides flexibility and extendability, allowing for seamless integration with different cloud providers.
-
-- **ScopeManager** is a service responsible for managing scopes across the entire application context. It employs the Singleton pattern, utilizing the Lazy<T> class to ensure that only a single instance is created. This approach guarantees thread-safety and supports lazy loading, initializing the instance only when it is first needed.
-
 
 ```mermaid
   erDiagram
