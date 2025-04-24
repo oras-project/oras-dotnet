@@ -32,7 +32,7 @@ public class ScopeManagerTest : IDisposable
         var scope = new Scope
         ("repository",
             "repo1",
-            new () { Scope.Action.Pull }
+            new () { "pull" }
         );
 
         // Act
@@ -53,20 +53,20 @@ public class ScopeManagerTest : IDisposable
         (
             "repository",
             "repo1",
-            new () { Scope.Action.Pull }
+            new () { "pull" }
         );
         var scope2 = new Scope
         (
             "repository",
             "repo1",
-            new () { Scope.Action.Push }
+            new () { "push" }
         );
         
         var scope3 = new Scope
         (
             "repository",
             "repo1",
-            new () { Scope.Action.Push }
+            new () { "push" }
         );
 
         // Act
@@ -81,35 +81,33 @@ public class ScopeManagerTest : IDisposable
         var mergedScope = result.First();
         Assert.Equal("repository", mergedScope.ResourceType);
         Assert.Equal("repo1", mergedScope.ResourceName);
-        Assert.Contains(Scope.Action.Pull, mergedScope.Actions);
-        Assert.Contains(Scope.Action.Push, mergedScope.Actions);
+        Assert.Contains("pull", mergedScope.Actions);
+        Assert.Contains("push", mergedScope.Actions);
     }
     
     [Fact]
     public void SetScopeForRegistry_WithDifferentRepos()
     {
-        
-
         // Arrange
         var scopeManager = ScopeManager.Instance;
         var scope1 = new Scope
         (
             "repository",
             "repo1",
-            new () { Scope.Action.Pull }
+            new () { "pull" }
         );
         var scope2 = new Scope
         (
             "registry",
             "catalog",
-            new () { Scope.Action.Push, Scope.Action.All }
+            new () { "push", "*" }
         );
         
         var scope3 = new Scope
         (
             "registry",
             "catalog",
-            new () { Scope.Action.Pull }
+            new () { "pull"}
         );
 
         // Act
@@ -120,7 +118,8 @@ public class ScopeManagerTest : IDisposable
         var results = scopeManager.GetScopesForHost("registry1");
         
         string[] expectedResources = ["registry", "catalog", "repository", "repo1"];
-        Scope.Action[] expectedActions = [Scope.Action.All, Scope.Action.Pull];
+        string[] expectedActions = ["*", "pull"];
+        
         // Assert
         Assert.Equal(2, results.Count);
         var resourceIndex = 0;
@@ -140,8 +139,8 @@ public class ScopeManagerTest : IDisposable
     {
         // Arrange
         var scopeManager = ScopeManager.Instance;
-        var scope1 = new Scope("repository", "repo1", new() { Scope.Action.Pull });
-        var scope2 = new Scope("repository", "repo1", new() { Scope.Action.Push });
+        var scope1 = new Scope("repository", "repo1", new() { "pull" });
+        var scope2 = new Scope("repository", "repo1", new() { "push" });
 
         // Act
         scopeManager.SetScopeForRegistry("registry1", scope1);
@@ -151,8 +150,8 @@ public class ScopeManagerTest : IDisposable
         // Assert
         Assert.Single(result);
         var mergedScope = result.First();
-        Assert.Contains(Scope.Action.Pull, mergedScope.Actions);
-        Assert.Contains(Scope.Action.Push, mergedScope.Actions);
+        Assert.Contains("pull", mergedScope.Actions);
+        Assert.Contains("push", mergedScope.Actions);
 
         var newScopes = new SortedSet<Scope>
         {
@@ -163,8 +162,8 @@ public class ScopeManagerTest : IDisposable
         result.UnionWith(newScopes);
         Assert.Single(result);
         mergedScope = result.First();
-        Assert.Contains(Scope.Action.Pull, mergedScope.Actions);
-        Assert.Contains(Scope.Action.Push, mergedScope.Actions);
+        Assert.Contains("pull", mergedScope.Actions);
+        Assert.Contains("push", mergedScope.Actions);
         
     }
 
@@ -174,8 +173,8 @@ public class ScopeManagerTest : IDisposable
         
         // Arrange
         var scopeManager = ScopeManager.Instance;
-        var scope1 = new Scope("repository", "repo1", new() { Scope.Action.Pull });
-        var scope2 = new Scope("repository", "repo1", new() { Scope.Action.All });
+        var scope1 = new Scope("repository", "repo1", new() { "pull" });
+        var scope2 = new Scope("repository", "repo1", new() { "*" });
 
         // Act
         scopeManager.SetScopeForRegistry("registry1", scope1);
@@ -186,7 +185,7 @@ public class ScopeManagerTest : IDisposable
         Assert.Single(result);
         var updatedScope = result.First();
         Assert.Single(updatedScope.Actions);
-        Assert.Contains(Scope.Action.All, updatedScope.Actions);
+        Assert.Contains("*", updatedScope.Actions);
     }
 
     [Fact]
@@ -194,7 +193,7 @@ public class ScopeManagerTest : IDisposable
     {
         // Arrange
         var scopeManager = ScopeManager.Instance;
-        var scope = new Scope("repository", "repo1", new() { Scope.Action.Pull });
+        var scope = new Scope("repository", "repo1", new() { "pull" });
 
         // Act
         scopeManager.SetScopeForRegistry("registry1", scope);
@@ -214,8 +213,8 @@ public class ScopeManagerTest : IDisposable
 
         // Arrange
         var scopeManager = ScopeManager.Instance;
-        var scope1 = new Scope("repository", "repo1", new() { Scope.Action.Pull });
-        var scope2 = new Scope("repository", "repo2", new() { Scope.Action.Push });
+        var scope1 = new Scope("repository", "repo1", new() { "pull" });
+        var scope2 = new Scope("repository", "repo2", new() { "push" });
 
         // Act
         scopeManager.SetScopeForRegistry("registry1", scope1);
@@ -239,7 +238,7 @@ public class ScopeManagerTest : IDisposable
         (
             "repository",
             "repo1",
-            new () { Scope.Action.Push, Scope.Action.Pull }
+            new () { "push", "pull" }
         );
         scopeManager.SetScopeForRegistry("registry1", scope);
 
@@ -277,7 +276,7 @@ public class ScopeManagerTest : IDisposable
 
         // Arrange
         var scopeManager = ScopeManager.Instance;
-        var scope = new Scope("repository", "repo1", new() { Scope.Action.Push, Scope.Action.Pull, Scope.Action.Delete });
+        var scope = new Scope("repository", "repo1", new() { "push", "pull", "delete" });
         scopeManager.SetScopeForRegistry("registry1", scope);
 
         // Act
@@ -300,28 +299,28 @@ public class ScopeManagerTest : IDisposable
         (
             "repository",
             "repo1",
-            new () { Scope.Action.Pull }
+            new () { "pull" }
         );
         
         var scope2 = new Scope
         (
             "repository",
             "repo2",
-            new () { Scope.Action.Push, Scope.Action.Pull }
+            new () { "push", "pull" }
         );
         
         var scope3 = new Scope
         (
             "repository",
             "repo3",
-            new () { Scope.Action.Push, Scope.Action.Pull, Scope.Action.Delete, Scope.Action.All }
+            new () { "push", "pull", "delete", "*" }
         );
         
         var scope4 = new Scope
         (
             "registry",
             "catalog",
-            new () { Scope.Action.Push, Scope.Action.Pull, Scope.Action.Delete, Scope.Action.All }
+            new () { "push", "pull", "delete", "*" }
         );
         scopeManager.SetScopeForRegistry("registry1", scope1);
         scopeManager.SetScopeForRegistry("registry1", scope2);
@@ -352,7 +351,7 @@ public class ScopeManagerTest : IDisposable
         (
             "repository",
             "repo1",
-            new () { Scope.Action.All, Scope.Action.Pull, Scope.Action.Delete }
+            new () { "*", "pull", "delete" }
         );
         scopeManager.SetScopeForRegistry("registry1", scope);
 
@@ -404,10 +403,9 @@ public class ScopeManagerTest : IDisposable
             "registry1",
             "repo1"
         );
-        var action = Scope.Action.Pull;
-
+        
         // Act
-        scopeManager.SetActionsForRepository(reference, action);
+        scopeManager.SetActionsForRepository(reference, Scope.Action.Pull);
         var result = scopeManager.GetScopesForHost("registry1");
 
         // Assert
@@ -415,7 +413,7 @@ public class ScopeManagerTest : IDisposable
         var scope = result.First();
         Assert.Equal("repository", scope.ResourceType);
         Assert.Equal("repo1", scope.ResourceName);
-        Assert.Contains(Scope.Action.Pull, scope.Actions);
+        Assert.Contains("pull", scope.Actions);
         
     }
 
@@ -442,8 +440,8 @@ public class ScopeManagerTest : IDisposable
         Assert.Equal("repository", scope.ResourceType);
         Assert.Equal("repo1", scope.ResourceName);
         Assert.Equal(2, scope.Actions.Count);
-        Assert.Contains(Scope.Action.Pull, scope.Actions);
-        Assert.Contains(Scope.Action.Push, scope.Actions);
+        Assert.Contains("pull", scope.Actions);
+        Assert.Contains("push", scope.Actions);
         
     }
 
@@ -468,7 +466,7 @@ public class ScopeManagerTest : IDisposable
         Assert.Single(result);
         var scope = result.First();
         Assert.Single(scope.Actions);
-        Assert.Contains(Scope.Action.All, scope.Actions);
+        Assert.Contains("*", scope.Actions);
         
     }
 }

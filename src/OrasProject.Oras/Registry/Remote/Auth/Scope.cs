@@ -18,6 +18,8 @@ using System.Linq;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
+// Scope is defined as: <ResourceType>:<ResourceName>:<Action>,<Action>,<Action>...
+// Ref: https://distribution.github.io/distribution/spec/auth/scope/
 public class Scope : IComparable<Scope>
 {
     /// <summary>
@@ -53,10 +55,10 @@ public class Scope : IComparable<Scope>
     
     public required string ResourceType { get; init; }
     public required string ResourceName { get; init; }
-    public required HashSet<Action> Actions { get; init; }
+    public required HashSet<string> Actions { get; init; }
 
     [SetsRequiredMembers]
-    public Scope(string resourceType, string resourceName, HashSet<Action> actions)
+    public Scope(string resourceType, string resourceName, HashSet<string> actions)
     {
         ResourceType = resourceType;
         ResourceName = resourceName;
@@ -71,11 +73,9 @@ public class Scope : IComparable<Scope>
     /// <returns>A string representation of the scope.</returns>
     public override string ToString()
     {
-        return Actions.Contains(Action.All) 
+        return Actions.Contains("*") 
             ? $"{ResourceType}:{ResourceName}:*"
-            : $"{ResourceType}" + 
-              $":{ResourceName}" + 
-              $":{string.Join(",", Actions.OrderBy(action => action.ToString()).Select(action => action.ToString().ToLower()))}";
+            : $"{ResourceType}:{ResourceName}:{string.Join(",", Actions.OrderBy(action => action, StringComparer.OrdinalIgnoreCase))}";
     }
 
     /// <summary>
@@ -90,70 +90,96 @@ public class Scope : IComparable<Scope>
     public static bool TryParse(string scopeStr, [NotNullWhen(true)] out Scope? scope)
     {
         scope = null;
-        if (string.IsNullOrEmpty(scopeStr))
+        if (string.IsNullOrWhiteSpace(scopeStr))
         {
             return false;
         }
 
-        var parts = scopeStr.Trim().Split(':');
+        var parts = scopeStr.Split(':', StringSplitOptions.TrimEntries);
         if (parts.Length != 3)
         {
             return false;
         }
 
-        var actionsStr = parts[2].Split(',');
-        var actions = new HashSet<Action>();
-        foreach (var actionStr in actionsStr)
+        var actions = parts[2].Split(',', StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (actions.Contains("*"))
         {
-            if (TryParseAction(actionStr.Trim(), out var action))
+            actions.Clear();
+            actions.Add("*");
+        }
+
+        scope = new Scope(parts[0], parts[1], actions);
+        return true;
+    }
+    
+    /// <summary>
+    /// ParseAction converts an <see cref="Action"/> enumeration value to its corresponding string representation.
+    /// </summary>
+    /// <param name="action">The <see cref="Action"/> value to be converted.</param>
+    /// <returns>
+    /// A string representation of the specified <paramref name="action"/>:
+    /// <list type="bullet">
+    /// <item><description>"pull" for <see cref="Action.Pull"/></description></item>
+    /// <item><description>"push" for <see cref="Action.Push"/></description></item>
+    /// <item><description>"delete" for <see cref="Action.Delete"/></description></item>
+    /// <item><description>"*" for <see cref="Action.All"/></description></item>
+    /// <item><description>An empty string for any other value.</description></item>
+    /// </list>
+    /// </returns>
+    internal static string ParseAction(Action action)
+    {
+        switch (action)
+        {
+            case Action.Pull:
+                return "pull";
+            case Action.Push:
+                return "push";
+            case Action.Delete:
+                return "delete";
+            case Action.All:
+                return "*";
+            default:
+                return "";
+        }
+    }
+    
+    /// <summary>
+    /// AddOrMergeScope adds a new scope to the collection or merges it with an existing scope if a matching scope is found.
+    /// </summary>
+    /// <param name="scopes">A sorted set of existing scopes.</param>
+    /// <param name="newScope">The new scope to add or merge.</param>
+    /// <returns>
+    /// The updated sorted set of scopes, with the new scope added or merged.
+    /// </returns>
+    /// <remarks>
+    /// If a matching scope already exists in the set:
+    /// - If either the existing scope or the new scope contains the wildcard action '*',
+    ///   the existing scope's actions are cleared and replaced with the wildcard '*'.
+    /// - Otherwise, the actions of the new scope are unioned with the existing scope's actions.
+    /// If no matching scope exists, the new scope is added to the set.
+    /// </remarks>
+    public static SortedSet<Scope> AddOrMergeScope(SortedSet<Scope> scopes, Scope newScope)
+    {
+        if (scopes.TryGetValue(newScope, out var existingScope))
+        {
+            if (existingScope.Actions.Contains("*") || newScope.Actions.Contains("*"))
             {
-                if (action == Action.All)
-                {
-                    actions.Clear();
-                    actions.Add(action.Value);
-                    break;
-                }
-                actions.Add(action.Value);
+                // If either scope has the wildcard '*', clear and add '*'
+                existingScope.Actions.Clear();
+                existingScope.Actions.Add("*");
             }
             else
             {
-                return false;
+                // Otherwise, union the actions
+                existingScope.Actions.UnionWith(newScope.Actions);
             }
         }
-
-        scope = new Scope(parts[0].Trim(), parts[1].Trim(), actions);
-        return true;
-    }
-
-    /// <summary>
-    /// TryParseAction attempts to parse an action string into a <see cref="Action"/> enum value.
-    /// </summary>
-    /// <param name="actionStr">The action string to parse.</param>
-    /// <param name="action">
-    /// When this method returns, contains the parsed <see cref="Action"/> value if the parsing succeeded;
-    /// otherwise, <c>null</c>.
-    /// </param>
-    /// <returns><c>true</c> if the parsing succeeded; otherwise, <c>false</c>.</returns>
-    internal static bool TryParseAction(string actionStr, [NotNullWhen(true)]out Action? action)
-    {
-        switch (actionStr.ToLower())
+        else
         {
-            case "pull":
-                action = Action.Pull;
-                return true;
-            case "push":
-                action = Action.Push;
-                return true;
-            case "delete":
-                action = Action.Delete;
-                return true;
-            case "*":
-                action = Action.All;
-                return true;
-            default:
-                action = null;
-                return false;
+            // Add the new scope if no matching scope exists
+            scopes.Add(newScope);
         }
+        return scopes;
     }
 
     /// <summary>

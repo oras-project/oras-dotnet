@@ -30,13 +30,6 @@ public class ClientTest
     
     private const string _userAgent = "oras-dotnet";
 
-    
-    private ITestOutputHelper _output;
-
-    public ClientTest(ITestOutputHelper output)
-    {
-        _output = output;
-    }
     [Fact]
     public void IsCredentialEmpty_AllFieldsEmpty_ReturnsTrue()
     {
@@ -50,7 +43,7 @@ public class ClientTest
         };
 
         // Act
-        var result = Client.IsCredentialEmpty(credential);
+        var result = credential.IsCredentialEmpty();
 
         // Assert
         Assert.True(result);
@@ -69,7 +62,7 @@ public class ClientTest
         };
 
         // Act
-        var result = Client.IsCredentialEmpty(credential);
+        var result = credential.IsCredentialEmpty();
 
         // Assert
         Assert.False(result);
@@ -88,7 +81,7 @@ public class ClientTest
         };
 
         // Act
-        var result = Client.IsCredentialEmpty(credential);
+        var result = credential.IsCredentialEmpty();
 
         // Assert
         Assert.False(result);
@@ -107,7 +100,7 @@ public class ClientTest
         };
 
         // Act
-        var result = Client.IsCredentialEmpty(credential);
+        var result = credential.IsCredentialEmpty();
 
         // Assert
         Assert.False(result);
@@ -126,7 +119,7 @@ public class ClientTest
         };
 
         // Act
-        var result = Client.IsCredentialEmpty(credential);
+        var result = credential.IsCredentialEmpty();
 
         // Assert
         Assert.False(result);
@@ -616,7 +609,7 @@ public class ClientTest
 
         var mockCredentialHelper = new Mock<ICredentialHelper>();
         mockCredentialHelper
-            .Setup(helper => helper.Resolve(registry, It.IsAny<CancellationToken>()))
+            .Setup(helper => helper.ResolveAsync(registry, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = username,
@@ -640,7 +633,7 @@ public class ClientTest
 
         var mockCredentialHelper = new Mock<ICredentialHelper>();
         mockCredentialHelper
-            .Setup(helper => helper.Resolve(registry, It.IsAny<CancellationToken>()))
+            .Setup(helper => helper.ResolveAsync(registry, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Credential?)null);
 
         var client = new Client(mockCredentialHelper.Object);
@@ -660,7 +653,7 @@ public class ClientTest
 
         var mockCredentialHelper = new Mock<ICredentialHelper>();
         mockCredentialHelper
-            .Setup(helper => helper.Resolve(registry, It.IsAny<CancellationToken>()))
+            .Setup(helper => helper.ResolveAsync(registry, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = string.Empty,
@@ -684,7 +677,7 @@ public class ClientTest
 
         var mockCredentialHelper = new Mock<ICredentialHelper>();
         mockCredentialHelper
-            .Setup(helper => helper.Resolve(registry, It.IsAny<CancellationToken>()))
+            .Setup(helper => helper.ResolveAsync(registry, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = username,
@@ -886,7 +879,7 @@ public class ClientTest
         };
         var mockCredentialHelper = new Mock<ICredentialHelper>();
         mockCredentialHelper
-            .Setup(helper => helper.Resolve(host, It.IsAny<CancellationToken>()))
+            .Setup(helper => helper.ResolveAsync(host, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 RefreshToken = refreshToken
@@ -982,7 +975,7 @@ public class ClientTest
 
         var mockCredentialHelper = new Mock<ICredentialHelper>();
         mockCredentialHelper
-            .Setup(helper => helper.Resolve(host, It.IsAny<CancellationToken>()))
+            .Setup(helper => helper.ResolveAsync(host, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = username,

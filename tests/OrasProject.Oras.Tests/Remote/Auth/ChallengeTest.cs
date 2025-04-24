@@ -36,7 +36,7 @@ public class ChallengeTest
         new[] { "realm", "https://registry.io/oauth2/token", "service", "registry.io", "scope", "repository:nginx:push,pull repository:abc:delete", "error", "insufficient_scope" })]
 
     [InlineData("Unknown realm=\"example\"", Challenge.Scheme.Unknown, null)]
-    public void ParseChallenge_ValidHeader_ReturnsExpectedSchemeAndParams(string header, Challenge.Scheme expectedScheme, string[] expectedParams)
+    public void ParseChallenge_ValidHeader_ReturnsExpectedSchemeAndParams(string header, Challenge.Scheme expectedScheme, string[]? expectedParams)
     {
         var (scheme, parameters) = Challenge.ParseChallenge(header);
 
@@ -55,6 +55,15 @@ public class ChallengeTest
             }
         }
     }
+    
+    [Fact]
+    public void ParseChallenge_ThrowsArgumentException()
+    {
+        var header =
+            "BEARER realm=\"https://registry.io/oauth2/token\",service=\"registry.io\",service=\"registry.io\",scope=\"repository:nginx:push,pull repository:abc:delete\",error=\"insufficient_scope\"";
+        var message = Assert.Throws<ArgumentException>(() => Challenge.ParseChallenge(header));
+        Assert.Equal("An item with the same key has already been added. Key: service", message.Message);
+    }
 
     [Theory]
     [InlineData("Basic", Challenge.Scheme.Basic)]
@@ -65,7 +74,6 @@ public class ChallengeTest
     [InlineData("bearer", Challenge.Scheme.Bearer)]
     [InlineData("Unknown", Challenge.Scheme.Unknown)]
     [InlineData("Basic abd", Challenge.Scheme.Unknown)]
-
     public void ParseScheme_ValidSchemeString_ReturnsExpectedScheme(string schemeString, Challenge.Scheme expectedScheme)
     {
         var scheme = Challenge.ParseScheme(schemeString);
@@ -85,19 +93,19 @@ public class ChallengeTest
     }
     
     [Theory]
-    [InlineData('A', false)] // Uppercase letter
-    [InlineData('z', false)] // Lowercase letter
-    [InlineData('5', false)] // Digit
-    [InlineData('!', false)] // Special character in the list
-    [InlineData(' ', true)]  // Space (not a valid token character)
-    [InlineData(',', true)]  // comma (not a valid token character)
-    [InlineData(':', true)]  // colon (not a valid token character)
-    [InlineData('@', true)]  // Special character not in the list
-    [InlineData('\n', true)] // Newline (not a valid token character)
-    public void IsNotTokenChar_ShouldReturnExpectedResult(char input, bool expected)
+    [InlineData('A', true)] // Uppercase letter
+    [InlineData('z', true)] // Lowercase letter
+    [InlineData('5', true)] // Digit
+    [InlineData('!', true)] // Special character in the list
+    [InlineData(' ', false)]  // Space (not a valid token character)
+    [InlineData(',', false)]  // comma (not a valid token character)
+    [InlineData(':', false)]  // colon (not a valid token character)
+    [InlineData('@', false)]  // Special character not in the list
+    [InlineData('\n', false)] // Newline (not a valid token character)
+    public void IsTokenChar_ShouldReturnExpectedResult(char input, bool expected)
     {
         // Act
-        var result = Challenge.IsNotTokenChar(input);
+        var result = Challenge.IsTokenChar(input);
 
         // Assert
         Assert.Equal(expected, result);

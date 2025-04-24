@@ -32,10 +32,10 @@ public class ScopeTest
         Assert.NotNull(scope);
         Assert.Equal("repository", scope!.ResourceType);
         Assert.Equal("my-repo", scope.ResourceName);
-        Assert.Contains(Scope.Action.Pull, scope.Actions);
-        Assert.Contains(Scope.Action.Push, scope.Actions);
+        Assert.Contains("pull", scope.Actions);
+        Assert.Contains("push", scope.Actions);
         Assert.Equal(2, scope.Actions.Count);
-        Assert.DoesNotContain(Scope.Action.Delete, scope.Actions);
+        Assert.DoesNotContain("delete", scope.Actions);
     }
     
     [Fact]
@@ -52,28 +52,8 @@ public class ScopeTest
         Assert.NotNull(scope);
         Assert.Equal("repository", scope!.ResourceType);
         Assert.Equal("my-repo", scope.ResourceName);
-        Assert.Contains(Scope.Action.All, scope.Actions);
+        Assert.Contains("*", scope.Actions);
         Assert.Single(scope.Actions);
-    }
-
-    [Fact]
-    public void TryParse_ValidScopeStringWithExtraWhiteSpaces_ReturnsTrueAndParsesCorrectly()
-    {
-        // Arrange
-        string scopeStr = " repository : my-repo : pull, delete ,push";
-
-        // Act
-        bool result = Scope.TryParse(scopeStr, out var scope);
-
-        // Assert
-        Assert.True(result);
-        Assert.NotNull(scope);
-        Assert.Equal("repository", scope!.ResourceType);
-        Assert.Equal("my-repo", scope.ResourceName);
-        Assert.Contains(Scope.Action.Pull, scope.Actions);
-        Assert.Contains(Scope.Action.Delete, scope.Actions);
-        Assert.Contains(Scope.Action.Push, scope.Actions);
-        Assert.Equal(3, scope.Actions.Count);
     }
 
     [Fact]
@@ -95,20 +75,6 @@ public class ScopeTest
     {
         // Arrange
         string scopeStr = "";
-
-        // Act
-        bool result = Scope.TryParse(scopeStr, out var scope);
-
-        // Assert
-        Assert.False(result);
-        Assert.Null(scope);
-    }
-
-    [Fact]
-    public void TryParse_ScopeStringWithInvalidAction_ReturnsFalse()
-    {
-        // Arrange
-        string scopeStr = "repository:my-repo:pull,invalid-action";
 
         // Act
         bool result = Scope.TryParse(scopeStr, out var scope);
@@ -145,236 +111,138 @@ public class ScopeTest
         Assert.False(result);
         Assert.Null(scope);
     }
-
-
-    [Fact]
-    public void TryParseAction_ValidActionString_ReturnsTrueAndParsesCorrectly()
-    {
-        // Arrange
-        string actionStr = "pull";
-
-        // Act
-        bool result = Scope.TryParseAction(actionStr, out var action);
-
-        // Assert
-        Assert.True(result);
-        Assert.NotNull(action);
-        Assert.Equal(Scope.Action.Pull, action);
-    }
-
-    [Fact]
-    public void TryParseAction_InvalidActionString_ReturnsFalse()
-    {
-        // Arrange
-        string actionStr = "invalid-action";
-
-        // Act
-        bool result = Scope.TryParseAction(actionStr, out var action);
-
-        // Assert
-        Assert.False(result);
-        Assert.Null(action);
-    }
-
-    [Fact]
-    public void TryParseAction_ValidActionStringWithExtraWhiteSpaces_ReturnsTrueAndParsesCorrectly()
-    {
-        // Arrange
-        string actionStr = " push ";
-
-        // Act
-        bool result = Scope.TryParseAction(actionStr.Trim(), out var action);
-
-        // Assert
-        Assert.True(result);
-        Assert.NotNull(action);
-        Assert.Equal(Scope.Action.Push, action);
-    }
-    
-    [Fact]
-    public void TryParseAction_ValidActionStringWithUpperCases_ReturnsTrueAndParsesCorrectly()
-    {
-        // Arrange
-        string actionStr = " Push ";
-
-        // Act
-        bool result = Scope.TryParseAction(actionStr.Trim(), out var action);
-
-        // Assert
-        Assert.True(result);
-        Assert.NotNull(action);
-        Assert.Equal(Scope.Action.Push, action);
-    }
-
-    [Fact]
-    public void TryParseAction_EmptyActionString_ReturnsFalse()
-    {
-        // Arrange
-        string actionStr = "";
-
-        // Act
-        bool result = Scope.TryParseAction(actionStr, out var action);
-
-        // Assert
-        Assert.False(result);
-        Assert.Null(action);
-    }
-
-    [Fact]
-    public void TryParseAction_ValidDeleteActionString_ReturnsTrueAndParsesCorrectly()
-    {
-        // Arrange
-        string actionStr = "delete";
-
-        // Act
-        bool result = Scope.TryParseAction(actionStr, out var action);
-
-        // Assert
-        Assert.True(result);
-        Assert.NotNull(action);
-        Assert.Equal(Scope.Action.Delete, action);
-    }
-    
-    [Fact]
-    public void TryParseAction_ValidWildCardActionString_ReturnsTrueAndParsesCorrectly()
-    {
-        // Arrange
-        string actionStr = "*";
-
-        // Act
-        bool result = Scope.TryParseAction(actionStr, out var action);
-
-        // Assert
-        Assert.True(result);
-        Assert.NotNull(action);
-        Assert.Equal(Scope.Action.All, action);
-    }
-
-
-    // [Fact]
-    // public void Equals_SameScopeInstances_ReturnsTrue()
-    // {
-    //     // Arrange
-    //     var scope1 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Pull });
-    //     var scope2 = scope1;
-    //
-    //     // Act
-    //     bool result = scope1.Equals(scope1, scope2);
-    //
-    //     // Assert
-    //     Assert.True(result);
-    // }
-    //
-    // [Fact]
-    // public void Equals_DifferentScopeInstancesWithSameValues_ReturnsTrue()
-    // {
-    //     // Arrange
-    //     var scope1 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Pull });
-    //     var scope2 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Delete });
-    //
-    //     // Act
-    //     bool result = scope1.Equals(scope1, scope2);
-    //
-    //     // Assert
-    //     Assert.True(result);
-    // }
     
     [Fact]
     public void EqualsInSortedSet_DifferentScopeInstancesWithSameValues_ReturnsTrue()
     {
         // Arrange
-        var scope1 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Pull });
-        var scope2 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Delete });
-        var scope3 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Push, Scope.Action.Pull });
-        var scope4 = new Scope("repository", "my-repo1", new HashSet<Scope.Action> { Scope.Action.Push, Scope.Action.Pull });
+        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
+        var scope2 = new Scope("repository", "my-repo", new HashSet<string> { "delete" });
+        var scope3 = new Scope("repository", "my-repo", new HashSet<string> { "push", "pull" });
+        var scope4 = new Scope("repository", "my-repo1", new HashSet<string> { "push", "pull" });
 
 
         // Act
-        var sortedSet = new SortedSet<Scope>
-        {
-            scope1,
-            scope2,
-            scope3,
-            scope4
-        };
+        var sortedSet = new SortedSet<Scope>();
+        Scope.AddOrMergeScope(sortedSet, scope1);
+        Scope.AddOrMergeScope(sortedSet, scope2);
+        Scope.AddOrMergeScope(sortedSet, scope3);
+        Scope.AddOrMergeScope(sortedSet, scope4);
+
+        var expectedScope1 = "repository:my-repo:delete,pull,push";
         // Assert
         Assert.Equal(2, sortedSet.Count);
+        Assert.Equal(expectedScope1, sortedSet.First().ToString());
     }
 
-    // [Fact]
-    // public void Equals_DifferentScopeInstancesWithDifferentValues_ReturnsFalse()
-    // {
-    //     // Arrange
-    //     var scope1 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Pull });
-    //     var scope2 = new Scope("repository", "other-repo", new HashSet<Scope.Action> { Scope.Action.Pull });
-    //
-    //     // Act
-    //     bool result = scope1.Equals(scope1, scope2);
-    //
-    //     // Assert
-    //     Assert.False(result);
-    // }
-    //
-    // [Fact]
-    // public void Equals_NullScopeInstances_ReturnsFalse()
-    // {
-    //     // Arrange
-    //     var scope1 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Pull });
-    //
-    //     // Act
-    //     bool result = scope1.Equals(scope1, null);
-    //
-    //     // Assert
-    //     Assert.False(result);
-    // }
-    //
-    // [Fact]
-    // public void Equals_BothNullScopeInstances_ReturnsTrue()
-    // {
-    //     // Act
-    //     bool result = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Pull }).Equals(null, null);
-    //
-    //     // Assert
-    //     Assert.True(result);
-    // }
-    //
-    // [Fact]
-    // public void GetHashCode_SameScopeInstances_ReturnsSameHashCode()
-    // {
-    //     // Arrange
-    //     var scope1 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Pull });
-    //     var scope2 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Pull });
-    //
-    //     // Act
-    //     int hash1 = scope1.GetHashCode(scope1);
-    //     int hash2 = scope1.GetHashCode(scope2);
-    //
-    //     // Assert
-    //     Assert.Equal(hash1, hash2);
-    // }
-    //
-    // [Fact]
-    // public void GetHashCode_DifferentScopeInstancesWithDifferentValues_ReturnsDifferentHashCodes()
-    // {
-    //     // Arrange
-    //     var scope1 = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Pull });
-    //     var scope2 = new Scope("repository", "other-repo", new HashSet<Scope.Action> { Scope.Action.Pull });
-    //
-    //     // Act
-    //     int hash1 = scope1.GetHashCode(scope1);
-    //     int hash2 = scope1.GetHashCode(scope2);
-    //
-    //     // Assert
-    //     Assert.NotEqual(hash1, hash2);
-    // }
-    //
-    // [Fact]
-    // public void GetHashCode_NullScopeInstance_ReturnsZero()
-    // {
-    //     // Act
-    //     int hash = new Scope("repository", "my-repo", new HashSet<Scope.Action> { Scope.Action.Pull }).GetHashCode(null);
-    //
-    //     // Assert
-    //     Assert.Equal(0, hash);
-    // }
+    [Fact]
+    public void AddOrMergeScope_AddNewScope_AddsToSet()
+    {
+        // Arrange
+        var scopes = new SortedSet<Scope>();
+        var newScope = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
+
+        // Act
+        Scope.AddOrMergeScope(scopes, newScope);
+
+        // Assert
+        Assert.Single(scopes);
+        Assert.Equal("repository:my-repo:pull", scopes.First().ToString());
+    }
+
+    [Fact]
+    public void AddOrMergeScope_MergeWithExistingScope_UnionsActions()
+    {
+        // Arrange
+        var scopes = new SortedSet<Scope>();
+        var existingScope = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
+        var newScope1 = new Scope("repository", "my-repo", new HashSet<string> { "push", "delete" });
+        scopes.Add(existingScope);
+
+        // Act
+        Scope.AddOrMergeScope(scopes, newScope1);
+
+        // Assert
+        Assert.Single(scopes);
+        Assert.Equal("repository:my-repo:delete,pull,push", scopes.First().ToString());
+    }
+
+    [Fact]
+    public void AddOrMergeScope_MergeWithWildcardAction_ResultsInWildcard()
+    {
+        // Arrange
+        var scopes = new SortedSet<Scope>();
+        var existingScope = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
+        var newScope = new Scope("repository", "my-repo", new HashSet<string> { "*" });
+        scopes.Add(existingScope);
+
+        // Act
+        Scope.AddOrMergeScope(scopes, newScope);
+
+        // Assert
+        Assert.Single(scopes);
+        Assert.Equal("repository:my-repo:*", scopes.First().ToString());
+    }
+
+    [Fact]
+    public void AddOrMergeScope_AddDifferentScope_AddsAllToSet()
+    {
+        // Arrange
+        var scopes = new SortedSet<Scope>();
+        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
+        var scope2 = new Scope("repository", "other-repo", new HashSet<string> { "push" });
+        var scope3 = new Scope("registry", "catalog", new HashSet<string> { "metadata-read" });
+
+        // Act
+        Scope.AddOrMergeScope(scopes, scope1);
+        Scope.AddOrMergeScope(scopes, scope2);
+        Scope.AddOrMergeScope(scopes, scope3);
+
+
+        // Assert
+        Assert.Equal(3, scopes.Count);
+        Assert.Contains(scopes, s => s.ToString() == "repository:my-repo:pull");
+        Assert.Contains(scopes, s => s.ToString() == "repository:other-repo:push");
+        Assert.Contains(scopes, s => s.ToString() == "registry:catalog:metadata-read");
+
+    }
+
+    [Fact]
+    public void AddOrMergeScope_MergeWithExistingWildcardAction_KeepsWildcard()
+    {
+        // Arrange
+        var scopes = new SortedSet<Scope>();
+        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { "*" });
+        var scope2 = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
+        
+        var scope3 = new Scope("registry", "catalog", new HashSet<string> { "metadata-read" });
+        var scope4 = new Scope("registry", "catalog", new HashSet<string> { "*" });
+
+
+        // Act
+        Scope.AddOrMergeScope(scopes, scope1);
+        Scope.AddOrMergeScope(scopes, scope2);
+        Scope.AddOrMergeScope(scopes, scope3);
+        Scope.AddOrMergeScope(scopes, scope4);
+        
+        // Assert
+        Assert.Equal(2, scopes.Count);
+        Assert.Contains(scopes, s => s.ToString() == "repository:my-repo:*");
+        Assert.Contains(scopes, s => s.ToString() == "registry:catalog:*");
+    }
+
+    [Theory]
+    [InlineData(Scope.Action.Pull, "pull")]
+    [InlineData(Scope.Action.Push, "push")]
+    [InlineData(Scope.Action.Delete, "delete")]
+    [InlineData(Scope.Action.All, "*")]
+    [InlineData((Scope.Action)999, "")]
+    public void ParseAction_ValidAndInvalidActions_ReturnsExpectedString(Scope.Action action, string expected)
+    {
+        // Act
+        var result = Scope.ParseAction(action);
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
 }

@@ -97,7 +97,7 @@ public class Client : HttpClient
             return await base.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
 
-        HttpRequestMessage request = null;
+        HttpRequestMessage? request = null;
         try
         {
             request = await originalRequest.CloneAsync().ConfigureAwait(false);
@@ -157,10 +157,9 @@ public class Client : HttpClient
                 {
                     if (parameters == null)
                     {
-                        return response;
+                        throw await response.ParseErrorResponseAsync("Www-Challenge parameter is null", cancellationToken).ConfigureAwait(false);
                     }
 
-                    // consolidate the existing scopes with the challenge scopes
                     var existingScopes = ScopeManager.Instance.GetScopesForHost(host);
                     var newScopes = new SortedSet<Scope>(existingScopes);
                     if (parameters.TryGetValue("scope", out var scopesString))
@@ -169,13 +168,13 @@ public class Client : HttpClient
                         {
                             if (Scope.TryParse(scopeStr, out var scope))
                             {
-                                newScopes.Add(scope);
+                                Scope.AddOrMergeScope(newScopes, scope);
                             }
                         }
                     }
 
                     // attempt to send request when the scope changes and a token cache hits
-                    var newKey = string.Join(" ", newScopes.Select(newScope => newScope.ToString()));
+                    var newKey = string.Join(" ", newScopes.Select(newScope => newScope));
                     if (newKey != attemptedKey &&
                         Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
                     {
@@ -187,12 +186,12 @@ public class Client : HttpClient
                         }
                     }
 
-                    if (!parameters.ContainsKey("realm"))
+                    if (!parameters.TryGetValue("realm", out var realm))
                     {
                         throw new KeyNotFoundException("Realm was not present in the request.");
                     }
 
-                    if (!parameters.ContainsKey("service"))
+                    if (!parameters.TryGetValue("service", out var service))
                     {
                         throw new KeyNotFoundException("Service was not present in the request.");
                     }
@@ -200,8 +199,8 @@ public class Client : HttpClient
                     // try to fetch bearer token based on the challenge header
                     var bearerAuthToken = await FetchBearerAuth(
                         host,
-                        parameters["realm"],
-                        parameters["service"],
+                        realm,
+                        service,
                         newScopes.Select(newScope => newScope.ToString()).ToList(),
                         cancellationToken
                     ).ConfigureAwait(false);
@@ -237,7 +236,7 @@ public class Client : HttpClient
     /// </exception>
     internal async Task<string> FetchBasicAuth(string registry, CancellationToken cancellationToken)
     {
-        var credential = await Credential.Resolve(registry, cancellationToken).ConfigureAwait(false)
+        var credential = await Credential.ResolveAsync(registry, cancellationToken).ConfigureAwait(false)
             ?? throw new AuthenticationException("Credentials are missing");
 
         if (string.IsNullOrWhiteSpace(credential.Username) || string.IsNullOrWhiteSpace(credential.Password))
@@ -271,7 +270,7 @@ public class Client : HttpClient
         IList<string> scopes,
         CancellationToken cancellationToken)
     {
-        var credential = await Credential.Resolve(registry, cancellationToken).ConfigureAwait(false)
+        var credential = await Credential.ResolveAsync(registry, cancellationToken).ConfigureAwait(false)
             ?? throw new AuthenticationException("Credentials are missing");
 
         if (!string.IsNullOrEmpty(credential.AccessToken))
@@ -279,8 +278,8 @@ public class Client : HttpClient
             return credential.AccessToken;
         }
 
-        if (IsCredentialEmpty(credential) || 
-            (string.IsNullOrEmpty(credential.RefreshToken) && !ForceAttemptOAuth2))
+        if (credential.IsCredentialEmpty() || 
+            (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
         {
             return await FetchDistributionToken(
                 realm, 
@@ -447,22 +446,5 @@ public class Client : HttpClient
         }
         
         throw new AuthenticationException("AccessToken is empty or missing");
-    }
-    
-    /// <summary>
-    /// Determines whether the specified credential object is empty.
-    /// </summary>
-    /// <param name="credential">The credential object to check.</param>
-    /// <returns>
-    /// true if all properties of the credential
-    /// (Username, Password, RefreshToken, and AccessToken) are null or empty; 
-    /// otherwise, false.
-    /// </returns>
-    internal static bool IsCredentialEmpty(Credential credential)
-    {
-        return string.IsNullOrEmpty(credential.Username) && 
-               string.IsNullOrEmpty(credential.Password) && 
-               string.IsNullOrEmpty(credential.RefreshToken) && 
-               string.IsNullOrEmpty(credential.AccessToken);
     }
 }

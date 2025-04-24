@@ -159,7 +159,7 @@ public static class Challenge
         }
 
         var index = 0;
-        while (index < token.Length && !IsNotTokenChar(token[index]))
+        while (index < token.Length && IsTokenChar(token[index]))
         {
             index++;
         }
@@ -168,21 +168,21 @@ public static class Challenge
     }
     
     /// <summary>
-    /// IsNotTokenChar determines whether a character is not a valid token character defined in RFC 7230 section 3.2.6.
+    /// IsTokenChar determines whether a character is not a valid token character defined in RFC 7230 section 3.2.6.
     /// </summary>
     /// <param name="c">The character to check.</param>
     /// <returns>
     /// <c>true</c> if the character is not a valid token character; otherwise, <c>false</c>.
     /// </returns>
-    internal static bool IsNotTokenChar(char c)
+    internal static bool IsTokenChar(char c)
     {
         // Check if character is not in the valid ranges (A-Z, a-z, 0-9)
         if ((c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < '0' || c > '9'))
         {
-            // Check if the character is not one of the special characters in the list
-            string specialChars = "!#$%&'*+-.^_`|~";
-            return !specialChars.Contains(c);
+            // Check if the character is one of the special characters in the list
+            const string specialChars = "!#$%&'*+-.^_`|~";
+            return specialChars.Contains(c);
         }
-        return false;
+        return true;
     }
 }

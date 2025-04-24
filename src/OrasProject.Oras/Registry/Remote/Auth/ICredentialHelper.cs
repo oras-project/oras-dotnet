@@ -18,5 +18,5 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 
 public interface ICredentialHelper
 {
-    public Task<Credential> Resolve(string hostname, CancellationToken cancellationToken);
+    public Task<Credential> ResolveAsync(string hostname, CancellationToken cancellationToken);
 }

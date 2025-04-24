@@ -60,9 +60,9 @@ public class ScopeManager
     /// <returns></returns>
     public List<string> GetScopesStringForHost(string registry)
     {
-        return Scopes.TryGetValue(registry, out var scopes) 
+        return Scopes.TryGetValue(registry, out var scopes)
             ? scopes.Select(scope => scope.ToString()).ToList() 
-            : new ();
+            : new();
     }
 
     /// <summary>
@@ -85,7 +85,7 @@ public class ScopeManager
         var scope = new Scope(
             resourceType: "repository",
             resourceName: repository,
-            actions: new HashSet<Scope.Action>(actions));
+            actions: actions.Select(Scope.ParseAction).ToHashSet(StringComparer.OrdinalIgnoreCase));
 
         SetScopeForRegistry(registry, scope);
     }
@@ -99,34 +99,14 @@ public class ScopeManager
     /// <param name="scope">The scope to be set for the registry, including its actions.</param>
     public void SetScopeForRegistry(string registry, Scope scope)
     {
-        if (scope.Actions.Contains(Scope.Action.All))
+        if (scope.Actions.Contains("*"))
         {
             scope.Actions.Clear();
-            scope.Actions.Add(Scope.Action.All);
+            scope.Actions.Add("*");
         }
 
         Scopes.AddOrUpdate(registry,
-            new SortedSet<Scope>{ scope },
-            (_, existingScopes) =>
-            {
-                if (existingScopes.TryGetValue(scope, out var existingScope))
-                {
-                    if (existingScope.Actions.Contains(Scope.Action.All) || scope.Actions.Contains(Scope.Action.All))
-                    {
-                        existingScope.Actions.Clear();
-                        existingScope.Actions.Add(Scope.Action.All);
-                    }
-                    else
-                    {
-                        existingScope.Actions.UnionWith(scope.Actions);
-                    }
-                }
-                else
-                {
-                    existingScopes.Add(scope);
-                }
-
-                return existingScopes;
-            });
+            new SortedSet<Scope> { scope },
+            (_, existingScopes) => Scope.AddOrMergeScope(existingScopes, scope));
     }
 }
