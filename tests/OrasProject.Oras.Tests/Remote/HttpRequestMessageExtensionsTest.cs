@@ -39,13 +39,23 @@ public class HttpRequestMessageExtensionsTest
         // Arrange
         var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
         originalRequest.Headers.Add("Custom-Header", "HeaderValue");
+        originalRequest.Headers.Add("Custom-Header", "HeaderValue1");
+
+        originalRequest.Headers.Add("key", "value");
+
 
         // Act
         var clonedRequest = await originalRequest.CloneAsync();
 
         // Assert
         Assert.True(clonedRequest.Headers.Contains("Custom-Header"));
-        Assert.Equal("HeaderValue", clonedRequest.Headers.GetValues("Custom-Header").FirstOrDefault());
+        Assert.True(clonedRequest.Headers.Contains("key"));
+        var expectedValues = new List<string> { "HeaderValue", "HeaderValue1" };
+        foreach (var value in expectedValues)
+        {
+            Assert.Contains(value, clonedRequest.Headers.GetValues("Custom-Header"));
+        }
+        Assert.Equal("value", clonedRequest.Headers.GetValues("key").FirstOrDefault());
     }
 
     [Fact]
@@ -159,7 +169,7 @@ public class HttpRequestMessageExtensionsTest
     public async Task CloneAsync_ShouldHandleNullHeaders()
     {
         // Arrange
-        var originalContent = new ByteArrayContent(new byte[0]);
+        var originalContent = new ByteArrayContent(Array.Empty<byte>());
 
         // Act
         var clonedContent = await originalContent.CloneAsync();

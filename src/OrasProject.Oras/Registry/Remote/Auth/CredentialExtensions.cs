@@ -17,7 +17,7 @@ public static class CredentialExtensions
 {
     
     /// <summary>
-    /// Determines whether the specified credential object is empty.
+    /// IsEmpty determines whether the specified credential object is empty.
     /// </summary>
     /// <param name="credential">The credential object to check.</param>
     /// <returns>
@@ -25,7 +25,7 @@ public static class CredentialExtensions
     /// (Username, Password, RefreshToken, and AccessToken) are null or empty; 
     /// otherwise, false.
     /// </returns>
-    public static bool IsCredentialEmpty(this Credential credential)
+    public static bool IsEmpty(this Credential credential)
     {
         return string.IsNullOrEmpty(credential.Username) && 
                string.IsNullOrEmpty(credential.Password) && 

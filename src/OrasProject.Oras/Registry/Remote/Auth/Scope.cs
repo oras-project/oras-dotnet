@@ -113,7 +113,7 @@ public class Scope : IComparable<Scope>
     }
     
     /// <summary>
-    /// ParseAction converts an <see cref="Action"/> enumeration value to its corresponding string representation.
+    /// ActionToString converts an <see cref="Action"/> enumeration value to its corresponding string representation.
     /// </summary>
     /// <param name="action">The <see cref="Action"/> value to be converted.</param>
     /// <returns>
@@ -126,21 +126,16 @@ public class Scope : IComparable<Scope>
     /// <item><description>An empty string for any other value.</description></item>
     /// </list>
     /// </returns>
-    internal static string ParseAction(Action action)
+    internal static string ActionToString(Action action)
     {
-        switch (action)
+        return action switch
         {
-            case Action.Pull:
-                return "pull";
-            case Action.Push:
-                return "push";
-            case Action.Delete:
-                return "delete";
-            case Action.All:
-                return "*";
-            default:
-                return "";
-        }
+            Action.Pull => "pull",
+            Action.Push => "push",
+            Action.Delete => "delete",
+            Action.All => "*",
+            _ => ""
+        };
     }
     
     /// <summary>

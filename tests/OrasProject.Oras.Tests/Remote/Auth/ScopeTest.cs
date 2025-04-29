@@ -240,7 +240,7 @@ public class ScopeTest
     public void ParseAction_ValidAndInvalidActions_ReturnsExpectedString(Scope.Action action, string expected)
     {
         // Act
-        var result = Scope.ParseAction(action);
+        var result = Scope.ActionToString(action);
 
         // Assert
         Assert.Equal(expected, result);

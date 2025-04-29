@@ -105,7 +105,7 @@ public class ChallengeTest
     public void IsTokenChar_ShouldReturnExpectedResult(char input, bool expected)
     {
         // Act
-        var result = Challenge.IsTokenChar(input);
+        var result = Challenge.IsValidTokenChar(input);
 
         // Assert
         Assert.Equal(expected, result);

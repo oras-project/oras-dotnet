@@ -38,6 +38,8 @@ public static class Challenge
         /// </summary>
         Unknown,
     }
+    
+    private const string _specialChars = "!#$%&'*+-.^_`|~";
 
     /// <summary>
     /// ParseChallenge parses the "WWW-Authenticate" header returned by the remote registry
@@ -159,7 +161,7 @@ public static class Challenge
         }
 
         var index = 0;
-        while (index < token.Length && IsTokenChar(token[index]))
+        while (index < token.Length && IsValidTokenChar(token[index]))
         {
             index++;
         }
@@ -168,20 +170,19 @@ public static class Challenge
     }
     
     /// <summary>
-    /// IsTokenChar determines whether a character is not a valid token character defined in RFC 7230 section 3.2.6.
+    /// IsValidTokenChar determines whether a character is not a valid token character defined in RFC 7230 section 3.2.6.
     /// </summary>
     /// <param name="c">The character to check.</param>
     /// <returns>
     /// <c>true</c> if the character is not a valid token character; otherwise, <c>false</c>.
     /// </returns>
-    internal static bool IsTokenChar(char c)
+    internal static bool IsValidTokenChar(char c)
     {
         // Check if character is not in the valid ranges (A-Z, a-z, 0-9)
         if ((c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < '0' || c > '9'))
         {
             // Check if the character is one of the special characters in the list
-            const string specialChars = "!#$%&'*+-.^_`|~";
-            return specialChars.Contains(c);
+            return _specialChars.Contains(c);
         }
         return true;
     }
