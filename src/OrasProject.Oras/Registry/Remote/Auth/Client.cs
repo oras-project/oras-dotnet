@@ -278,7 +278,7 @@ public class Client : HttpClient
             return credential.AccessToken;
         }
 
-        if (credential.IsCredentialEmpty() || 
+        if (credential.IsEmpty() || 
             (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
         {
             return await FetchDistributionToken(

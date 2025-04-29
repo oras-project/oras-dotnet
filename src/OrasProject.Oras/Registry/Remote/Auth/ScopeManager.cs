@@ -85,7 +85,7 @@ public class ScopeManager
         var scope = new Scope(
             resourceType: "repository",
             resourceName: repository,
-            actions: actions.Select(Scope.ParseAction).ToHashSet(StringComparer.OrdinalIgnoreCase));
+            actions: actions.Select(Scope.ActionToString).ToHashSet(StringComparer.OrdinalIgnoreCase));
 
         SetScopeForRegistry(registry, scope);
     }

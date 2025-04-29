@@ -43,7 +43,7 @@ public class ClientTest
         };
 
         // Act
-        var result = credential.IsCredentialEmpty();
+        var result = credential.IsEmpty();
 
         // Assert
         Assert.True(result);
@@ -62,7 +62,7 @@ public class ClientTest
         };
 
         // Act
-        var result = credential.IsCredentialEmpty();
+        var result = credential.IsEmpty();
 
         // Assert
         Assert.False(result);
@@ -81,7 +81,7 @@ public class ClientTest
         };
 
         // Act
-        var result = credential.IsCredentialEmpty();
+        var result = credential.IsEmpty();
 
         // Assert
         Assert.False(result);
@@ -100,7 +100,7 @@ public class ClientTest
         };
 
         // Act
-        var result = credential.IsCredentialEmpty();
+        var result = credential.IsEmpty();
 
         // Assert
         Assert.False(result);
@@ -119,7 +119,7 @@ public class ClientTest
         };
 
         // Act
-        var result = credential.IsCredentialEmpty();
+        var result = credential.IsEmpty();
 
         // Assert
         Assert.False(result);
