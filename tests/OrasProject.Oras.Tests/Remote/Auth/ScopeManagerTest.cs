@@ -17,18 +17,13 @@ using Xunit;
 
 namespace OrasProject.Oras.Tests.Remote.Auth;
 
-public class ScopeManagerTest : IDisposable
+public class ScopeManagerTest
 {
-    public void Dispose()
-    {
-        ScopeManager.ResetInstance();
-    }
-    
     [Fact]
     public void SetScopeForRegistry_AddsNewScope_WhenRegistryDoesNotExist()
     {
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope = new Scope
         ("repository",
             "repo1",
@@ -48,7 +43,7 @@ public class ScopeManagerTest : IDisposable
     public void SetScopeForRegistry_MergesActions_WhenScopeAlreadyExists()
     {
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope1 = new Scope
         (
             "repository",
@@ -89,7 +84,7 @@ public class ScopeManagerTest : IDisposable
     public void SetScopeForRegistry_WithDifferentRepos()
     {
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope1 = new Scope
         (
             "repository",
@@ -138,7 +133,7 @@ public class ScopeManagerTest : IDisposable
     public void SetScopeForRegistry_MergesActions_WhenScopeExists()
     {
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope1 = new Scope("repository", "repo1", new() { "pull" });
         var scope2 = new Scope("repository", "repo1", new() { "push" });
 
@@ -172,7 +167,7 @@ public class ScopeManagerTest : IDisposable
     {
         
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope1 = new Scope("repository", "repo1", new() { "pull" });
         var scope2 = new Scope("repository", "repo1", new() { "*" });
 
@@ -192,7 +187,7 @@ public class ScopeManagerTest : IDisposable
     public void SetScopeForRegistry_DoesNotDuplicateScopes_WhenSameScopeIsAdded()
     {
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope = new Scope("repository", "repo1", new() { "pull" });
 
         // Act
@@ -212,7 +207,7 @@ public class ScopeManagerTest : IDisposable
         
 
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope1 = new Scope("repository", "repo1", new() { "pull" });
         var scope2 = new Scope("repository", "repo2", new() { "push" });
 
@@ -233,7 +228,7 @@ public class ScopeManagerTest : IDisposable
     {
         
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope =  new Scope
         (
             "repository",
@@ -258,7 +253,7 @@ public class ScopeManagerTest : IDisposable
         
 
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
 
         // Act
         var result = scopeManager.GetScopesStringForHost("empty-registry");
@@ -275,7 +270,7 @@ public class ScopeManagerTest : IDisposable
         
 
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope = new Scope("repository", "repo1", new() { "push", "pull", "delete" });
         scopeManager.SetScopeForRegistry("registry1", scope);
 
@@ -294,7 +289,7 @@ public class ScopeManagerTest : IDisposable
         
 
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope1 = new Scope
         (
             "repository",
@@ -346,7 +341,7 @@ public class ScopeManagerTest : IDisposable
         
 
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var scope = new Scope
         (
             "repository",
@@ -370,7 +365,7 @@ public class ScopeManagerTest : IDisposable
         
 
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
 
         // Act
         var result = scopeManager.GetScopesForHost("nonexistent-registry");
@@ -381,23 +376,12 @@ public class ScopeManagerTest : IDisposable
     }
 
     [Fact]
-    public void TestSameScopeManagerInstance()
-    {
-        
-
-        var instance1 = ScopeManager.Instance;
-        var instance2 = ScopeManager.Instance;
-        
-        Assert.Same(instance1, instance2);
-    }
-
-    [Fact]
     public void SetRepositoryScope_AddsScopeForValidReference()
     {
         
 
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var reference = new Reference
         (
             "registry1",
@@ -423,7 +407,7 @@ public class ScopeManagerTest : IDisposable
         
 
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var reference = new Reference
         (
             "registry1",
@@ -451,7 +435,7 @@ public class ScopeManagerTest : IDisposable
         
 
         // Arrange
-        var scopeManager = ScopeManager.Instance;
+        var scopeManager = new ScopeManager();
         var reference = new Reference
         (
             "registry1",
@@ -469,4 +453,135 @@ public class ScopeManagerTest : IDisposable
         Assert.Contains("*", scope.Actions);
         
     }
+    
+    [Fact]
+    public void SetActionsForRepository_DoesNothing_ForPlainHttpClient()
+    {
+        // Arrange
+        var httpClient = new HttpClient();
+        var reference = new Reference("registry1", "repo1");
+
+        // Act
+        var exc = Record.Exception(() =>
+            ScopeManager.SetActionsForRepository(httpClient, reference, Scope.Action.Pull));
+
+        // Assert
+        Assert.Null(exc);
+    }
+
+    [Fact]
+    public void SetActionsForRepository_AddsScope_WhenCalledOnClient()
+    {
+        // Arrange
+        var client = new Client();
+        var reference = new Reference("registry1", "repo1");
+
+        // Act
+        ScopeManager.SetActionsForRepository(client, reference, Scope.Action.Pull, Scope.Action.Push);
+
+        // Assert
+        var scopes = client.ScopeManager.GetScopesForHost("registry1");
+        Assert.Single(scopes);
+        var scope = scopes.First();
+        Assert.Equal("repository", scope.ResourceType);
+        Assert.Equal("repo1", scope.ResourceName);
+        Assert.Contains("pull", scope.Actions);
+        Assert.Contains("push", scope.Actions);
+    }
+
+    [Fact]
+    public void SetActionsForRepository_ReplacesWithAll_WhenAllActionIncluded()
+    {
+        // Arrange
+        var client = new Client();
+        var reference = new Reference("registry1", "repo1");
+
+        // Act
+        ScopeManager.SetActionsForRepository(client, reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(client, reference, Scope.Action.All);
+
+        // Assert
+        var scopes = client.ScopeManager.GetScopesForHost("registry1");
+        Assert.Single(scopes);
+        var scope = scopes.First();
+        Assert.Single(scope.Actions);
+        Assert.Contains("*", scope.Actions);
+    }
+    
+
+    [Fact]
+    public void SetScopeForRegistry_Static_DoesNothing_ForPlainHttpClient()
+    {
+        // Arrange
+        var httpClient = new HttpClient();
+        var scope = new Scope("repository", "repo1", new() { "pull" });
+
+        // Act / Assert
+        var ex = Record.Exception(() =>
+            ScopeManager.SetScopeForRegistry(httpClient, "registry1", scope));
+
+        // no exception, no scopes stored anywhere
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public void SetScopeForRegistry_Static_AddsScope_WhenCalledOnClient()
+    {
+        // Arrange
+        var client = new Client();
+        var scope = new Scope("repository", "repo1", new() { "pull", "push" });
+
+        // Act
+        ScopeManager.SetScopeForRegistry(client, "registry1", scope);
+
+        // Assert
+        var scopes = client.ScopeManager.GetScopesForHost("registry1");
+        Assert.Single(scopes);
+        var result = scopes.First();
+        Assert.Equal("repository", result.ResourceType);
+        Assert.Equal("repo1", result.ResourceName);
+        Assert.Contains("pull", result.Actions);
+        Assert.Contains("push", result.Actions);
+    }
+
+    [Fact]
+    public void SetScopeForRegistry_Static_MergesActions_WhenCalledMultipleTimes()
+    {
+        // Arrange
+        var client = new Client();
+        var s1 = new Scope("repository", "repo1", new() { "pull" });
+        var s2 = new Scope("repository", "repo1", new() { "push" });
+
+        // Act
+        ScopeManager.SetScopeForRegistry(client, "registry1", s1);
+        ScopeManager.SetScopeForRegistry(client, "registry1", s2);
+
+        // Assert
+        var scopes = client.ScopeManager.GetScopesForHost("registry1");
+        Assert.Single(scopes);
+        var merged = scopes.First();
+        Assert.Contains("pull", merged.Actions);
+        Assert.Contains("push", merged.Actions);
+    }
+
+    [Fact]
+    public void SetScopeForRegistry_Static_ReplacesWithAll_WhenAllActionIncluded()
+    {
+        // Arrange
+        var client = new Client();
+        var s1 = new Scope("repository", "repo1", new() { "pull" });
+        var s2 = new Scope("repository", "repo1", new() { "*" });
+
+        // Act
+        ScopeManager.SetScopeForRegistry(client, "registry1", s1);
+        ScopeManager.SetScopeForRegistry(client, "registry1", s2);
+
+        // Assert
+        var scopes = client.ScopeManager.GetScopesForHost("registry1");
+        Assert.Single(scopes);
+        var updated = scopes.First();
+        Assert.Single(updated.Actions);
+        Assert.Contains("*", updated.Actions);
+    }
+    
 }

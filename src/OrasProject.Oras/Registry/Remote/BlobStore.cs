@@ -43,8 +43,7 @@ public class BlobStore : IBlobStore, IMounter
     /// <exception cref="ResponseException"></exception>
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        ScopeManager.Instance.SetActionsForRepository(Repository.Options.Reference, Scope.Action.Pull);
-
+        ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -82,8 +81,7 @@ public class BlobStore : IBlobStore, IMounter
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
     {
-        ScopeManager.Instance.SetActionsForRepository(Repository.Options.Reference, Scope.Action.Pull);
-
+        ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
@@ -156,8 +154,7 @@ public class BlobStore : IBlobStore, IMounter
     {
         // pushing usually requires both pull and push actions.
         // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
-        ScopeManager.Instance.SetActionsForRepository(Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
-
+        ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
         var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
         using var requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
         using (var response = await Repository.Options.HttpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false))
@@ -182,8 +179,7 @@ public class BlobStore : IBlobStore, IMounter
     /// <returns></returns>
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
     {
-        ScopeManager.Instance.SetActionsForRepository(Repository.Options.Reference, Scope.Action.Pull);
-
+        ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
@@ -220,12 +216,12 @@ public class BlobStore : IBlobStore, IMounter
     {
         // pushing usually requires both pull and push actions.
         // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
-        ScopeManager.Instance.SetActionsForRepository(Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
+        ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
 
         // We also need pull access to the source repo.
         if (Reference.TryParse(fromRepository, out var fromReference))
         {
-            ScopeManager.Instance.SetActionsForRepository(fromReference, Scope.Action.Pull);
+            ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, fromReference, Scope.Action.Pull);
         }
 
         var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();

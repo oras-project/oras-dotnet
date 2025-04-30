@@ -13,4 +13,4 @@
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public record Credential(string? Username = null, string? Password = null, string? RefreshToken = null, string? AccessToken = null);
+public record struct Credential(string? Username = null, string? Password = null, string? RefreshToken = null, string? AccessToken = null);

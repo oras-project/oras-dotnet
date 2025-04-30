@@ -22,7 +22,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 using Xunit.Abstractions;
 using static OrasProject.Oras.Content.Digest;
@@ -32,7 +31,7 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace OrasProject.Oras.Tests.Remote;
 
-public class RepositoryTest(ITestOutputHelper iTestOutputHelper) : IDisposable
+public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 {
     public struct TestIoStruct
     {
@@ -50,12 +49,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper) : IDisposable
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
 
     private const string _headerOciFiltersApplied = "OCI-Filters-Applied";
-
-    public void Dispose()
-    {
-        ScopeManager.ResetInstance();
-    }
-
 
     // The following truth table aims to cover the expected GET/HEAD request outcome
     // for all possible permutations of the client/server "containing a digest", for

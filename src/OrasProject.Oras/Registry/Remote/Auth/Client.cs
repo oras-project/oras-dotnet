@@ -13,7 +13,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -29,10 +28,10 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 public class Client : HttpClient
 {
     /// <summary>
-    /// Credential provides the mechanism to retrieve
+    /// CredentialHelper provides the mechanism to retrieve
     /// credentials for accessing remote registries.
     /// </summary>
-    public required ICredentialHelper Credential { get; init; }
+    public ICredentialHelper? CredentialHelper { get; init; }
     
     /// <summary>
     /// Cache used for storing and retrieving 
@@ -57,19 +56,25 @@ public class Client : HttpClient
     /// defaultClientID specifies the default client ID used in OAuth2.
     /// </summary>
     private const string _defaultClientId = "oras-dotnet";
-    
-    [SetsRequiredMembers]
-    public Client(ICredentialHelper credential)
-    {
-        this.AddUserAgent();
-        Credential = credential;
-    }
 
-    [SetsRequiredMembers]
-    public Client(ICredentialHelper credential, HttpMessageHandler handler) : base(handler)
+    /// <summary>
+    /// ScopeManager is an instance to manage scopes.
+    /// </summary>
+    public ScopeManager ScopeManager { get; set; } = new();
+
+    // public Dictionary<string, List<string>> CustomHeaders = new();
+    
+    public Client(ICredentialHelper? credentialHelper = null)
     {
         this.AddUserAgent();
-        Credential = credential;
+        CredentialHelper = credentialHelper;
+    }
+    
+    public Client(HttpMessageHandler handler, ICredentialHelper? credentialHelper = null)
+        : base(handler)
+    {
+        this.AddUserAgent();
+        CredentialHelper = credentialHelper;
     }
 
     /// <summary>
@@ -92,7 +97,7 @@ public class Client : HttpClient
     public override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest,
         CancellationToken cancellationToken)
     {
-        if (originalRequest.Headers.Authorization != null)
+        if (originalRequest.Headers.Authorization != null || DefaultRequestHeaders.Authorization != null)
         {
             return await base.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
@@ -120,7 +125,7 @@ public class Client : HttpClient
                     }
                     case Challenge.Scheme.Bearer:
                     {
-                        var scopes = ScopeManager.Instance.GetScopesStringForHost(host);
+                        var scopes = ScopeManager.GetScopesStringForHost(host);
                         attemptedKey = string.Join(" ", scopes);
                         if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken))
                         {
@@ -160,7 +165,7 @@ public class Client : HttpClient
                         throw await response.ParseErrorResponseAsync("Www-Challenge parameter is null", cancellationToken).ConfigureAwait(false);
                     }
 
-                    var existingScopes = ScopeManager.Instance.GetScopesForHost(host);
+                    var existingScopes = ScopeManager.GetScopesForHost(host);
                     var newScopes = new SortedSet<Scope>(existingScopes);
                     if (parameters.TryGetValue("scope", out var scopesString))
                     {
@@ -236,9 +241,12 @@ public class Client : HttpClient
     /// </exception>
     internal async Task<string> FetchBasicAuth(string registry, CancellationToken cancellationToken)
     {
-        var credential = await Credential.ResolveAsync(registry, cancellationToken).ConfigureAwait(false)
-            ?? throw new AuthenticationException("Credentials are missing");
+        if (CredentialHelper == null)
+        {
+            throw new AuthenticationException("CredentialHelper is not configured");
+        }
 
+        var credential = await CredentialHelper.ResolveAsync(registry, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(credential.Username) || string.IsNullOrWhiteSpace(credential.Password))
         {
             throw new AuthenticationException("Missing username or password for basic authentication.");
@@ -270,9 +278,10 @@ public class Client : HttpClient
         IList<string> scopes,
         CancellationToken cancellationToken)
     {
-        var credential = await Credential.ResolveAsync(registry, cancellationToken).ConfigureAwait(false)
-            ?? throw new AuthenticationException("Credentials are missing");
-
+        var credential = await (CredentialHelper?.ResolveAsync(registry, cancellationToken)
+                                ?? Task.FromResult<Credential>(new Credential()))
+            .ConfigureAwait(false);
+        
         if (!string.IsNullOrEmpty(credential.AccessToken))
         {
             return credential.AccessToken;

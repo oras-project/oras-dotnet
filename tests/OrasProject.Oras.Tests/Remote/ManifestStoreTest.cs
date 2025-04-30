@@ -18,7 +18,6 @@ using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
-using OrasProject.Oras.Registry.Remote.Auth;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Content.Digest;
@@ -28,14 +27,9 @@ using Xunit;
 
 namespace OrasProject.Oras.Tests.Remote;
 
-public class ManifestStoreTest : IDisposable
+public class ManifestStoreTest
 {
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
-
-    public void Dispose()
-    {
-        ScopeManager.ResetInstance();
-    }
     
     [Fact]
     public async Task ManifestStore_PullReferrersIndexListSuccessfully()
@@ -679,7 +673,7 @@ public class ManifestStoreTest : IDisposable
             Size = manifestBytes.Length
         };
         var manifestDeleted = false;
-        HttpResponseMessage httpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage HttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
             var res = new HttpResponseMessage
             {
@@ -701,7 +695,7 @@ public class ManifestStoreTest : IDisposable
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(httpHandler),
+            HttpClient = CustomClient(HttpHandler),
             PlainHttp = true,
         });
 
@@ -725,7 +719,7 @@ public class ManifestStoreTest : IDisposable
             Size = manifestBytes.Length
         };
         var manifestDeleted = false;
-        HttpResponseMessage httpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage HttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
             var res = new HttpResponseMessage
             {
@@ -758,7 +752,7 @@ public class ManifestStoreTest : IDisposable
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(httpHandler),
+            HttpClient = CustomClient(HttpHandler),
             PlainHttp = true,
         });
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
@@ -862,7 +856,7 @@ public class ManifestStoreTest : IDisposable
         Assert.NotNull(manifestToDelete.Subject);
         var referrersTag = Referrers.BuildReferrersTag(manifestToDelete.Subject);
         byte[]? receivedIndexContent = null;
-        async Task<HttpResponseMessage> httpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> HttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
             var response = new HttpResponseMessage
             {
@@ -994,7 +988,7 @@ public class ManifestStoreTest : IDisposable
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(httpHandler),
+            HttpClient = CustomClient(HttpHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();

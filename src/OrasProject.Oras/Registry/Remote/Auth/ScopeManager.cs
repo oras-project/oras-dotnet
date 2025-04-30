@@ -15,31 +15,17 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 public class ScopeManager
 {
-    private static Lazy<ScopeManager> _instance = new(() => new ScopeManager());
-
-    /// <summary>
-    /// A thread-safe, lazily initialized singleton instance of the <see cref="ScopeManager"/> class.
-    /// </summary>
-    public static ScopeManager Instance => _instance.Value;
-    
     /// <summary>
     /// A thread-safe dictionary that maps a string key to a sorted set of <see cref="Scope"/> objects.
     /// This is used to manage and organize scopes in a concurrent environment.
     /// </summary>
     private ConcurrentDictionary<string, SortedSet<Scope>> Scopes { get; } = new ();
-    
-    /// <summary>
-    /// ResetInstance resets the _instance for testing purpose
-    /// </summary>
-    internal static void ResetInstance()
-    {
-        _instance = new Lazy<ScopeManager>(() => new ScopeManager());
-    }
     
     /// <summary>
     /// GetScopesForHost returns a sorted set of scopes for the given registry if found,
@@ -66,6 +52,20 @@ public class ScopeManager
     }
 
     /// <summary>
+    /// SetActionsForRepository sets actions for the given repository if the httpClient is auth.Client.
+    /// </summary>
+    /// <param name="httpClient"></param>
+    /// <param name="reference"></param>
+    /// <param name="actions"></param>
+    public static void SetActionsForRepository(HttpClient httpClient, Reference reference, params Scope.Action[] actions)
+    {
+        if (httpClient is Client authClient)
+        {
+            authClient.ScopeManager.SetActionsForRepository(reference, actions);
+        }
+    }
+
+    /// <summary>
     /// SetActionsForRepository sets the actions for a repository by creating a scope and associating it with the specified registry.
     /// </summary>
     /// <param name="reference">
@@ -88,6 +88,20 @@ public class ScopeManager
             actions: actions.Select(Scope.ActionToString).ToHashSet(StringComparer.OrdinalIgnoreCase));
 
         SetScopeForRegistry(registry, scope);
+    }
+    
+    /// <summary>
+    /// SetScopeForRegistry sets scope for the given registry when the httpclient is auth.Client.
+    /// </summary>
+    /// <param name="httpClient"></param>
+    /// <param name="registry"></param>
+    /// <param name="scope"></param>
+    public static void SetScopeForRegistry(HttpClient httpClient, string registry, Scope scope)
+    {
+        if (httpClient is Client authClient)
+        {
+            authClient.ScopeManager.SetScopeForRegistry(registry, scope);
+        }
     }
 
     /// <summary>

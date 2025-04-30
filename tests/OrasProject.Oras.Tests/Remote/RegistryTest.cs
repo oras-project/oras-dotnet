@@ -18,19 +18,12 @@ using OrasProject.Oras.Registry.Remote;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 
 namespace OrasProject.Oras.Tests.Remote;
 
-public partial class RegistryTest : IDisposable
+public partial class RegistryTest
 {
-    public void Dispose()
-    {
-        ScopeManager.ResetInstance();
-    }
-    
-
     [GeneratedRegex(@"(?<=n=)\d+")]
     private static partial Regex NQueryParam();
 
@@ -69,7 +62,7 @@ public partial class RegistryTest : IDisposable
     {
         var V2Implemented = true;
 
-        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage Func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
             var res = new HttpResponseMessage
             {
@@ -97,7 +90,7 @@ public partial class RegistryTest : IDisposable
         {
             Reference = new Reference("localhost:5000"),
             PlainHttp = true,
-            HttpClient = CustomClient(func),
+            HttpClient = CustomClient(Func),
         });
         var cancellationToken = new CancellationToken();
         await registry.PingAsync(cancellationToken);
@@ -120,7 +113,7 @@ public partial class RegistryTest : IDisposable
             new() {"jumps", "over", "the", "lazy"},
             new() {"dog"}
         };
-        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage Func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
             var res = new HttpResponseMessage
             {
@@ -175,7 +168,7 @@ public partial class RegistryTest : IDisposable
         {
             Reference = new Reference("localhost:5000"),
             PlainHttp = true,
-            HttpClient = CustomClient(func),
+            HttpClient = CustomClient(Func),
             TagListPageSize = 4,
         });
         var cancellationToken = new CancellationToken();

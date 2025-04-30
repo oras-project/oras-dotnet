@@ -226,7 +226,7 @@ public class Repository : IRepository
     /// <returns></returns>
     public async IAsyncEnumerable<string> ListTagsAsync(string? last = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        ScopeManager.Instance.SetActionsForRepository(Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(Options.HttpClient, Options.Reference, Scope.Action.Pull);
         var url = new UriFactory(_opts).BuildRepositoryTagList();
         do
         {
@@ -291,7 +291,7 @@ public class Repository : IRepository
     /// <exception cref="NotFoundException"></exception>
     internal async Task DeleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken)
     {
-        ScopeManager.Instance.SetActionsForRepository(Options.Reference, Scope.Action.Delete);
+        ScopeManager.SetActionsForRepository(Options.HttpClient, Options.Reference, Scope.Action.Delete);
         var remoteReference = ParseReferenceFromDigest(target.Digest);
         var uriFactory = new UriFactory(remoteReference, _opts.PlainHttp);
         var url = isManifest ? uriFactory.BuildRepositoryManifest() : uriFactory.BuildRepositoryBlob();
@@ -485,7 +485,7 @@ public class Repository : IRepository
     internal async IAsyncEnumerable<Descriptor> FetchReferrersByApi(Descriptor descriptor, string? artifactType,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        ScopeManager.Instance.SetActionsForRepository(Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(Options.HttpClient, Options.Reference, Scope.Action.Pull);
         var reference = new Reference(Options.Reference)
         {
             ContentReference = descriptor.Digest
@@ -624,7 +624,7 @@ public class Repository : IRepository
     {
         try
         {
-            ScopeManager.Instance.SetActionsForRepository(Options.Reference, Scope.Action.Pull);
+            ScopeManager.SetActionsForRepository(Options.HttpClient, Options.Reference, Scope.Action.Pull);
             var result = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
             LimitSize(result.Descriptor, Options.MaxMetadataBytes);
             using var stream = result.Stream;
@@ -670,7 +670,7 @@ public class Repository : IRepository
             // referrers state is unknown
             // lock to limit the rate of pinging referrers API
 
-            ScopeManager.Instance.SetActionsForRepository(Options.Reference, Scope.Action.Pull);
+            ScopeManager.SetActionsForRepository(Options.HttpClient, Options.Reference, Scope.Action.Pull);
             var reference = new Reference(Options.Reference)
             {
                 ContentReference = Referrers.ZeroDigest
