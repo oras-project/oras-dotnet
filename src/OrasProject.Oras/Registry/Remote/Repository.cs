@@ -15,6 +15,7 @@ using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -25,6 +26,8 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using OrasProject.Oras.Content;
+using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
 
@@ -47,6 +50,48 @@ public class Repository : IRepository
 
     public RepositoryOptions Options => _opts;
 
+    private int _referrersState = (int)Referrers.ReferrersState.Unknown;
+
+    /// <summary>
+    ///  _filterTypeArtifactType is the "artifactType" filter applied on the list of referrers.
+    ///
+    /// References:
+    ///   - Latest spec: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
+    /// </summary>
+    private const string _filterTypeArtifactType = "artifactType";
+
+    /// <summary>
+    /// ReferrersState indicates the Referrers API state of the remote repository.
+    /// ReferrersState can be set only once, otherwise it throws ReferrersStateAlreadySetException.
+    /// </summary>
+    internal Referrers.ReferrersState ReferrersState
+    {
+        get => (Referrers.ReferrersState)_referrersState;
+        set
+        {
+            var originalReferrersState = (Referrers.ReferrersState)Interlocked.CompareExchange(ref _referrersState, (int)value, (int)Referrers.ReferrersState.Unknown);
+            if (originalReferrersState != Referrers.ReferrersState.Unknown && _referrersState != (int)value)
+            {
+                throw new ReferrersStateAlreadySetException($"current referrers state: {ReferrersState}, latest referrers state: {value}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// ReferrerListPageSize specifies the page size when invoking the Referrers API.
+    /// If zero, the page size is determined by the remote registry.
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
+    /// </summary>
+    public int ReferrerListPageSize;
+
+    /// <summary>
+    /// _headerOciFiltersApplied is the "OCI-Filters-Applied" header.
+    /// If present on the response, it contains a comma-separated list of the applied filters.
+    /// Reference:
+    ///   - https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
+    /// </summary>
+    private const string _headerOciFiltersApplied = "OCI-Filters-Applied";
+
     internal static readonly string[] DefaultManifestMediaTypes =
     [
         Docker.MediaType.Manifest,
@@ -56,6 +101,8 @@ public class Repository : IRepository
     ];
 
     private RepositoryOptions _opts;
+
+    private readonly SemaphoreSlim _referrersPingSemaphore = new(1, 1);
 
     /// <summary>
     /// Creates a client to the remote repository identified by a reference
@@ -279,7 +326,7 @@ public class Repository : IRepository
         }
         else
         {
-            var index = reference.IndexOf("@");
+            var index = reference.IndexOf('@');
             if (index != -1)
             {
                 // `@` implies *digest*, so drop the *tag* (irrespective of what it is).
@@ -303,15 +350,6 @@ public class Repository : IRepository
         var reference = new Reference(_opts.Reference.Registry, _opts.Reference.Repository, digest);
         _ = reference.Digest;
         return reference;
-    }
-
-    internal Reference ParseReferenceFromContentReference(string reference)
-    {
-        if (string.IsNullOrEmpty(reference))
-        {
-            throw new InvalidReferenceException("Empty content reference");
-        }
-        return new Reference(_opts.Reference.Registry, _opts.Reference.Repository, reference);
     }
 
     /// <summary>
@@ -347,6 +385,347 @@ public class Repository : IRepository
     /// <param name="getContent"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent = null, CancellationToken cancellationToken = default) 
+    public async Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent = null, CancellationToken cancellationToken = default)
         => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
+
+
+    /// <summary>
+    /// FetchReferrersAsync retrieves referrers for the given descriptor
+    /// and return a streaming of descriptors asynchronously for consumption.
+    /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
+    /// If the referrers are supported via an API, the state is updated accordingly.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async IAsyncEnumerable<Descriptor> FetchReferrersAsync(Descriptor descriptor,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var referrer in FetchReferrersAsync(descriptor, null, cancellationToken).ConfigureAwait(false))
+        {
+            yield return referrer;
+        }
+    }
+
+    /// <summary>
+    /// FetchReferrersAsync retrieves referrers for the given descriptor and artifact type
+    /// and return a streaming of descriptors asynchronously for consumption.
+    /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
+    /// If the referrers are supported via an API, the state is updated accordingly.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="artifactType"></param>
+    /// <param name="cancellationToken"></param>
+    public async IAsyncEnumerable<Descriptor> FetchReferrersAsync(Descriptor descriptor, string? artifactType,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (ReferrersState == Referrers.ReferrersState.NotSupported)
+        {
+            // fall back to tag schema to retrieve referrers
+            await foreach (var referrer in FetchReferrersByTagSchema(descriptor, artifactType, cancellationToken)
+                               .ConfigureAwait(false))
+            {
+                yield return referrer;
+            }
+
+            yield break;
+        }
+
+        // referrers state is unknown or supported
+        await foreach (var referrer in FetchReferrersByApi(descriptor, artifactType, cancellationToken)
+                           .ConfigureAwait(false))
+        {
+            // If Referrers API is supported, then it would return referrers continuously
+            // otherwise, this line of code is not executed
+            // and the ReferrerState would be set to false in the method ReferrersByApi.
+            yield return referrer;
+        }
+
+        if (ReferrersState == Referrers.ReferrersState.NotSupported)
+        {
+            // referrers state is set to NotSupported by ReferrersByApi, fall back to tag schema to retrieve referrers
+            await foreach (var referrer in FetchReferrersByTagSchema(descriptor, artifactType, cancellationToken)
+                               .ConfigureAwait(false))
+            {
+                yield return referrer;
+            }
+        }
+    }
+
+    /// <summary>
+    /// ReferrersByApi retrieves a collection of referrers asynchronously based on the given descriptor.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    internal async IAsyncEnumerable<Descriptor> FetchReferrersByApi(Descriptor descriptor,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var referrer in FetchReferrersByApi(descriptor, null, cancellationToken)
+                               .ConfigureAwait(false))
+        {
+            yield return referrer;
+        }
+    }
+
+    /// <summary>
+    /// ReferrersByApi retrieves a collection of referrers asynchronously based on the given descriptor and artifact type.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="artifactType"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="NotSupportedException"></exception>
+    /// <exception cref="InvalidResponseException"></exception>
+    internal async IAsyncEnumerable<Descriptor> FetchReferrersByApi(Descriptor descriptor, string? artifactType,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var reference = new Reference(Options.Reference)
+        {
+            ContentReference = descriptor.Digest
+        };
+        var nextPageUrl = string.IsNullOrEmpty(artifactType) ?
+            new UriFactory(reference).BuildReferrersUrl() :
+            new UriFactory(reference).BuildReferrersUrl(artifactType);
+
+        while (nextPageUrl != null)
+        {
+            // If ReferrerListPageSize is greater than 0, modify the URL to include the page size query parameter
+            if (ReferrerListPageSize > 0)
+            {
+                var uriBuilder = new UriBuilder(nextPageUrl);
+                var query = HttpUtility.ParseQueryString(uriBuilder.Query);
+                query.Add("n", ReferrerListPageSize.ToString());
+                uriBuilder.Query = query.ToString();
+                nextPageUrl = uriBuilder.Uri;
+            }
+
+            using var response = await _opts.HttpClient.GetAsync(nextPageUrl, cancellationToken).ConfigureAwait(false);
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    // If the status code is OK, continue processing the response
+                    break;
+                case HttpStatusCode.NotFound:
+                    // If the status code is NotFound, handle as an error, possibly a non-existent repository
+                    var exception = await response.ParseErrorResponseAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    if (exception.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
+                    {
+                        // Repository is not found, Referrers API status is unknown
+                        // Propagate the exception to the caller
+                        throw exception;
+                    }
+
+                    // Set ReferrerState to false and return earlier
+                    SetReferrersState(false);
+                    yield break;
+                default:
+                    // For any other status code, parse and throw the error response
+                    throw await response.ParseErrorResponseAsync(cancellationToken)
+                        .ConfigureAwait(false);
+            }
+
+            var mediaType = response.Content.Headers.ContentType?.MediaType;
+            if (mediaType != MediaType.ImageIndex)
+            {
+                // Referrers API is not properly supported, set it to false and return early
+                SetReferrersState(false);
+                yield break;
+            }
+
+            using var content = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            var referrersIndex = JsonSerializer.Deserialize<Index>(content) ??
+                                     throw new InvalidResponseException(
+                                         $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");
+
+            // Set ReferrerState to Supported
+            SetReferrersState(true);
+
+            var referrers = referrersIndex.Manifests;
+            // If artifactType is specified, apply any filters based on the artifact type
+            if (!string.IsNullOrEmpty(artifactType))
+            {
+                if (!response.Headers.TryGetValues(_headerOciFiltersApplied, out var values)
+                    || !Referrers.IsReferrersFilterApplied(values.FirstOrDefault(string.Empty), _filterTypeArtifactType))
+                {
+                    // Filter the referrers based on the artifact type if necessary
+                    referrers = Referrers.FilterReferrers(referrers, artifactType);
+                }
+            }
+
+            foreach (var referrer in referrers)
+            {
+                // return referrer if any
+                yield return referrer;
+            }
+
+            // update nextPageUrl
+            nextPageUrl = response.ParseLink();
+        }
+    }
+
+    /// <summary>
+    /// FetchReferrersByTagSchema retrieves referrers based on referrers tag schema,
+    /// and return a collection of referrers asynchronously when referrers API is not supported.
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#backwards-compatibility
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    internal async IAsyncEnumerable<Descriptor> FetchReferrersByTagSchema(Descriptor descriptor,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var referrer in FetchReferrersByTagSchema(descriptor, null, cancellationToken)
+                               .ConfigureAwait(false))
+        {
+            yield return referrer;
+        }
+    }
+
+    /// <summary>
+    /// FetchReferrersByTagSchema retrieves referrers based on referrers tag schema, filters out referrers based on specified artifact type
+    /// and return a collection of referrers asynchronously when referrers API is not supported.
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#backwards-compatibility
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="artifactType"></param>
+    /// <param name="cancellationToken"></param>
+    internal async IAsyncEnumerable<Descriptor> FetchReferrersByTagSchema(Descriptor descriptor, string? artifactType,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var referrersTag = Referrers.BuildReferrersTag(descriptor);
+        var (_, referrers) = await PullReferrersIndexList(referrersTag, cancellationToken).ConfigureAwait(false);
+        var filteredReferrers = Referrers.FilterReferrers(referrers, artifactType);
+        foreach (var referrer in filteredReferrers)
+        {
+            yield return referrer;
+        }
+    }
+
+    /// <summary>
+    /// PullReferrersIndexList retrieves the referrers index list associated with the given referrers tag.
+    /// It fetches the index manifest from the repository, deserializes it into an `Index` object, 
+    /// and returns the descriptor along with the list of manifests (referrers). If the referrers index is not found, 
+    /// an empty descriptor and an empty list are returned.
+    /// </summary>
+    /// <param name="referrersTag"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    internal async Task<(Descriptor?, IList<Descriptor>)> PullReferrersIndexList(String referrersTag,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
+            LimitSize(result.Descriptor, Options.MaxMetadataBytes);
+            using var stream = result.Stream;
+            var indexBytes = await stream.ReadAllAsync(result.Descriptor, cancellationToken).ConfigureAwait(false);
+            var index = JsonSerializer.Deserialize<Index>(indexBytes) ?? throw new JsonException(
+                $"error when deserialize index manifest for referrersTag {referrersTag}");
+            return (result.Descriptor, index.Manifests);
+        }
+        catch (NotFoundException)
+        {
+            return (null, ImmutableArray<Descriptor>.Empty);
+        }
+    }
+
+    /// <summary>
+    /// PingReferrersAsync returns true if the Referrers API is available for the repository,
+    /// otherwise returns false
+    /// </summary>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="ResponseException"></exception>
+    /// <exception cref="Exception"></exception>
+    internal async Task<bool> PingReferrersAsync(CancellationToken cancellationToken = default)
+    {
+        switch (ReferrersState)
+        {
+            case Referrers.ReferrersState.Supported:
+                return true;
+            case Referrers.ReferrersState.NotSupported:
+                return false;
+        }
+
+        await _referrersPingSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            switch (ReferrersState)
+            {
+                case Referrers.ReferrersState.Supported:
+                    return true;
+                case Referrers.ReferrersState.NotSupported:
+                    return false;
+            }
+            // referrers state is unknown
+            // lock to limit the rate of pinging referrers API
+
+            var reference = new Reference(Options.Reference)
+            {
+                ContentReference = Referrers.ZeroDigest
+            };
+            var url = new UriFactory(reference, Options.PlainHttp).BuildReferrersUrl();
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var response = await Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    var supported = response.Content.Headers.ContentType?.MediaType == MediaType.ImageIndex;
+                    SetReferrersState(supported);
+                    return supported;
+                case HttpStatusCode.NotFound:
+                    var err = await response.ParseErrorResponseAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    if (err.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
+                    {
+                        // referrer state is unknown because the repository is not found
+                        throw err;
+                    }
+
+                    SetReferrersState(false);
+                    return false;
+                default:
+                    throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _referrersPingSemaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// SetReferrersState indicates the Referrers API state of the remote repository. true: supported; false: not supported.
+    /// SetReferrersState is valid only when it is called for the first time.
+    /// SetReferrersState returns ReferrersStateAlreadySetException if the Referrers API state has been already set.
+    ///   - When the state is set to true, the relevant functions will always
+    ///     request the Referrers API. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
+    ///   - When the state is set to false, the relevant functions will always
+    ///     request the Referrers Tag. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#referrers-tag-schema
+    ///   - When the state is not set, the relevant functions will automatically
+    ///     determine which API to use.
+    /// </summary>
+    /// <param name="isSupported"></param>
+    public void SetReferrersState(bool isSupported)
+    {
+        ReferrersState = isSupported ? Referrers.ReferrersState.Supported : Referrers.ReferrersState.NotSupported;
+    }
+
+
+    /// <summary>
+    /// LimitSize throws SizeLimitExceededException if the size of desc exceeds the limit limitSize.
+    /// </summary>
+    /// <param name="desc"></param>
+    /// <param name="limitSize"></param>
+    /// <exception cref="SizeLimitExceededException"></exception>
+    internal static void LimitSize(Descriptor desc, long limitSize)
+    {
+        if (desc.Size > limitSize)
+        {
+            throw new SizeLimitExceededException($"content size {desc.Size} exceeds MaxMetadataBytes {limitSize}");
+        }
+    }
 }

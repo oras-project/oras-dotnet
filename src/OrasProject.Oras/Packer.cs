@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras;
 
-public static class Packer 
+public static class Packer
 {
     /// <summary>
     /// ErrInvalidDateTimeFormat is returned
@@ -108,9 +108,9 @@ public static class Packer
         switch (version)
         {
             case ManifestVersion.Version1_0:
-                return await PackManifestV1_0Async(pusher, artifactType, options, cancellationToken);
+                return await PackManifestV1_0Async(pusher, artifactType, options, cancellationToken).ConfigureAwait(false);
             case ManifestVersion.Version1_1:
-                return await PackManifestV1_1Async(pusher, artifactType, options, cancellationToken);
+                return await PackManifestV1_1Async(pusher, artifactType, options, cancellationToken).ConfigureAwait(false);
             default:
                 throw new NotSupportedException($"ManifestVersion({version}) is not supported");
         }
@@ -146,7 +146,7 @@ public static class Packer
                 artifactType = MediaTypeUnknownConfig;
             }
             ValidateMediaType(artifactType);
-            configDescriptor = await PushCustomEmptyConfigAsync(pusher, artifactType, options.ConfigAnnotations, cancellationToken);
+            configDescriptor = await PushCustomEmptyConfigAsync(pusher, artifactType, options.ConfigAnnotations, cancellationToken).ConfigureAwait(false);
         }
 
         var annotations = EnsureAnnotationCreated(options.ManifestAnnotations, "org.opencontainers.image.created");
@@ -159,7 +159,7 @@ public static class Packer
             Annotations = annotations
         };
 
-        return await PushManifestAsync(pusher, manifest, manifest.MediaType, manifest.Config.MediaType, manifest.Annotations, cancellationToken);
+        return await PushManifestAsync(pusher, manifest, manifest.MediaType, manifest.Config.MediaType, manifest.Annotations, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -176,7 +176,9 @@ public static class Packer
         if (string.IsNullOrEmpty(artifactType) && (options.Config == null || options.Config.MediaType == MediaType.EmptyJson))
         {
             throw new MissingArtifactTypeException(_errMissingArtifactType);
-        } else if (!string.IsNullOrEmpty(artifactType)) {
+        }
+        else if (!string.IsNullOrEmpty(artifactType))
+        {
             ValidateMediaType(artifactType);
         }
 
@@ -192,7 +194,7 @@ public static class Packer
             configDescriptor = Descriptor.Empty;
             options.Config = configDescriptor;
             var configBytes = new byte[] { 0x7B, 0x7D };
-            await PushIfNotExistAsync(pusher, configDescriptor, configBytes, cancellationToken);
+            await PushIfNotExistAsync(pusher, configDescriptor, configBytes, cancellationToken).ConfigureAwait(false);
         }
 
         if (options.Layers == null || options.Layers.Count == 0)
@@ -215,7 +217,7 @@ public static class Packer
             Annotations = annotations
         };
 
-        return await PushManifestAsync(pusher, manifest, manifest.MediaType, manifest.ArtifactType, manifest.Annotations, cancellationToken);
+        return await PushManifestAsync(pusher, manifest, manifest.MediaType, manifest.ArtifactType, manifest.Annotations, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -235,7 +237,7 @@ public static class Packer
         manifestDesc.ArtifactType = artifactType;
         manifestDesc.Annotations = annotations;
 
-        await pusher.PushAsync(manifestDesc, new MemoryStream(manifestJson), cancellationToken);
+        await pusher.PushAsync(manifestDesc, new MemoryStream(manifestJson), cancellationToken).ConfigureAwait(false);
         return manifestDesc;
     }
 
@@ -266,7 +268,7 @@ public static class Packer
         var configDescriptor = Descriptor.Create(configBytes, mediaType);
         configDescriptor.Annotations = annotations;
 
-        await PushIfNotExistAsync(pusher, configDescriptor, configBytes, cancellationToken);
+        await PushIfNotExistAsync(pusher, configDescriptor, configBytes, cancellationToken).ConfigureAwait(false);
         return configDescriptor;
     }
 
@@ -280,7 +282,7 @@ public static class Packer
     /// <returns></returns>
     private static async Task PushIfNotExistAsync(IPushable pusher, Descriptor descriptor, byte[] data, CancellationToken cancellationToken = default)
     {
-        await pusher.PushAsync(descriptor, new MemoryStream(data), cancellationToken);
+        await pusher.PushAsync(descriptor, new MemoryStream(data), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

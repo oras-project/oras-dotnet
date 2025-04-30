@@ -11,6 +11,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace OrasProject.Oras.Oci;
+using System;
 
-internal record BasicDescriptor(string MediaType, string Digest, long Size);
+namespace OrasProject.Oras.Exceptions;
+
+/// <summary>
+/// InvalidResponseException is thrown when the response is invalid.
+/// </summary>
+public class InvalidResponseException : FormatException
+{
+    public InvalidResponseException()
+    {
+    }
+
+    public InvalidResponseException(string? message)
+        : base(message)
+    {
+    }
+
+    public InvalidResponseException(string? message, Exception? inner)
+        : base(message, inner)
+    {
+    }
+}

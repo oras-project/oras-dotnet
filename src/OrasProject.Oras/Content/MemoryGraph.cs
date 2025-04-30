@@ -12,7 +12,6 @@
 // limitations under the License.
 
 using OrasProject.Oras.Oci;
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
@@ -36,7 +35,7 @@ internal class MemoryGraph : IPredecessorFindable
         {
             return Task.FromResult<IEnumerable<Descriptor>>(predecessors.Values);
         }
-        return Task.FromResult<IEnumerable<Descriptor>>(Array.Empty<Descriptor>());
+        return Task.FromResult<IEnumerable<Descriptor>>([]);
     }
 
     internal async Task IndexAsync(IFetchable fetcher, Descriptor node, CancellationToken cancellationToken)

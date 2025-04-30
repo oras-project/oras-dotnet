@@ -32,7 +32,7 @@ internal static class HttpResponseMessageExtensions
     /// </summary>
     /// <param name="response"></param>
     /// <returns></returns>
-    public static async Task<Exception> ParseErrorResponseAsync(this HttpResponseMessage response, CancellationToken cancellationToken)
+    public static async Task<ResponseException> ParseErrorResponseAsync(this HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return new ResponseException(response, body);
@@ -40,6 +40,7 @@ internal static class HttpResponseMessageExtensions
 
     /// <summary>
     /// Returns the URL of the response's "Link" header, if present.
+    ///  The link header is of the form <link>; rel="next"
     /// </summary>
     /// <returns>next link or null if not present</returns>
     public static Uri? ParseLink(this HttpResponseMessage response)
@@ -50,15 +51,19 @@ internal static class HttpResponseMessageExtensions
         }
 
         var link = values.FirstOrDefault();
-        if (string.IsNullOrEmpty(link) || link[0] != '<')
+        if (string.IsNullOrEmpty(link) || !link.StartsWith('<'))
         {
             throw new HttpIOException(HttpRequestError.InvalidResponse, $"invalid next link {link}: missing '<");
         }
+
         if (link.IndexOf('>') is var index && index == -1)
         {
             throw new HttpIOException(HttpRequestError.InvalidResponse, $"invalid next link {link}: missing '>'");
         }
+
+        // Remove the first and last character
         link = link[1..index];
+
         if (!Uri.IsWellFormedUriString(link, UriKind.RelativeOrAbsolute))
         {
             throw new HttpIOException(HttpRequestError.InvalidResponse, $"invalid next link {link}");
@@ -77,29 +82,53 @@ internal static class HttpResponseMessageExtensions
     /// <exception cref="NotImplementedException"></exception>
     public static void VerifyContentDigest(this HttpResponseMessage response, string expected)
     {
-        if (!response.Headers.TryGetValues(_dockerContentDigestHeader, out var digestValues))
+        if (!response.Headers.TryGetValues(_dockerContentDigestHeader, out var digestHeader))
         {
             return;
         }
-        var digestStr = digestValues.FirstOrDefault();
-        if (string.IsNullOrEmpty(digestStr))
+        var digestValue = digestHeader.FirstOrDefault();
+        if (string.IsNullOrEmpty(digestValue))
         {
             return;
         }
 
-        string contentDigest;
+        string digest;
         try
         {
-            contentDigest = Digest.Validate(digestStr);
+            digest = Digest.Validate(digestValue);
         }
         catch (Exception)
         {
-            throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response header: `Docker-Content-Digest: {digestStr}`");
+            throw new HttpIOException(
+                HttpRequestError.InvalidResponse,
+                $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response header: `Docker-Content-Digest: {digestValue}`");
         }
-        if (contentDigest != expected)
+        if (digest != expected)
         {
-            throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {contentDigest} when expecting {digestStr}");
+            throw new HttpIOException(
+                HttpRequestError.InvalidResponse,
+                $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: invalid response; digest mismatch in Docker-Content-Digest: received {digest} when expecting {expected}");
         }
+    }
+
+    /// <summary>
+    /// CheckOciSubjectHeader checks if the response header contains "OCI-Subject",
+    /// repository ReferrerState is set to supported if it is present
+    /// </summary>
+    /// <param name="response"></param>
+    /// <param name="repository"></param>
+    internal static void CheckOciSubjectHeader(this HttpResponseMessage response, Repository repository)
+    {
+        if (repository.ReferrersState == Referrers.ReferrersState.Unknown && response.Headers.Contains("OCI-Subject"))
+        {
+            // Set it to Supported when the response header contains OCI-Subject
+            repository.SetReferrersState(true);
+        }
+
+        // If the "OCI-Subject" header is NOT set, it means that either the manifest
+        // has no subject OR the referrers API is NOT supported by the registry.
+        // Since we don't know whether the pushed manifest has a subject or not,
+        // we do not set the ReferrerState to NotSupported here.
     }
 
     /// <summary>
@@ -116,7 +145,10 @@ internal static class HttpResponseMessageExtensions
         {
             mediaType = MediaTypeNames.Application.Octet;
         }
-        var size = response.Content.Headers.ContentLength ?? throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: unknown response Content-Length");
+        var size = response.Content.Headers.ContentLength ??
+            throw new HttpIOException(
+                HttpRequestError.InvalidResponse,
+                $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: unknown response Content-Length");
         response.VerifyContentDigest(expectedDigest);
         return new Descriptor
         {
@@ -220,6 +252,6 @@ internal static class HttpResponseMessageExtensions
     private static async Task<string> CalculateDigestFromResponse(this HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-        return Digest.ComputeSHA256(bytes);
+        return Digest.ComputeSha256(bytes);
     }
 }

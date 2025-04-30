@@ -15,15 +15,17 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace OrasProject.Oras.Registry.Remote;
 
 public class ResponseException : HttpRequestException
 {
+    public enum ErrorCode
+    {
+        NAME_UNKNOWN
+    }
     public class Error
     {
         [JsonPropertyName("code")]
@@ -37,7 +39,7 @@ public class ResponseException : HttpRequestException
         public JsonElement? Detail { get; set; }
     }
 
-    public class ErrorResponse
+    private class ErrorResponse
     {
         [JsonPropertyName("errors")]
         public required IList<Error> Errors { get; set; }

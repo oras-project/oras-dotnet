@@ -11,6 +11,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace OrasProject.Oras.Oci;
+using System;
 
-internal record BasicDescriptor(string MediaType, string Digest, long Size);
+namespace OrasProject.Oras.Exceptions;
+
+public class ReferrersStateAlreadySetException : Exception
+{
+    public ReferrersStateAlreadySetException()
+    {
+    }
+
+    public ReferrersStateAlreadySetException(string? message)
+        : base(message)
+    {
+    }
+
+    public ReferrersStateAlreadySetException(string? message, Exception? inner)
+        : base(message, inner)
+    {
+    }
+}

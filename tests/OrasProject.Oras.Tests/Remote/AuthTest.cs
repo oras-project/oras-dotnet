@@ -42,7 +42,7 @@ public class AuthTest
     {
         var username = "test_user";
         var password = "test_password";
-        var func = (HttpRequestMessage req, CancellationToken cancellationToken) =>
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
         {
             var res = new HttpResponseMessage
             {
@@ -63,7 +63,7 @@ public class AuthTest
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.OK);
-        };
+        }
         var client = CustomClient(func, username, password);
         var response = await client.GetAsync("http://localhost:5000");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

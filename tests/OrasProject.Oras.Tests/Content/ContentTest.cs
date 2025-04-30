@@ -20,7 +20,6 @@ namespace OrasProject.Oras.Tests.Content;
 
 public class CalculateDigest
 {
-    
     /// <summary>
     /// This method tests if the digest is calculated properly
     /// </summary>
@@ -29,7 +28,7 @@ public class CalculateDigest
     {
         var helloWorldDigest = "sha256:11d4ddc357e0822968dbfd226b6e1c2aac018d076a54da4f65e1dc8180684ac3";
         var content = Encoding.UTF8.GetBytes("helloWorld");
-        var calculateHelloWorldDigest = Digest.ComputeSHA256(content);
+        var calculateHelloWorldDigest = Digest.ComputeSha256(content);
         Assert.Equal(helloWorldDigest, calculateHelloWorldDigest);
     }
 
@@ -61,8 +60,10 @@ public class CalculateDigest
     /// This method tests if the digest validation throws an exception for various invalid digest formats
     /// </summary>
     [Theory]
+    [InlineData("")] // empty string
     [InlineData("sha256:")] // Missing encoded portion
     [InlineData("sha256+b64u!LCa0a2j_xo_5m0U8HTBBNBNCLXBkg7-g-YpeiGJm564")] // Invalid character in encoded portion
+    [InlineData(" sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b")] // Space prefixed
     public void Validate_ThrowsException_ForInvalidDigestFormats(string invalidDigest)
     {
         Assert.Throws<InvalidDigestException>(() => Digest.Validate(invalidDigest));

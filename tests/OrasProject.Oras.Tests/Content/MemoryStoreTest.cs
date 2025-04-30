@@ -14,6 +14,7 @@
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
+using Index = OrasProject.Oras.Oci.Index;
 using System.Text;
 using System.Text.Json;
 using Xunit;
@@ -30,7 +31,7 @@ public class MemoryStoreTest
     public async Task CanStoreData()
     {
         var content = Encoding.UTF8.GetBytes("Hello World");
-        string hash = Digest.ComputeSHA256(content);
+        string hash = Digest.ComputeSha256(content);
         var descriptor = new Descriptor
         {
             MediaType = "test",
@@ -66,7 +67,7 @@ public class MemoryStoreTest
     {
         var content = Encoding.UTF8.GetBytes("Hello World");
 
-        string hash = Digest.ComputeSHA256(content);
+        string hash = Digest.ComputeSha256(content);
         var descriptor = new Descriptor
         {
             MediaType = "test",
@@ -92,7 +93,7 @@ public class MemoryStoreTest
     public async Task ThrowsAlreadyExistsExceptionWhenSameDataIsPushedTwice()
     {
         var content = Encoding.UTF8.GetBytes("Hello World");
-        string hash = Digest.ComputeSHA256(content);
+        string hash = Digest.ComputeSha256(content);
         var descriptor = new Descriptor
         {
             MediaType = "test",
@@ -116,7 +117,7 @@ public class MemoryStoreTest
     {
         var content = Encoding.UTF8.GetBytes("Hello World");
         var wrongContent = Encoding.UTF8.GetBytes("Hello World!");
-        string hash = Digest.ComputeSHA256(content);
+        string hash = Digest.ComputeSha256(content);
         var descriptor = new Descriptor
         {
             MediaType = "test",
@@ -143,7 +144,7 @@ public class MemoryStoreTest
     {
         var content = Encoding.UTF8.GetBytes("Hello World");
         var wrongContent = Encoding.UTF8.GetBytes("Hello Danny");
-        string hash = Digest.ComputeSHA256(content);
+        string hash = Digest.ComputeSha256(content);
         var descriptor = new Descriptor
         {
             MediaType = "test",
@@ -171,18 +172,18 @@ public class MemoryStoreTest
         var cancellationToken = new CancellationToken();
         var blobs = new List<byte[]>();
         var descs = new List<Descriptor>();
-        var appendBlob = (string mediaType, byte[] blob) =>
+        void AppendBlob(string mediaType, byte[] blob)
         {
             blobs.Add(blob);
             var desc = new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length
             };
             descs.Add(desc);
-        };
-        var generateManifest = (Descriptor config, List<Descriptor> layers) =>
+        }
+        void GenerateManifest(Descriptor config, List<Descriptor> layers)
         {
             var manifest = new Manifest
             {
@@ -190,28 +191,28 @@ public class MemoryStoreTest
                 Layers = layers
             };
             var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-            appendBlob(MediaType.ImageManifest, manifestBytes);
-        };
+            AppendBlob(MediaType.ImageManifest, manifestBytes);
+        }
 
-        var generateIndex = (List<Descriptor> manifests) =>
+        void GenerateIndex(List<Descriptor> manifests)
         {
-            var index = new Oci.Index
+            var index = new Index
             {
                 Manifests = manifests
             };
             var indexBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(index));
-            appendBlob(MediaType.ImageIndex, indexBytes);
-        };
-        var getBytes = (string data) => Encoding.UTF8.GetBytes(data);
-        appendBlob(MediaType.ImageConfig, getBytes("config")); // blob 0
-        appendBlob(MediaType.ImageLayer, getBytes("foo")); // blob 1
-        appendBlob(MediaType.ImageLayer, getBytes("bar")); // blob 2
-        appendBlob(MediaType.ImageLayer, getBytes("hello")); // blob 3
-        generateManifest(descs[0], descs.GetRange(1, 2)); // blob 4
-        generateManifest(descs[0], new() { descs[3] }); // blob 5
-        generateManifest(descs[0], descs.GetRange(1, 3)); // blob 6
-        generateIndex(descs.GetRange(4, 2)); // blob 7
-        generateIndex(new() { descs[6] }); // blob 8
+            AppendBlob(MediaType.ImageIndex, indexBytes);
+        }
+        byte[] GetBytes(string data) => Encoding.UTF8.GetBytes(data);
+        AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
+        AppendBlob(MediaType.ImageLayer, GetBytes("foo")); // blob 1
+        AppendBlob(MediaType.ImageLayer, GetBytes("bar")); // blob 2
+        AppendBlob(MediaType.ImageLayer, GetBytes("hello")); // blob 3
+        GenerateManifest(descs[0], descs.GetRange(1, 2)); // blob 4
+        GenerateManifest(descs[0], [descs[3]]); // blob 5
+        GenerateManifest(descs[0], descs.GetRange(1, 3)); // blob 6
+        GenerateIndex(descs.GetRange(4, 2)); // blob 7
+        GenerateIndex([descs[6]]); // blob 8
 
         for (var i = 0; i < blobs.Count; i++)
         {
