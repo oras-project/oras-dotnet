@@ -102,7 +102,7 @@ public class ChallengeTest
     [InlineData(':', false)]  // colon (not a valid token character)
     [InlineData('@', false)]  // Special character not in the list
     [InlineData('\n', false)] // Newline (not a valid token character)
-    public void IsTokenChar_ShouldReturnExpectedResult(char input, bool expected)
+    public void IsValidTokenChar_ShouldReturnExpectedResult(char input, bool expected)
     {
         // Act
         var result = Challenge.IsValidTokenChar(input);

@@ -176,14 +176,9 @@ public static class Challenge
     /// <returns>
     /// <c>true</c> if the character is not a valid token character; otherwise, <c>false</c>.
     /// </returns>
-    internal static bool IsValidTokenChar(char c)
-    {
-        // Check if character is not in the valid ranges (A-Z, a-z, 0-9)
-        if ((c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < '0' || c > '9'))
-        {
-            // Check if the character is one of the special characters in the list
-            return _specialChars.Contains(c);
-        }
-        return true;
-    }
+    internal static bool IsValidTokenChar(char c) => 
+        ('A' <= c && c <= 'Z') || 
+        ('a' <= c && c <= 'z') || 
+        ('0' <= c && c <= '9') || 
+        _specialChars.Contains(c);
 }

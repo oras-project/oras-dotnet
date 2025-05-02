@@ -61,8 +61,6 @@ public class Client : HttpClient
     /// ScopeManager is an instance to manage scopes.
     /// </summary>
     public ScopeManager ScopeManager { get; set; } = new();
-
-    // public Dictionary<string, List<string>> CustomHeaders = new();
     
     public Client(ICredentialHelper? credentialHelper = null)
     {
