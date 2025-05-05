@@ -19,7 +19,7 @@ In this design, the Client class, which inherits from HttpClient, is structured 
 
 - **Cache**: This component is responsible for storing the access token retrieved from the authorization server, specifically for each repository, to optimize repeated token requests.
 
-- **ScopeManager** is a service responsible for managing scopes across the entire application context. It employs the Singleton pattern, utilizing the Lazy<T> class to ensure that only a single instance is created. This approach guarantees thread-safety and supports lazy loading, initializing the instance only when it is first needed.
+- **ScopeManager** is responsible for managing scopes for the currently instantiated Client. By default, a ScopeManager is automatically created during Client instantiation. However, Users can also provide a ScopeManager if desired.
 
 - **ForceAttemptOAuth2**: This variable acts as a toggle to enable or disable OAuth2 authentication, giving the user control over the authentication method.
 
@@ -35,6 +35,7 @@ In this design, the Client class, which inherits from HttpClient, is structured 
         string ClientId
         Cache Cache
         ICredentialHelper Credential
+        ScopeManager ScopeManager
     }
     
     ICredentialHelper {
@@ -42,9 +43,13 @@ In this design, the Client class, which inherits from HttpClient, is structured 
     }
     
     ScopeManager {
-        Lazy(ScopeManager) _instance
-        ScopeManager Instance
         ConcurrentDictionary Scopes
+    }
+
+    Scope {
+        string ResourceType
+        string ResourceName
+        hashset actions
     }
 
     Credential {
@@ -75,6 +80,8 @@ In this design, the Client class, which inherits from HttpClient, is structured 
     HttpClient ||--o| Client : inherits
     Client ||--o| Cache : contains
     Client ||--o| ICredentialHelper : contains
+    Client ||--o| ScopeManager : contains
+    ScopeManager ||--o| Scope : manages
     Cache ||--o| CacheEntry : contains
     Challenge ||--o| Scheme : contains
     
