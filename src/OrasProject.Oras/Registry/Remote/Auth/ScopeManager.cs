@@ -113,10 +113,10 @@ public class ScopeManager
     /// <param name="scope">The scope to be set for the registry, including its actions.</param>
     public void SetScopeForRegistry(string registry, Scope scope)
     {
-        if (scope.Actions.Contains("*"))
+        if (scope.Actions.Contains(Scope.Wildcard))
         {
             scope.Actions.Clear();
-            scope.Actions.Add("*");
+            scope.Actions.Add(Scope.Wildcard);
         }
 
         Scopes.AddOrUpdate(registry,

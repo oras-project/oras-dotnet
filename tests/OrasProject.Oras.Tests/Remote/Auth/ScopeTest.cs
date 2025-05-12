@@ -32,10 +32,10 @@ public class ScopeTest
         Assert.NotNull(scope);
         Assert.Equal("repository", scope!.ResourceType);
         Assert.Equal("my-repo", scope.ResourceName);
-        Assert.Contains("pull", scope.Actions);
-        Assert.Contains("push", scope.Actions);
+        Assert.Contains(Scope.Pull, scope.Actions);
+        Assert.Contains(Scope.Push, scope.Actions);
         Assert.Equal(2, scope.Actions.Count);
-        Assert.DoesNotContain("delete", scope.Actions);
+        Assert.DoesNotContain(Scope.Delete, scope.Actions);
     }
     
     [Fact]
@@ -52,7 +52,7 @@ public class ScopeTest
         Assert.NotNull(scope);
         Assert.Equal("repository", scope!.ResourceType);
         Assert.Equal("my-repo", scope.ResourceName);
-        Assert.Contains("*", scope.Actions);
+        Assert.Contains(Scope.Wildcard, scope.Actions);
         Assert.Single(scope.Actions);
     }
 
@@ -116,10 +116,10 @@ public class ScopeTest
     public void EqualsInSortedSet_DifferentScopeInstancesWithSameValues_ReturnsTrue()
     {
         // Arrange
-        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
-        var scope2 = new Scope("repository", "my-repo", new HashSet<string> { "delete" });
-        var scope3 = new Scope("repository", "my-repo", new HashSet<string> { "push", "pull" });
-        var scope4 = new Scope("repository", "my-repo1", new HashSet<string> { "push", "pull" });
+        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { Scope.Pull });
+        var scope2 = new Scope("repository", "my-repo", new HashSet<string> { Scope.Delete });
+        var scope3 = new Scope("repository", "my-repo", new HashSet<string> { Scope.Push, Scope.Pull });
+        var scope4 = new Scope("repository", "my-repo1", new HashSet<string> { Scope.Push, Scope.Pull });
 
 
         // Act
@@ -140,7 +140,7 @@ public class ScopeTest
     {
         // Arrange
         var scopes = new SortedSet<Scope>();
-        var newScope = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
+        var newScope = new Scope("repository", "my-repo", new HashSet<string> { Scope.Pull });
 
         // Act
         Scope.AddOrMergeScope(scopes, newScope);
@@ -155,8 +155,8 @@ public class ScopeTest
     {
         // Arrange
         var scopes = new SortedSet<Scope>();
-        var existingScope = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
-        var newScope1 = new Scope("repository", "my-repo", new HashSet<string> { "push", "delete" });
+        var existingScope = new Scope("repository", "my-repo", new HashSet<string> { Scope.Pull });
+        var newScope1 = new Scope("repository", "my-repo", new HashSet<string> { Scope.Push, Scope.Delete });
         scopes.Add(existingScope);
 
         // Act
@@ -172,8 +172,8 @@ public class ScopeTest
     {
         // Arrange
         var scopes = new SortedSet<Scope>();
-        var existingScope = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
-        var newScope = new Scope("repository", "my-repo", new HashSet<string> { "*" });
+        var existingScope = new Scope("repository", "my-repo", new HashSet<string> { Scope.Pull });
+        var newScope = new Scope("repository", "my-repo", new HashSet<string> { Scope.Wildcard });
         scopes.Add(existingScope);
 
         // Act
@@ -189,8 +189,8 @@ public class ScopeTest
     {
         // Arrange
         var scopes = new SortedSet<Scope>();
-        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
-        var scope2 = new Scope("repository", "other-repo", new HashSet<string> { "push" });
+        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { Scope.Pull });
+        var scope2 = new Scope("repository", "other-repo", new HashSet<string> { Scope.Push });
         var scope3 = new Scope("registry", "catalog", new HashSet<string> { "metadata-read" });
 
         // Act
@@ -212,11 +212,11 @@ public class ScopeTest
     {
         // Arrange
         var scopes = new SortedSet<Scope>();
-        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { "*" });
-        var scope2 = new Scope("repository", "my-repo", new HashSet<string> { "pull" });
+        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { Scope.Wildcard });
+        var scope2 = new Scope("repository", "my-repo", new HashSet<string> { Scope.Pull });
         
         var scope3 = new Scope("registry", "catalog", new HashSet<string> { "metadata-read" });
-        var scope4 = new Scope("registry", "catalog", new HashSet<string> { "*" });
+        var scope4 = new Scope("registry", "catalog", new HashSet<string> { Scope.Wildcard });
 
 
         // Act
@@ -232,10 +232,10 @@ public class ScopeTest
     }
 
     [Theory]
-    [InlineData(Scope.Action.Pull, "pull")]
-    [InlineData(Scope.Action.Push, "push")]
-    [InlineData(Scope.Action.Delete, "delete")]
-    [InlineData(Scope.Action.All, "*")]
+    [InlineData(Scope.Action.Pull, Scope.Pull)]
+    [InlineData(Scope.Action.Push, Scope.Push)]
+    [InlineData(Scope.Action.Delete, Scope.Delete)]
+    [InlineData(Scope.Action.All, Scope.Wildcard)]
     [InlineData((Scope.Action)999, "")]
     public void ParseAction_ValidAndInvalidActions_ReturnsExpectedString(Scope.Action action, string expected)
     {
