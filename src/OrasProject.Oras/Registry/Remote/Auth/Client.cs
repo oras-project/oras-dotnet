@@ -17,6 +17,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Mime;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.Json;
@@ -37,7 +38,7 @@ public class Client : HttpClient
     /// Cache used for storing and retrieving 
     /// authentication-related data to optimize remote registry operations.
     /// </summary>
-    internal Cache Cache { get; set; } = new ();
+    public ICache Cache { get; set; } = new Cache();
     
     /// <summary>
     /// ClientId used in fetching OAuth2 token as a required field.
@@ -144,6 +145,7 @@ public class Client : HttpClient
             var (schemeFromChallenge, parameters) =
                 Challenge.ParseChallenge(response.Headers.WwwAuthenticate.ToString());
             // rewind the request as the request has been consumed
+            request.Dispose();
             request = await originalRequest.CloneAsync().ConfigureAwait(false);
 
             // attempt again with credentials for recognized schemes
@@ -182,6 +184,7 @@ public class Client : HttpClient
                         Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
                     {
                         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
+                        response.Dispose();
                         response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
                         if (response.StatusCode != HttpStatusCode.Unauthorized)
                         {
@@ -210,6 +213,7 @@ public class Client : HttpClient
                     Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
 
                     // rewind the request again as it may be consumed
+                    request.Dispose();
                     request = await originalRequest.CloneAsync().ConfigureAwait(false);
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
                     break;
@@ -217,11 +221,12 @@ public class Client : HttpClient
                 default:
                     return response;
             }
-
+            response.Dispose();
             return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
+            originalRequest.Dispose();
             request?.Dispose();
         }
     }
@@ -436,7 +441,7 @@ public class Client : HttpClient
         using var content = new FormUrlEncodedContent(form);
         using var request = new HttpRequestMessage(HttpMethod.Post, realm);
         request.Content = content;
-        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.FormUrlEncoded);
         
         using var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)

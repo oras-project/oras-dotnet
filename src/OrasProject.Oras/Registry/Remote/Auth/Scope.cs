@@ -51,7 +51,9 @@ public class Scope : IComparable<Scope>
     /// <summary>
     /// ScopeRegistryCatalog is the scope for registry catalog access.
     /// </summary>
-    public static readonly string ScopeRegistryCatalog = "registry:catalog:*";
+    public const string ScopeRegistryCatalog = "registry:catalog:*";
+
+    private const string _wildcard = "*";
     
     public required string ResourceType { get; init; }
     public required string ResourceName { get; init; }
@@ -73,8 +75,8 @@ public class Scope : IComparable<Scope>
     /// <returns>A string representation of the scope.</returns>
     public override string ToString()
     {
-        return Actions.Contains("*") 
-            ? $"{ResourceType}:{ResourceName}:*"
+        return Actions.Contains(_wildcard) 
+            ? $"{ResourceType}:{ResourceName}:{_wildcard}"
             : $"{ResourceType}:{ResourceName}:{string.Join(",", Actions.OrderBy(action => action, StringComparer.OrdinalIgnoreCase))}";
     }
 
@@ -102,10 +104,10 @@ public class Scope : IComparable<Scope>
         }
 
         var actions = parts[2].Split(',', StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (actions.Contains("*"))
+        if (actions.Contains(_wildcard))
         {
             actions.Clear();
-            actions.Add("*");
+            actions.Add(_wildcard);
         }
 
         scope = new Scope(parts[0], parts[1], actions);
@@ -133,7 +135,7 @@ public class Scope : IComparable<Scope>
             Action.Pull => "pull",
             Action.Push => "push",
             Action.Delete => "delete",
-            Action.All => "*",
+            Action.All => _wildcard,
             _ => ""
         };
     }
@@ -157,11 +159,11 @@ public class Scope : IComparable<Scope>
     {
         if (scopes.TryGetValue(newScope, out var existingScope))
         {
-            if (existingScope.Actions.Contains("*") || newScope.Actions.Contains("*"))
+            if (existingScope.Actions.Contains(_wildcard) || newScope.Actions.Contains(_wildcard))
             {
                 // If either scope has the wildcard '*', clear and add '*'
                 existingScope.Actions.Clear();
-                existingScope.Actions.Add("*");
+                existingScope.Actions.Add(_wildcard);
             }
             else
             {
@@ -179,6 +181,10 @@ public class Scope : IComparable<Scope>
 
     /// <summary>
     /// CompareTo is to implement the method defined in the interface in IComparable.
+    ///
+    /// Note: This comparer is intended for use with SortedSet<Scope> in the ScopeManager.
+    /// If two Scope instances have the same ResourceType and ResourceName,
+    /// they are considered equivalent and will be merged into a single entry by uniting their Actions.
     /// 
     /// It compares the current <see cref="Scope"/> object with another <see cref="Scope"/> object.
     /// The comparison is based on the <see cref="ResourceType"/> and <see cref="ResourceName"/> properties.
