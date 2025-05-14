@@ -54,21 +54,24 @@ public struct CopyGraphOptions
     /// </summary>
     public event Action<Descriptor>? CopySkipped;
 
-    internal Task OnPreCopyAsync(Descriptor descriptor)
+    internal readonly Task OnPreCopyAsync(Descriptor descriptor)
     {
+        var tasks = PreCopyAsync.InvokeAsyncEvents(descriptor);
         PreCopy?.Invoke(descriptor);
-        return PreCopyAsync?.InvokeAsync(descriptor) ?? Task.CompletedTask;
+        return Task.WhenAll(tasks);
     }
 
-    internal Task OnPostCopyAsync(Descriptor descriptor)
+    internal readonly Task OnPostCopyAsync(Descriptor descriptor)
     {
+        var tasks = PostCopyAsync.InvokeAsyncEvents(descriptor);
         PostCopy?.Invoke(descriptor);
-        return PostCopyAsync?.InvokeAsync(descriptor) ?? Task.CompletedTask;
+        return Task.WhenAll(tasks);
     }
 
-    internal Task OnCopySkippedAsync(Descriptor descriptor)
+    internal readonly Task OnCopySkippedAsync(Descriptor descriptor)
     {
+        var tasks = CopySkippedAsync.InvokeAsyncEvents(descriptor);
         CopySkipped?.Invoke(descriptor);
-        return CopySkippedAsync?.Invoke(descriptor) ?? Task.CompletedTask;
+        return Task.WhenAll(tasks);
     }
 }

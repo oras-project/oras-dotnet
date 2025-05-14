@@ -12,28 +12,35 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace OrasProject.Oras;
 
+/// <summary>
+/// Provides extension methods for invoking asynchronous event delegates in a safe and consistent manner.
+/// </summary>
 internal static class AsyncInvocationExtensions
 {
+
     /// <summary>
-    /// Asynchronously invokes all handlers from an event that returns a <see cref="Task"/>.
-    /// <remarks>All handlers are executed in parallel</remarks>
+    ///  Asynchronously invokes all handlers from an event.
+    ///  All handlers are executed in parallel. If <paramref name="eventDelegate"/> is null,
+    /// a collection containing a completed task is returned.
     /// </summary>
-    /// <param name="eventDelegate"></param>
-    /// <param name="args"></param>
-    /// <typeparam name="TEventArgs"></typeparam>
-    internal static Task InvokeAsync<TEventArgs>(
-        this Func<TEventArgs, Task>? eventDelegate, TEventArgs args)
+    /// <typeparam name="TEventArgs">The type of the event arguments.</typeparam>
+    /// <param name="eventDelegate">The event delegate to invoke.</param>
+    /// <param name="args">The arguments to pass to the event handlers.</param>
+    /// <returns>An enumerable of tasks representing the asynchronous event handler invocations.</returns>
+    internal static IEnumerable<Task> InvokeAsyncEvents<TEventArgs>(
+       this Func<TEventArgs, Task>? eventDelegate, TEventArgs args)
     {
-        if (eventDelegate == null) return Task.CompletedTask;
-
-        var tasks = eventDelegate.GetInvocationList()
+        if (eventDelegate == null)
+        {
+            return [Task.CompletedTask];
+        }
+        return eventDelegate.GetInvocationList()
             .Select(d => (Task?)d.DynamicInvoke(args) ?? Task.CompletedTask);
-
-        return Task.WhenAll(tasks);
     }
 }
