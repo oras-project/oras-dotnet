@@ -33,7 +33,7 @@ internal static class AsyncInvocationExtensions
     /// <param name="eventDelegate">The event delegate to invoke.</param>
     /// <param name="args">The arguments to pass to the event handlers.</param>
     /// <returns>An enumerable of tasks representing the asynchronous event handler invocations.</returns>
-    internal static IEnumerable<Task> InvokeAsyncEvents<TEventArgs>(
+    internal static IEnumerable<Task> InvokeAsync<TEventArgs>(
        this Func<TEventArgs, Task>? eventDelegate, TEventArgs args)
     {
         if (eventDelegate == null)
