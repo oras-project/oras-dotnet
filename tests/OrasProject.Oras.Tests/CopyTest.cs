@@ -151,7 +151,7 @@ public class CopyTest
     }
 
     [Fact]
-    public async Task TestCopyExistedRoot()
+    public async Task TestCopyExistingRoot()
     {
         var src = new MemoryStore();
         var dst = new MemoryStore();
