@@ -149,7 +149,7 @@ public class CopyTest
             Assert.Equal(blobs[i], bytes);
         }
     }
-    
+
     [Fact]
     public async Task TestCopyExistedRoot()
     {
@@ -166,7 +166,7 @@ public class CopyTest
             var desc = new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length
             };
             descs.Add(desc);
@@ -247,7 +247,7 @@ public class CopyTest
         Assert.Equal(1, skippedCount);
         Assert.Equal(1, skippedAsyncCount);
     }
-    
+
     [Fact]
     public async Task TestCopyGraph_FullCopy()
     {
@@ -264,7 +264,7 @@ public class CopyTest
             var desc = new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length
             };
             descs.Add(desc);
@@ -339,12 +339,12 @@ public class CopyTest
         Assert.Equal(0, srcTracker.ExistsCount);
         Assert.Equal(0, dstTracker.FetchCount);
         Assert.Equal(blobs.Count, dstTracker.PushCount);
-        
+
         // REMARKS: ExistsCount should equal to blobs.Count
         // but since there's no caching implemented, it is not
         Assert.Equal(16, dstTracker.ExistsCount);
     }
-    
+
     [Fact]
     public async Task TestCopyWithOptions()
     {
@@ -360,7 +360,7 @@ public class CopyTest
             descs.Add(new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length
             });
         }
@@ -371,12 +371,12 @@ public class CopyTest
             descs.Add(new Descriptor
             {
                 MediaType = mediaType,
-                Digest = Digest.ComputeSHA256(blob),
+                Digest = Digest.ComputeSha256(blob),
                 Size = blob.Length,
                 Platform = new Platform
                 {
                     Architecture = arc,
-                    OS = os
+                    Os = os
                 }
             });
         }
@@ -431,9 +431,7 @@ public class CopyTest
         var postCopyAsyncCount = 0;
         var copyOptions = new CopyOptions
         {
-            CopyGraphOptions = new CopyGraphOptions
-            {
-            }
+            CopyGraphOptions = new CopyGraphOptions { }
         };
 
         copyOptions.CopyGraphOptions.PreCopy += _ => preCopyCount++;
@@ -467,7 +465,7 @@ public class CopyTest
         Assert.Equal(7, postCopyCount);
         Assert.Equal(7, postCopyAsyncCount);
     }
-    
+
     private class StorageTracker : ITarget
     {
         private readonly ITarget _storage;
