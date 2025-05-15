@@ -262,8 +262,8 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// If the referrers index is updated, the new index is pushed to the repository. If referrers 
     /// garbage collection is not skipped, the old index is deleted.
     /// References:
-    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#pushing-manifests-with-subject
-    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#deleting-manifests
+    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#pushing-manifests-with-subject
+    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#deleting-manifests
     /// </summary>
     /// <param name="subject"></param>
     /// <param name="referrerChange"></param>
@@ -405,7 +405,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <summary>
     /// IndexReferrersForDelete indexes referrers for manifests with a subject field on manifest delete.
     /// References:
-    ///   - Latest spec: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#deleting-manifests
+    ///   - Latest spec: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#deleting-manifests
     /// </summary>
     /// <param name="target"></param>
     /// <param name="manifestContent"></param>

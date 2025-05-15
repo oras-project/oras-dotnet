@@ -25,7 +25,7 @@ namespace OrasProject.Oras.Content;
 public static class Extensions
 {
     /// <summary>
-    /// Retrieves the successors of a node
+    /// GetSuccessorsAsync retrieves the successors of a node
     /// </summary>
     /// <param name="fetcher"></param>
     /// <param name="node"></param>
@@ -36,23 +36,36 @@ public static class Extensions
         switch (node.MediaType)
         {
             case Docker.MediaType.Manifest:
-            case Oci.MediaType.ImageManifest:
+            case MediaType.ImageManifest:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
                     var manifest = JsonSerializer.Deserialize<Manifest>(content) ??
                                         throw new JsonException("Failed to deserialize manifest");
-                    var descriptors = new List<Descriptor>() { manifest.Config };
+                    
+                    var descriptors = new List<Descriptor>();
+                    if (manifest.Subject != null)
+                    {
+                        // Note: Subject field only works for Oci Image Manifest
+                        descriptors.Add(manifest.Subject);
+                    }
+                    descriptors.Add(manifest.Config);
                     descriptors.AddRange(manifest.Layers);
                     return descriptors;
                 }
             case Docker.MediaType.ManifestList:
-            case Oci.MediaType.ImageIndex:
+            case MediaType.ImageIndex:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
-                    // docker manifest list and oci index are equivalent for successors.
                     var index = JsonSerializer.Deserialize<Index>(content) ??
                                         throw new JsonException("Failed to deserialize manifest");
-                    return index.Manifests;
+                    var descriptors = new List<Descriptor>();
+                    if (index.Subject != null)
+                    {
+                        // Note: Subject field only works for Oci Index Manifest
+                        descriptors.Add(index.Subject);
+                    }
+                    descriptors.AddRange(index.Manifests);
+                    return descriptors;
                 }
         }
         return [];

@@ -55,18 +55,18 @@ public static class Packer
         // Version1_0 represents the OCI Image Manifest defined in image-spec v1.0.2.
         // Reference: https://github.com/opencontainers/image-spec/blob/v1.0.2/manifest.md
         Version1_0 = 1,
-        // Version1_1 represents the OCI Image Manifest defined in image-spec v1.1.0.
-        // Reference: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md
+        // Version1_1 represents the OCI Image Manifest defined in image-spec v1.1.1.
+        // Reference: https://github.com/opencontainers/image-spec/blob/v1.1.1/manifest.md
         Version1_1 = 2
     }
 
     /// <summary>
     /// mediaTypeRegex checks the format of media types.
     /// References:
-    /// - https://github.com/opencontainers/image-spec/blob/v1.1.0/schema/defs-descriptor.json#L7
+    /// - https://github.com/opencontainers/image-spec/blob/v1.1.1/schema/defs-descriptor.json#L7
     /// - https://datatracker.ietf.org/doc/html/rfc6838#section-4.2
     /// </summary>
-    private static readonly Regex _mediaTypeRegex = new Regex(@"^[A-Za-z0-9][A-Za-z0-9!#$&-^_.+]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&-^_.+]{0,126}(\+json)?$", RegexOptions.Compiled);
+    private static readonly Regex _mediaTypeRegex = new Regex(@"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}(\+json)?$", RegexOptions.Compiled);
 
     /// <summary>
     /// PackManifest generates an OCI Image Manifestbased on the given parameters

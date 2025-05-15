@@ -57,9 +57,9 @@ public struct RepositoryOptions
     ///  - If false, the old referrers index will be deleted after the new one is successfully uploaded.
     ///  - If true, the old referrers index is kept.
     /// By default, it is disabled (set to false). See also:
-    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#referrers-tag-schema
-    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#pushing-manifests-with-subject
-    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#deleting-manifests
+    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#referrers-tag-schema
+    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#pushing-manifests-with-subject
+    ///  - https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#deleting-manifests
     /// </summary>
     public bool SkipReferrersGc { get; set; }
 
