@@ -568,7 +568,7 @@ public class Repository : IRepository
     /// <summary>
     /// FetchReferrersByTagSchema retrieves referrers based on referrers tag schema,
     /// and return a collection of referrers asynchronously when referrers API is not supported.
-    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#backwards-compatibility
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#backwards-compatibility
     /// </summary>
     /// <param name="descriptor"></param>
     /// <param name="cancellationToken"></param>
@@ -586,7 +586,7 @@ public class Repository : IRepository
     /// <summary>
     /// FetchReferrersByTagSchema retrieves referrers based on referrers tag schema, filters out referrers based on specified artifact type
     /// and return a collection of referrers asynchronously when referrers API is not supported.
-    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#backwards-compatibility
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#backwards-compatibility
     /// </summary>
     /// <param name="descriptor"></param>
     /// <param name="artifactType"></param>
@@ -702,9 +702,9 @@ public class Repository : IRepository
     /// SetReferrersState is valid only when it is called for the first time.
     /// SetReferrersState returns ReferrersStateAlreadySetException if the Referrers API state has been already set.
     ///   - When the state is set to true, the relevant functions will always
-    ///     request the Referrers API. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#listing-referrers
+    ///     request the Referrers API. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     ///   - When the state is set to false, the relevant functions will always
-    ///     request the Referrers Tag. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#referrers-tag-schema
+    ///     request the Referrers Tag. Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#referrers-tag-schema
     ///   - When the state is not set, the relevant functions will automatically
     ///     determine which API to use.
     /// </summary>
