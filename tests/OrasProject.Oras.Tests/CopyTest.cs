@@ -205,16 +205,11 @@ public class CopyTest
         // Prepare copy options with OnCopySkippedAsync
         var skippedCount = 0;
         var skippedAsyncCount = 0;
-        var copyOptions = new CopyOptions
-        {
-            CopyGraphOptions = new CopyGraphOptions()
-            {
-            }
-        };
+        var copyOptions = new CopyOptions();
 
-        copyOptions.CopyGraphOptions.CopySkipped += _ => skippedCount++;
+        copyOptions.CopySkipped += _ => skippedCount++;
 
-        copyOptions.CopyGraphOptions.CopySkippedAsync += _ =>
+        copyOptions.CopySkippedAsync += _ =>
         {
             skippedAsyncCount++;
             return Task.CompletedTask;
@@ -429,20 +424,17 @@ public class CopyTest
         var postCopyCount = 0;
         var preCopyAsyncCount = 0;
         var postCopyAsyncCount = 0;
-        var copyOptions = new CopyOptions
-        {
-            CopyGraphOptions = new CopyGraphOptions { }
-        };
+        var copyOptions = new CopyOptions();
 
-        copyOptions.CopyGraphOptions.PreCopy += _ => preCopyCount++;
-        copyOptions.CopyGraphOptions.PreCopyAsync += d =>
+        copyOptions.PreCopy += _ => preCopyCount++;
+        copyOptions.PreCopyAsync += d =>
         {
             preCopyAsyncCount++;
             return Task.CompletedTask;
         };
 
-        copyOptions.CopyGraphOptions.PostCopy += _ => postCopyCount++;
-        copyOptions.CopyGraphOptions.PostCopyAsync += d =>
+        copyOptions.PostCopy += _ => postCopyCount++;
+        copyOptions.PostCopyAsync += d =>
         {
             postCopyAsyncCount++;
             return Task.CompletedTask;

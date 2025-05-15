@@ -16,7 +16,4 @@ namespace OrasProject.Oras;
 /// <summary>
 /// CopyOptions contains parameters for <see cref="Extensions.CopyAsync(OrasProject.Oras.ITarget,string,OrasProject.Oras.ITarget,string,System.Threading.CancellationToken)"/>
 /// </summary>
-public struct CopyOptions
-{
-    public CopyGraphOptions CopyGraphOptions;
-}
+public class CopyOptions : CopyGraphOptions { }

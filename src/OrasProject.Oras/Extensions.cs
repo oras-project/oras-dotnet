@@ -14,8 +14,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using OrasProject.Oras.Content;
 using OrasProject.Oras.Oci;
-using static OrasProject.Oras.Content.Extensions;
 
 namespace OrasProject.Oras;
 
@@ -56,14 +56,15 @@ public static class Extensions
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CopyOptions copyOptions = default, CancellationToken cancellationToken = default)
+    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CopyOptions copyOptions, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(dstRef))
         {
             dstRef = srcRef;
         }
+
         var root = await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
-        await src.CopyGraphAsync(dst, root, copyOptions.CopyGraphOptions, cancellationToken).ConfigureAwait(false);
+        await src.CopyGraphAsync(dst, root, copyOptions, cancellationToken).ConfigureAwait(false);
         await dst.TagAsync(root, dstRef, cancellationToken).ConfigureAwait(false);
         return root;
     }
@@ -73,12 +74,12 @@ public static class Extensions
         return src.CopyGraphAsync(dst, node, new CopyGraphOptions(), cancellationToken);
     }
 
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions = default, CancellationToken cancellationToken = default)
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
         // check if node exists in target
         if (await dst.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
         {
-            await copyGraphOptions.OnCopySkippedAsync(node).ConfigureAwait(false);
+            await copyGraphOptions.InvokeCopySkippedAsync(node).ConfigureAwait(false);
             return;
         }
 
@@ -92,11 +93,11 @@ public static class Extensions
         }
 
         // perform the copy
-        await copyGraphOptions.OnPreCopyAsync(node).ConfigureAwait(false);
+        await copyGraphOptions.InvokePreCopyAsync(node).ConfigureAwait(false);
         var dataStream = await src.FetchAsync(node, cancellationToken).ConfigureAwait(false);
         await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
         
         // we copied it
-        await copyGraphOptions.OnPostCopyAsync(node).ConfigureAwait(false);
+        await copyGraphOptions.InvokePostCopyAsync(node).ConfigureAwait(false);
     }
 }

@@ -20,7 +20,7 @@ namespace OrasProject.Oras;
 /// <summary>
 /// CopyGraphOptions contains parameters for <see cref="Extensions.CopyGraphAsync(OrasProject.Oras.ITarget,OrasProject.Oras.ITarget,OrasProject.Oras.Oci.Descriptor,System.Threading.CancellationToken)"/>
 /// </summary>
-public struct CopyGraphOptions
+public class CopyGraphOptions
 {
     /// <summary>
     /// PreCopyAsync handles the current descriptor before it is copied.
@@ -54,23 +54,51 @@ public struct CopyGraphOptions
     /// </summary>
     public event Action<Descriptor>? CopySkipped;
 
-    internal readonly Task OnPreCopyAsync(Descriptor descriptor)
+
+
+    /// <summary>
+    /// Invokes the <see cref="PreCopyAsync"/> event handlers asynchronously for the specified descriptor,
+    /// then invokes the <see cref="PreCopy"/> event handlers synchronously.
+    /// </summary>
+    /// <param name="descriptor">The <see cref="Descriptor"/> to process before copying.</param>
+    /// <returns>
+    /// A <see cref="Task"/> that represents the asynchronous operation of all <see cref="PreCopyAsync"/> handlers.
+    /// </returns>
+    internal Task InvokePreCopyAsync(Descriptor descriptor)
     {
-        var tasks = PreCopyAsync.InvokeAsync(descriptor);
+        var tasks = PreCopyAsync?.InvokeAsync(descriptor) ?? [Task.CompletedTask];
         PreCopy?.Invoke(descriptor);
         return Task.WhenAll(tasks);
     }
 
-    internal readonly Task OnPostCopyAsync(Descriptor descriptor)
+
+    /// <summary>
+    /// Invokes the <see cref="PostCopyAsync"/> event handlers asynchronously for the specified descriptor,
+    /// then invokes the <see cref="PostCopy"/> event handlers synchronously.
+    /// </summary>
+    /// <param name="descriptor">The <see cref="Descriptor"/> to process after copying.</param>
+    /// <returns>
+    /// A <see cref="Task"/> that represents the asynchronous operation of all <see cref="PostCopyAsync"/> handlers.
+    /// </returns>
+    internal Task InvokePostCopyAsync(Descriptor descriptor)
     {
-        var tasks = PostCopyAsync.InvokeAsync(descriptor);
+        var tasks = PostCopyAsync?.InvokeAsync(descriptor) ?? [Task.CompletedTask];
         PostCopy?.Invoke(descriptor);
         return Task.WhenAll(tasks);
     }
 
-    internal readonly Task OnCopySkippedAsync(Descriptor descriptor)
+
+    /// <summary>
+    /// Invokes the <see cref="CopySkippedAsync"/> event handlers asynchronously for the specified descriptor,
+    /// then invokes the <see cref="CopySkipped"/> event handlers synchronously.
+    /// </summary>
+    /// <param name="descriptor">The <see cref="Descriptor"/> whose sub-DAG is being skipped.</param>
+    /// <returns>
+    /// A <see cref="Task"/> that represents the asynchronous operation of all <see cref="CopySkippedAsync"/> handlers.
+    /// </returns>
+    internal Task InvokeCopySkippedAsync(Descriptor descriptor)
     {
-        var tasks = CopySkippedAsync.InvokeAsync(descriptor);
+        var tasks = CopySkippedAsync?.InvokeAsync(descriptor) ?? [Task.CompletedTask];
         CopySkipped?.Invoke(descriptor);
         return Task.WhenAll(tasks);
     }

@@ -36,11 +36,12 @@ internal static class AsyncInvocationExtensions
     internal static IEnumerable<Task> InvokeAsync<TEventArgs>(
        this Func<TEventArgs, Task>? eventDelegate, TEventArgs args)
     {
-        if (eventDelegate == null)
-        {
+        if (eventDelegate is null)
             return [Task.CompletedTask];
-        }
-        return eventDelegate.GetInvocationList()
-            .Select(d => (Task?)d.DynamicInvoke(args) ?? Task.CompletedTask);
+
+        return eventDelegate
+            .GetInvocationList()
+            .Select(d => d is Func<TEventArgs, Task> handler ? handler(args) : Task.CompletedTask)
+            .ToArray();
     }
 }
