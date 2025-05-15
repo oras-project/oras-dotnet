@@ -15,6 +15,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Moq;
 using OrasProject.Oras.Content;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using OrasProject.Oras.Oci;
@@ -151,5 +152,32 @@ public class ExtensionsTest
         Assert.Equal(expectedIndexManifest.Manifests[0].Digest, actualIndexManifestSuccessors[1].Digest);
         Assert.Equal(expectedIndexManifest.Manifests[1].Digest, actualIndexManifestSuccessors[2].Digest);
         Assert.Equal(expectedIndexManifest.Manifests[2].Digest, actualIndexManifestSuccessors[3].Digest);
+    }
+    
+    
+    [Fact]
+    public async Task GetSuccessorsAsync_ImageConfig_ReturnsEmptyList()
+    {
+        var imageConfig = "hello world"u8.ToArray();
+        var imageConfigDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageConfig,
+            Digest = ComputeSha256(imageConfig),
+            Size = imageConfig.Length
+        };
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            HttpClient = CustomClient((_, _) => new HttpResponseMessage()),
+            PlainHttp = true,
+        });
+
+        // act
+        var cancellationToken = new CancellationToken();
+        var actualImageConfig = (await repo.GetSuccessorsAsync(imageConfigDesc, cancellationToken)).ToList();
+        
+        // assert
+        Assert.Empty(actualImageConfig);
     }
 }
