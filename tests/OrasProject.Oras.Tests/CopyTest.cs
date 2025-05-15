@@ -151,100 +151,7 @@ public class CopyTest
     }
 
     [Fact]
-    public async Task TestCopyExistingRoot()
-    {
-        var src = new MemoryStore();
-        var dst = new MemoryStore();
-
-        // Generate test content
-        var blobs = new List<byte[]>();
-        var descs = new List<Descriptor>();
-
-        void AppendBlob(string mediaType, byte[] blob)
-        {
-            blobs.Add(blob);
-            var desc = new Descriptor
-            {
-                MediaType = mediaType,
-                Digest = Digest.ComputeSha256(blob),
-                Size = blob.Length
-            };
-            descs.Add(desc);
-        }
-
-        void GenerateManifest(Descriptor config, params Descriptor[] layers)
-        {
-            var manifest = new Manifest
-            {
-                Config = config,
-                Layers = layers.ToList()
-            };
-            var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-            AppendBlob(MediaType.ImageManifest, manifestBytes);
-        }
-
-        // Add blobs and generate manifest
-        AppendBlob(MediaType.ImageConfig, Encoding.UTF8.GetBytes("config")); // Blob 0
-        AppendBlob(MediaType.ImageLayer, Encoding.UTF8.GetBytes("foo"));     // Blob 1
-        AppendBlob(MediaType.ImageLayer, Encoding.UTF8.GetBytes("bar"));     // Blob 2
-        GenerateManifest(descs[0], descs[1], descs[2]);                      // Blob 3
-
-        // Push blobs to the source store
-        foreach (var (blob, desc) in blobs.Zip(descs))
-        {
-            await src.PushAsync(desc, new MemoryStream(blob), CancellationToken.None);
-        }
-
-        var root = descs[3];
-        var refTag = "foobar";
-        var newTag = "newtag";
-
-        // Tag root node in source
-        await src.TagAsync(root, refTag, CancellationToken.None);
-
-        // Prepare copy options with OnCopySkippedAsync
-        var skippedCount = 0;
-        var skippedAsyncCount = 0;
-        var copyOptions = new CopyOptions();
-
-        copyOptions.CopySkipped += _ => skippedCount++;
-
-        copyOptions.CopySkippedAsync += _ =>
-        {
-            skippedAsyncCount++;
-            return Task.CompletedTask;
-        };
-
-        // Copy with the source tag
-        var gotDesc = await src.CopyAsync(refTag, dst, "", copyOptions, CancellationToken.None);
-        Assert.Equal(root, gotDesc);
-
-        // Copy with a new tag
-        gotDesc = await src.CopyAsync(refTag, dst, newTag, copyOptions, CancellationToken.None);
-        Assert.Equal(root, gotDesc);
-
-        // Verify contents in the destination
-        foreach (var desc in descs)
-        {
-            var exists = await dst.ExistsAsync(desc, CancellationToken.None);
-            Assert.True(exists, $"Destination should contain descriptor {desc.Digest}");
-        }
-
-        // Verify the source tag in destination
-        gotDesc = await dst.ResolveAsync(refTag, CancellationToken.None);
-        Assert.Equal(root, gotDesc);
-
-        // Verify the new tag in destination
-        gotDesc = await dst.ResolveAsync(newTag, CancellationToken.None);
-        Assert.Equal(root, gotDesc);
-
-        // Verify the OnCopySkippedAsync invocation count
-        Assert.Equal(1, skippedCount);
-        Assert.Equal(1, skippedAsyncCount);
-    }
-
-    [Fact]
-    public async Task TestCopyGraph_FullCopy()
+    public async Task CanCopyGraph_FullCopy()
     {
         var src = new MemoryStore();
         var dst = new MemoryStore();
@@ -341,7 +248,100 @@ public class CopyTest
     }
 
     [Fact]
-    public async Task TestCopyWithOptions()
+    public async Task CanCopyExistingRoot()
+    {
+        var src = new MemoryStore();
+        var dst = new MemoryStore();
+
+        // Generate test content
+        var blobs = new List<byte[]>();
+        var descs = new List<Descriptor>();
+
+        void AppendBlob(string mediaType, byte[] blob)
+        {
+            blobs.Add(blob);
+            var desc = new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = Digest.ComputeSha256(blob),
+                Size = blob.Length
+            };
+            descs.Add(desc);
+        }
+
+        void GenerateManifest(Descriptor config, params Descriptor[] layers)
+        {
+            var manifest = new Manifest
+            {
+                Config = config,
+                Layers = layers.ToList()
+            };
+            var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+            AppendBlob(MediaType.ImageManifest, manifestBytes);
+        }
+
+        // Add blobs and generate manifest
+        AppendBlob(MediaType.ImageConfig, Encoding.UTF8.GetBytes("config")); // Blob 0
+        AppendBlob(MediaType.ImageLayer, Encoding.UTF8.GetBytes("foo"));     // Blob 1
+        AppendBlob(MediaType.ImageLayer, Encoding.UTF8.GetBytes("bar"));     // Blob 2
+        GenerateManifest(descs[0], descs[1], descs[2]);                      // Blob 3
+
+        // Push blobs to the source store
+        foreach (var (blob, desc) in blobs.Zip(descs))
+        {
+            await src.PushAsync(desc, new MemoryStream(blob), CancellationToken.None);
+        }
+
+        var root = descs[3];
+        var refTag = "foobar";
+        var newTag = "newtag";
+
+        // Tag root node in source
+        await src.TagAsync(root, refTag, CancellationToken.None);
+
+        // Prepare copy options with OnCopySkippedAsync
+        var skippedCount = 0;
+        var skippedAsyncCount = 0;
+        var copyOptions = new CopyOptions();
+
+        copyOptions.CopySkipped += _ => skippedCount++;
+
+        copyOptions.CopySkippedAsync += _ =>
+        {
+            skippedAsyncCount++;
+            return Task.CompletedTask;
+        };
+
+        // Copy with the source tag
+        var gotDesc = await src.CopyAsync(refTag, dst, "", copyOptions, CancellationToken.None);
+        Assert.Equal(root, gotDesc);
+
+        // Copy with a new tag
+        gotDesc = await src.CopyAsync(refTag, dst, newTag, copyOptions, CancellationToken.None);
+        Assert.Equal(root, gotDesc);
+
+        // Verify contents in the destination
+        foreach (var desc in descs)
+        {
+            var exists = await dst.ExistsAsync(desc, CancellationToken.None);
+            Assert.True(exists, $"Destination should contain descriptor {desc.Digest}");
+        }
+
+        // Verify the source tag in destination
+        gotDesc = await dst.ResolveAsync(refTag, CancellationToken.None);
+        Assert.Equal(root, gotDesc);
+
+        // Verify the new tag in destination
+        gotDesc = await dst.ResolveAsync(newTag, CancellationToken.None);
+        Assert.Equal(root, gotDesc);
+
+        // Verify the OnCopySkippedAsync invocation count
+        Assert.Equal(1, skippedCount);
+        Assert.Equal(1, skippedAsyncCount);
+    }
+
+    [Fact]
+    public async Task CanCopyWithOptions()
     {
         var src = new MemoryStore();
 
@@ -457,6 +457,7 @@ public class CopyTest
         Assert.Equal(7, postCopyCount);
         Assert.Equal(7, postCopyAsyncCount);
     }
+
 
     private class StorageTracker : ITarget
     {
