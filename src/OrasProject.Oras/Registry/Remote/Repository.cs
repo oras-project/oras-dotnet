@@ -110,14 +110,14 @@ public class Repository : IRepository
     /// Example: localhost:5000/hello-world
     /// </summary>
     /// <param name="reference"></param>
-    public Repository(string reference) : this(reference, new HttpClient().AddUserAgent()) { }
+    public Repository(string reference) : this(reference, new DefaultHttpClient(new HttpClient())) { }
 
     /// <summary>
     /// Creates a client to the remote repository using a reference and a HttpClient
     /// </summary>
     /// <param name="reference"></param>
     /// <param name="httpClient"></param>
-    public Repository(string reference, HttpClient httpClient) : this(new RepositoryOptions()
+    public Repository(string reference, IClient httpClient) : this(new RepositoryOptions()
     {
         Reference = Reference.Parse(reference),
         HttpClient = httpClient,

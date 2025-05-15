@@ -36,11 +36,6 @@ public interface ICache
     /// <param name="scheme">The authentication scheme associated with the cache entry.</param>
     /// <param name="key">The key used to identify the token within the cache entry.</param>
     /// <param name="token">The token to be stored in the cache.</param>
-    /// <remarks>
-    /// If the registry already exists in the cache:
-    /// - If the provided scheme differs from the existing scheme, the cache entry is replaced with a new one.
-    /// - Otherwise, the token is added or updated in the existing cache entry.
-    /// </remarks>
     void SetCache(string registry, Challenge.Scheme scheme, string key, string token);
 
     /// <summary>

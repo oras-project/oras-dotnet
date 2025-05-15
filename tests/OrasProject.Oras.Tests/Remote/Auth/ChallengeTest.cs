@@ -36,7 +36,8 @@ public class ChallengeTest
         new[] { "realm", "https://registry.io/oauth2/token", "service", "registry.io", "scope", "repository:nginx:push,pull repository:abc:delete", "error", "insufficient_scope" })]
 
     [InlineData("Unknown realm=\"example\"", Challenge.Scheme.Unknown, null)]
-    public void ParseChallenge_ValidHeader_ReturnsExpectedSchemeAndParams(string header, Challenge.Scheme expectedScheme, string[]? expectedParams)
+    [InlineData(null, Challenge.Scheme.Unknown, null)]
+    public void ParseChallenge_ValidHeader_ReturnsExpectedSchemeAndParams(string? header, Challenge.Scheme expectedScheme, string[]? expectedParams)
     {
         var (scheme, parameters) = Challenge.ParseChallenge(header);
 

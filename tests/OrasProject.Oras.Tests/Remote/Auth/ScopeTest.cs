@@ -52,7 +52,7 @@ public class ScopeTest
         Assert.NotNull(scope);
         Assert.Equal("repository", scope!.ResourceType);
         Assert.Equal("my-repo", scope.ResourceName);
-        Assert.Contains(Scope.Wildcard, scope.Actions);
+        Assert.Contains(Scope.ActionWildcard, scope.Actions);
         Assert.Single(scope.Actions);
     }
 
@@ -173,7 +173,7 @@ public class ScopeTest
         // Arrange
         var scopes = new SortedSet<Scope>();
         var existingScope = new Scope("repository", "my-repo", new HashSet<string> { Scope.Pull });
-        var newScope = new Scope("repository", "my-repo", new HashSet<string> { Scope.Wildcard });
+        var newScope = new Scope("repository", "my-repo", new HashSet<string> { Scope.ActionWildcard });
         scopes.Add(existingScope);
 
         // Act
@@ -212,11 +212,11 @@ public class ScopeTest
     {
         // Arrange
         var scopes = new SortedSet<Scope>();
-        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { Scope.Wildcard });
+        var scope1 = new Scope("repository", "my-repo", new HashSet<string> { Scope.ActionWildcard });
         var scope2 = new Scope("repository", "my-repo", new HashSet<string> { Scope.Pull });
         
         var scope3 = new Scope("registry", "catalog", new HashSet<string> { "metadata-read" });
-        var scope4 = new Scope("registry", "catalog", new HashSet<string> { Scope.Wildcard });
+        var scope4 = new Scope("registry", "catalog", new HashSet<string> { Scope.ActionWildcard });
 
 
         // Act
@@ -235,7 +235,7 @@ public class ScopeTest
     [InlineData(Scope.Action.Pull, Scope.Pull)]
     [InlineData(Scope.Action.Push, Scope.Push)]
     [InlineData(Scope.Action.Delete, Scope.Delete)]
-    [InlineData(Scope.Action.All, Scope.Wildcard)]
+    [InlineData(Scope.Action.All, Scope.ActionWildcard)]
     [InlineData((Scope.Action)999, "")]
     public void ParseAction_ValidAndInvalidActions_ReturnsExpectedString(Scope.Action action, string expected)
     {

@@ -53,13 +53,13 @@ public class Scope : IComparable<Scope>
     /// </summary>
     public const string ScopeRegistryCatalog = "registry:catalog:*";
 
-    public const string Wildcard = "*";
+    internal const string ActionWildcard = "*";
     
-    public const string Pull = "pull";
+    internal const string Pull = "pull";
     
-    public const string Push = "push";
+    internal const string Push = "push";
     
-    public const string Delete = "delete";
+    internal const string Delete = "delete";
     
     public required string ResourceType { get; init; }
     public required string ResourceName { get; init; }
@@ -81,8 +81,8 @@ public class Scope : IComparable<Scope>
     /// <returns>A string representation of the scope.</returns>
     public override string ToString()
     {
-        return Actions.Contains(Wildcard) 
-            ? $"{ResourceType}:{ResourceName}:{Wildcard}"
+        return Actions.Contains(ActionWildcard) 
+            ? $"{ResourceType}:{ResourceName}:{ActionWildcard}"
             : $"{ResourceType}:{ResourceName}:{string.Join(",", Actions.OrderBy(action => action, StringComparer.OrdinalIgnoreCase))}";
     }
 
@@ -110,10 +110,10 @@ public class Scope : IComparable<Scope>
         }
 
         var actions = parts[2].Split(',', StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (actions.Contains(Wildcard))
+        if (actions.Contains(ActionWildcard))
         {
             actions.Clear();
-            actions.Add(Wildcard);
+            actions.Add(ActionWildcard);
         }
 
         scope = new Scope(parts[0], parts[1], actions);
@@ -141,7 +141,7 @@ public class Scope : IComparable<Scope>
             Action.Pull => Pull,
             Action.Push => Push,
             Action.Delete => Delete,
-            Action.All => Wildcard,
+            Action.All => ActionWildcard,
             _ => ""
         };
     }
@@ -165,11 +165,11 @@ public class Scope : IComparable<Scope>
     {
         if (scopes.TryGetValue(newScope, out var existingScope))
         {
-            if (existingScope.Actions.Contains(Wildcard) || newScope.Actions.Contains(Wildcard))
+            if (existingScope.Actions.Contains(ActionWildcard) || newScope.Actions.Contains(ActionWildcard))
             {
                 // If either scope has the wildcard '*', clear and add '*'
                 existingScope.Actions.Clear();
-                existingScope.Actions.Add(Wildcard);
+                existingScope.Actions.Add(ActionWildcard);
             }
             else
             {

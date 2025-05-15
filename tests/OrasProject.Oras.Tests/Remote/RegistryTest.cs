@@ -11,13 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Moq;
-using Moq.Protected;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using static OrasProject.Oras.Tests.Remote.Util.Util;
 using Xunit;
 
 namespace OrasProject.Oras.Tests.Remote;
@@ -29,17 +28,6 @@ public partial class RegistryTest
 
     [GeneratedRegex(@"(?<=test=)\w+")]
     private static partial Regex TestQueryParam();
-
-    public static HttpClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
-    {
-        var moqHandler = new Mock<DelegatingHandler>();
-        moqHandler.Protected().Setup<Task<HttpResponseMessage>>(
-            "SendAsync",
-            ItExpr.IsAny<HttpRequestMessage>(),
-            ItExpr.IsAny<CancellationToken>()
-        ).ReturnsAsync(func);
-        return new HttpClient(moqHandler.Object);
-    }
 
     /// <summary>
     /// Test registry constructor

@@ -16,7 +16,7 @@ using System.Collections.Generic;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-internal class Cache : ICache
+public class Cache : ICache
 {
     /// <summary>
     /// CacheEntry represents a cache entry for storing authentication tokens associated with a specific challenge scheme.

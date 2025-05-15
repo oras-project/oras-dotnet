@@ -15,7 +15,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
@@ -57,7 +56,7 @@ public class ScopeManager
     /// <param name="httpClient"></param>
     /// <param name="reference"></param>
     /// <param name="actions"></param>
-    public static void SetActionsForRepository(HttpClient httpClient, Reference reference, params Scope.Action[] actions)
+    public static void SetActionsForRepository(IClient httpClient, Reference reference, params Scope.Action[] actions)
     {
         if (httpClient is Client authClient)
         {
@@ -96,7 +95,7 @@ public class ScopeManager
     /// <param name="httpClient"></param>
     /// <param name="registry"></param>
     /// <param name="scope"></param>
-    public static void SetScopeForRegistry(HttpClient httpClient, string registry, Scope scope)
+    public static void SetScopeForRegistry(IClient httpClient, string registry, Scope scope)
     {
         if (httpClient is Client authClient)
         {
@@ -113,10 +112,10 @@ public class ScopeManager
     /// <param name="scope">The scope to be set for the registry, including its actions.</param>
     public void SetScopeForRegistry(string registry, Scope scope)
     {
-        if (scope.Actions.Contains(Scope.Wildcard))
+        if (scope.Actions.Contains(Scope.ActionWildcard))
         {
             scope.Actions.Clear();
-            scope.Actions.Add(Scope.Wildcard);
+            scope.Actions.Add(Scope.ActionWildcard);
         }
 
         Scopes.AddOrUpdate(registry,

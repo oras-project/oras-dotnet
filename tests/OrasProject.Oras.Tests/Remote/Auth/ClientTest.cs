@@ -171,7 +171,7 @@ public class ClientTest
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         };
 
-        var client = new Client(CustomHandler(MockHttpRequestHandler).Object);
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
         var cancellationToken = new CancellationToken();
         // Act
@@ -235,7 +235,7 @@ public class ClientTest
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         };
 
-        var client = new Client(CustomHandler(MockHttpRequestHandler).Object);
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
         var cancellationToken = new CancellationToken();
         // Act
         var result = await client.FetchOauth2Token(
@@ -257,7 +257,7 @@ public class ClientTest
         var realm = "https://example.com";
         var service = "test_service";
         string[] scopes = ["repository:repo1:push", "repository:repo2:*"];
-        var client = new Client();
+        var client = new Client(new HttpClient());
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
@@ -295,7 +295,7 @@ public class ClientTest
             RefreshToken = "test_refresh_token"
         };
 
-        var client = new Client(mockHandler.Object);
+        var client = new Client(new HttpClient(mockHandler.Object));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
@@ -332,7 +332,7 @@ public class ClientTest
             RefreshToken = "test_refresh_token"
         };
 
-        var client = new Client(mockHandler.Object);
+        var client = new Client(new HttpClient(mockHandler.Object));
 
         // Act & Assert
         await Assert.ThrowsAsync<ResponseException>(() =>
@@ -385,7 +385,7 @@ public class ClientTest
         };
         
 
-        var client = new Client(CustomHandler(MockHttpRequestHandler).Object);
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
         // Act
         var result = await client.FetchDistributionToken(
@@ -439,7 +439,7 @@ public class ClientTest
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
 
-        var client = new Client(CustomHandler(MockHttpRequestHandler).Object);
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
         // Act
         var result = await client.FetchDistributionToken(
@@ -475,8 +475,8 @@ public class ClientTest
                 StatusCode = HttpStatusCode.OK,
                 Content = new StringContent("{}")
             });
-
-        var client = new Client(mockHandler.Object);
+        
+        var client = new Client(new HttpClient(mockHandler.Object));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
@@ -512,7 +512,7 @@ public class ClientTest
                 Content = new StringContent("{\"error\": \"invalid_request\"}")
             });
 
-        var client = new Client(mockHandler.Object);
+        var client = new Client(new HttpClient(mockHandler.Object));
 
         // Act & Assert
         await Assert.ThrowsAsync<ResponseException>(() =>
@@ -556,7 +556,7 @@ public class ClientTest
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         };
-        var client = new Client(CustomHandler(MockHttpRequestHandler).Object);
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
         // Act
         var result = await client.FetchDistributionToken(
@@ -613,7 +613,7 @@ public class ClientTest
                 Password = password
             });
 
-        var client = new Client(mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
 
         // Act
         var result = await client.FetchBasicAuth(registry, CancellationToken.None);
@@ -638,7 +638,7 @@ public class ClientTest
                 Password = password
             });
 
-        var client = new Client(mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
@@ -662,7 +662,7 @@ public class ClientTest
                 Password = string.Empty
             });
 
-        var client = new Client(mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
@@ -732,7 +732,7 @@ public class ClientTest
         };
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
-        var client = new Client(mockHandler.Object);
+        var client = new Client(new HttpClient(mockHandler.Object));
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
         var cancellationToken = new CancellationToken();
         
@@ -781,8 +781,8 @@ public class ClientTest
                 StatusCode = HttpStatusCode.OK
             });
 
-        var client = new Client(mockHandler.Object);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "test_token");
+        var client = new Client(new HttpClient(mockHandler.Object));
+        client.BaseClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "test_token");
         var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
@@ -794,6 +794,43 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null),
+            ItExpr.IsAny<CancellationToken>());
+    }
+    
+    [Fact]
+    public async Task SendAsync_WithCustomHeader_ReturnsResponse()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK
+            });
+        
+        var expectedToken = "test_token";
+        var client = new Client(new HttpClient(mockHandler.Object));
+        client.CustomHeaders["Authorization"] = [$"Bearer {expectedToken}"];
+        client.CustomHeaders["foo"] = ["bar", "bar1"];
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
+
+        // Act
+        var response = await client.SendAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        mockHandler.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
+                                                 req.Headers.Authorization.Scheme == "Bearer" &&
+                                                 req.Headers.Authorization.Parameter == expectedToken &&
+                                                 string.Join(" ", req.Headers.GetValues("foo")).Equals("bar bar1")),
             ItExpr.IsAny<CancellationToken>());
     }
 
@@ -815,8 +852,10 @@ public class ClientTest
                 StatusCode = HttpStatusCode.OK
             });
 
-        var client = new Client(mockHandler.Object);
+        var client = new Client(new HttpClient(mockHandler.Object));
         client.Cache.SetCache(host, Challenge.Scheme.Basic, "", token);
+        client.CustomHeaders["foo"] = ["bar"];
+        client.CustomHeaders["foo"] = ["newBar"];
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
@@ -830,7 +869,8 @@ public class ClientTest
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null 
                                                  && req.Headers.Authorization.Scheme == "Basic" 
-                                                 && req.Headers.Authorization.Parameter == token),
+                                                 && req.Headers.Authorization.Parameter == token
+                                                 && "newBar".Equals(req.Headers.GetValues("foo").FirstOrDefault())),
             ItExpr.IsAny<CancellationToken>());
     }
     
@@ -853,12 +893,16 @@ public class ClientTest
                 StatusCode = HttpStatusCode.OK
             });
 
-        var client = new Client(mockHandler.Object);
+        var client = new Client(new HttpClient(mockHandler.Object));
         client.Cache.SetCache(host, Challenge.Scheme.Bearer, string.Join(" ", scopes), token);
         Assert.True(Scope.TryParse(scopes[0], out var scope1));
         client.ScopeManager.SetScopeForRegistry(host, scope1);
         Assert.True(Scope.TryParse(scopes[1], out var scope2));
         client.ScopeManager.SetScopeForRegistry(host, scope2);
+        client.CustomHeaders["foo"] = ["bar"];
+        client.CustomHeaders["foo"] = ["newBar"];
+        client.CustomHeaders["key1"] = ["value1"];
+
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
@@ -872,7 +916,9 @@ public class ClientTest
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
                                                  req.Headers.Authorization.Scheme == "Bearer" 
-                                                 && req.Headers.Authorization.Parameter == token),
+                                                 && req.Headers.Authorization.Parameter == token
+                                                 && "newBar".Equals(req.Headers.GetValues("foo").FirstOrDefault())
+                                                 && "value1".Equals(req.Headers.GetValues("key1").FirstOrDefault())),
             ItExpr.IsAny<CancellationToken>());
     }
 
@@ -940,11 +986,17 @@ public class ClientTest
                         RequestMessage = req
                     };
                 }
-                return new HttpResponseMessage()
+
+                if (string.Join(" ", req.Headers.GetValues("foo")).Equals("bar abc") &&
+                    "value1".Equals(req.Headers.GetValues("key1").FirstOrDefault()))
                 {
-                    StatusCode = HttpStatusCode.OK,
-                    RequestMessage = req
-                };
+                    return new HttpResponseMessage()
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        RequestMessage = req
+                    };
+                }
+                
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         };
@@ -957,7 +1009,10 @@ public class ClientTest
             });
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         
-        var client = new Client(mockHandler.Object, mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialHelper.Object);
+        client.CustomHeaders["foo"] = ["bar"];
+        client.CustomHeaders["foo"].Add("abc");
+        client.CustomHeaders["key1"] = ["value1"];
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
@@ -1033,11 +1088,16 @@ public class ClientTest
                         }
                     };
                 }
-                return new HttpResponseMessage
+                
+                if (string.Join(" ", req.Headers.GetValues("foo")).Equals("bar abc") &&
+                    "value1".Equals(req.Headers.GetValues("key1").FirstOrDefault()))
                 {
-                    StatusCode = HttpStatusCode.OK,
-                    RequestMessage = req
-                };
+                    return new HttpResponseMessage()
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        RequestMessage = req
+                    };
+                }
             }
             
 
@@ -1053,7 +1113,10 @@ public class ClientTest
                 Password = password
             });
         var mockHandler = CustomHandler(MockHttpRequestHandler);
-        var client = new Client(mockHandler.Object, mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialHelper.Object);
+        client.CustomHeaders["foo"] = ["bar"];
+        client.CustomHeaders["foo"].Add("abc");
+        client.CustomHeaders["key1"] = ["value1"];
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
@@ -1126,7 +1189,7 @@ public class ClientTest
         };
         
         var mockHandler = CustomHandler(MockHttpRequestHandler);
-        var client = new Client(mockHandler.Object);
+        var client = new Client(new HttpClient(mockHandler.Object));
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act

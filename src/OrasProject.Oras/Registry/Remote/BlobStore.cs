@@ -58,6 +58,8 @@ public class BlobStore : IBlobStore, IMounter
                     {
                         throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch Content-Length");
                     }
+
+                    response.VerifyContentDigest(target.Digest);
                     return await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{target.Digest}: not found");

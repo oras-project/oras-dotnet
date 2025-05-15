@@ -54,8 +54,12 @@ public static class Challenge
     /// or <c>null</c> if no parameters are present.
     /// </returns>
     /// <exception cref="FormatException">Thrown when a quoted parameter value is not properly closed.</exception>
-    public static (Scheme, Dictionary<string, string>?) ParseChallenge(string header)
+    public static (Scheme, Dictionary<string, string>?) ParseChallenge(string? header)
     {
+        if (header == null)
+        {
+            return (Scheme.Unknown, null);
+        }
         // as defined in RFC 7235 section 2.1, we have
         //     challenge   = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
         //     auth-scheme = token

@@ -32,9 +32,9 @@ public class Registry : IRegistry
 
     private RepositoryOptions _opts;
 
-    public Registry(string registry) : this(registry, new HttpClient().AddUserAgent()) { }
+    public Registry(string registry) : this(registry, new DefaultHttpClient(new HttpClient())) { }
 
-    public Registry(string registry, HttpClient httpClient) => _opts = new()
+    public Registry(string registry, IClient httpClient) => _opts = new()
     {
         Reference = new Reference(registry),
         HttpClient = httpClient,

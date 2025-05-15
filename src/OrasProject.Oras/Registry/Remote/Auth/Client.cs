@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -26,13 +27,18 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Client : HttpClient
+public class Client : IClient
 {
     /// <summary>
     /// CredentialHelper provides the mechanism to retrieve
     /// credentials for accessing remote registries.
     /// </summary>
     public ICredentialHelper? CredentialHelper { get; init; }
+    
+    /// <summary>
+    /// BaseClient is an instance of HttpClient to send http requests
+    /// </summary>
+    public HttpClient BaseClient { get; init; }
     
     /// <summary>
     /// Cache used for storing and retrieving 
@@ -62,17 +68,16 @@ public class Client : HttpClient
     /// ScopeManager is an instance to manage scopes.
     /// </summary>
     public ScopeManager ScopeManager { get; set; } = new();
+
+    /// <summary>
+    /// CustomHeaders is for users to customize headers
+    /// </summary>
+    public ConcurrentDictionary<string, List<string>> CustomHeaders { get; set; } = new();
     
-    public Client(ICredentialHelper? credentialHelper = null)
+    public Client(HttpClient httpClient, ICredentialHelper? credentialHelper = null)
     {
-        this.AddUserAgent();
-        CredentialHelper = credentialHelper;
-    }
-    
-    public Client(HttpMessageHandler handler, ICredentialHelper? credentialHelper = null)
-        : base(handler)
-    {
-        this.AddUserAgent();
+        BaseClient = httpClient;
+        BaseClient.AddUserAgent();
         CredentialHelper = credentialHelper;
     }
 
@@ -93,141 +98,137 @@ public class Client : HttpClient
     /// <exception cref="KeyNotFoundException">
     /// Thrown if required parameters (e.g., "realm" or "service") are missing in the authentication challenge.
     /// </exception>
-    public override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest,
+    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest,
         CancellationToken cancellationToken)
     {
-        if (originalRequest.Headers.Authorization != null || DefaultRequestHeaders.Authorization != null)
+        foreach (var (headerName, headerValues) in CustomHeaders)
         {
-            return await base.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
+            originalRequest.Headers.TryAddWithoutValidation(headerName, headerValues);
         }
-
-        HttpRequestMessage? request = null;
-        try
+        
+        if (originalRequest.Headers.Authorization != null || BaseClient.DefaultRequestHeaders.Authorization != null)
         {
-            request = await originalRequest.CloneAsync().ConfigureAwait(false);
-            var attemptedKey = string.Empty;
-            var host = request.RequestUri?.Host ?? throw new ArgumentNullException(nameof(request.RequestUri));
+            return await BaseClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
+        }
+        using var requestAttempt1 = await originalRequest.CloneAsync().ConfigureAwait(false);
+        var attemptedKey = string.Empty;
+        var host = requestAttempt1.RequestUri?.Host ?? throw new ArgumentNullException(nameof(requestAttempt1.RequestUri));
 
-            // attempt to send request with cached auth token
-            if (Cache.TryGetScheme(host, out var schemeFromCache))
-            {
-                switch (schemeFromCache)
-                {
-                    case Challenge.Scheme.Basic:
-                    {
-                        if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken))
-                        {
-                            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
-                        }
-
-                        break;
-                    }
-                    case Challenge.Scheme.Bearer:
-                    {
-                        var scopes = ScopeManager.GetScopesStringForHost(host);
-                        attemptedKey = string.Join(" ", scopes);
-                        if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken))
-                        {
-                            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
-                        }
-
-                        break;
-                    }
-                }
-            }
-
-            var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            if (response.StatusCode != HttpStatusCode.Unauthorized)
-            {
-                return response;
-            }
-
-            var (schemeFromChallenge, parameters) =
-                Challenge.ParseChallenge(response.Headers.WwwAuthenticate.ToString());
-            // rewind the request as the request has been consumed
-            request.Dispose();
-            request = await originalRequest.CloneAsync().ConfigureAwait(false);
-
-            // attempt again with credentials for recognized schemes
-            switch (schemeFromChallenge)
+        // attempt to send request with cached auth token
+        if (Cache.TryGetScheme(host, out var schemeFromCache))
+        {
+            switch (schemeFromCache)
             {
                 case Challenge.Scheme.Basic:
                 {
-                    var basicAuthToken = await FetchBasicAuth(host, cancellationToken).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
+                    if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken))
+                    {
+                        requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
+                    }
+
                     break;
                 }
                 case Challenge.Scheme.Bearer:
                 {
-                    if (parameters == null)
+                    var scopes = ScopeManager.GetScopesStringForHost(host);
+                    attemptedKey = string.Join(" ", scopes);
+                    if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken))
                     {
-                        throw await response.ParseErrorResponseAsync("Www-Challenge parameter is null", cancellationToken).ConfigureAwait(false);
+                        requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
                     }
 
-                    var existingScopes = ScopeManager.GetScopesForHost(host);
-                    var newScopes = new SortedSet<Scope>(existingScopes);
-                    if (parameters.TryGetValue("scope", out var scopesString))
-                    {
-                        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            if (Scope.TryParse(scopeStr, out var scope))
-                            {
-                                Scope.AddOrMergeScope(newScopes, scope);
-                            }
-                        }
-                    }
-
-                    // attempt to send request when the scope changes and a token cache hits
-                    var newKey = string.Join(" ", newScopes.Select(newScope => newScope));
-                    if (newKey != attemptedKey &&
-                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
-                    {
-                        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                        response.Dispose();
-                        response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
-                        if (response.StatusCode != HttpStatusCode.Unauthorized)
-                        {
-                            return response;
-                        }
-                    }
-
-                    if (!parameters.TryGetValue("realm", out var realm))
-                    {
-                        throw new KeyNotFoundException("Realm was not present in the request.");
-                    }
-
-                    if (!parameters.TryGetValue("service", out var service))
-                    {
-                        throw new KeyNotFoundException("Service was not present in the request.");
-                    }
-
-                    // try to fetch bearer token based on the challenge header
-                    var bearerAuthToken = await FetchBearerAuth(
-                        host,
-                        realm,
-                        service,
-                        newScopes.Select(newScope => newScope.ToString()).ToList(),
-                        cancellationToken
-                    ).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
-
-                    // rewind the request again as it may be consumed
-                    request.Dispose();
-                    request = await originalRequest.CloneAsync().ConfigureAwait(false);
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
                     break;
                 }
-                default:
-                    return response;
             }
-            response.Dispose();
-            return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
-        finally
+
+        var response1 = await BaseClient.SendAsync(requestAttempt1, cancellationToken).ConfigureAwait(false);
+        if (response1.StatusCode != HttpStatusCode.Unauthorized)
         {
-            originalRequest.Dispose();
-            request?.Dispose();
+            return response1;
+        }
+
+        var (schemeFromChallenge, parameters) =
+            Challenge.ParseChallenge(response1.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
+
+        // attempt again with credentials for recognized schemes
+        switch (schemeFromChallenge)
+        {
+            case Challenge.Scheme.Basic:
+            {
+                response1.Dispose();
+                var basicAuthToken = await FetchBasicAuth(host, cancellationToken).ConfigureAwait(false);
+                Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
+                
+                // Attempt again with basic token
+                using var requestAttempt2 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
+                return await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
+            }
+            case Challenge.Scheme.Bearer:
+            {
+                response1.Dispose();
+                if (parameters == null)
+                {
+                    throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
+                }
+
+                var existingScopes = ScopeManager.GetScopesForHost(host);
+                var newScopes = new SortedSet<Scope>(existingScopes);
+                if (parameters.TryGetValue("scope", out var scopesString))
+                {
+                    foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (Scope.TryParse(scopeStr, out var scope))
+                        {
+                            Scope.AddOrMergeScope(newScopes, scope);
+                        }
+                    }
+                }
+
+                // attempt to send request when the scope changes and a token cache hits
+                var newKey = string.Join(" ", newScopes.Select(newScope => newScope));
+                if (newKey != attemptedKey &&
+                    Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
+                {
+                    using var requestAttempt2 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                    requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
+                    var response2 = await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
+                    
+                    if (response2.StatusCode != HttpStatusCode.Unauthorized)
+                    {
+                        return response2;
+                    }
+                    response2.Dispose();
+                }
+
+                if (!parameters.TryGetValue("realm", out var realm))
+                {
+                    throw new KeyNotFoundException("Realm was not present in the request.");
+                }
+
+                if (!parameters.TryGetValue("service", out var service))
+                {
+                    throw new KeyNotFoundException("Service was not present in the request.");
+                }
+
+                // try to fetch bearer token based on the challenge header
+                var bearerAuthToken = await FetchBearerAuth(
+                    host,
+                    realm,
+                    service,
+                    newScopes.Select(newScope => newScope.ToString()).ToList(),
+                    cancellationToken
+                ).ConfigureAwait(false);
+                Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
+
+                // rewind the request again as it may be consumed
+                using var requestAttempt3 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
+                return await BaseClient.SendAsync(requestAttempt3, cancellationToken).ConfigureAwait(false);
+            }
+            default:
+                return response1;
         }
     }
 
@@ -366,7 +367,7 @@ public class Client : HttpClient
         };
         request.RequestUri = uriBuilder.Uri;
         
-        using var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await BaseClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -443,7 +444,7 @@ public class Client : HttpClient
         request.Content = content;
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.FormUrlEncoded);
         
-        using var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await BaseClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);

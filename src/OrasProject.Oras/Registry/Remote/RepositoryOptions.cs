@@ -12,7 +12,7 @@
 // limitations under the License.
 
 using System.Collections.Generic;
-using System.Net.Http;
+using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Registry.Remote;
 
@@ -24,7 +24,7 @@ public struct RepositoryOptions
     /// <summary>
     /// Client is the underlying HTTP client used to access the remote registry.
     /// </summary>
-    public required HttpClient HttpClient { get; set; }
+    public required IClient HttpClient { get; set; }
 
     /// <summary>
     /// Reference references the remote repository.

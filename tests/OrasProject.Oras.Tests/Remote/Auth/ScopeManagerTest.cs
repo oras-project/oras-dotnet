@@ -95,7 +95,7 @@ public class ScopeManagerTest
         (
             "registry",
             "catalog",
-            new () { Scope.Push, Scope.Wildcard }
+            new () { Scope.Push, Scope.ActionWildcard }
         );
         
         var scope3 = new Scope
@@ -113,7 +113,7 @@ public class ScopeManagerTest
         var results = scopeManager.GetScopesForHost("registry1");
         
         string[] expectedResources = ["registry", "catalog", "repository", "repo1"];
-        string[] expectedActions = [Scope.Wildcard, Scope.Pull];
+        string[] expectedActions = [Scope.ActionWildcard, Scope.Pull];
         
         // Assert
         Assert.Equal(2, results.Count);
@@ -169,7 +169,7 @@ public class ScopeManagerTest
         // Arrange
         var scopeManager = new ScopeManager();
         var scope1 = new Scope("repository", "repo1", new() { Scope.Pull });
-        var scope2 = new Scope("repository", "repo1", new() { Scope.Wildcard });
+        var scope2 = new Scope("repository", "repo1", new() { Scope.ActionWildcard });
 
         // Act
         scopeManager.SetScopeForRegistry("registry1", scope1);
@@ -180,7 +180,7 @@ public class ScopeManagerTest
         Assert.Single(result);
         var updatedScope = result.First();
         Assert.Single(updatedScope.Actions);
-        Assert.Contains(Scope.Wildcard, updatedScope.Actions);
+        Assert.Contains(Scope.ActionWildcard, updatedScope.Actions);
     }
 
     [Fact]
@@ -308,14 +308,14 @@ public class ScopeManagerTest
         (
             "repository",
             "repo3",
-            new () { Scope.Push, Scope.Pull, Scope.Delete, Scope.Wildcard }
+            new () { Scope.Push, Scope.Pull, Scope.Delete, Scope.ActionWildcard }
         );
         
         var scope4 = new Scope
         (
             "registry",
             "catalog",
-            new () { Scope.Push, Scope.Pull, Scope.Delete, Scope.Wildcard }
+            new () { Scope.Push, Scope.Pull, Scope.Delete, Scope.ActionWildcard }
         );
         scopeManager.SetScopeForRegistry("registry1", scope1);
         scopeManager.SetScopeForRegistry("registry1", scope2);
@@ -346,7 +346,7 @@ public class ScopeManagerTest
         (
             "repository",
             "repo1",
-            new () { Scope.Wildcard, Scope.Pull, Scope.Delete }
+            new () { Scope.ActionWildcard, Scope.Pull, Scope.Delete }
         );
         scopeManager.SetScopeForRegistry("registry1", scope);
 
@@ -450,7 +450,7 @@ public class ScopeManagerTest
         Assert.Single(result);
         var scope = result.First();
         Assert.Single(scope.Actions);
-        Assert.Contains(Scope.Wildcard, scope.Actions);
+        Assert.Contains(Scope.ActionWildcard, scope.Actions);
         
     }
     
@@ -458,7 +458,7 @@ public class ScopeManagerTest
     public void SetActionsForRepository_DoesNothing_ForPlainHttpClient()
     {
         // Arrange
-        var httpClient = new HttpClient();
+        var httpClient = new DefaultHttpClient(new HttpClient());
         var reference = new Reference("registry1", "repo1");
 
         // Act
@@ -473,7 +473,7 @@ public class ScopeManagerTest
     public void SetActionsForRepository_AddsScope_WhenCalledOnClient()
     {
         // Arrange
-        var client = new Client();
+        var client = new Client(new HttpClient());
         var reference = new Reference("registry1", "repo1");
 
         // Act
@@ -493,7 +493,7 @@ public class ScopeManagerTest
     public void SetActionsForRepository_ReplacesWithAll_WhenAllActionIncluded()
     {
         // Arrange
-        var client = new Client();
+        var client = new Client(new HttpClient());
         var reference = new Reference("registry1", "repo1");
 
         // Act
@@ -505,7 +505,7 @@ public class ScopeManagerTest
         Assert.Single(scopes);
         var scope = scopes.First();
         Assert.Single(scope.Actions);
-        Assert.Contains(Scope.Wildcard, scope.Actions);
+        Assert.Contains(Scope.ActionWildcard, scope.Actions);
     }
     
 
@@ -513,7 +513,7 @@ public class ScopeManagerTest
     public void SetScopeForRegistry_Static_DoesNothing_ForPlainHttpClient()
     {
         // Arrange
-        var httpClient = new HttpClient();
+        var httpClient = new DefaultHttpClient(new HttpClient());
         var scope = new Scope("repository", "repo1", new() { Scope.Pull });
 
         // Act / Assert
@@ -528,7 +528,7 @@ public class ScopeManagerTest
     public void SetScopeForRegistry_Static_AddsScope_WhenCalledOnClient()
     {
         // Arrange
-        var client = new Client();
+        var client = new Client(new HttpClient());
         var scope = new Scope("repository", "repo1", new() { Scope.Pull, Scope.Push });
 
         // Act
@@ -548,7 +548,7 @@ public class ScopeManagerTest
     public void SetScopeForRegistry_Static_MergesActions_WhenCalledMultipleTimes()
     {
         // Arrange
-        var client = new Client();
+        var client = new Client(new HttpClient());
         var s1 = new Scope("repository", "repo1", new() { Scope.Pull });
         var s2 = new Scope("repository", "repo1", new() { Scope.Push });
 
@@ -568,9 +568,9 @@ public class ScopeManagerTest
     public void SetScopeForRegistry_Static_ReplacesWithAll_WhenAllActionIncluded()
     {
         // Arrange
-        var client = new Client();
+        var client = new Client(new HttpClient());
         var s1 = new Scope("repository", "repo1", new() { Scope.Pull });
-        var s2 = new Scope("repository", "repo1", new() { Scope.Wildcard });
+        var s2 = new Scope("repository", "repo1", new() { Scope.ActionWildcard });
 
         // Act
         ScopeManager.SetScopeForRegistry(client, "registry1", s1);
@@ -581,7 +581,7 @@ public class ScopeManagerTest
         Assert.Single(scopes);
         var updated = scopes.First();
         Assert.Single(updated.Actions);
-        Assert.Contains(Scope.Wildcard, updated.Actions);
+        Assert.Contains(Scope.ActionWildcard, updated.Actions);
     }
     
 }
