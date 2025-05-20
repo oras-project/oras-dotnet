@@ -137,7 +137,12 @@ public class CopyTest
 
         var root = descs[3];
         var destinationTarget = new MemoryStore();
-        await sourceTarget.CopyGraphAsync(destinationTarget, root, cancellationToken);
+        var proxy = new Extensions.Proxy()
+        {
+            MemoryStorage = new MemoryStorage(),
+            Target = sourceTarget
+        };
+        await sourceTarget.CopyGraphAsync(destinationTarget, root, proxy, cancellationToken);
         for (var i = 0; i < descs.Count; i++)
         {
             Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));

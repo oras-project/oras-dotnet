@@ -13,14 +13,38 @@
 
 using OrasProject.Oras.Oci;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static OrasProject.Oras.Content.Extensions;
+using OrasProject.Oras.Content;
+using OrasProject.Oras.Registry;
 
 namespace OrasProject.Oras;
 
 public static class Extensions
 {
+    
+    private static readonly SemaphoreSlim _semaphore = new(1, 3);
+
+    public class Proxy : IFetchable
+    {
+        public required IStorage MemoryStorage { get; set; }
+        public required ITarget Target { get; set; }
+
+        public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
+        {
+            if (await MemoryStorage.ExistsAsync(target, cancellationToken).ConfigureAwait(false))
+            {
+                return await MemoryStorage.FetchAsync(target, cancellationToken).ConfigureAwait(false);
+            }
+            
+            var manifest = await Target.FetchAsync(target, cancellationToken).ConfigureAwait(false);
+            await MemoryStorage.PushAsync(target, manifest, cancellationToken).ConfigureAwait(false);
+            return await MemoryStorage.FetchAsync(target, cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     /// <summary>
     /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
@@ -42,32 +66,85 @@ public static class Extensions
         {
             dstRef = srcRef;
         }
-        var root = await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
-        await src.CopyGraphAsync(dst, root, cancellationToken).ConfigureAwait(false);
+
+        Descriptor root;
+        Stream rootStream;
+        
+        if (src is IReferenceFetchable srcRefFetchable)
+        {
+            (root, rootStream) = await srcRefFetchable.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
+        } else
+        {
+            root = await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
+            rootStream = await src.FetchAsync(root, cancellationToken).ConfigureAwait(false);
+        }
+        var proxy = new Proxy()
+        {
+            MemoryStorage = new MemoryStorage(),
+            Target = src
+        };
+        if (Descriptor.IsManifestType(root))
+        {
+            if (!await proxy.MemoryStorage.ExistsAsync(root, cancellationToken).ConfigureAwait(false))
+            {
+                await proxy.MemoryStorage.PushAsync(root, rootStream, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        await src.CopyGraphAsync(dst, root, proxy, cancellationToken).ConfigureAwait(false);
         await dst.TagAsync(root, dstRef, cancellationToken).ConfigureAwait(false);
         return root;
     }
 
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CancellationToken cancellationToken)
     {
+        // acquire lock to find successors of the current node
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        IEnumerable<Descriptor> successors;
         // check if node exists in target
-        if (await dst.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
+        try
         {
-            return;
+            if (await dst.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
+            {
+                return;
+            }
+            // fetch once
+            successors = await proxy.GetSuccessorsAsync(node, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            // release
+            _semaphore.Release();
         }
 
-        // retrieve successors
-        var successors = await src.GetSuccessorsAsync(node, cancellationToken).ConfigureAwait(false);
-        // obtain data stream
-        var dataStream = await src.FetchAsync(node, cancellationToken).ConfigureAwait(false);
-        // check if the node has successors
-        if (successors != null)
+        
+        var childNodesCopies = new List<Task>();
+        foreach (var childNode in successors)
         {
-            foreach (var childNode in successors)
-            {
-                await src.CopyGraphAsync(dst, childNode, cancellationToken).ConfigureAwait(false);
-            }
+            childNodesCopies.Add(src.CopyGraphAsync(dst, childNode, proxy, cancellationToken));
         }
-        await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
+        await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
+        
+        
+        // obtain data stream 
+        // fetch twice
+        // acquire lock again to perform copy
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            Stream dataStream;
+            if (await proxy.MemoryStorage.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
+            {
+                dataStream = await proxy.MemoryStorage.FetchAsync(node, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                dataStream = await src.FetchAsync(node, cancellationToken).ConfigureAwait(false);
+            }
+            await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 }

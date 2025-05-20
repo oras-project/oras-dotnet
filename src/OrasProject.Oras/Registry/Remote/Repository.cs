@@ -485,8 +485,8 @@ public class Repository : IRepository
             ContentReference = descriptor.Digest
         };
         var nextPageUrl = string.IsNullOrEmpty(artifactType) ?
-            new UriFactory(reference).BuildReferrersUrl() :
-            new UriFactory(reference).BuildReferrersUrl(artifactType);
+            new UriFactory(reference, _opts.PlainHttp).BuildReferrersUrl() :
+            new UriFactory(reference, _opts.PlainHttp).BuildReferrersUrl(artifactType);
 
         while (nextPageUrl != null)
         {
