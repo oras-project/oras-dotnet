@@ -59,6 +59,7 @@ public class BlobStore : IBlobStore, IMounter
                         throw new HttpIOException(HttpRequestError.InvalidResponse, $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: mismatch Content-Length");
                     }
 
+                    response.VerifyContentDigest(target.Digest);
                     return await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
                 case HttpStatusCode.NotFound:
                     throw new NotFoundException($"{target.Digest}: not found");
@@ -266,7 +267,7 @@ public class BlobStore : IBlobStore, IMounter
         // push it. If the caller has provided a getContent function, we
         // can use that, otherwise pull the content from the source repository.
         //
-        // [spec]: https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#mounting-a-blob-from-another-repository
+        // [spec]: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#mounting-a-blob-from-another-repository
 
         async Task<Stream> GetContentStream()
         {
