@@ -24,7 +24,7 @@ public struct RepositoryOptions
     /// <summary>
     /// Client is the underlying HTTP client used to access the remote registry.
     /// </summary>
-    public required IClient HttpClient { get; set; }
+    public required IClient Client { get; set; }
 
     /// <summary>
     /// Reference references the remote repository.

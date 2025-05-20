@@ -78,7 +78,7 @@ public partial class RegistryTest
         {
             Reference = new Reference("localhost:5000"),
             PlainHttp = true,
-            HttpClient = CustomClient(Func),
+            Client = CustomClient(Func),
         });
         var cancellationToken = new CancellationToken();
         await registry.PingAsync(cancellationToken);
@@ -156,7 +156,7 @@ public partial class RegistryTest
         {
             Reference = new Reference("localhost:5000"),
             PlainHttp = true,
-            HttpClient = CustomClient(Func),
+            Client = CustomClient(Func),
             TagListPageSize = 4,
         });
         var cancellationToken = new CancellationToken();

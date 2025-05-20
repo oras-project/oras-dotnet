@@ -192,7 +192,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -295,7 +295,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -364,7 +364,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -441,7 +441,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -511,7 +511,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -606,7 +606,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -663,7 +663,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -731,7 +731,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -841,7 +841,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
             TagListPageSize = 4,
         });
@@ -900,7 +900,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -995,7 +995,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1061,7 +1061,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1133,7 +1133,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1188,7 +1188,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1239,7 +1239,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1296,7 +1296,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1360,7 +1360,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1464,7 +1464,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1624,7 +1624,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1667,7 +1667,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1729,7 +1729,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1778,7 +1778,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1844,7 +1844,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1903,7 +1903,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -1974,7 +1974,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -2088,7 +2088,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -2154,7 +2154,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -2254,7 +2254,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var reg = new Registry.Remote.Registry(new RepositoryOptions()
         {
             Reference = new Reference("localhost:5000"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
         });
         var src = await reg.GetRepositoryAsync("source", CancellationToken.None);
 
@@ -2365,7 +2365,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test2"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -2438,7 +2438,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test2"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -2489,7 +2489,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -2561,7 +2561,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test2"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -2611,7 +2611,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test2"),
-            HttpClient = CustomClient(MockHandlerMockHandler),
+            Client = CustomClient(MockHandlerMockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -2710,7 +2710,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -2758,7 +2758,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -2809,7 +2809,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -2864,7 +2864,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -2924,7 +2924,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -2959,7 +2959,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -2995,7 +2995,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -3026,7 +3026,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -3060,7 +3060,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -3097,7 +3097,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -3128,7 +3128,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -3172,7 +3172,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -3236,7 +3236,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -3295,7 +3295,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -3383,7 +3383,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -3447,7 +3447,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -3532,7 +3532,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
 
@@ -3584,7 +3584,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/abc"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
@@ -3595,7 +3595,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo1 = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         Assert.Equal(Referrers.ReferrersState.Unknown, repo1.ReferrersState);
@@ -3619,7 +3619,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHandler),
+            Client = CustomClient(MockHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();

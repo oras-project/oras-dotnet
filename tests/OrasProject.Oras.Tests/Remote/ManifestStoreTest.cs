@@ -69,7 +69,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -121,7 +121,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
             MaxMetadataBytes = expectedIndexDesc.Size - 1
         });
@@ -150,7 +150,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockedHttpHandler),
+            Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -222,7 +222,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHttpRequestHandlerAsync),
+            Client = CustomClient(MockHttpRequestHandlerAsync),
             PlainHttp = true,
         });
 
@@ -312,7 +312,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHttpRequestHandlerAsync),
+            Client = CustomClient(MockHttpRequestHandlerAsync),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
@@ -471,7 +471,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHttpRequestHandlerAsync),
+            Client = CustomClient(MockHttpRequestHandlerAsync),
             PlainHttp = true,
         });
 
@@ -558,7 +558,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHttpRequestHandlerAsync),
+            Client = CustomClient(MockHttpRequestHandlerAsync),
             PlainHttp = true,
         });
 
@@ -649,7 +649,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHttpRequestHandlerAsync),
+            Client = CustomClient(MockHttpRequestHandlerAsync),
             PlainHttp = true,
         });
 
@@ -695,7 +695,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(HttpHandler),
+            Client = CustomClient(HttpHandler),
             PlainHttp = true,
         });
 
@@ -752,7 +752,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(HttpHandler),
+            Client = CustomClient(HttpHandler),
             PlainHttp = true,
         });
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
@@ -790,7 +790,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(CustomHttpHandler),
+            Client = CustomClient(CustomHttpHandler),
             PlainHttp = true,
             MaxMetadataBytes = manifestDesc.Size - 1,
         });
@@ -988,7 +988,7 @@ public class ManifestStoreTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(HttpHandler),
+            Client = CustomClient(HttpHandler),
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();

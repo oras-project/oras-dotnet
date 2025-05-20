@@ -32,12 +32,12 @@ public class Registry : IRegistry
 
     private RepositoryOptions _opts;
 
-    public Registry(string registry) : this(registry, new DefaultHttpClient(new HttpClient())) { }
+    public Registry(string registry) : this(registry, new BasicHttpClient(new HttpClient())) { }
 
     public Registry(string registry, IClient httpClient) => _opts = new()
     {
         Reference = new Reference(registry),
-        HttpClient = httpClient,
+        Client = httpClient,
     };
 
     public Registry(RepositoryOptions options) => _opts = options;
@@ -56,7 +56,7 @@ public class Registry : IRegistry
     {
         var url = new UriFactory(_opts).BuildRegistryBase();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        using var resp = await _opts.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var resp = await _opts.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.OK:
@@ -92,7 +92,7 @@ public class Registry : IRegistry
     {
         if (Scope.TryParse(Scope.ScopeRegistryCatalog, out var scope))
         {
-            ScopeManager.SetScopeForRegistry(RepositoryOptions.HttpClient, RepositoryOptions.Reference.Registry, scope);
+            ScopeManager.SetScopeForRegistry(RepositoryOptions.Client, RepositoryOptions.Reference.Registry, scope);
         }
         
         var url = new UriFactory(_opts).BuildRegistryCatalog();
@@ -132,7 +132,7 @@ public class Registry : IRegistry
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.ToString());
-        using var response = await _opts.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await _opts.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);

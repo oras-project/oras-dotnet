@@ -174,7 +174,7 @@ public static class Challenge
     }
     
     /// <summary>
-    /// IsValidTokenChar determines whether a character is not a valid token character defined in RFC 7230 section 3.2.6.
+    /// IsValidTokenChar determines whether a character is a valid token character defined in RFC 7230 section 3.2.6.
     /// </summary>
     /// <param name="c">The character to check.</param>
     /// <returns>

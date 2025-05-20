@@ -43,11 +43,11 @@ public class BlobStore : IBlobStore, IMounter
     /// <exception cref="ResponseException"></exception>
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, Repository.Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        var response = await Repository.Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         try
         {
             switch (response.StatusCode)
@@ -83,12 +83,12 @@ public class BlobStore : IBlobStore, IMounter
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
     {
-        ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, Repository.Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        var response = await Repository.Options.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         try
         {
             switch (response.StatusCode)
@@ -156,10 +156,10 @@ public class BlobStore : IBlobStore, IMounter
     {
         // pushing usually requires both pull and push actions.
         // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
-        ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
+        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
         var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
         using var requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
-        using (var response = await Repository.Options.HttpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false))
+        using (var response = await Repository.Options.Client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false))
         {
             if (response.StatusCode != HttpStatusCode.Accepted)
             {
@@ -181,12 +181,12 @@ public class BlobStore : IBlobStore, IMounter
     /// <returns></returns>
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
     {
-        ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, Repository.Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         using var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
-        using var resp = await Repository.Options.HttpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
+        using var resp = await Repository.Options.Client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
         return resp.StatusCode switch
         {
             HttpStatusCode.OK => resp.GenerateBlobDescriptor(refDigest),
@@ -218,12 +218,12 @@ public class BlobStore : IBlobStore, IMounter
     {
         // pushing usually requires both pull and push actions.
         // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
-        ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
+        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
 
         // We also need pull access to the source repo.
         if (Reference.TryParse(fromRepository, out var fromReference))
         {
-            ScopeManager.SetActionsForRepository(Repository.Options.HttpClient, fromReference, Scope.Action.Pull);
+            ScopeManager.SetActionsForRepository(Repository.Options.Client, fromReference, Scope.Action.Pull);
         }
 
         var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
@@ -233,7 +233,7 @@ public class BlobStore : IBlobStore, IMounter
                 $"{url.Query}&mount={HttpUtility.UrlEncode(descriptor.Digest)}&from={HttpUtility.UrlEncode(fromRepository)}"
         }.Uri);
 
-        using (var response = await Repository.Options.HttpClient.SendAsync(mountReq, cancellationToken)
+        using (var response = await Repository.Options.Client.SendAsync(mountReq, cancellationToken)
                    .ConfigureAwait(false))
         {
             switch (response.StatusCode)
@@ -318,7 +318,7 @@ public class BlobStore : IBlobStore, IMounter
         // the descriptor media type is ignored as in the API doc.
         req.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
 
-        using var response = await Repository.Options.HttpClient.SendAsync(req, cancellationToken).ConfigureAwait(false);
+        using var response = await Repository.Options.Client.SendAsync(req, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.Created)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);

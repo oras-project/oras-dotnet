@@ -55,11 +55,11 @@ public class Scope : IComparable<Scope>
 
     internal const string ActionWildcard = "*";
     
-    internal const string Pull = "pull";
+    internal const string ActionPull = "pull";
     
-    internal const string Push = "push";
+    internal const string ActionPush = "push";
     
-    internal const string Delete = "delete";
+    internal const string ActionDelete = "delete";
     
     public required string ResourceType { get; init; }
     public required string ResourceName { get; init; }
@@ -138,9 +138,9 @@ public class Scope : IComparable<Scope>
     {
         return action switch
         {
-            Action.Pull => Pull,
-            Action.Push => Push,
-            Action.Delete => Delete,
+            Action.Pull => ActionPull,
+            Action.Push => ActionPush,
+            Action.Delete => ActionDelete,
             Action.All => ActionWildcard,
             _ => ""
         };

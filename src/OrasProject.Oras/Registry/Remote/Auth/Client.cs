@@ -77,10 +77,25 @@ public class Client : IClient
     public Client(HttpClient httpClient, ICredentialHelper? credentialHelper = null)
     {
         BaseClient = httpClient;
-        BaseClient.AddUserAgent();
         CredentialHelper = credentialHelper;
     }
-
+    
+    /// <summary>
+    /// SetUserAgent is to set customized user agent per user requests.
+    /// </summary>
+    /// <param name="userAgent"></param>
+    public void SetUserAgent(string userAgent)
+    {
+        if (CustomHeaders.TryGetValue("User-Agent", out var userAgents))
+        {
+            userAgents.Add(userAgent);
+        }
+        else
+        {
+            CustomHeaders["User-Agent"] = [userAgent];
+        }
+    }
+    
     /// <summary>
     /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
     /// 
@@ -110,9 +125,9 @@ public class Client : IClient
         {
             return await BaseClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
+        var host = originalRequest.RequestUri?.Host ?? throw new ArgumentNullException(nameof(originalRequest.RequestUri));
         using var requestAttempt1 = await originalRequest.CloneAsync().ConfigureAwait(false);
         var attemptedKey = string.Empty;
-        var host = requestAttempt1.RequestUri?.Host ?? throw new ArgumentNullException(nameof(requestAttempt1.RequestUri));
 
         // attempt to send request with cached auth token
         if (Cache.TryGetScheme(host, out var schemeFromCache))
@@ -222,7 +237,6 @@ public class Client : IClient
                 ).ConfigureAwait(false);
                 Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
 
-                // rewind the request again as it may be consumed
                 using var requestAttempt3 = await originalRequest.CloneAsync().ConfigureAwait(false);
                 requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
                 return await BaseClient.SendAsync(requestAttempt3, cancellationToken).ConfigureAwait(false);
