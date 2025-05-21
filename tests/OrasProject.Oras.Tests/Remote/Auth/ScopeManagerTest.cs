@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using OrasProject.Oras.Registry;
+using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 
@@ -458,7 +459,7 @@ public class ScopeManagerTest
     public void SetActionsForRepository_DoesNothing_ForPlainHttpClient()
     {
         // Arrange
-        var httpClient = new BasicClient(new HttpClient());
+        var httpClient = new PlainClient(new HttpClient());
         var reference = new Reference("registry1", "repo1");
 
         // Act
@@ -513,7 +514,7 @@ public class ScopeManagerTest
     public void SetScopeForRegistry_Static_DoesNothing_ForPlainHttpClient()
     {
         // Arrange
-        var httpClient = new BasicClient(new HttpClient());
+        var httpClient = new PlainClient(new HttpClient());
         var scope = new Scope("repository", "repo1", new() { Scope.ActionPull });
 
         // Act / Assert

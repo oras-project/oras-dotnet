@@ -27,19 +27,20 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Client : IClient
+public class Client(HttpClient? httpClient = null, ICredentialHelper? credentialHelper = null)
+    : IClient
 {
     /// <summary>
     /// CredentialHelper provides the mechanism to retrieve
     /// credentials for accessing remote registries.
     /// </summary>
-    public ICredentialHelper? CredentialHelper { get; init; }
-    
+    public ICredentialHelper? CredentialHelper { get; } = credentialHelper;
+
     /// <summary>
     /// BaseClient is an instance of HttpClient to send http requests
     /// </summary>
-    public HttpClient BaseClient { get; init; }
-    
+    public HttpClient BaseClient { get; } = httpClient ?? DefaultHttpClient.Instance;
+
     /// <summary>
     /// Cache used for storing and retrieving 
     /// authentication-related data to optimize remote registry operations.
@@ -73,13 +74,7 @@ public class Client : IClient
     /// CustomHeaders is for users to customize headers
     /// </summary>
     public ConcurrentDictionary<string, List<string>> CustomHeaders { get; set; } = new();
-    
-    public Client(HttpClient httpClient, ICredentialHelper? credentialHelper = null)
-    {
-        BaseClient = httpClient;
-        CredentialHelper = credentialHelper;
-    }
-    
+
     /// <summary>
     /// SetUserAgent is to set customized user agent per user requests.
     /// </summary>
@@ -120,12 +115,8 @@ public class Client : IClient
         {
             originalRequest.Headers.TryAddWithoutValidation(headerName, headerValues);
         }
-
-        if (string.IsNullOrWhiteSpace(originalRequest.Headers.UserAgent.ToString()))
-        {
-            originalRequest.Headers.TryAddWithoutValidation("User-Agent", _defaultClientId);
-        }
         
+        originalRequest.AddDefaultUserAgent();
         if (originalRequest.Headers.Authorization != null || BaseClient.DefaultRequestHeaders.Authorization != null)
         {
             return await BaseClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);

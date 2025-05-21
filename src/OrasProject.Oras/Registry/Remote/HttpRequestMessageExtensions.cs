@@ -20,6 +20,8 @@ namespace OrasProject.Oras.Registry.Remote;
 
 internal static class HttpRequestMessageExtensions
 {
+    private const string _userAgent = "oras-dotnet";
+    
     /// <summary>
     /// CloneAsync creates a deep copy of the specified <see cref="HttpRequestMessage"/> instance, including its content, headers, and options.
     /// </summary>
@@ -63,5 +65,19 @@ internal static class HttpRequestMessageExtensions
             clone.Headers.Add(header.Key, header.Value);
         }
         return clone;
+    }
+    
+    /// <summary>
+    /// AddDefaultUserAgent adds the default user agent oras-dotnet
+    /// </summary>
+    /// <param name="requestMessage"></param>
+    /// <returns></returns>
+    public static HttpRequestMessage AddDefaultUserAgent(this HttpRequestMessage requestMessage)
+    {
+        if (requestMessage.Headers.UserAgent.Count == 0)
+        {
+            requestMessage.Headers.UserAgent.ParseAdd(_userAgent);
+        }
+        return requestMessage;
     }
 }

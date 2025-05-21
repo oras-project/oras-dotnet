@@ -1090,7 +1090,9 @@ public class ClientTest
                 }
                 
                 if (string.Join(" ", req.Headers.GetValues("foo")).Equals("bar abc") &&
-                    "value1".Equals(req.Headers.GetValues("key1").FirstOrDefault()))
+                    "value1".Equals(req.Headers.GetValues("key1").FirstOrDefault()) 
+                    && req.Headers.UserAgent.FirstOrDefault() != null
+                    && req.Headers.UserAgent.FirstOrDefault()!.ToString().Equals("oras-dotnet"))
                 {
                     return new HttpResponseMessage()
                     {

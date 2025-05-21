@@ -14,26 +14,21 @@
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using OrasProject.Oras.Registry.Remote.Auth;
 
-namespace OrasProject.Oras.Registry.Remote.Auth;
+namespace OrasProject.Oras.Registry.Remote;
 
 /// <summary>
-/// BasicClient, which implements IClient, provides a way to access default HttpClient
+/// PlainClient, which implements IClient, provides a way to access default HttpClient
 /// </summary>
 /// <param name="client"></param>
-public class BasicClient : IClient
+public class PlainClient(HttpClient? httpClient = null) : IClient
 {
-    public HttpClient Client { get; set; } = new();
+    private readonly HttpClient _client = httpClient ?? DefaultHttpClient.Instance;
 
-    public BasicClient() { }
-
-    public BasicClient(HttpClient httpClient)
-    {
-        Client = httpClient;
-    }
-    
     public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken)
     {
-        return await Client.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
+        originalRequest.AddDefaultUserAgent();
+        return await _client.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
     }
 }

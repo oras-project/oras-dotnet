@@ -15,6 +15,7 @@ using Moq;
 using Moq.Protected;
 using OrasProject.Oras.Oci;
 using System.Diagnostics.CodeAnalysis;
+using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Tests.Remote.Util;
@@ -46,13 +47,13 @@ public class Util
     public static IClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
     {
         var moqHandler = CustomHandler(func);
-        return new BasicClient(new HttpClient(moqHandler.Object));
+        return new PlainClient(new HttpClient(moqHandler.Object));
     }
 
     public static IClient CustomClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
     {
         var moqHandler = CustomHandler(func);
-        return new BasicClient(new HttpClient(moqHandler.Object));
+        return new PlainClient(new HttpClient(moqHandler.Object));
     }
 
     public static Mock<DelegatingHandler> CustomHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
