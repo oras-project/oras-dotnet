@@ -32,7 +32,7 @@ public class Registry : IRegistry
 
     private RepositoryOptions _opts;
 
-    public Registry(string registry) : this(registry, new BasicHttpClient(new HttpClient())) { }
+    public Registry(string registry) : this(registry, new BasicClient()) { }
 
     public Registry(string registry, IClient httpClient) => _opts = new()
     {

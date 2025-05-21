@@ -22,6 +22,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 using Xunit.Abstractions;
 using static OrasProject.Oras.Content.Digest;
@@ -2270,7 +2271,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var tests = GetTestIOStructMapForGetDescriptorClass();
         foreach ((string testName, TestIoStruct dcdIOStruct) in tests)
         {
-            var repo = new Repository(reference.Repository + "/" + reference.Repository);
+            var repo = new Repository(reference.Repository + "/" + reference.Repository, new BasicClient(new HttpClient()));
             HttpMethod[] methods = [HttpMethod.Get, HttpMethod.Head];
             var s = new ManifestStore(repo);
             foreach ((int i, HttpMethod method) in methods.Select((value, i) => (i, value)))

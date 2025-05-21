@@ -110,7 +110,7 @@ public class Repository : IRepository
     /// Example: localhost:5000/hello-world
     /// </summary>
     /// <param name="reference"></param>
-    public Repository(string reference) : this(reference, new BasicHttpClient(new HttpClient())) { }
+    public Repository(string reference) : this(reference, new BasicClient()) { }
 
     /// <summary>
     /// Creates a client to the remote repository using a reference and a HttpClient

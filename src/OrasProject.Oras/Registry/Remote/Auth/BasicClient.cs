@@ -18,12 +18,19 @@ using System.Threading.Tasks;
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 /// <summary>
-/// BasicHttpClient, which implements IClient, provides a way to access default HttpClient
+/// BasicClient, which implements IClient, provides a way to access default HttpClient
 /// </summary>
 /// <param name="client"></param>
-public class BasicHttpClient(HttpClient client) : IClient
+public class BasicClient : IClient
 {
-    public HttpClient Client { get; init; } = client;
+    public HttpClient Client { get; set; } = new();
+
+    public BasicClient() { }
+
+    public BasicClient(HttpClient httpClient)
+    {
+        Client = httpClient;
+    }
     
     public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken)
     {

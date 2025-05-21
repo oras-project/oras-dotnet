@@ -46,13 +46,13 @@ public class Util
     public static IClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
     {
         var moqHandler = CustomHandler(func);
-        return new BasicHttpClient(new HttpClient(moqHandler.Object));
+        return new BasicClient(new HttpClient(moqHandler.Object));
     }
 
     public static IClient CustomClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
     {
         var moqHandler = CustomHandler(func);
-        return new BasicHttpClient(new HttpClient(moqHandler.Object));
+        return new BasicClient(new HttpClient(moqHandler.Object));
     }
 
     public static Mock<DelegatingHandler> CustomHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)

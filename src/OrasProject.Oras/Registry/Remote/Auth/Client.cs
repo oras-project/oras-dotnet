@@ -120,6 +120,11 @@ public class Client : IClient
         {
             originalRequest.Headers.TryAddWithoutValidation(headerName, headerValues);
         }
+
+        if (string.IsNullOrWhiteSpace(originalRequest.Headers.UserAgent.ToString()))
+        {
+            originalRequest.Headers.TryAddWithoutValidation("User-Agent", _defaultClientId);
+        }
         
         if (originalRequest.Headers.Authorization != null || BaseClient.DefaultRequestHeaders.Authorization != null)
         {

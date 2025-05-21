@@ -458,7 +458,7 @@ public class ScopeManagerTest
     public void SetActionsForRepository_DoesNothing_ForPlainHttpClient()
     {
         // Arrange
-        var httpClient = new BasicHttpClient(new HttpClient());
+        var httpClient = new BasicClient(new HttpClient());
         var reference = new Reference("registry1", "repo1");
 
         // Act
@@ -513,7 +513,7 @@ public class ScopeManagerTest
     public void SetScopeForRegistry_Static_DoesNothing_ForPlainHttpClient()
     {
         // Arrange
-        var httpClient = new BasicHttpClient(new HttpClient());
+        var httpClient = new BasicClient(new HttpClient());
         var scope = new Scope("repository", "repo1", new() { Scope.ActionPull });
 
         // Act / Assert
