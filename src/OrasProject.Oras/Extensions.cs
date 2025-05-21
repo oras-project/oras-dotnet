@@ -15,7 +15,6 @@ using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using OrasProject.Oras.Content;
@@ -26,8 +25,11 @@ namespace OrasProject.Oras;
 public static class Extensions
 {
     
-    private static readonly SemaphoreSlim _semaphore = new(1, 3);
+    private static readonly SemaphoreSlim _semaphore = new(1, 10);
 
+    /// <summary>
+    /// Proxy class is to cache the manifest for OCI image/index manifest to improve performance
+    /// </summary>
     public class Proxy : IFetchable
     {
         public required IStorage MemoryStorage { get; set; }
@@ -95,42 +97,45 @@ public static class Extensions
         return root;
     }
 
+    /// <summary>
+    /// CopyGraphAsync concurrently copy node from src to dst by using proxy cache
+    /// </summary>
+    /// <param name="src"></param>
+    /// <param name="dst"></param>
+    /// <param name="node"></param>
+    /// <param name="proxy"></param>
+    /// <param name="cancellationToken"></param>
     public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CancellationToken cancellationToken)
     {
         // acquire lock to find successors of the current node
         await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         IEnumerable<Descriptor> successors;
-        // check if node exists in target
         try
-        {
+        {        
+            // check if node exists in target
             if (await dst.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
             {
                 return;
             }
-            // fetch once
             successors = await proxy.GetSuccessorsAsync(node, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
-            // release
             _semaphore.Release();
         }
-
         
         var childNodesCopies = new List<Task>();
         foreach (var childNode in successors)
         {
-            childNodesCopies.Add(src.CopyGraphAsync(dst, childNode, proxy, cancellationToken));
+            childNodesCopies.Add(Task.Run(async () => await src.CopyGraphAsync(dst, childNode, proxy, cancellationToken).ConfigureAwait(false), cancellationToken));
         }
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
         
-        
-        // obtain data stream 
-        // fetch twice
         // acquire lock again to perform copy
         await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            // obtain datastream
             Stream dataStream;
             if (await proxy.MemoryStorage.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
             {

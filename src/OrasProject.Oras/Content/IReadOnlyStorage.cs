@@ -14,7 +14,6 @@
 using OrasProject.Oras.Oci;
 using System.Threading;
 using System.Threading.Tasks;
-using OrasProject.Oras.Registry;
 
 namespace OrasProject.Oras.Content;
 
