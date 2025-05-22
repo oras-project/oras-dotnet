@@ -107,11 +107,17 @@ public static class Extensions
         var buffer = new byte[descriptor.Size];
         try
         {
-            await stream.ReadAsync(buffer.AsMemory(0, (int)stream.Length), cancellationToken).ConfigureAwait(false);
+            int bytesToRead = (int)Math.Min(descriptor.Size, stream.Length);
+            await stream.ReadAsync(buffer.AsMemory(0, bytesToRead), cancellationToken).ConfigureAwait(false);
         }
         catch (ArgumentOutOfRangeException)
         {
             throw new MismatchedDigestException("Descriptor size is less than content size");
+        }
+        finally
+        {
+            // Dispose the stream
+            stream.Dispose();
         }
 
         if (Digest.ComputeSha256(buffer) != descriptor.Digest)

@@ -282,7 +282,8 @@ public static class Packer
     /// <returns></returns>
     private static async Task PushIfNotExistAsync(IPushable pusher, Descriptor descriptor, byte[] data, CancellationToken cancellationToken = default)
     {
-        await pusher.PushAsync(descriptor, new MemoryStream(data), cancellationToken).ConfigureAwait(false);
+        using var memoryStream = new MemoryStream(data);
+        await pusher.PushAsync(descriptor, memoryStream, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
