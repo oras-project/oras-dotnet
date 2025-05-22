@@ -12,7 +12,6 @@
 // limitations under the License.
 
 using OrasProject.Oras.Exceptions;
-using OrasProject.Oras.Registry.Remote;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
