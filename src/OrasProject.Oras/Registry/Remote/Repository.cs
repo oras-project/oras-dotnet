@@ -230,6 +230,12 @@ public class Repository : IRepository
         do
         {
             (var tags, url) = await FetchTagsPageAsync(last, url!, cancellationToken).ConfigureAwait(false);
+
+            if (tags == null)
+            {
+                yield break;
+            }
+
             last = null;
             foreach (var tag in tags)
             {
