@@ -2207,7 +2207,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 return res;
             }
 
-            if (path.Contains("/manifests/" + exampleManifestDescriptor.Digest) || path.Contains("/manifests/latest") && method == HttpMethod.Head)
+            if (path.Contains("/manifests/latest"))
             {
                 if (method == HttpMethod.Get)
                 {
