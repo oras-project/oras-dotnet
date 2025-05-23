@@ -71,7 +71,7 @@ public class ProxyTest
         var proxy = new Proxy { Cache = cache, Source = sourceMock.Object };
 
         var result = await proxy.FetchAsync(manifestDesc, ct);
-
+        
         var actualBytes = new MemoryStream();
         await result.CopyToAsync(actualBytes, ct);
         Assert.Equal(manifestBytes, actualBytes.ToArray());

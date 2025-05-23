@@ -24,7 +24,6 @@ namespace OrasProject.Oras;
 
 public static class Extensions
 {
-    
     /// <summary>
     /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
     /// in the source Target to the destination Target.
