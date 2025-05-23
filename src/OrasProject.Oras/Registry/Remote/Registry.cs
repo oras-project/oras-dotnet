@@ -22,6 +22,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Registry.Remote;
 
@@ -31,12 +32,12 @@ public class Registry : IRegistry
 
     private RepositoryOptions _opts;
 
-    public Registry(string registry) : this(registry, new HttpClient().AddUserAgent()) { }
+    public Registry(string registry) : this(registry, new PlainClient()) { }
 
-    public Registry(string registry, HttpClient httpClient) => _opts = new()
+    public Registry(string registry, IClient httpClient) => _opts = new()
     {
         Reference = new Reference(registry),
-        HttpClient = httpClient,
+        Client = httpClient,
     };
 
     public Registry(RepositoryOptions options) => _opts = options;
@@ -54,7 +55,8 @@ public class Registry : IRegistry
     public async Task PingAsync(CancellationToken cancellationToken = default)
     {
         var url = new UriFactory(_opts).BuildRegistryBase();
-        using var resp = await _opts.HttpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        using var resp = await _opts.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.OK:
@@ -88,6 +90,11 @@ public class Registry : IRegistry
     /// <returns></returns>
     public async IAsyncEnumerable<string> ListRepositoriesAsync(string? last = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        if (Scope.TryParse(Scope.ScopeRegistryCatalog, out var scope))
+        {
+            ScopeManager.SetScopeForRegistry(RepositoryOptions.Client, RepositoryOptions.Reference.Registry, scope);
+        }
+        
         var url = new UriFactory(_opts).BuildRegistryCatalog();
         do
         {
@@ -101,7 +108,7 @@ public class Registry : IRegistry
     }
 
     /// <summary>
-    /// Returns a returns a single page of repositories list with the next link
+    /// FetchRepositoryPageAsync returns a single page of repositories list with the next link
     /// </summary>
     /// <param name="last"></param>
     /// <param name="url"></param>
@@ -124,7 +131,8 @@ public class Registry : IRegistry
             uriBuilder.Query = query.ToString();
         }
 
-        using var response = await _opts.HttpClient.GetAsync(uriBuilder.ToString(), cancellationToken).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.ToString());
+        using var response = await _opts.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);

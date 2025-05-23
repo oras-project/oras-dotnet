@@ -75,7 +75,7 @@ public class ExtensionsTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHttpRequestHandlerAsync),
+            Client = CustomClient(MockHttpRequestHandlerAsync),
             PlainHttp = true,
         });
 
@@ -137,7 +137,7 @@ public class ExtensionsTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(MockHttpRequestHandlerAsync),
+            Client = CustomClient(MockHttpRequestHandlerAsync),
             PlainHttp = true,
         });
 
@@ -169,7 +169,7 @@ public class ExtensionsTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient((_, _) => new HttpResponseMessage()),
+            Client = CustomClient((_, _) => new HttpResponseMessage()),
             PlainHttp = true,
         });
 

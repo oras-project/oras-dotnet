@@ -31,11 +31,25 @@ internal static class HttpResponseMessageExtensions
     /// Parses the error returned by the remote registry.
     /// </summary>
     /// <param name="response"></param>
+    /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public static async Task<ResponseException> ParseErrorResponseAsync(this HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return new ResponseException(response, body);
+    }
+    
+    /// <summary>
+    /// Parses the error returned by the remote registry.
+    /// </summary>
+    /// <param name="response"></param>
+    /// <param name="message"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public static async Task<ResponseException> ParseErrorResponseAsync(this HttpResponseMessage response, string message, CancellationToken cancellationToken)
+    {
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        return new ResponseException(response, body, message);
     }
 
     /// <summary>
