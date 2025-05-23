@@ -1,0 +1,45 @@
+﻿// Copyright The ORAS Authors.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using OrasProject.Oras.Content;
+using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Oci;
+
+namespace OrasProject.Oras;
+
+/// <summary>
+/// Proxy class is to cache the manifest for OCI image/index manifest to improve performance
+/// </summary>
+internal class Proxy : IFetchable
+{
+    public required IStorage Cache { get; init; }
+    public required ITarget Source { get; init; }
+
+    public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
+    {
+        if (await Cache.ExistsAsync(target, cancellationToken).ConfigureAwait(false))
+        {
+            return await Cache.FetchAsync(target, cancellationToken).ConfigureAwait(false);
+        }
+            
+        using var manifest = await Source.FetchAsync(target, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await Cache.PushAsync(target, manifest, cancellationToken).ConfigureAwait(false);
+        } catch(AlreadyExistsException) {}
+        return await Cache.FetchAsync(target, cancellationToken).ConfigureAwait(false);
+    }
+}

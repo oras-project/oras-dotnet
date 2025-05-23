@@ -137,10 +137,10 @@ public class CopyTest
 
         var root = descs[3];
         var destinationTarget = new MemoryStore();
-        var proxy = new Extensions.Proxy()
+        var proxy = new Proxy()
         {
-            MemoryStorage = new MemoryStorage(),
-            Target = sourceTarget
+            Cache = new MemoryStorage(),
+            Source = sourceTarget
         };
         await sourceTarget.CopyGraphAsync(destinationTarget, root, proxy, cancellationToken);
         for (var i = 0; i < descs.Count; i++)
