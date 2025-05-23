@@ -24,6 +24,11 @@ namespace OrasProject.Oras;
 
 public static class Extensions
 {
+    private static SemaphoreSlim? _semaphore;
+    private static bool _isSemaphoreInitialized;
+    private static readonly object _initLock = new ();
+    
+    
     /// <summary>
     /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
     /// in the source Target to the destination Target.
@@ -63,6 +68,18 @@ public static class Extensions
         if (string.IsNullOrEmpty(dstRef))
         {
             dstRef = srcRef;
+        }
+
+        if (!_isSemaphoreInitialized)
+        {
+            lock (_initLock)
+            {
+                if (!_isSemaphoreInitialized)
+                {
+                    _semaphore = new SemaphoreSlim(1, copyOptions.MaxConcurrency);
+                    _isSemaphoreInitialized = true;
+                }
+            }
         }
 
         Descriptor root;
@@ -119,7 +136,7 @@ public static class Extensions
     internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
     {
         // acquire lock to find successors of the current node
-        await copyGraphOptions.SemaphoreSlim.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _semaphore!.WaitAsync(cancellationToken).ConfigureAwait(false);
         IEnumerable<Descriptor> successors;
         try
         {        
@@ -132,7 +149,7 @@ public static class Extensions
         }
         finally
         {
-            copyGraphOptions.SemaphoreSlim.Release();
+            _semaphore.Release();
         }
         
         var childNodesCopies = new List<Task>();
@@ -144,7 +161,7 @@ public static class Extensions
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
         
         // acquire lock again to perform copy
-        await copyGraphOptions.SemaphoreSlim.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             // obtain datastream
@@ -161,7 +178,7 @@ public static class Extensions
         }
         finally
         {
-            copyGraphOptions.SemaphoreSlim.Release();
+            _semaphore.Release();
         }
     }
 }

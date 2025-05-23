@@ -11,28 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Threading;
-
 namespace OrasProject.Oras;
 
 /// <summary>
 /// CopyGraphOptions allows users to customize copy operation's options
 /// </summary>
-public class CopyGraphOptions : IDisposable
+public class CopyGraphOptions
 {
     public int MaxConcurrency { get; init; } = 10;
-
-    internal readonly SemaphoreSlim SemaphoreSlim;
-
-    public CopyGraphOptions()
-    {
-        SemaphoreSlim = new SemaphoreSlim(1, MaxConcurrency);
-    }
-
-    public void Dispose()
-    {
-        SemaphoreSlim.Dispose();
-        GC.SuppressFinalize(this);
-    }
 }
