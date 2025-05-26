@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras;
 
-public static class Packer
+public static partial class Packer
 {
     /// <summary>
     /// ErrInvalidDateTimeFormat is returned
@@ -61,12 +61,13 @@ public static class Packer
     }
 
     /// <summary>
-    /// mediaTypeRegex checks the format of media types.
+    /// MediaTypeRegex checks the format of media types.
     /// References:
     /// - https://github.com/opencontainers/image-spec/blob/v1.1.1/schema/defs-descriptor.json#L7
     /// - https://datatracker.ietf.org/doc/html/rfc6838#section-4.2
     /// </summary>
-    private static readonly Regex _mediaTypeRegex = new Regex(@"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}(\+json)?$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}(\+json)?$", RegexOptions.Compiled)]
+    private static partial Regex MediaTypeRegex();
 
     /// <summary>
     /// PackManifest generates an OCI Image Manifestbased on the given parameters
@@ -248,7 +249,7 @@ public static class Packer
     /// <exception cref="InvalidMediaTypeException"></exception>
     private static void ValidateMediaType(string mediaType)
     {
-        if (!_mediaTypeRegex.IsMatch(mediaType))
+        if (!MediaTypeRegex().IsMatch(mediaType))
         {
             throw new InvalidMediaTypeException($"{mediaType} is an invalid media type");
         }
