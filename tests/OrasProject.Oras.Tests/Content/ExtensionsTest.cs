@@ -48,7 +48,7 @@ public class ExtensionsTest
             Size = expectedManifestBytes.Length
         };
 
-        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req,
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req,
             CancellationToken cancellationToken)
         {
             var res = new HttpResponseMessage
@@ -61,11 +61,11 @@ public class ExtensionsTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-                
+
                 res.Content = new ByteArrayContent(expectedManifestBytes);
                 res.Content.Headers.Add("Content-Type", expectedManifestDesc.MediaType);
                 res.Headers.Add(_dockerContentDigestHeader, expectedManifestDesc.Digest);
-                
+
                 res.StatusCode = HttpStatusCode.OK;
                 return res;
             }
@@ -75,7 +75,7 @@ public class ExtensionsTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            Client = CustomClient(MockHttpRequestHandlerAsync),
+            Client = CustomClient(MockHttpRequestHandler),
             PlainHttp = true,
         });
 
@@ -107,14 +107,14 @@ public class ExtensionsTest
         };
 
 
-        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req,
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req,
             CancellationToken cancellationToken)
         {
             var res = new HttpResponseMessage
             {
                 RequestMessage = req
             };
-            
+
             if (req.Method == HttpMethod.Get &&
                  req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedIndexManifestDesc.Digest}")
             {
@@ -122,11 +122,11 @@ public class ExtensionsTest
                 {
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
-                
+
                 res.Content = new ByteArrayContent(expectedIndexManifestBytes);
                 res.Content.Headers.Add("Content-Type", expectedIndexManifest.MediaType);
                 res.Headers.Add(_dockerContentDigestHeader, expectedIndexManifestDesc.Digest);
-                
+
                 res.StatusCode = HttpStatusCode.OK;
                 return res;
             }
@@ -137,7 +137,7 @@ public class ExtensionsTest
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            Client = CustomClient(MockHttpRequestHandlerAsync),
+            Client = CustomClient(MockHttpRequestHandler),
             PlainHttp = true,
         });
 
