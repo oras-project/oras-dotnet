@@ -104,11 +104,6 @@ public static class Extensions
         {
             throw new InvalidDescriptorSizeException("Descriptor size is less than 0");
         }
-        // TODO: tests
-        if (descriptor.Size != stream.Length)
-        {
-            throw new InvalidDescriptorSizeException("Descriptor size mismatches the stream length");
-        }
 
         using var memoryStream = new MemoryStream();
         await stream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
