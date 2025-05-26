@@ -14,6 +14,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -21,7 +22,7 @@ namespace OrasProject.Oras.Registry.Remote;
 internal static class HttpRequestMessageExtensions
 {
     private const string _userAgent = "oras-dotnet";
-    
+
     /// <summary>
     /// CloneAsync creates a deep copy of the specified <see cref="HttpRequestMessage"/> instance, including its content, headers, and options.
     /// </summary>
@@ -31,8 +32,8 @@ internal static class HttpRequestMessageExtensions
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri)
         {
-            Content = request.Content != null 
-                ? await request.Content.CloneAsync().ConfigureAwait(false) 
+            Content = request.Content != null
+                ? await request.Content.CloneAsync().ConfigureAwait(false)
                 : null,
             Version = request.Version
         };
@@ -55,18 +56,30 @@ internal static class HttpRequestMessageExtensions
     /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpContent"/>.</returns>
     internal static async Task<HttpContent> CloneAsync(this HttpContent content)
     {
-        var ms = new MemoryStream();
-        await content.CopyToAsync(ms).ConfigureAwait(false);
-        ms.Position = 0;
+        var originalStream = await content.ReadAsStreamAsync().ConfigureAwait(false);
+        StreamContent clone;
+        if (originalStream.CanSeek)
+        {
+            originalStream.Position = 0;
+            clone = new StreamContent(originalStream);
+        }
+        else
+        {
+            // buffer the content once for subsequent cloning
+            await content.LoadIntoBufferAsync().ConfigureAwait(false);
+            var ms = new MemoryStream();
+            await content.CopyToAsync(ms).ConfigureAwait(false);
+            ms.Position = 0;
+            clone = new StreamContent(ms);
+        }
 
-        var clone = new StreamContent(ms);
         foreach (var header in content.Headers)
         {
             clone.Headers.Add(header.Key, header.Value);
         }
         return clone;
     }
-    
+
     /// <summary>
     /// AddDefaultUserAgent adds the default user agent oras-dotnet
     /// </summary>
