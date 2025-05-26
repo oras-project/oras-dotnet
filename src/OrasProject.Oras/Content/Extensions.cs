@@ -100,6 +100,7 @@ public static class Extensions
     /// <exception cref="MismatchedDigestException"></exception>
     public static async Task<byte[]> ReadAllAsync(this Stream stream, Descriptor descriptor, CancellationToken cancellationToken = default)
     {
+        // TODO: unit tests
         ArgumentNullException.ThrowIfNull(stream);
         if (descriptor.Size < 0)
         {
