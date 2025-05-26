@@ -26,7 +26,7 @@ namespace OrasProject.Oras;
 internal class Proxy : IFetchable
 {
     public required IStorage Cache { get; init; }
-    public required ITarget Source { get; init; }
+    public required IFetchable Source { get; init; }
 
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
@@ -35,10 +35,10 @@ internal class Proxy : IFetchable
             return await Cache.FetchAsync(target, cancellationToken).ConfigureAwait(false);
         }
             
-        using var manifest = await Source.FetchAsync(target, cancellationToken).ConfigureAwait(false);
+        using var dataStream = await Source.FetchAsync(target, cancellationToken).ConfigureAwait(false);
         try
         {
-            await Cache.PushAsync(target, manifest, cancellationToken).ConfigureAwait(false);
+            await Cache.PushAsync(target, dataStream, cancellationToken).ConfigureAwait(false);
         } catch(AlreadyExistsException) {}
         return await Cache.FetchAsync(target, cancellationToken).ConfigureAwait(false);
     }

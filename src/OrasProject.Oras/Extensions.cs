@@ -24,11 +24,6 @@ namespace OrasProject.Oras;
 
 public static class Extensions
 {
-    private static SemaphoreSlim? _semaphore;
-    private static bool _isSemaphoreInitialized;
-    private static readonly object _initLock = new ();
-    
-    
     /// <summary>
     /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
     /// in the source Target to the destination Target.
@@ -47,6 +42,7 @@ public static class Extensions
     {
         return await src.CopyAsync(srcRef, dst, dstRef, new CopyOptions(), cancellationToken).ConfigureAwait(false);
     }
+
     
     /// <summary>
     /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
@@ -69,19 +65,7 @@ public static class Extensions
         {
             dstRef = srcRef;
         }
-
-        if (!_isSemaphoreInitialized)
-        {
-            lock (_initLock)
-            {
-                if (!_isSemaphoreInitialized)
-                {
-                    _semaphore = new SemaphoreSlim(1, copyOptions.MaxConcurrency);
-                    _isSemaphoreInitialized = true;
-                }
-            }
-        }
-
+        
         Descriptor root;
         Stream rootStream;
         
@@ -102,6 +86,8 @@ public static class Extensions
         {
             if (!await proxy.Cache.ExistsAsync(root, cancellationToken).ConfigureAwait(false))
             {
+                // Caching index/image manifest is to reduce the number of requests
+                // to retrieve image/index manifest by GetSuccessorsAsync and PushAsync in CopyGraphAsync
                 await proxy.Cache.PushAsync(root, rootStream, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -125,7 +111,7 @@ public static class Extensions
     }
 
     /// <summary>
-    /// CopyGraphAsync concurrently copy node from src to dst by using proxy cache
+    /// CopyGraphAsync concurrently copy node from src to dst by using proxy cache with copyGraphOptions
     /// </summary>
     /// <param name="src"></param>
     /// <param name="dst"></param>
@@ -133,10 +119,27 @@ public static class Extensions
     /// <param name="proxy"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
+    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy,
+        CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
+    {
+        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, new SemaphoreSlim(1, copyGraphOptions.MaxConcurrency),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// CopyGraphAsync concurrently copy node from src to dst by using proxy cache with copyGraphOptions and SemaphoreSlim
+    /// </summary>
+    /// <param name="src"></param>
+    /// <param name="dst"></param>
+    /// <param name="node"></param>
+    /// <param name="proxy"></param>
+    /// <param name="copyGraphOptions"></param>
+    /// <param name="limiter"></param>
+    /// <param name="cancellationToken"></param>
+    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken)
     {
         // acquire lock to find successors of the current node
-        await _semaphore!.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
         IEnumerable<Descriptor> successors;
         try
         {        
@@ -149,7 +152,7 @@ public static class Extensions
         }
         finally
         {
-            _semaphore.Release();
+            limiter.Release();
         }
         
         var childNodesCopies = new List<Task>();
@@ -161,7 +164,7 @@ public static class Extensions
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
         
         // acquire lock again to perform copy
-        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             // obtain datastream
@@ -178,7 +181,7 @@ public static class Extensions
         }
         finally
         {
-            _semaphore.Release();
+            limiter.Release();
         }
     }
 }
