@@ -45,7 +45,7 @@ public static class Extensions
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
                     var manifest = JsonSerializer.Deserialize<Manifest>(content) ??
                                         throw new JsonException("Failed to deserialize manifest");
-                    
+
                     var descriptors = new List<Descriptor>();
                     if (manifest.Subject != null)
                     {
@@ -100,21 +100,31 @@ public static class Extensions
     /// <exception cref="MismatchedDigestException"></exception>
     public static async Task<byte[]> ReadAllAsync(this Stream stream, Descriptor descriptor, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(stream);
         if (descriptor.Size < 0)
         {
             throw new InvalidDescriptorSizeException("Descriptor size is less than 0");
         }
 
-        using var memoryStream = new MemoryStream();
-        await stream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
-        var buffer = memoryStream.ToArray();
+        var buffer = new byte[descriptor.Size];
+        try
+        {
+            await stream.ReadExactlyAsync(buffer, cancellationToken).ConfigureAwait(false);
+        }
+        catch (EndOfStreamException)
+        {
+            throw new ArgumentException(nameof(descriptor.Size), $"Descriptor size {descriptor.Size} is larger than the content length");
+        }
+        if (stream.ReadByte() != -1)
+        {
+            throw new ArgumentException(nameof(descriptor.Size), $"Descriptor size {descriptor.Size} is smaller than the content length");
+        }
 
         if (Digest.ComputeSha256(buffer) != descriptor.Digest)
         {
             throw new MismatchedDigestException("Descriptor digest is different from content digest");
         }
         return buffer;
-
     }
 
     /// <summary>
