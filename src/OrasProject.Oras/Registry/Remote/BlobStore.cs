@@ -323,6 +323,5 @@ public class BlobStore : IBlobStore, IMounter
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
-        
     }
 }
