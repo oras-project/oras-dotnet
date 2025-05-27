@@ -113,11 +113,11 @@ public static class Extensions
         }
         catch (EndOfStreamException)
         {
-            throw new ArgumentException(nameof(descriptor.Size), $"Descriptor size {descriptor.Size} is larger than the content length");
+            throw new MismatchedSizeException($"Descriptor size {descriptor.Size} is larger than the content length");
         }
         if (stream.ReadByte() != -1)
         {
-            throw new ArgumentException(nameof(descriptor.Size), $"Descriptor size {descriptor.Size} is smaller than the content length");
+            throw new MismatchedSizeException($"Descriptor size {descriptor.Size} is smaller than the content length");
         }
 
         if (Digest.ComputeSha256(buffer) != descriptor.Digest)
