@@ -21,7 +21,7 @@ namespace OrasProject.Oras.Registry.Remote;
 internal static class HttpRequestMessageExtensions
 {
     private const string _userAgent = "oras-dotnet";
-    
+
     /// <summary>
     /// CloneAsync creates a deep copy of the specified <see cref="HttpRequestMessage"/> instance, including its content, headers, and options.
     /// </summary>
@@ -31,8 +31,8 @@ internal static class HttpRequestMessageExtensions
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri)
         {
-            Content = request.Content != null 
-                ? await request.Content.CloneAsync().ConfigureAwait(false) 
+            Content = request.Content != null
+                ? await request.Content.CloneAsync().ConfigureAwait(false)
                 : null,
             Version = request.Version
         };
@@ -55,18 +55,29 @@ internal static class HttpRequestMessageExtensions
     /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpContent"/>.</returns>
     internal static async Task<HttpContent> CloneAsync(this HttpContent content)
     {
-        var ms = new MemoryStream();
-        await content.CopyToAsync(ms).ConfigureAwait(false);
-        ms.Position = 0;
+        var stream = await content.ReadAsStreamAsync().ConfigureAwait(false);
+        HttpContent clone;
+        if (stream.CanSeek)
+        {
+            // If the stream supports seeking, we can rewind and reuse it
+            stream.Position = 0;
+            clone = new StreamContent(stream);
+        }
+        else
+        {
+            var memoryStream = new MemoryStream();
+            await content.CopyToAsync(memoryStream).ConfigureAwait(false);
+            memoryStream.Position = 0;
+            clone = new StreamContent(memoryStream);
+        }
 
-        var clone = new StreamContent(ms);
         foreach (var header in content.Headers)
         {
             clone.Headers.Add(header.Key, header.Value);
         }
         return clone;
     }
-    
+
     /// <summary>
     /// AddDefaultUserAgent adds the default user agent oras-dotnet
     /// </summary>
