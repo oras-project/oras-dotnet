@@ -1197,4 +1197,57 @@ public class ClientTest
         // Assert
         Assert.Equal("ResolveCredentialAsync is not configured", exception.Message);
     }
+
+    [Fact]
+    public void UseStaticCredential_ThrowsOnNullRegistry()
+    {
+        var client = new Client();
+        var cred = new Credential { Username = "user", Password = "pass" };
+        Assert.Throws<ArgumentException>(() => client.UseStaticCredential(null!, cred));
+        Assert.Throws<ArgumentException>(() => client.UseStaticCredential("", cred));
+        Assert.Throws<ArgumentException>(() => client.UseStaticCredential("   ", cred));
+    }
+
+    [Fact]
+    public void UseStaticCredential_ThrowsOnEmptyCredential()
+    {
+        var client = new Client();
+        var emptyCred = new Credential();
+        Assert.Throws<ArgumentException>(() => client.UseStaticCredential("myregistry", emptyCred));
+    }
+
+    [Fact]
+    public async Task UseStaticCredential_ReturnsStaticCredential_ForMatchingHost()
+    {
+        var client = new Client();
+        var cred = new Credential { Username = "user", Password = "pass" };
+        client.UseStaticCredential("myregistry", cred);
+
+        var result = await client.ResolveCredentialAsync("myregistry", CancellationToken.None);
+        Assert.Equal("user", result.Username);
+        Assert.Equal("pass", result.Password);
+    }
+
+    [Fact]
+    public async Task UseStaticCredential_ReturnsEmptyCredential_ForNonMatchingHost()
+    {
+        var client = new Client();
+        var cred = new Credential { Username = "user", Password = "pass" };
+        client.UseStaticCredential("myregistry", cred);
+
+        var result = await client.ResolveCredentialAsync("otherregistry", CancellationToken.None);
+        Assert.True(result.IsEmpty());
+    }
+
+    [Fact]
+    public async Task UseStaticCredential_MapsDockerIoToRegistry1()
+    {
+        var client = new Client();
+        var cred = new Credential { Username = "user", Password = "pass" };
+        client.UseStaticCredential("docker.io", cred);
+
+        var result = await client.ResolveCredentialAsync("registry-1.docker.io", CancellationToken.None);
+        Assert.Equal("user", result.Username);
+        Assert.Equal("pass", result.Password);
+    }
 }
