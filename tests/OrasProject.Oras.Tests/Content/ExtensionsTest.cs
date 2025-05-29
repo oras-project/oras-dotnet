@@ -183,21 +183,21 @@ public class ExtensionsTest
     }
 
     [Fact]
-    public async Task ReadStreamWithLimit_StreamWithinLimit_DoesNotThrow()
+    public async Task ReadStreamWithLimitAsync_StreamWithinLimit_DoesNotThrow()
     {
         byte[] data = Encoding.UTF8.GetBytes("hello world");
         using var stream = new MemoryStream(data);
         long limit = data.Length + 10;
 
         // act
-        var result = await stream.ReadStreamWithLimit(limit, CancellationToken.None);
+        var result = await stream.ReadStreamWithLimitAsync(limit, CancellationToken.None);
 
         // assert
         Assert.Equal(data, result);
     }
 
     [Fact]
-    public async Task ReadStreamWithLimit_StreamExceedsLimit_Throws()
+    public async Task ReadStreamWithLimitAsync_StreamExceedsLimit_Throws()
     {
         byte[] data = Encoding.UTF8.GetBytes("hello world");
         using var stream = new MemoryStream(data);
@@ -206,7 +206,7 @@ public class ExtensionsTest
         // act & assert
         await Assert.ThrowsAsync<SizeLimitExceededException>(async () =>
         {
-            await stream.ReadStreamWithLimit(limit, CancellationToken.None);
+            await stream.ReadStreamWithLimitAsync(limit, CancellationToken.None);
         });
     }
 }

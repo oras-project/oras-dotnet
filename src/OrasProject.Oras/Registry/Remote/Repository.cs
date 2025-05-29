@@ -269,7 +269,7 @@ public class Repository : IRepository
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        var limitedStreamContent = await stream.ReadStreamWithLimit(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
+        var limitedStreamContent = await stream.ReadStreamWithLimitAsync(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
         var tagList = JsonSerializer.Deserialize<TagList>(limitedStreamContent);
         return (tagList.Tags, response.ParseLink());
     }
@@ -542,7 +542,7 @@ public class Repository : IRepository
             }
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            var limitedStreamContent = await stream.ReadStreamWithLimit(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
+            var limitedStreamContent = await stream.ReadStreamWithLimitAsync(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
             var referrersIndex = JsonSerializer.Deserialize<Index>(limitedStreamContent) ??
                                      throw new InvalidResponseException(
                                          $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");

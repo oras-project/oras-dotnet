@@ -14,6 +14,7 @@
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -125,19 +126,36 @@ public static class Extensions
     /// <param name="stream"></param>
     /// <param name="maxBytes"></param>
     /// <exception cref="SizeLimitExceededException"></exception>
-    internal static async Task<byte[]> ReadStreamWithLimit(this Stream stream, long maxBytes, CancellationToken cancellationToken = default)
+    internal static async Task<byte[]> ReadStreamWithLimitAsync(
+        this Stream stream,
+        long maxBytes,
+        CancellationToken cancellationToken = default)
     {
-        using var ms = new MemoryStream();
-        byte[] buffer = new byte[8192]; // 8 KB
-        long totalRead = 0;
-        int read;
-        while ((read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
+        if (stream.CanSeek)
         {
-            totalRead += read;
-            if (totalRead > maxBytes)
-                throw new SizeLimitExceededException($"Content size exceeds limit {maxBytes} bytes.");
-            ms.Write(buffer, 0, read);
+            long remaining = stream.Length - stream.Position;
+            if (remaining > maxBytes)
+                throw new SizeLimitExceededException($"Content size exceeds limit {maxBytes} bytes");
         }
-        return ms.ToArray();
+        using var ms = new MemoryStream((int)Math.Min(maxBytes, 8192));
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(8192); // 8 KB
+
+        try
+        {
+            long totalRead = 0;
+            int read;
+            while ((read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                if (totalRead > maxBytes - read)
+                    throw new SizeLimitExceededException($"Content size exceeds limit {maxBytes} bytes.");
+                ms.Write(buffer, 0, read);
+                totalRead += read;
+            }
+            return ms.ToArray();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 }
