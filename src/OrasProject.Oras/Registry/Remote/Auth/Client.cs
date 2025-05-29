@@ -27,14 +27,17 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Client(HttpClient? httpClient = null, ICredentialHelper? credentialHelper = null)
+public class Client(HttpClient? httpClient = null, CredentialResolver? credentialResolver = null)
     : IClient
 {
-    /// <summary>
-    /// CredentialHelper provides the mechanism to retrieve
-    /// credentials for accessing remote registries.
+    /// A delegate that can be assigned to provide custom credential resolution.
+    /// When set, this function is used to resolve credentials for a specific registry host.
     /// </summary>
-    public ICredentialHelper? CredentialHelper { get; } = credentialHelper;
+    /// <remarks>
+    /// This can be set by <see cref="UseStaticCredential"/> to provide 
+    /// statically configured credentials for a specific registry.
+    /// </remarks>
+    public CredentialResolver? ResolveCredentialAsync { get; set; } = credentialResolver;
 
     /// <summary>
     /// BaseClient is an instance of HttpClient to send http requests
@@ -46,20 +49,20 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// authentication-related data to optimize remote registry operations.
     /// </summary>
     public ICache Cache { get; set; } = new Cache();
-    
+
     /// <summary>
     /// ClientId used in fetching OAuth2 token as a required field.
     /// If empty, a default client ID is used.
     /// </summary>
     public string? ClientId { get; set; }
-    
+
     /// <summary>
     /// Determines whether to enforce OAuth2 authentication with the password grant type
     /// instead of using the distribution specification when authenticating with a username
     /// and password.
     /// </summary>
     public bool ForceAttemptOAuth2 { get; set; }
-    
+
     /// <summary>
     /// defaultClientID specifies the default client ID used in OAuth2.
     /// </summary>
@@ -90,7 +93,33 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
             CustomHeaders["User-Agent"] = [userAgent];
         }
     }
-    
+
+    public void UseStaticCredential(string registryName, Credential credential)
+    {
+        if (string.IsNullOrWhiteSpace(registryName))
+        {
+            throw new ArgumentException("registry cannot be null or empty.", nameof(registryName));
+        }
+        if (credential.IsEmpty())
+        {
+            throw new ArgumentException("Credential cannot be empty.", nameof(credential));
+        }
+        if (registryName == "docker.io")
+        {
+            // It is expected that traffic targeting "docker.io" will be redirected to "registry-1.docker.io"
+            // Reference: https://github.com/moby/moby/blob/v24.0.0-beta.2/registry/config.go#L25-L48
+            registryName = "registry-1.docker.io";
+        }
+        ResolveCredentialAsync = (hostport, _) =>
+        {
+            if (string.Equals(hostport, registryName))
+            {
+                return Task.FromResult(credential);
+            }
+            return Task.FromResult(new Credential());
+        };
+    }
+
     /// <summary>
     /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
     /// 
@@ -115,7 +144,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
         {
             originalRequest.Headers.TryAddWithoutValidation(headerName, headerValues);
         }
-        
+
         originalRequest.AddDefaultUserAgent();
         if (originalRequest.Headers.Authorization != null || BaseClient.DefaultRequestHeaders.Authorization != null)
         {
@@ -131,25 +160,25 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
             switch (schemeFromCache)
             {
                 case Challenge.Scheme.Basic:
-                {
-                    if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken))
                     {
-                        requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
-                    }
+                        if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken))
+                        {
+                            requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
+                        }
 
-                    break;
-                }
+                        break;
+                    }
                 case Challenge.Scheme.Bearer:
-                {
-                    var scopes = ScopeManager.GetScopesStringForHost(host);
-                    attemptedKey = string.Join(" ", scopes);
-                    if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken))
                     {
-                        requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
-                    }
+                        var scopes = ScopeManager.GetScopesStringForHost(host);
+                        attemptedKey = string.Join(" ", scopes);
+                        if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken))
+                        {
+                            requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                        }
 
-                    break;
-                }
+                        break;
+                    }
             }
         }
 
@@ -166,77 +195,77 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
         switch (schemeFromChallenge)
         {
             case Challenge.Scheme.Basic:
-            {
-                response1.Dispose();
-                var basicAuthToken = await FetchBasicAuth(host, cancellationToken).ConfigureAwait(false);
-                Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
-                
-                // Attempt again with basic token
-                using var requestAttempt2 = await originalRequest.CloneAsync().ConfigureAwait(false);
-                requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
-                return await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
-            }
-            case Challenge.Scheme.Bearer:
-            {
-                response1.Dispose();
-                if (parameters == null)
                 {
-                    throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
-                }
+                    response1.Dispose();
+                    var basicAuthToken = await FetchBasicAuth(host, cancellationToken).ConfigureAwait(false);
+                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
 
-                var existingScopes = ScopeManager.GetScopesForHost(host);
-                var newScopes = new SortedSet<Scope>(existingScopes);
-                if (parameters.TryGetValue("scope", out var scopesString))
+                    // Attempt again with basic token
+                    using var requestAttempt2 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                    requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
+                    return await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
+                }
+            case Challenge.Scheme.Bearer:
                 {
-                    foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                    response1.Dispose();
+                    if (parameters == null)
                     {
-                        if (Scope.TryParse(scopeStr, out var scope))
+                        throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
+                    }
+
+                    var existingScopes = ScopeManager.GetScopesForHost(host);
+                    var newScopes = new SortedSet<Scope>(existingScopes);
+                    if (parameters.TryGetValue("scope", out var scopesString))
+                    {
+                        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
                         {
-                            Scope.AddOrMergeScope(newScopes, scope);
+                            if (Scope.TryParse(scopeStr, out var scope))
+                            {
+                                Scope.AddOrMergeScope(newScopes, scope);
+                            }
                         }
                     }
-                }
 
-                // attempt to send request when the scope changes and a token cache hits
-                var newKey = string.Join(" ", newScopes.Select(newScope => newScope));
-                if (newKey != attemptedKey &&
-                    Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
-                {
-                    using var requestAttempt2 = await originalRequest.CloneAsync().ConfigureAwait(false);
-                    requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                    var response2 = await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
-                    
-                    if (response2.StatusCode != HttpStatusCode.Unauthorized)
+                    // attempt to send request when the scope changes and a token cache hits
+                    var newKey = string.Join(" ", newScopes.Select(newScope => newScope));
+                    if (newKey != attemptedKey &&
+                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
                     {
-                        return response2;
+                        using var requestAttempt2 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                        requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
+                        var response2 = await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
+
+                        if (response2.StatusCode != HttpStatusCode.Unauthorized)
+                        {
+                            return response2;
+                        }
+                        response2.Dispose();
                     }
-                    response2.Dispose();
+
+                    if (!parameters.TryGetValue("realm", out var realm))
+                    {
+                        throw new KeyNotFoundException("Realm was not present in the request.");
+                    }
+
+                    if (!parameters.TryGetValue("service", out var service))
+                    {
+                        throw new KeyNotFoundException("Service was not present in the request.");
+                    }
+
+                    // try to fetch bearer token based on the challenge header
+                    var bearerAuthToken = await FetchBearerAuth(
+                        host,
+                        realm,
+                        service,
+                        newScopes.Select(newScope => newScope.ToString()).ToList(),
+                        cancellationToken
+                    ).ConfigureAwait(false);
+                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
+
+                    using var requestAttempt3 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                    requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
+                    return await BaseClient.SendAsync(requestAttempt3, cancellationToken).ConfigureAwait(false);
                 }
-
-                if (!parameters.TryGetValue("realm", out var realm))
-                {
-                    throw new KeyNotFoundException("Realm was not present in the request.");
-                }
-
-                if (!parameters.TryGetValue("service", out var service))
-                {
-                    throw new KeyNotFoundException("Service was not present in the request.");
-                }
-
-                // try to fetch bearer token based on the challenge header
-                var bearerAuthToken = await FetchBearerAuth(
-                    host,
-                    realm,
-                    service,
-                    newScopes.Select(newScope => newScope.ToString()).ToList(),
-                    cancellationToken
-                ).ConfigureAwait(false);
-                Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
-
-                using var requestAttempt3 = await originalRequest.CloneAsync().ConfigureAwait(false);
-                requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
-                return await BaseClient.SendAsync(requestAttempt3, cancellationToken).ConfigureAwait(false);
-            }
             default:
                 return response1;
         }
@@ -255,12 +284,12 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// </exception>
     internal async Task<string> FetchBasicAuth(string registry, CancellationToken cancellationToken)
     {
-        if (CredentialHelper == null)
+        if (ResolveCredentialAsync == null)
         {
-            throw new AuthenticationException("CredentialHelper is not configured");
+            throw new AuthenticationException("ResolveCredentialAsync is not configured");
         }
 
-        var credential = await CredentialHelper.ResolveAsync(registry, cancellationToken).ConfigureAwait(false);
+        var credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(credential.Username) || string.IsNullOrWhiteSpace(credential.Password))
         {
             throw new AuthenticationException("Missing username or password for basic authentication.");
@@ -286,43 +315,48 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// </returns>
     /// <exception cref="AuthenticationException">Thrown when credentials are missing or invalid.</exception>
     internal async Task<string> FetchBearerAuth(
-        string registry, 
-        string realm, 
-        string service, 
+        string registry,
+        string realm,
+        string service,
         IList<string> scopes,
         CancellationToken cancellationToken)
     {
-        var credential = await (CredentialHelper?.ResolveAsync(registry, cancellationToken)
-                                ?? Task.FromResult<Credential>(new Credential()))
-            .ConfigureAwait(false);
-        
+        Credential credential;
+        if (ResolveCredentialAsync != null)
+        {
+            credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
+        } else
+        {
+            credential = new Credential();
+        }
+
         if (!string.IsNullOrEmpty(credential.AccessToken))
         {
             return credential.AccessToken;
         }
 
-        if (credential.IsEmpty() || 
+        if (credential.IsEmpty() ||
             (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
         {
             return await FetchDistributionToken(
-                realm, 
-                service, 
-                scopes, 
-                credential.Username, 
-                credential.Password, 
+                realm,
+                service,
+                scopes,
+                credential.Username,
+                credential.Password,
                 cancellationToken
             ).ConfigureAwait(false);
         }
 
         return await FetchOauth2Token(
-            realm, 
-            service, 
-            scopes, 
-            credential, 
+            realm,
+            service,
+            scopes,
+            credential,
             cancellationToken
         ).ConfigureAwait(false);
     }
-    
+
     /// <summary>
     /// FetchDistributionToken fetches a distribution access token from the specified authentication realm with a HTTP Get request.
     /// It fetches anonymous tokens if no credential is provided.
@@ -344,10 +378,10 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// Thrown when the HTTP request fails or the response status code is not OK.
     /// </exception>
     internal async Task<string> FetchDistributionToken(
-        string realm, 
-        string service, 
-        IList<string> scopes, 
-        string? username, 
+        string realm,
+        string service,
+        IList<string> scopes,
+        string? username,
         string? password,
         CancellationToken cancellationToken
     )
@@ -376,7 +410,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
             Query = queryString
         };
         request.RequestUri = uriBuilder.Uri;
-        
+
         using var response = await BaseClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
@@ -417,7 +451,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// Thrown when there is an issue with the HTTP request or response.
     /// </exception>
     internal async Task<string> FetchOauth2Token(
-        string realm, 
+        string realm,
         string service,
         IList<string> scopes,
         Credential credential,
@@ -429,12 +463,13 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
             ["service"] = service,
             ["client_id"] = string.IsNullOrEmpty(ClientId) ? _defaultClientId : ClientId
         };
-        
+
         if (!string.IsNullOrEmpty(credential.RefreshToken))
         {
             form["grant_type"] = "refresh_token";
             form["refresh_token"] = credential.RefreshToken;
-        } else if (!string.IsNullOrEmpty(credential.Username) && !string.IsNullOrEmpty(credential.Password))
+        }
+        else if (!string.IsNullOrEmpty(credential.Username) && !string.IsNullOrEmpty(credential.Password))
         {
             form["grant_type"] = "password";
             form["username"] = credential.Username;
@@ -448,12 +483,12 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
         if (scopes.Count > 0)
         {
             form["scope"] = string.Join(" ", scopes);
-        } 
+        }
         using var content = new FormUrlEncodedContent(form);
         using var request = new HttpRequestMessage(HttpMethod.Post, realm);
         request.Content = content;
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.FormUrlEncoded);
-        
+
         using var response = await BaseClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
@@ -467,7 +502,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
         {
             return accessToken.ToString();
         }
-        
+
         throw new AuthenticationException("AccessToken is empty or missing");
     }
 }
