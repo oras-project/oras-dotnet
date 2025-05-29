@@ -142,7 +142,7 @@ public class CopyTest
             Cache = new MemoryStorage(),
             Source = sourceTarget
         };
-        await sourceTarget.CopyGraphAsync(destinationTarget, root, proxy, cancellationToken);
+        await sourceTarget.CopyGraphAsync(destinationTarget, root, proxy, new CopyGraphOptions(), cancellationToken);
         for (var i = 0; i < descs.Count; i++)
         {
             Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));

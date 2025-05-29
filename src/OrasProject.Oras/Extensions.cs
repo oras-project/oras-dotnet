@@ -14,11 +14,9 @@
 using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using OrasProject.Oras.Content;
-using OrasProject.Oras.Registry;
 
 namespace OrasProject.Oras;
 
@@ -66,52 +64,58 @@ public static class Extensions
             dstRef = srcRef;
         }
         
-        Descriptor root;
-        Stream rootStream;
-        
-        if (src is IReferenceFetchable srcRefFetchable)
-        {
-            (root, rootStream) = await srcRefFetchable.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
-        } else
-        {
-            root = await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
-            rootStream = await src.FetchAsync(root, cancellationToken).ConfigureAwait(false);
-        }
         var proxy = new Proxy()
         {
             Cache = new MemoryStorage(),
             Source = src
         };
-        if (Descriptor.IsManifestType(root))
-        {
-            if (!await proxy.Cache.ExistsAsync(root, cancellationToken).ConfigureAwait(false))
-            {
-                // Caching index/image manifest is to reduce the number of requests
-                // to retrieve image/index manifest by GetSuccessorsAsync and PushAsync in CopyGraphAsync
-                await proxy.Cache.PushAsync(root, rootStream, cancellationToken).ConfigureAwait(false);
-            }
-        }
+
+        var (root, _ ) = await proxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
         await src.CopyGraphAsync(dst, root, proxy, copyOptions, cancellationToken).ConfigureAwait(false);
         await dst.TagAsync(root, dstRef, cancellationToken).ConfigureAwait(false);
         return root;
     }
 
     /// <summary>
-    /// CopyGraphAsync concurrently copy node from src to dst by using proxy cache
+    /// CopyGraphAsync concurrently copy node desc from src to dst 
     /// </summary>
     /// <param name="src"></param>
     /// <param name="dst"></param>
     /// <param name="node"></param>
-    /// <param name="proxy"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CancellationToken cancellationToken)
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
     {
-        await src.CopyGraphAsync(dst, node, proxy, new CopyGraphOptions(), cancellationToken)
+        var proxy = new Proxy()
+        {
+            Cache = new MemoryStorage(),
+            Source = src
+        };
+        var copyGraphOptions = new CopyGraphOptions();
+        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, cancellationToken)
             .ConfigureAwait(false);
     }
-
+    
     /// <summary>
-    /// CopyGraphAsync concurrently copy node from src to dst by using proxy cache with copyGraphOptions
+    /// CopyGraphAsync concurrently copy node from src to dst by using customized copyGraphOptions
+    /// </summary>
+    /// <param name="src"></param>
+    /// <param name="dst"></param>
+    /// <param name="node"></param>
+    /// <param name="copyGraphOptions"></param>
+    /// <param name="cancellationToken"></param>
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
+    {
+        var proxy = new Proxy()
+        {
+            Cache = new MemoryStorage(),
+            Source = src
+        };
+        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, cancellationToken)
+            .ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// CopyGraphAsync concurrently copy node from src to dst by using customized copyGraphOptions and cached proxy
     /// </summary>
     /// <param name="src"></param>
     /// <param name="dst"></param>
@@ -119,11 +123,10 @@ public static class Extensions
     /// <param name="proxy"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy,
-        CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
+    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
     {
-        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, new SemaphoreSlim(1, copyGraphOptions.MaxConcurrency),
-            cancellationToken).ConfigureAwait(false);
+        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, new SemaphoreSlim(1, copyGraphOptions.MaxConcurrency), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>
@@ -159,7 +162,7 @@ public static class Extensions
         foreach (var childNode in successors)
         {
             childNodesCopies.Add(Task.Run(async () => 
-                    await src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, cancellationToken).ConfigureAwait(false), cancellationToken));
+                    await src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, cancellationToken).ConfigureAwait(false), cancellationToken));
         }
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
         
@@ -168,15 +171,7 @@ public static class Extensions
         try
         {
             // obtain datastream
-            Stream dataStream;
-            if (await proxy.Cache.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
-            {
-                dataStream = await proxy.Cache.FetchAsync(node, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                dataStream = await src.FetchAsync(node, cancellationToken).ConfigureAwait(false);
-            }
+            using var dataStream = await proxy.FetchAsync(node, cancellationToken).ConfigureAwait(false);
             await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
         }
         finally
