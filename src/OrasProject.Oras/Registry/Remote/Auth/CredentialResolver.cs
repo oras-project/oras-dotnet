@@ -16,5 +16,11 @@ using System.Threading;
 
 namespace OrasProject.Oras.Registry.Remote.Auth
 {
+    /// <summary>
+    /// Represents a delegate that resolves credentials for a given registry.
+    /// </summary>
+    /// <param name="registry">The registry for which credentials are requested.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the resolved <see cref="Credential"/>.</returns>
     public delegate Task<Credential> CredentialResolver(string registry, CancellationToken cancellationToken);
 }

@@ -331,7 +331,8 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
         if (ResolveCredentialAsync != null)
         {
             credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
-        } else
+        }
+        else
         {
             credential = new Credential();
         }

@@ -27,9 +27,9 @@ namespace OrasProject.Oras.Tests.Remote.Auth;
 
 public class ClientTest
 {
-    
+
     private const string _userAgent = "oras-dotnet";
-    
+
     [Fact]
     public void IsCredentialEmpty_AllFieldsEmpty_ReturnsTrue()
     {
@@ -138,7 +138,7 @@ public class ClientTest
         {
             RefreshToken = refreshToken
         };
-        
+
         async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
             var response = new HttpResponseMessage();
@@ -154,8 +154,8 @@ public class ClientTest
                 if (!string.IsNullOrEmpty(formData))
                 {
                     var formValues = System.Web.HttpUtility.ParseQueryString(formData);
-                    if (formValues["grant_type"] == "refresh_token" 
-                        && formValues["refresh_token"] == refreshToken 
+                    if (formValues["grant_type"] == "refresh_token"
+                        && formValues["refresh_token"] == refreshToken
                         && formValues["service"] == service
                         && formValues["client_id"] == _userAgent
                         && formValues["scope"] == string.Join(" ", scopes))
@@ -169,7 +169,8 @@ public class ClientTest
                 return new HttpResponseMessage(HttpStatusCode.BadRequest);
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
+        ;
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
@@ -201,7 +202,7 @@ public class ClientTest
             Username = username,
             Password = password
         };
-        
+
         async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
             var response = new HttpResponseMessage();
@@ -217,9 +218,9 @@ public class ClientTest
                 if (!string.IsNullOrEmpty(formData))
                 {
                     var formValues = System.Web.HttpUtility.ParseQueryString(formData);
-                    if (formValues["grant_type"] == "password" 
+                    if (formValues["grant_type"] == "password"
                         && formValues["username"] == username
-                        && formValues["password"] == password 
+                        && formValues["password"] == password
                         && formValues["service"] == service
                         && formValues["client_id"] == _userAgent
                         && formValues["scope"] == string.Join(" ", scopes))
@@ -233,7 +234,8 @@ public class ClientTest
                 return new HttpResponseMessage(HttpStatusCode.BadRequest);
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
+        ;
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
         var cancellationToken = new CancellationToken();
@@ -269,7 +271,7 @@ public class ClientTest
             CancellationToken.None));
         Assert.Equal("missing username or password for bearer auth", exception.Message);
     }
-    
+
     [Fact]
     public async Task FetchOauth2Token_InvalidResponse_ThrowsAuthenticationException()
     {
@@ -277,7 +279,7 @@ public class ClientTest
         var realm = "https://example.com";
         var service = "test_service";
         string[] scopes = ["repository:repo1:push", "repository:repo2:*"];
-        
+
         var mockHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
@@ -343,7 +345,7 @@ public class ClientTest
                 credential,
                 CancellationToken.None));
     }
-    
+
     [Fact]
     public async Task FetchDistributionToken_WithUsernamePassword_ReturnsAccessToken()
     {
@@ -351,17 +353,17 @@ public class ClientTest
         var expectedToken = "test_access_token";
         var realm = "https://example.com";
         var service = "test_service";
-        string[] expectedScopes = [ "repository:repo1:pull", "repository:repo2:push" ];
+        string[] expectedScopes = ["repository:repo1:pull", "repository:repo2:push"];
         var username = "test_user";
         var password = "test_password";
-        
+
         HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            if (req.Method == HttpMethod.Get 
+            if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
             {
                 var queryParams = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
-                if (queryParams["service"] == service && 
+                if (queryParams["service"] == service &&
                     queryParams["scope"]?.Split(",").SequenceEqual(expectedScopes) == true)
                 {
                     if (req.Headers.Authorization != null &&
@@ -382,8 +384,9 @@ public class ClientTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
-        };
-        
+        }
+        ;
+
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
@@ -407,7 +410,7 @@ public class ClientTest
         var expectedToken = "test_token";
         var realm = "https://example.com";
         var service = "test_service";
-        string[] expectedScopes = [ "repository:repo1:pull", "repository:repo2:push" ];
+        string[] expectedScopes = ["repository:repo1:pull", "repository:repo2:push"];
         var username = "test_user";
         var password = "test_password";
 
@@ -460,7 +463,7 @@ public class ClientTest
         // Arrange
         var realm = "https://example.com";
         var service = "test_service";
-        string[] scopes = [ "repository:repo1:pull", "repository:repo2:push" ];
+        string[] scopes = ["repository:repo1:pull", "repository:repo2:push"];
         var username = "test_user";
         var password = "test_password";
 
@@ -475,7 +478,7 @@ public class ClientTest
                 StatusCode = HttpStatusCode.OK,
                 Content = new StringContent("{}")
             });
-        
+
         var client = new Client(new HttpClient(mockHandler.Object));
 
         // Act & Assert
@@ -496,7 +499,7 @@ public class ClientTest
         // Arrange
         var realm = "https://example.com";
         var service = "test_service";
-        string[] scopes = [ "repository:repo1:pull", "repository:repo2:push" ];
+        string[] scopes = ["repository:repo1:pull", "repository:repo2:push"];
         var username = "test_user";
         var password = "test_password";
 
@@ -531,16 +534,16 @@ public class ClientTest
         // Arrange
         var realm = "https://example.com";
         var service = "test_service";
-        string[] expectedScopes = [ "repository:repo1:pull", "repository:repo2:push" ];
+        string[] expectedScopes = ["repository:repo1:pull", "repository:repo2:push"];
         var expectedToken = "test_access_token";
-        
+
         HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            if (req.Method == HttpMethod.Get 
+            if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
             {
                 var queryParams = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
-                if (queryParams["service"] == service && 
+                if (queryParams["service"] == service &&
                     queryParams["scope"]?.Split(",").SequenceEqual(expectedScopes) == true)
                 {
                     return new HttpResponseMessage
@@ -555,7 +558,8 @@ public class ClientTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
-        };
+        }
+        ;
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
         // Act
@@ -569,7 +573,7 @@ public class ClientTest
 
         // Assert
         Assert.Equal("test_access_token", result);
-        
+
         // with only username
         result = await client.FetchDistributionToken(
             realm,
@@ -581,7 +585,7 @@ public class ClientTest
 
         // Assert
         Assert.Equal("test_access_token", result);
-        
+
         // with only password
         result = await client.FetchDistributionToken(
             realm,
@@ -659,7 +663,7 @@ public class ClientTest
                 Password = string.Empty
             });
         };
-        var client = new Client(new HttpClient(),credentialResolver);
+        var client = new Client(new HttpClient(), credentialResolver);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
@@ -675,15 +679,15 @@ public class ClientTest
         var expectedToken = "test_access_token";
         var realm = "https://auth.example.com";
         var service = "test_service";
-        string[] expectedScopes = [ "repository:repo1:pull", "repository:repo2:push" ];
-        
+        string[] expectedScopes = ["repository:repo1:pull", "repository:repo2:push"];
+
         HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            if (req.Method == HttpMethod.Get 
+            if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
             {
                 var queryParams = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
-                if (queryParams["service"] == service && 
+                if (queryParams["service"] == service &&
                     queryParams["scope"]?.Split(",").SequenceEqual(expectedScopes) == true)
                 {
                     return new HttpResponseMessage
@@ -696,10 +700,10 @@ public class ClientTest
 
                 return new HttpResponseMessage(HttpStatusCode.BadRequest) { RequestMessage = req };
             }
-            
+
             if (req.Method == HttpMethod.Get && req.RequestUri?.Host.TrimEnd('/') == host.TrimEnd('/'))
             {
-                if (req.Headers.Authorization == null 
+                if (req.Headers.Authorization == null
                     || req.Headers.Authorization.Parameter != expectedToken
                     || req.Headers.Authorization.Scheme != "Bearer")
                 {
@@ -726,13 +730,14 @@ public class ClientTest
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
-        };
+        }
+        ;
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
         var cancellationToken = new CancellationToken();
-        
+
         // Act
         var result = await client.SendAsync(request, cancellationToken);
 
@@ -741,23 +746,23 @@ public class ClientTest
         mockHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null 
-                                                 && req.Headers.Authorization.Scheme == "Bearer" 
+            ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null
+                                                 && req.Headers.Authorization.Scheme == "Bearer"
                                                  && req.Headers.Authorization.Parameter == expectedToken),
             ItExpr.IsAny<CancellationToken>());
-        
+
         mockHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization == null 
+            ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization == null
                                                  && req.RequestUri != null
                                                  && req.RequestUri.Host.TrimEnd('/') == host.TrimEnd('/')),
             ItExpr.IsAny<CancellationToken>());
-        
+
         mockHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization == null 
+            ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization == null
                                                  && req.RequestUri != null
                                                  && req.RequestUri.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/')),
             ItExpr.IsAny<CancellationToken>());
@@ -793,7 +798,7 @@ public class ClientTest
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null),
             ItExpr.IsAny<CancellationToken>());
     }
-    
+
     [Fact]
     public async Task SendAsync_WithCustomHeader_ReturnsResponse()
     {
@@ -808,7 +813,7 @@ public class ClientTest
             {
                 StatusCode = HttpStatusCode.OK
             });
-        
+
         var expectedToken = "test_token";
         var client = new Client(new HttpClient(mockHandler.Object));
         client.CustomHeaders["Authorization"] = [$"Bearer {expectedToken}"];
@@ -864,21 +869,21 @@ public class ClientTest
         mockHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null 
-                                                 && req.Headers.Authorization.Scheme == "Basic" 
+            ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null
+                                                 && req.Headers.Authorization.Scheme == "Basic"
                                                  && req.Headers.Authorization.Parameter == token
                                                  && "newBar".Equals(req.Headers.GetValues("foo").FirstOrDefault())),
             ItExpr.IsAny<CancellationToken>());
     }
-    
+
     [Fact]
     public async Task SendAsync_WithoutAuthorizationHeader_UsesCachedBearerAuth()
     {
         // Arrange
         var host = "example.com";
         var token = "test_bearer_token";
-        string[] scopes = [ "repository:repo1:pull,push", "repository:repo2:pull" ];
-        
+        string[] scopes = ["repository:repo1:pull,push", "repository:repo2:pull"];
+
         var mockHandler = new Mock<HttpMessageHandler>();
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
@@ -912,7 +917,7 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Bearer" 
+                                                 req.Headers.Authorization.Scheme == "Bearer"
                                                  && req.Headers.Authorization.Parameter == token
                                                  && "newBar".Equals(req.Headers.GetValues("foo").FirstOrDefault())
                                                  && "value1".Equals(req.Headers.GetValues("key1").FirstOrDefault())),
@@ -929,8 +934,8 @@ public class ClientTest
         var refreshToken = "refresh_token";
         var expectedToken = "access_token";
 
-        string[] scopes = [ "repository:repo1:pull,*,delete", "repository:repo2:delete" ];
-        string[] expectedScopes = [ "repository:repo1:*", "repository:repo2:delete" ];
+        string[] scopes = ["repository:repo1:pull,*,delete", "repository:repo2:delete"];
+        string[] expectedScopes = ["repository:repo1:*", "repository:repo2:delete"];
         async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
             if (req.Method == HttpMethod.Post && req.RequestUri?.AbsoluteUri.TrimEnd('/') == realm.TrimEnd('/'))
@@ -944,8 +949,8 @@ public class ClientTest
                 if (!string.IsNullOrEmpty(formData))
                 {
                     var formValues = System.Web.HttpUtility.ParseQueryString(formData);
-                    if (formValues["grant_type"] == "refresh_token" 
-                        && formValues["refresh_token"] == refreshToken 
+                    if (formValues["grant_type"] == "refresh_token"
+                        && formValues["refresh_token"] == refreshToken
                         && formValues["service"] == service
                         && formValues["client_id"] == _userAgent
                         && formValues["scope"] == string.Join(" ", expectedScopes))
@@ -961,10 +966,10 @@ public class ClientTest
 
                 return new HttpResponseMessage(HttpStatusCode.BadRequest);
             }
-            
+
             if (req.Method == HttpMethod.Get && req.RequestUri?.Host.TrimEnd('/') == host.TrimEnd('/'))
             {
-                if (req.Headers.Authorization == null 
+                if (req.Headers.Authorization == null
                     || req.Headers.Authorization.Parameter != expectedToken
                     || req.Headers.Authorization.Scheme != "Bearer")
                 {
@@ -993,10 +998,11 @@ public class ClientTest
                         RequestMessage = req
                     };
                 }
-                
+
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
-        };
+        }
+        ;
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         CredentialResolver credentialResolver = (_, _) =>
@@ -1021,7 +1027,7 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Bearer" 
+                                                 req.Headers.Authorization.Scheme == "Bearer"
                                                  && req.Headers.Authorization.Parameter == expectedToken),
             ItExpr.IsAny<CancellationToken>());
         mockHandler.Protected().Verify(
@@ -1029,9 +1035,9 @@ public class ClientTest
             Times.Exactly(2),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization == null),
             ItExpr.IsAny<CancellationToken>());
-        
+
         mockHandler.Invocations.Clear(); // Clear invocations to ensure no residual state between tests
-        
+
         request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
@@ -1042,16 +1048,16 @@ public class ClientTest
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization == null),
             ItExpr.IsAny<CancellationToken>());
-        
+
         mockHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Bearer" 
+                                                 req.Headers.Authorization.Scheme == "Bearer"
                                                  && req.Headers.Authorization.Parameter == expectedToken),
             ItExpr.IsAny<CancellationToken>());
     }
-    
+
     [Fact]
     public async Task SendAsync_UnauthorizedResponse_FetchesNewBasicTokenAndRetries()
     {
@@ -1063,13 +1069,13 @@ public class ClientTest
         var password = "password";
         var basicToken =
             Convert.ToBase64String(Encoding.UTF8.GetBytes(username + ":" + password));
-        
+
         HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            if (req.Method == HttpMethod.Get 
+            if (req.Method == HttpMethod.Get
                 && req.RequestUri?.Host.TrimEnd('/') == host.TrimEnd('/'))
             {
-                if (req.Headers.Authorization == null 
+                if (req.Headers.Authorization == null
                     || req.Headers.Authorization.Parameter != basicToken
                     || req.Headers.Authorization.Scheme != "Basic")
                 {
@@ -1080,14 +1086,14 @@ public class ClientTest
                         Headers =
                         {
                             WwwAuthenticate = { new AuthenticationHeaderValue(
-                                "Basic", 
+                                "Basic",
                                 $"realm=\"{realm}\",service=\"{service}\"") }
                         }
                     };
                 }
-                
+
                 if (string.Join(" ", req.Headers.GetValues("foo")).Equals("bar abc") &&
-                    "value1".Equals(req.Headers.GetValues("key1").FirstOrDefault()) 
+                    "value1".Equals(req.Headers.GetValues("key1").FirstOrDefault())
                     && req.Headers.UserAgent.FirstOrDefault() != null
                     && req.Headers.UserAgent.FirstOrDefault()!.ToString().Equals("oras-dotnet"))
                 {
@@ -1098,10 +1104,11 @@ public class ClientTest
                     };
                 }
             }
-            
+
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
-        };
+        }
+        ;
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         CredentialResolver credentialResolver = (_, _) =>
@@ -1128,17 +1135,17 @@ public class ClientTest
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization == null),
             ItExpr.IsAny<CancellationToken>());
-        
+
         mockHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Basic" 
+                                                 req.Headers.Authorization.Scheme == "Basic"
                                                  && req.Headers.Authorization.Parameter == basicToken),
             ItExpr.IsAny<CancellationToken>());
-        
+
         mockHandler.Invocations.Clear(); // Clear invocations to ensure no residual state between tests
-        
+
         request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
         Assert.True(client.Cache.TryGetToken(host, Challenge.Scheme.Basic, "", out var token));
         Assert.Equal(basicToken, token);
@@ -1149,11 +1156,11 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Basic" 
+                                                 req.Headers.Authorization.Scheme == "Basic"
                                                  && req.Headers.Authorization.Parameter == basicToken),
             ItExpr.IsAny<CancellationToken>());
     }
-    
+
     [Fact]
     public async Task SendAsync_WithoutCredential_FetchBasicAuthThrowsAuthenticationException()
     {
@@ -1161,10 +1168,10 @@ public class ClientTest
         var host = "example.com";
         var realm = "https://auth.example.com";
         var service = "test_service";
-        
+
         HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
         {
-            if (req.Method == HttpMethod.Get 
+            if (req.Method == HttpMethod.Get
                 && req.RequestUri?.Host.TrimEnd('/') == host.TrimEnd('/'))
             {
                 if (req.Headers.Authorization == null)
@@ -1176,24 +1183,25 @@ public class ClientTest
                         Headers =
                         {
                             WwwAuthenticate = { new AuthenticationHeaderValue(
-                                "Basic", 
+                                "Basic",
                                 $"realm=\"{realm}\",service=\"{service}\"") }
                         }
                     };
                 }
             }
-            
+
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
-        };
-        
+        }
+        ;
+
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
         var exception = await Assert.ThrowsAsync<AuthenticationException>(async () => await client.SendAsync(request, CancellationToken.None));
-        
+
         // Assert
         Assert.Equal("ResolveCredentialAsync is not configured", exception.Message);
     }
