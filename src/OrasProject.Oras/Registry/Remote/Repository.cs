@@ -268,8 +268,9 @@ public class Repository : IRepository
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
-        var data = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var tagList = JsonSerializer.Deserialize<TagList>(data);
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        var limitedStreamContent = await stream.ReadStreamWithLimit(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
+        var tagList = JsonSerializer.Deserialize<TagList>(limitedStreamContent);
         return (tagList.Tags, response.ParseLink());
     }
 
@@ -540,8 +541,9 @@ public class Repository : IRepository
                 yield break;
             }
 
-            using var content = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            var referrersIndex = JsonSerializer.Deserialize<Index>(content) ??
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            var limitedStreamContent = await stream.ReadStreamWithLimit(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
+            var referrersIndex = JsonSerializer.Deserialize<Index>(limitedStreamContent) ??
                                      throw new InvalidResponseException(
                                          $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");
 
@@ -625,7 +627,7 @@ public class Repository : IRepository
         {
             ScopeManager.SetActionsForRepository(Options.Client, Options.Reference, Scope.Action.Pull);
             var result = await FetchAsync(referrersTag, cancellationToken).ConfigureAwait(false);
-            LimitSize(result.Descriptor, Options.MaxMetadataBytes);
+            result.Descriptor.LimitSize(Options.MaxMetadataBytes);
             using var stream = result.Stream;
             var indexBytes = await stream.ReadAllAsync(result.Descriptor, cancellationToken).ConfigureAwait(false);
             var index = JsonSerializer.Deserialize<Index>(indexBytes) ?? throw new JsonException(
@@ -720,20 +722,5 @@ public class Repository : IRepository
     public void SetReferrersState(bool isSupported)
     {
         ReferrersState = isSupported ? Referrers.ReferrersState.Supported : Referrers.ReferrersState.NotSupported;
-    }
-
-
-    /// <summary>
-    /// LimitSize throws SizeLimitExceededException if the size of desc exceeds the limit limitSize.
-    /// </summary>
-    /// <param name="desc"></param>
-    /// <param name="limitSize"></param>
-    /// <exception cref="SizeLimitExceededException"></exception>
-    internal static void LimitSize(Descriptor desc, long limitSize)
-    {
-        if (desc.Size > limitSize)
-        {
-            throw new SizeLimitExceededException($"content size {desc.Size} exceeds MaxMetadataBytes {limitSize}");
-        }
     }
 }

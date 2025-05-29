@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
@@ -115,5 +116,28 @@ public static class Extensions
             throw new MismatchedDigestException("Descriptor digest is different from content digest");
         }
         return buffer;
+    }
+
+    /// <summary>
+    /// Reads the content from a stream up to a specified byte limit.
+    /// Throws SizeLimitExceededException if the content exceeds the limit.
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="maxBytes"></param>
+    /// <exception cref="SizeLimitExceededException"></exception>
+    internal static async Task<byte[]> ReadStreamWithLimit(this Stream stream, long maxBytes, CancellationToken cancellationToken = default)
+    {
+        using var ms = new MemoryStream();
+        byte[] buffer = new byte[8192]; // 8 KB
+        long totalRead = 0;
+        int read;
+        while ((read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
+        {
+            totalRead += read;
+            if (totalRead > maxBytes)
+                throw new SizeLimitExceededException($"Content size exceeds limit {maxBytes} bytes.");
+            ms.Write(buffer, 0, read);
+        }
+        return ms.ToArray();
     }
 }
