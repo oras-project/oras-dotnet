@@ -14,6 +14,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -30,13 +31,11 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 public class Client(HttpClient? httpClient = null, CredentialResolver? credentialResolver = null)
     : IClient
 {
-    /// A delegate that can be assigned to provide custom credential resolution.
-    /// When set, this function is used to resolve credentials for a specific registry host.
+    /// <summary>
+    /// Specifies the function for resolving the credential for the given registry (i.e. host:port).
+    /// An empty credential is a valid return value and should not be considered an error.
+    /// If null, the credential is always resolved to an empty credential.
     /// </summary>
-    /// <remarks>
-    /// This can be set by <see cref="UseStaticCredential"/> to provide 
-    /// statically configured credentials for a specific registry.
-    /// </remarks>
     public CredentialResolver? ResolveCredentialAsync { get; set; } = credentialResolver;
 
     /// <summary>
@@ -94,6 +93,12 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
         }
     }
 
+    /// <summary>
+    /// Sets <see cref="ResolveCredentialAsync"/> to always return the specified static credentials for the given registry host.
+    /// </summary>
+    /// <param name="registryName">Registry name or host to which the credentials apply.</param>
+    /// <param name="credential">Credential to use for authentication.</param>
+    [MemberNotNull(nameof(ResolveCredentialAsync))]
     public void UseStaticCredential(string registryName, Credential credential)
     {
         if (string.IsNullOrWhiteSpace(registryName))
@@ -110,6 +115,7 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
             // Reference: https://github.com/moby/moby/blob/v24.0.0-beta.2/registry/config.go#L25-L48
             registryName = "registry-1.docker.io";
         }
+
         ResolveCredentialAsync = (hostport, _) =>
         {
             if (string.Equals(hostport, registryName))
