@@ -178,4 +178,58 @@ public class HttpRequestMessageExtensionsTest
         Assert.NotNull(clonedContent);
         Assert.Empty(clonedContent.Headers);
     }
+
+    [Fact]
+    public async Task CloneAsync_ShouldCloneNonSeekableContent()
+    {
+        // Arrange
+        byte[] testData = { 1, 2, 3, 4, 5 };
+        var nonSeekableStream = new NonSeekableStream(testData);
+        var originalContent = new StreamContent(nonSeekableStream);
+
+        // Act
+        var clonedContent = await originalContent.CloneAsync();
+        
+        // Assert
+        Assert.NotNull(clonedContent);
+        byte[] clonedBytes = await clonedContent.ReadAsByteArrayAsync();
+        Assert.Equal(testData, clonedBytes);
+    }
+
+    [Fact]
+    public async Task CloneAsync_WithEmptyNonSeekableContent_ShouldCloneCorrectly()
+    {
+        // Arrange
+        // Create an empty non-seekable stream
+        using var nonSeekableStream = new NonSeekableStream(Array.Empty<byte>());
+        var originalContent = new StreamContent(nonSeekableStream);
+        
+        // Act
+        var clonedContent = await originalContent.CloneAsync();
+        
+        // Assert
+        Assert.NotNull(clonedContent);
+        byte[] clonedBytes = await clonedContent.ReadAsByteArrayAsync();
+        Assert.Empty(clonedBytes);
+    }
+
+    [Fact]
+    public async Task CloneAsync_ShouldCloneNonSeekableContentHeaders()
+    {
+        // Arrange
+        // Arrange
+        byte[] testData = { 1, 2, 3, 4, 5 };
+        using var nonSeekableStream = new NonSeekableStream(testData);
+        var originalContent = new StreamContent(nonSeekableStream);
+        originalContent.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+        originalContent.Headers.ContentLength = testData.Length;
+
+        // Act
+        var clonedContent = await originalContent.CloneAsync();
+
+        // Assert
+        Assert.NotNull(clonedContent.Headers.ContentType);
+        Assert.Equal(originalContent.Headers.ContentType, clonedContent.Headers.ContentType);
+        Assert.Equal(originalContent.Headers.ContentLength, clonedContent.Headers.ContentLength);
+    }
 }
