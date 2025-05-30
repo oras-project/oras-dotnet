@@ -13,7 +13,9 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Pipelines;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -27,12 +29,12 @@ internal static class HttpRequestMessageExtensions
     /// </summary>
     /// <param name="request">The <see cref="HttpRequestMessage"/> to clone.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpRequestMessage"/>.</returns>
-    internal static async Task<HttpRequestMessage> CloneAsync(this HttpRequestMessage request)
+    internal static async Task<HttpRequestMessage> CloneAsync(this HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri)
         {
             Content = request.Content != null
-                ? await request.Content.CloneAsync().ConfigureAwait(false)
+                ? await request.Content.CloneAsync(cancellationToken).ConfigureAwait(false)
                 : null,
             Version = request.Version
         };
@@ -53,11 +55,11 @@ internal static class HttpRequestMessageExtensions
     /// </summary>
     /// <param name="content">The <see cref="HttpContent"/> to clone.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpContent"/>.</returns>
-    internal static async Task<HttpContent> CloneAsync(this HttpContent content)
+    internal static async Task<HttpContent> CloneAsync(this HttpContent content, CancellationToken cancellationToken)
     {
         // TODO: HTTP content larger than 2GB cannot be buffered/cloned into memory.
         // Need to find a way to handle large content.
-        var stream = await content.ReadAsStreamAsync().ConfigureAwait(false);
+        var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         HttpContent clone;
         if (stream.CanSeek)
         {
@@ -67,15 +69,41 @@ internal static class HttpRequestMessageExtensions
         }
         else
         {
-            var memoryStream = new MemoryStream();
-            await content.CopyToAsync(memoryStream).ConfigureAwait(false);
-            memoryStream.Position = 0;
-            clone = new StreamContent(memoryStream);
+            var pipe = new Pipe();
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    while (true)
+                    {
+                        var buffer = pipe.Writer.GetMemory(4 * 1024 * 1024);
+                        int bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                        if (bytesRead == 0)
+                        {
+                            break; // End of stream
+                        }
+                        pipe.Writer.Advance(bytesRead);
+                        var result = await pipe.Writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                        if (result.IsCompleted)
+                        {
+                            break; // No more data to write
+                        }
+                    }
+                }
+                finally
+                {
+                    await pipe.Writer.CompleteAsync().ConfigureAwait(false);
+                    await stream.DisposeAsync().ConfigureAwait(false);
+                }
+            }, cancellationToken);
+
+            var pipeReader = pipe.Reader.AsStream();
+            clone = new StreamContent(pipeReader);
         }
 
         foreach (var header in content.Headers)
         {
-            clone.Headers.Add(header.Key, header.Value);
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
         }
         return clone;
     }

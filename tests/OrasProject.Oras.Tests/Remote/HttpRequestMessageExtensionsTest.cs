@@ -26,7 +26,7 @@ public class HttpRequestMessageExtensionsTest
         var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync();
+        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(originalRequest.Method, clonedRequest.Method);
@@ -45,7 +45,7 @@ public class HttpRequestMessageExtensionsTest
 
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync();
+        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.True(clonedRequest.Headers.Contains("Custom-Header"));
@@ -68,7 +68,7 @@ public class HttpRequestMessageExtensionsTest
         };
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync();
+        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedRequest.Content);
@@ -84,7 +84,7 @@ public class HttpRequestMessageExtensionsTest
         originalRequest.Options.TryAdd("Custom-Option", "OptionValue");
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync();
+        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.True(clonedRequest.Options.TryGetValue(customOptionKey, out var clonedOptionValue));
@@ -101,7 +101,7 @@ public class HttpRequestMessageExtensionsTest
         };
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync();
+        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(originalRequest.Version, clonedRequest.Version);
@@ -114,7 +114,7 @@ public class HttpRequestMessageExtensionsTest
         var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync();
+        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.Null(clonedRequest.Content);
@@ -127,7 +127,7 @@ public class HttpRequestMessageExtensionsTest
         var originalContent = new StringContent("Test content");
 
         // Act
-        var clonedContent = await originalContent.CloneAsync();
+        var clonedContent = await originalContent.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent);
@@ -143,7 +143,7 @@ public class HttpRequestMessageExtensionsTest
         originalContent.Headers.ContentLength = 12;
 
         // Act
-        var clonedContent = await originalContent.CloneAsync();
+        var clonedContent = await originalContent.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent.Headers.ContentType);
@@ -158,7 +158,7 @@ public class HttpRequestMessageExtensionsTest
         var originalContent = new StringContent(string.Empty);
 
         // Act
-        var clonedContent = await originalContent.CloneAsync();
+        var clonedContent = await originalContent.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent);
@@ -172,7 +172,7 @@ public class HttpRequestMessageExtensionsTest
         var originalContent = new ByteArrayContent(Array.Empty<byte>());
 
         // Act
-        var clonedContent = await originalContent.CloneAsync();
+        var clonedContent = await originalContent.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent);
@@ -188,7 +188,7 @@ public class HttpRequestMessageExtensionsTest
         var originalContent = new StreamContent(nonSeekableStream);
 
         // Act
-        var clonedContent = await originalContent.CloneAsync();
+        var clonedContent = await originalContent.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent);
@@ -205,7 +205,7 @@ public class HttpRequestMessageExtensionsTest
         var originalContent = new StreamContent(nonSeekableStream);
 
         // Act
-        var clonedContent = await originalContent.CloneAsync();
+        var clonedContent = await originalContent.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent);
@@ -225,7 +225,7 @@ public class HttpRequestMessageExtensionsTest
         originalContent.Headers.ContentLength = testData.Length;
 
         // Act
-        var clonedContent = await originalContent.CloneAsync();
+        var clonedContent = await originalContent.CloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent.Headers.ContentType);

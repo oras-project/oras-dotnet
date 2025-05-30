@@ -122,7 +122,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
             return await BaseClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
         var host = originalRequest.RequestUri?.Host ?? throw new ArgumentNullException(nameof(originalRequest.RequestUri));
-        using var requestAttempt1 = await originalRequest.CloneAsync().ConfigureAwait(false);
+        using var requestAttempt1 = await originalRequest.CloneAsync(cancellationToken).ConfigureAwait(false);
         var attemptedKey = string.Empty;
 
         // attempt to send request with cached auth token
@@ -172,7 +172,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
                 Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
                 
                 // Attempt again with basic token
-                using var requestAttempt2 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                using var requestAttempt2 = await originalRequest.CloneAsync(cancellationToken).ConfigureAwait(false);
                 requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
                 return await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
             }
@@ -202,7 +202,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
                 if (newKey != attemptedKey &&
                     Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
                 {
-                    using var requestAttempt2 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                    using var requestAttempt2 = await originalRequest.CloneAsync(cancellationToken).ConfigureAwait(false);
                     requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
                     var response2 = await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
                     
@@ -233,7 +233,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
                 ).ConfigureAwait(false);
                 Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
 
-                using var requestAttempt3 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                using var requestAttempt3 = await originalRequest.CloneAsync(cancellationToken).ConfigureAwait(false);
                 requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
                 return await BaseClient.SendAsync(requestAttempt3, cancellationToken).ConfigureAwait(false);
             }
