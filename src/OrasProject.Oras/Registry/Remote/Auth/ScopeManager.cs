@@ -24,8 +24,8 @@ public class ScopeManager
     /// A thread-safe dictionary that maps a string key to a sorted set of <see cref="Scope"/> objects.
     /// This is used to manage and organize scopes in a concurrent environment.
     /// </summary>
-    private ConcurrentDictionary<string, SortedSet<Scope>> Scopes { get; } = new ();
-    
+    private ConcurrentDictionary<string, SortedSet<Scope>> Scopes { get; } = new();
+
     /// <summary>
     /// GetScopesForHost returns a sorted set of scopes for the given registry if found,
     /// otherwise, returns empty sorted set.
@@ -36,7 +36,7 @@ public class ScopeManager
     {
         return Scopes.TryGetValue(registry, out var scopes) ? scopes : new();
     }
-    
+
     /// <summary>
     /// GetScopesStringForHost returns a list of scopes string for the given registry if found,
     /// otherwise, returns empty list.
@@ -46,19 +46,19 @@ public class ScopeManager
     public List<string> GetScopesStringForHost(string registry)
     {
         return Scopes.TryGetValue(registry, out var scopes)
-            ? scopes.Select(scope => scope.ToString()).ToList() 
+            ? scopes.Select(scope => scope.ToString()).ToList()
             : new();
     }
 
     /// <summary>
-    /// SetActionsForRepository sets actions for the given repository if the httpClient is auth.Client.
+    /// SetActionsForRepository sets actions for the given repository if the client is auth.Client.
     /// </summary>
-    /// <param name="httpClient"></param>
+    /// <param name="client"></param>
     /// <param name="reference"></param>
     /// <param name="actions"></param>
-    public static void SetActionsForRepository(IClient httpClient, Reference reference, params Scope.Action[] actions)
+    public static void SetActionsForRepository(IClient client, Reference reference, params Scope.Action[] actions)
     {
-        if (httpClient is Client authClient)
+        if (client is Client authClient)
         {
             authClient.ScopeManager.SetActionsForRepository(reference, actions);
         }
@@ -88,16 +88,16 @@ public class ScopeManager
 
         SetScopeForRegistry(registry, scope);
     }
-    
+
     /// <summary>
-    /// SetScopeForRegistry sets scope for the given registry when the httpclient is auth.Client.
+    /// SetScopeForRegistry sets scope for the given registry when the client is auth.Client.
     /// </summary>
-    /// <param name="httpClient"></param>
+    /// <param name="client"></param>
     /// <param name="registry"></param>
     /// <param name="scope"></param>
-    public static void SetScopeForRegistry(IClient httpClient, string registry, Scope scope)
+    public static void SetScopeForRegistry(IClient client, string registry, Scope scope)
     {
-        if (httpClient is Client authClient)
+        if (client is Client authClient)
         {
             authClient.ScopeManager.SetScopeForRegistry(registry, scope);
         }

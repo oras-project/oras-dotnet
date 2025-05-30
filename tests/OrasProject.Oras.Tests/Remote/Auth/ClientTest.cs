@@ -1231,7 +1231,7 @@ public class ClientTest
         var cred = new Credential { Username = "user", Password = "pass" };
         client.UseStaticCredential("myregistry", cred);
 
-        var result = await client.Resolver("myregistry", CancellationToken.None);
+        var result = await client.CredentialResolverFunc("myregistry", CancellationToken.None);
         Assert.Equal("user", result.Username);
         Assert.Equal("pass", result.Password);
     }
@@ -1243,7 +1243,7 @@ public class ClientTest
         var cred = new Credential { Username = "user", Password = "pass" };
         client.UseStaticCredential("myregistry", cred);
 
-        var result = await client.Resolver("otherregistry", CancellationToken.None);
+        var result = await client.CredentialResolverFunc("otherregistry", CancellationToken.None);
         Assert.True(result.IsEmpty());
     }
 
@@ -1254,7 +1254,7 @@ public class ClientTest
         var cred = new Credential { Username = "user", Password = "pass" };
         client.UseStaticCredential("docker.io", cred);
 
-        var result = await client.Resolver("registry-1.docker.io", CancellationToken.None);
+        var result = await client.CredentialResolverFunc("registry-1.docker.io", CancellationToken.None);
         Assert.Equal("user", result.Username);
         Assert.Equal("pass", result.Password);
     }

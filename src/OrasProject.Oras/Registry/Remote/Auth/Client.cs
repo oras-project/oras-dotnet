@@ -36,7 +36,7 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     /// An empty credential is a valid return value and should not be considered an error.
     /// If null, the credential is always resolved to an empty credential.
     /// </summary>
-    public CredentialResolver? Resolver { get; set; } = credentialResolver;
+    public CredentialResolver? CredentialResolverFunc { get; set; } = credentialResolver;
 
     /// <summary>
     /// BaseClient is an instance of HttpClient to send http requests
@@ -94,11 +94,11 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     }
 
     /// <summary>
-    /// Sets <see cref="Resolver"/> to always return the specified static credentials for the given registry host.
+    /// Sets <see cref="CredentialResolverFunc"/> to always return the specified static credentials for the given registry host.
     /// </summary>
     /// <param name="registry">Registry name or host:port to which the credentials apply.</param>
     /// <param name="credential">Credential to use for authentication.</param>
-    [MemberNotNull(nameof(Resolver))]
+    [MemberNotNull(nameof(CredentialResolverFunc))]
     public void UseStaticCredential(string registry, Credential credential)
     {
         if (string.IsNullOrWhiteSpace(registry))
@@ -116,7 +116,7 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
             registry = "registry-1.docker.io";
         }
 
-        Resolver = (hostport, _) =>
+        CredentialResolverFunc = (hostport, _) =>
         {
             if (string.Equals(hostport, registry))
             {
@@ -127,14 +127,14 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     }
 
     /// <summary>
-    /// Asynchronously resolves the credential for the specified registry.
+    /// Asynchronously resolves the credential for the specified registry through the configured <see cref="CredentialResolverFunc"/>.
     /// </summary>
     /// <param name="registry">Registry name or host:port</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken)
-        => Resolver == null ? Task.FromResult(new Credential()) :
-            Resolver(registry, cancellationToken);
+        => CredentialResolverFunc == null ? Task.FromResult(new Credential()) :
+            CredentialResolverFunc(registry, cancellationToken);
 
     /// <summary>
     /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
