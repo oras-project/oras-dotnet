@@ -131,23 +131,26 @@ public static class Extensions
         long maxBytes,
         CancellationToken cancellationToken = default)
     {
+        const int DefaultBufferSize = 8192; // 8 KB, standard for stream I/O
+
         if (stream.CanSeek)
         {
             long remaining = stream.Length - stream.Position;
             if (remaining > maxBytes)
                 throw new SizeLimitExceededException($"Content size exceeds limit {maxBytes} bytes");
         }
-        using var ms = new MemoryStream((int)Math.Min(maxBytes, 8192));
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(8192); // 8 KB
-
+        using var ms = new MemoryStream((int)Math.Min(maxBytes, DefaultBufferSize));
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(DefaultBufferSize);
         try
         {
             long totalRead = 0;
             int read;
             while ((read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
             {
-                if (totalRead > maxBytes - read)
+                if (totalRead + read > maxBytes)
+                {
                     throw new SizeLimitExceededException($"Content size exceeds limit {maxBytes} bytes.");
+                }
                 ms.Write(buffer, 0, read);
                 totalRead += read;
             }
