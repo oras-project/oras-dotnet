@@ -147,7 +147,8 @@ public static class Extensions
             int read;
             while ((read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
             {
-                if (totalRead + read > maxBytes)
+                // Prevent overflow if totalRead + read exceeds maxBytes.
+                if (totalRead > maxBytes - read)
                 {
                     throw new SizeLimitExceededException($"Content size exceeds limit {maxBytes} bytes.");
                 }
