@@ -11,12 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Threading;
 using System.Threading.Tasks;
+using System.Threading;
 
-namespace OrasProject.Oras.Registry.Remote.Auth;
-
-public interface ICredentialHelper
+namespace OrasProject.Oras.Registry.Remote.Auth
 {
-    public Task<Credential> ResolveAsync(string hostname, CancellationToken cancellationToken);
+    /// <summary>
+    /// Represents a delegate that resolves credentials for a given registry.
+    /// </summary>
+    /// <param name="registry">The registry for which credentials are requested.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the resolved <see cref="Credential"/>.</returns>
+    public delegate Task<Credential> CredentialResolver(string registry, CancellationToken cancellationToken);
 }

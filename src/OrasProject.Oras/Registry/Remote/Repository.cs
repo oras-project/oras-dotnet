@@ -106,22 +106,24 @@ public class Repository : IRepository
     private readonly SemaphoreSlim _referrersPingSemaphore = new(1, 1);
 
     /// <summary>
-    /// Creates a client to the remote repository identified by a reference
+    /// Creates a client to the remote repository identified by a reference.
     /// Example: localhost:5000/hello-world
     /// </summary>
     /// <param name="reference"></param>
     public Repository(string reference) : this(reference, new PlainClient()) { }
 
     /// <summary>
-    /// Creates a client to the remote repository using a reference and a HttpClient
+    /// Creates a client to the remote repository identified by a reference through IClient.
     /// </summary>
     /// <param name="reference"></param>
-    /// <param name="httpClient"></param>
-    public Repository(string reference, IClient httpClient) : this(new RepositoryOptions()
+    /// <param name="client"></param>
+    public Repository(string reference, IClient client) : this(new RepositoryOptions()
     {
         Reference = Reference.Parse(reference),
-        Client = httpClient,
-    }){}
+        Client = client,
+    })
+    { }
+
 
     public Repository(RepositoryOptions options)
     {
