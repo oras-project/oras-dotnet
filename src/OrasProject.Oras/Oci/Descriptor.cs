@@ -73,4 +73,16 @@ public class Descriptor
     {
         return descriptor == null || string.IsNullOrWhiteSpace(descriptor.Digest) || string.IsNullOrWhiteSpace(descriptor.MediaType);
     }
+
+    /// <summary>
+    /// IsManifestType is to check if the given descriptor a manifest
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <returns></returns>
+    internal static bool IsManifestType(Descriptor descriptor) =>
+        descriptor.MediaType is
+            Docker.MediaType.Manifest or
+            Oci.MediaType.ImageManifest or
+            Docker.MediaType.ManifestList or
+            Oci.MediaType.ImageIndex;
 }

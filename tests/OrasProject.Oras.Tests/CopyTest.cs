@@ -137,7 +137,12 @@ public class CopyTest
 
         var root = descs[3];
         var destinationTarget = new MemoryStore();
-        await sourceTarget.CopyGraphAsync(destinationTarget, root, cancellationToken);
+        var proxy = new Proxy()
+        {
+            Cache = new MemoryStorage(),
+            Source = sourceTarget
+        };
+        await sourceTarget.CopyGraphAsync(destinationTarget, root, proxy, new CopyGraphOptions(), cancellationToken);
         for (var i = 0; i < descs.Count; i++)
         {
             Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
@@ -147,5 +152,31 @@ public class CopyTest
             var bytes = memoryStream.ToArray();
             Assert.Equal(blobs[i], bytes);
         }
+    }
+
+    [Fact]
+    public async Task CopyAsync_SrcRefIsNull_ThrowsError()
+    {
+        var cancellationToken = new CancellationToken();
+        var sourceTarget = new MemoryStore();
+        var destinationTarget = new MemoryStore();
+
+        
+        await Assert.ThrowsAsync<ArgumentNullException>(async () => await sourceTarget.CopyAsync("", destinationTarget, "", cancellationToken));
+    }
+    
+    [Fact]
+    public async Task CopyGraphAsync_DescIsInvalid_ThrowsError()
+    {
+        var cancellationToken = new CancellationToken();
+        var sourceTarget = new MemoryStore();
+        var destinationTarget = new MemoryStore();
+        var invalidDesc = new Descriptor()
+        {
+            MediaType = MediaType.ImageConfig,
+            Digest = ""
+        };
+        
+        await Assert.ThrowsAsync<ArgumentNullException>(async () => await sourceTarget.CopyGraphAsync(destinationTarget, invalidDesc, cancellationToken));
     }
 }
