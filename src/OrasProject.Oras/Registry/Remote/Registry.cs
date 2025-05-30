@@ -34,10 +34,10 @@ public class Registry : IRegistry
 
     public Registry(string registry) : this(registry, new PlainClient()) { }
 
-    public Registry(string registry, IClient httpClient) => _opts = new()
+    public Registry(string registry, IClient client) => _opts = new()
     {
         Reference = new Reference(registry),
-        Client = httpClient,
+        Client = client,
     };
 
     public Registry(RepositoryOptions options) => _opts = options;
@@ -94,7 +94,7 @@ public class Registry : IRegistry
         {
             ScopeManager.SetScopeForRegistry(RepositoryOptions.Client, RepositoryOptions.Reference.Registry, scope);
         }
-        
+
         var url = new UriFactory(_opts).BuildRegistryCatalog();
         do
         {
