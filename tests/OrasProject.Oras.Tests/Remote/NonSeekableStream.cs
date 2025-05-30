@@ -39,15 +39,15 @@ internal class NonSeekableStream : Stream
 
     public override void Flush() => _innerStream.Flush();
 
-    public override int Read(byte[] buffer, int offset, int count) => 
+    public override int Read(byte[] buffer, int offset, int count) =>
         _innerStream.Read(buffer, offset, count);
 
-    public override long Seek(long offset, SeekOrigin origin) => 
+    public override long Seek(long offset, SeekOrigin origin) =>
         throw new NotSupportedException("This stream does not support seeking");
 
     public override void SetLength(long value) => _innerStream.SetLength(value);
 
-    public override void Write(byte[] buffer, int offset, int count) => 
+    public override void Write(byte[] buffer, int offset, int count) =>
         _innerStream.Write(buffer, offset, count);
 
     protected override void Dispose(bool disposing)

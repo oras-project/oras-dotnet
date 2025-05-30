@@ -189,7 +189,7 @@ public class HttpRequestMessageExtensionsTest
 
         // Act
         var clonedContent = await originalContent.CloneAsync();
-        
+
         // Assert
         Assert.NotNull(clonedContent);
         byte[] clonedBytes = await clonedContent.ReadAsByteArrayAsync();
@@ -203,10 +203,10 @@ public class HttpRequestMessageExtensionsTest
         // Create an empty non-seekable stream
         using var nonSeekableStream = new NonSeekableStream(Array.Empty<byte>());
         var originalContent = new StreamContent(nonSeekableStream);
-        
+
         // Act
         var clonedContent = await originalContent.CloneAsync();
-        
+
         // Assert
         Assert.NotNull(clonedContent);
         byte[] clonedBytes = await clonedContent.ReadAsByteArrayAsync();

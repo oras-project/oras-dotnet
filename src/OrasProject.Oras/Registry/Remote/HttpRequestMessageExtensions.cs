@@ -55,6 +55,8 @@ internal static class HttpRequestMessageExtensions
     /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpContent"/>.</returns>
     internal static async Task<HttpContent> CloneAsync(this HttpContent content)
     {
+        // TODO: HTTP content larger than 2GB cannot be bufferred/cloned into memory.
+        // Need to find a way to handle large content.
         var stream = await content.ReadAsStreamAsync().ConfigureAwait(false);
         HttpContent clone;
         if (stream.CanSeek)
