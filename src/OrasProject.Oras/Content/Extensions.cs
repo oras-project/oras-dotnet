@@ -114,7 +114,10 @@ public static class Extensions
         {
             throw new MismatchedSizeException($"Descriptor size {descriptor.Size} is larger than the content length");
         }
-        if (stream.ReadByte() != -1)
+
+        var extraBuffer = new byte[1];
+        int extraRead = await stream.ReadAsync(extraBuffer, 0, 1, cancellationToken).ConfigureAwait(false);
+        if (extraRead != 0)
         {
             throw new MismatchedSizeException($"Descriptor size {descriptor.Size} is smaller than the content length");
         }

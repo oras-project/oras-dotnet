@@ -472,7 +472,6 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
         throw new AuthenticationException("AccessToken is empty or missing");
     }
 
-
     /// <summary>
     /// Sends an HTTP request using the configured HttpClient with response headers read optimization.
     /// </summary>
