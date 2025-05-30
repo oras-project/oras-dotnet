@@ -45,7 +45,7 @@ public static class Extensions
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
                     var manifest = JsonSerializer.Deserialize<Manifest>(content) ??
                                         throw new JsonException("Failed to deserialize manifest");
-                    
+
                     var descriptors = new List<Descriptor>();
                     if (manifest.Subject != null)
                     {
@@ -85,7 +85,7 @@ public static class Extensions
     /// <returns></returns>
     public static async Task<byte[]> FetchAllAsync(this IFetchable fetcher, Descriptor desc, CancellationToken cancellationToken = default)
     {
-        var stream = await fetcher.FetchAsync(desc, cancellationToken).ConfigureAwait(false);
+        using var stream = await fetcher.FetchAsync(desc, cancellationToken).ConfigureAwait(false);
         return await stream.ReadAllAsync(desc, cancellationToken).ConfigureAwait(false);
     }
 
@@ -104,14 +104,22 @@ public static class Extensions
         {
             throw new InvalidDescriptorSizeException("Descriptor size is less than 0");
         }
+
         var buffer = new byte[descriptor.Size];
         try
         {
-            await stream.ReadAsync(buffer.AsMemory(0, (int)stream.Length), cancellationToken).ConfigureAwait(false);
+            await stream.ReadExactlyAsync(buffer, cancellationToken).ConfigureAwait(false);
         }
-        catch (ArgumentOutOfRangeException)
+        catch (EndOfStreamException)
         {
-            throw new MismatchedDigestException("Descriptor size is less than content size");
+            throw new MismatchedSizeException($"Descriptor size {descriptor.Size} is larger than the content length");
+        }
+
+        var extraBuffer = new byte[1];
+        int extraRead = await stream.ReadAsync(extraBuffer, 0, 1, cancellationToken).ConfigureAwait(false);
+        if (extraRead != 0)
+        {
+            throw new MismatchedSizeException($"Descriptor size {descriptor.Size} is smaller than the content length");
         }
 
         if (Digest.ComputeSha256(buffer) != descriptor.Digest)
