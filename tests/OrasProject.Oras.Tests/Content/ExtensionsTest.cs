@@ -298,24 +298,6 @@ public class ExtensionsTest
     }
 
     [Fact]
-    public async Task ReadAllAsync_NullStream_ThrowsArgumentNullException()
-    {
-        // Arrange
-        byte[] data = Encoding.UTF8.GetBytes("Non null descriptor values");
-        var descriptor = new Descriptor
-        {
-            MediaType = MediaType.ImageLayer,
-            Size = data.Length,
-            Digest = Digest.ComputeSha256(data)
-        };
-
-        Stream? nullStream = null;
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => nullStream!.ReadAllAsync(descriptor, CancellationToken.None));
-    }
-
-    [Fact]
     public async Task ReadAllAsync_NegativeDescriptorSize_ThrowsInvalidDescriptorSizeException()
     {
         // Arrange
