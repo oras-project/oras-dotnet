@@ -34,7 +34,8 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     /// <summary>
     /// Specifies the function for resolving the credential for the given registry (i.e. host:port).
     /// An empty credential is a valid return value and should not be considered an error.
-    /// If null, the credential is always resolved to an empty credential.
+    /// If null, <see cref="ResolveCredentialAsync(string, CancellationToken)"/> always resolves to an empty credential.
+    /// Use <see cref="UseStaticCredential"/> to configure a simple static credential for a specific registry.
     /// </summary>
     public CredentialResolver? CredentialResolverFunc { get; set; } = credentialResolver;
 
@@ -118,7 +119,7 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
 
         CredentialResolverFunc = (hostport, _) =>
         {
-            if (string.Equals(hostport, registry))
+            if (string.Equals(hostport, registry, StringComparison.OrdinalIgnoreCase))
             {
                 return Task.FromResult(credential);
             }
@@ -127,11 +128,19 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     }
 
     /// <summary>
-    /// Asynchronously resolves the credential for the specified registry through the configured <see cref="CredentialResolverFunc"/>.
+    /// Asynchronously resolves the credential for the specified registry.
     /// </summary>
-    /// <param name="registry">Registry name or host:port</param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    /// <param name="registry">Registry name or host:port to authenticate with.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains the resolved credential.
+    /// If <see cref="CredentialResolverFunc"/> is null, an empty credential is returned.
+    /// </returns>
+    /// <remarks>
+    /// This method delegates credential resolution to the configured <see cref="CredentialResolverFunc"/>.
+    /// The credential resolver function is responsible for determining the appropriate authentication
+    /// credentials based on the registry identifier.
+    /// </remarks>
     public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken)
         => CredentialResolverFunc == null ? Task.FromResult(new Credential()) :
             CredentialResolverFunc(registry, cancellationToken);
