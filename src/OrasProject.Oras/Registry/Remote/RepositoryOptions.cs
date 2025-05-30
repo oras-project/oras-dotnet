@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using System.Collections.Generic;
 using OrasProject.Oras.Registry.Remote.Auth;
 
@@ -67,12 +68,20 @@ public struct RepositoryOptions
     /// MaxMetadataBytes specifies a limit on how many response bytes are allowed
     /// in the server's response to the metadata APIs, such as catalog list, tag
     /// list, and referrers list.
-    /// If less than or equal to zero, a default (currently 4MiB) is used.
+    /// The getter returns a default value of 4 MiB if the value is zero or not set.
+    /// The setter throws an <see cref="ArgumentOutOfRangeException"/> if the value is less than or equal to zero.
     /// </summary>
     public long MaxMetadataBytes
     {
-        get => _maxMetadataBytes > 0 ? _maxMetadataBytes : _defaultMaxMetadataBytes;
-        set => _maxMetadataBytes = value;
+        get => _maxMetadataBytes == 0 ? _defaultMaxMetadataBytes : _maxMetadataBytes;
+        set
+        {
+            if (value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), "MaxMetadataBytes must be greater than zero.");
+            }
+            _maxMetadataBytes = value;
+        }
     }
 
     private long _maxMetadataBytes;
