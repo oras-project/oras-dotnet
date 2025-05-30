@@ -59,6 +59,11 @@ public static class Extensions
     /// <exception cref="Exception"></exception>
     public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CopyOptions copyOptions, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(srcRef))
+        {
+            throw new ArgumentNullException(nameof(srcRef));
+        }
+        
         if (string.IsNullOrEmpty(dstRef))
         {
             dstRef = srcRef;
@@ -141,6 +146,11 @@ public static class Extensions
     /// <param name="cancellationToken"></param>
     internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken)
     {
+        if (Descriptor.IsNullOrInvalid(node))
+        {
+            throw new ArgumentNullException(nameof(node));
+        }
+        
         // acquire lock to find successors of the current node
         await limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
         IEnumerable<Descriptor> successors;

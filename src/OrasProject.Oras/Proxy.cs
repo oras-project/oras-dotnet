@@ -24,7 +24,7 @@ namespace OrasProject.Oras;
 /// <summary>
 /// Proxy class is to cache the manifest for OCI image/index manifest to improve performance
 /// </summary>
-internal class Proxy : IFetchable
+internal class Proxy : IReferenceFetchable, IFetchable
 {
     public required IStorage Cache { get; init; }
     public required ITarget Source { get; init; }
