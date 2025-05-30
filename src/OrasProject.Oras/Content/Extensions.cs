@@ -26,6 +26,8 @@ namespace OrasProject.Oras.Content;
 
 public static class Extensions
 {
+    const int _defaultBufferSize = 8192; // 8 KB, standard for stream I/O
+
     /// <summary>
     /// GetSuccessorsAsync retrieves the successors of a node
     /// </summary>
@@ -131,16 +133,14 @@ public static class Extensions
         long maxBytes,
         CancellationToken cancellationToken = default)
     {
-        const int DefaultBufferSize = 8192; // 8 KB, standard for stream I/O
-
         if (stream.CanSeek)
         {
             long remaining = stream.Length - stream.Position;
             if (remaining > maxBytes)
                 throw new SizeLimitExceededException($"Content size exceeds limit {maxBytes} bytes");
         }
-        using var ms = new MemoryStream((int)Math.Min(maxBytes, DefaultBufferSize));
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(DefaultBufferSize);
+        using var ms = new MemoryStream((int)Math.Min(maxBytes, _defaultBufferSize));
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(_defaultBufferSize);
         try
         {
             long totalRead = 0;
