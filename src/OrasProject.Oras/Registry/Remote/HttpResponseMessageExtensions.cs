@@ -26,7 +26,6 @@ namespace OrasProject.Oras.Registry.Remote;
 internal static class HttpResponseMessageExtensions
 {
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
-
     /// <summary>
     /// Parses the error returned by the remote registry.
     /// </summary>
@@ -177,10 +176,10 @@ internal static class HttpResponseMessageExtensions
     /// </summary>
     /// <param name="response"></param>
     /// <param name="reference"></param>
-    /// <param name="httpMethod"></param>
+    /// <param name="maxBytes"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public static async Task<Descriptor> GenerateDescriptorAsync(this HttpResponseMessage response, Reference reference, CancellationToken cancellationToken)
+    public static async Task<Descriptor> GenerateDescriptorAsync(this HttpResponseMessage response, Reference reference, long maxBytes, CancellationToken cancellationToken)
     {
         // 1. Validate Content-Type
         var mediaType = response.Content.Headers.ContentType?.MediaType;
@@ -232,7 +231,7 @@ internal static class HttpResponseMessageExtensions
                 // expensive calculation
                 try
                 {
-                    contentDigest = await response.CalculateDigestFromResponse(cancellationToken).ConfigureAwait(false);
+                    contentDigest = await response.CalculateDigestFromResponse(maxBytes, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -263,9 +262,11 @@ internal static class HttpResponseMessageExtensions
     /// taking care not to destroy it in the process
     /// </summary>
     /// <param name="response"></param>
-    private static async Task<string> CalculateDigestFromResponse(this HttpResponseMessage response, CancellationToken cancellationToken)
+    /// <param name="maxBytes"></param>
+    private static async Task<string> CalculateDigestFromResponse(this HttpResponseMessage response, long maxBytes, CancellationToken cancellationToken)
     {
-        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-        return Digest.ComputeSha256(bytes);
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        var limitedStreamContent = await stream.ReadStreamWithLimitAsync(maxBytes, cancellationToken).ConfigureAwait(false);
+        return Digest.ComputeSha256(limitedStreamContent);
     }
 }

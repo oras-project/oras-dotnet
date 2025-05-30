@@ -24,6 +24,7 @@ using OrasProject.Oras.Registry.Remote;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Content.Digest;
 using Xunit;
+using OrasProject.Oras.Exceptions;
 
 namespace OrasProject.Oras.Tests.Content;
 
@@ -179,5 +180,33 @@ public class ExtensionsTest
         
         // assert
         Assert.Empty(actualImageConfig);
+    }
+
+    [Fact]
+    public async Task ReadStreamWithLimitAsync_StreamWithinLimit_DoesNotThrow()
+    {
+        byte[] data = Encoding.UTF8.GetBytes("hello world");
+        using var stream = new MemoryStream(data);
+        long limit = data.Length + 10;
+
+        // act
+        var result = await stream.ReadStreamWithLimitAsync(limit, CancellationToken.None);
+
+        // assert
+        Assert.Equal(data, result);
+    }
+
+    [Fact]
+    public async Task ReadStreamWithLimitAsync_StreamExceedsLimit_Throws()
+    {
+        byte[] data = Encoding.UTF8.GetBytes("hello world");
+        using var stream = new MemoryStream(data);
+        long limit = data.Length - 1;
+
+        // act & assert
+        await Assert.ThrowsAsync<SizeLimitExceededException>(async () =>
+        {
+            await stream.ReadStreamWithLimitAsync(limit, CancellationToken.None);
+        });
     }
 }
