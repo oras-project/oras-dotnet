@@ -26,7 +26,7 @@ namespace OrasProject.Oras.Content;
 
 public static class Extensions
 {
-    const int _defaultBufferSize = 8192; // 8 KB, standard for stream I/O
+    private const int _defaultBufferSize = 8192; // 8 KB, standard for stream I/O
 
     /// <summary>
     /// GetSuccessorsAsync retrieves the successors of a node
