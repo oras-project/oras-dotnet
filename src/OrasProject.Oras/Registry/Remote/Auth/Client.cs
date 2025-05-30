@@ -104,11 +104,11 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     {
         if (string.IsNullOrWhiteSpace(registry))
         {
-            throw new ArgumentException("registry cannot be null or empty.", nameof(registry));
+            throw new ArgumentException("The registry name cannot be null or empty.", nameof(registry));
         }
         if (credential.IsEmpty())
         {
-            throw new ArgumentException("Credential cannot be empty.", nameof(credential));
+            throw new ArgumentException("The credential cannot be empty.", nameof(credential));
         }
         if (registry == "docker.io")
         {
