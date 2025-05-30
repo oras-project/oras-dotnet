@@ -23,6 +23,7 @@ namespace OrasProject.Oras.Registry.Remote;
 internal static class HttpRequestMessageExtensions
 {
     private const string _userAgent = "oras-dotnet";
+    private const int _memoryBufferSize = 1 * 1024 * 1024; // 1 MB
 
     /// <summary>
     /// CloneAsync creates a deep copy of the specified <see cref="HttpRequestMessage"/> instance, including its content, headers, and options.
@@ -57,8 +58,6 @@ internal static class HttpRequestMessageExtensions
     /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpContent"/>.</returns>
     internal static async Task<HttpContent> CloneAsync(this HttpContent content, CancellationToken cancellationToken)
     {
-        // TODO: HTTP content larger than 2GB cannot be buffered/cloned into memory.
-        // Need to find a way to handle large content.
         var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         HttpContent clone;
         if (stream.CanSeek)
@@ -66,46 +65,56 @@ internal static class HttpRequestMessageExtensions
             // If the stream supports seeking, we can rewind and reuse it
             stream.Position = 0;
             clone = new StreamContent(stream);
+            content.CopyHeadersTo(clone);
+            return clone;
         }
-        else
+
+        // If the stream does not support seeking, we clone it through a pipe
+        var pipe = new Pipe();
+        _ = Task.Run(async () =>
         {
-            var pipe = new Pipe();
-            _ = Task.Run(async () =>
+            try
             {
-                try
+                while (true)
                 {
-                    while (true)
+                    var buffer = pipe.Writer.GetMemory(_memoryBufferSize);
+                    int bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                    if (bytesRead == 0)
                     {
-                        var buffer = pipe.Writer.GetMemory(4 * 1024 * 1024);
-                        int bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                        if (bytesRead == 0)
-                        {
-                            break; // End of stream
-                        }
-                        pipe.Writer.Advance(bytesRead);
-                        var result = await pipe.Writer.FlushAsync(cancellationToken).ConfigureAwait(false);
-                        if (result.IsCompleted)
-                        {
-                            break; // No more data to write
-                        }
+                        break; // End of stream
+                    }
+                    pipe.Writer.Advance(bytesRead);
+                    var result = await pipe.Writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                    if (result.IsCompleted)
+                    {
+                        break; // No more data to write
                     }
                 }
-                finally
-                {
-                    await pipe.Writer.CompleteAsync().ConfigureAwait(false);
-                    await stream.DisposeAsync().ConfigureAwait(false);
-                }
-            }, cancellationToken);
+            }
+            finally
+            {
+                await pipe.Writer.CompleteAsync().ConfigureAwait(false);
+                await stream.DisposeAsync().ConfigureAwait(false);
+            }
+        }, cancellationToken);
 
-            var pipeReader = pipe.Reader.AsStream();
-            clone = new StreamContent(pipeReader);
-        }
-
-        foreach (var header in content.Headers)
-        {
-            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
-        }
+        var pipeReader = pipe.Reader.AsStream();
+        clone = new StreamContent(pipeReader);
+        content.CopyHeadersTo(clone);
         return clone;
+    }
+
+    /// <summary>
+    /// Copies all HTTP headers from the source <see cref="HttpContent"/> to the target <see cref="HttpContent"/>.
+    /// </summary>
+    /// <param name="source">The source <see cref="HttpContent"/> whose headers will be copied.</param>
+    /// <param name="target">The target <see cref="HttpContent"/> to which headers will be added.</param>
+    internal static void CopyHeadersTo(this HttpContent source, HttpContent target)
+    {
+        foreach (var header in source.Headers)
+        {
+            target.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
     }
 
     /// <summary>

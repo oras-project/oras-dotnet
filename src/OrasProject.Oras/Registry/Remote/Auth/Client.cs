@@ -119,7 +119,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
         originalRequest.AddDefaultUserAgent();
         if (originalRequest.Headers.Authorization != null || BaseClient.DefaultRequestHeaders.Authorization != null)
         {
-            return await BaseClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
+            return await BaseClient.SendAsync(originalRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         }
         var host = originalRequest.RequestUri?.Host ?? throw new ArgumentNullException(nameof(originalRequest.RequestUri));
         using var requestAttempt1 = await originalRequest.CloneAsync(cancellationToken).ConfigureAwait(false);
@@ -153,7 +153,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
             }
         }
 
-        var response1 = await BaseClient.SendAsync(requestAttempt1, cancellationToken).ConfigureAwait(false);
+        var response1 = await BaseClient.SendAsync(requestAttempt1, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (response1.StatusCode != HttpStatusCode.Unauthorized)
         {
             return response1;
@@ -174,7 +174,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
                 // Attempt again with basic token
                 using var requestAttempt2 = await originalRequest.CloneAsync(cancellationToken).ConfigureAwait(false);
                 requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
-                return await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
+                return await BaseClient.SendAsync(requestAttempt2, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             }
             case Challenge.Scheme.Bearer:
             {
@@ -204,7 +204,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
                 {
                     using var requestAttempt2 = await originalRequest.CloneAsync(cancellationToken).ConfigureAwait(false);
                     requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                    var response2 = await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
+                    var response2 = await BaseClient.SendAsync(requestAttempt2, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                     
                     if (response2.StatusCode != HttpStatusCode.Unauthorized)
                     {
@@ -235,7 +235,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
 
                 using var requestAttempt3 = await originalRequest.CloneAsync(cancellationToken).ConfigureAwait(false);
                 requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
-                return await BaseClient.SendAsync(requestAttempt3, cancellationToken).ConfigureAwait(false);
+                return await BaseClient.SendAsync(requestAttempt3, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             }
             default:
                 return response1;
@@ -377,7 +377,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
         };
         request.RequestUri = uriBuilder.Uri;
         
-        using var response = await BaseClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await BaseClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -454,7 +454,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
         request.Content = content;
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.FormUrlEncoded);
         
-        using var response = await BaseClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await BaseClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
