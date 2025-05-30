@@ -170,7 +170,6 @@ public class ClientTest
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
-        ;
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
@@ -235,7 +234,6 @@ public class ClientTest
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
-        ;
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
         var cancellationToken = new CancellationToken();
@@ -385,7 +383,6 @@ public class ClientTest
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
-        ;
 
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
@@ -559,7 +556,6 @@ public class ClientTest
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
-        ;
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
         // Act
@@ -731,7 +727,6 @@ public class ClientTest
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
-        ;
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
@@ -1002,7 +997,6 @@ public class ClientTest
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
-        ;
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         CredentialResolver credentialResolver = (_, _) =>
@@ -1108,7 +1102,6 @@ public class ClientTest
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
-        ;
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         CredentialResolver credentialResolver = (_, _) =>
@@ -1193,7 +1186,6 @@ public class ClientTest
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
-        ;
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
