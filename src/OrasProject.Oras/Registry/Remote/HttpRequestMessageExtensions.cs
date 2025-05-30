@@ -23,12 +23,13 @@ namespace OrasProject.Oras.Registry.Remote;
 internal static class HttpRequestMessageExtensions
 {
     private const string _userAgent = "oras-dotnet";
-    private const int _memoryBufferSize = 1 * 1024 * 1024; // 1 MB
+    private const int _memoryBufferSize = 256 * 1024; // 256 KB
 
     /// <summary>
     /// CloneAsync creates a deep copy of the specified <see cref="HttpRequestMessage"/> instance, including its content, headers, and options.
     /// </summary>
     /// <param name="request">The <see cref="HttpRequestMessage"/> to clone.</param>
+    /// <param name="cancellationToken">A token that may be used to cancel the operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpRequestMessage"/>.</returns>
     internal static async Task<HttpRequestMessage> CloneAsync(this HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -55,6 +56,7 @@ internal static class HttpRequestMessageExtensions
     /// CloneAsync creates a deep copy of the specified <see cref="HttpContent"/> instance, including its headers.
     /// </summary>
     /// <param name="content">The <see cref="HttpContent"/> to clone.</param>
+    /// <param name="cancellationToken">A token that may be used to cancel the operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpContent"/>.</returns>
     internal static async Task<HttpContent> CloneAsync(this HttpContent content, CancellationToken cancellationToken)
     {
@@ -94,7 +96,6 @@ internal static class HttpRequestMessageExtensions
             finally
             {
                 await pipe.Writer.CompleteAsync().ConfigureAwait(false);
-                await stream.DisposeAsync().ConfigureAwait(false);
             }
         }, cancellationToken);
 
@@ -102,19 +103,6 @@ internal static class HttpRequestMessageExtensions
         clone = new StreamContent(pipeReader);
         content.CopyHeadersTo(clone);
         return clone;
-    }
-
-    /// <summary>
-    /// Copies all HTTP headers from the source <see cref="HttpContent"/> to the target <see cref="HttpContent"/>.
-    /// </summary>
-    /// <param name="source">The source <see cref="HttpContent"/> whose headers will be copied.</param>
-    /// <param name="target">The target <see cref="HttpContent"/> to which headers will be added.</param>
-    internal static void CopyHeadersTo(this HttpContent source, HttpContent target)
-    {
-        foreach (var header in source.Headers)
-        {
-            target.Headers.TryAddWithoutValidation(header.Key, header.Value);
-        }
     }
 
     /// <summary>
@@ -129,5 +117,18 @@ internal static class HttpRequestMessageExtensions
             requestMessage.Headers.UserAgent.ParseAdd(_userAgent);
         }
         return requestMessage;
+    }
+
+    /// <summary>
+    /// Copies all HTTP headers from the source <see cref="HttpContent"/> to the target <see cref="HttpContent"/>.
+    /// </summary>
+    /// <param name="source">The source <see cref="HttpContent"/> whose headers will be copied.</param>
+    /// <param name="target">The target <see cref="HttpContent"/> to which headers will be added.</param>
+    private static void CopyHeadersTo(this HttpContent source, HttpContent target)
+    {
+        foreach (var header in source.Headers)
+        {
+            target.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
     }
 }
