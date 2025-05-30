@@ -68,7 +68,8 @@ public struct RepositoryOptions
     /// MaxMetadataBytes specifies a limit on how many response bytes are allowed
     /// in the server's response to the metadata APIs, such as catalog list, tag
     /// list, and referrers list.
-    /// If less than or equal to zero, a default (currently 4MiB) is used.
+    /// The getter returns a default value of 4 MiB if the value is zero or not set.
+    /// The setter throws an <see cref="ArgumentOutOfRangeException"/> if the value is less than or equal to zero.
     /// </summary>
     public long MaxMetadataBytes
     {
