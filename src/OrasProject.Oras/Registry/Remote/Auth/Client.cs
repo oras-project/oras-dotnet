@@ -36,7 +36,7 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     /// An empty credential is a valid return value and should not be considered an error.
     /// If null, the credential is always resolved to an empty credential.
     /// </summary>
-    public CredentialResolver? ResolveCredentialAsync { get; set; } = credentialResolver;
+    public CredentialResolver? Resolver { get; set; } = credentialResolver;
 
     /// <summary>
     /// BaseClient is an instance of HttpClient to send http requests
@@ -94,37 +94,47 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     }
 
     /// <summary>
-    /// Sets <see cref="ResolveCredentialAsync"/> to always return the specified static credentials for the given registry host.
+    /// Sets <see cref="Resolver"/> to always return the specified static credentials for the given registry host.
     /// </summary>
-    /// <param name="registryName">Registry name or host to which the credentials apply.</param>
+    /// <param name="registry">Registry name or host:port to which the credentials apply.</param>
     /// <param name="credential">Credential to use for authentication.</param>
-    [MemberNotNull(nameof(ResolveCredentialAsync))]
-    public void UseStaticCredential(string registryName, Credential credential)
+    [MemberNotNull(nameof(Resolver))]
+    public void UseStaticCredential(string registry, Credential credential)
     {
-        if (string.IsNullOrWhiteSpace(registryName))
+        if (string.IsNullOrWhiteSpace(registry))
         {
-            throw new ArgumentException("registry cannot be null or empty.", nameof(registryName));
+            throw new ArgumentException("registry cannot be null or empty.", nameof(registry));
         }
         if (credential.IsEmpty())
         {
             throw new ArgumentException("Credential cannot be empty.", nameof(credential));
         }
-        if (registryName == "docker.io")
+        if (registry == "docker.io")
         {
             // It is expected that traffic targeting "docker.io" will be redirected to "registry-1.docker.io"
             // Reference: https://github.com/moby/moby/blob/v24.0.0-beta.2/registry/config.go#L25-L48
-            registryName = "registry-1.docker.io";
+            registry = "registry-1.docker.io";
         }
 
-        ResolveCredentialAsync = (hostport, _) =>
+        Resolver = (hostport, _) =>
         {
-            if (string.Equals(hostport, registryName))
+            if (string.Equals(hostport, registry))
             {
                 return Task.FromResult(credential);
             }
             return Task.FromResult(new Credential());
         };
     }
+
+    /// <summary>
+    /// Asynchronously resolves the credential for the specified registry.
+    /// </summary>
+    /// <param name="registry">Registry name or host:port</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken)
+        => Resolver == null ? Task.FromResult(new Credential()) :
+            Resolver(registry, cancellationToken);
 
     /// <summary>
     /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
@@ -290,11 +300,6 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     /// </exception>
     internal async Task<string> FetchBasicAuth(string registry, CancellationToken cancellationToken)
     {
-        if (ResolveCredentialAsync == null)
-        {
-            throw new AuthenticationException("ResolveCredentialAsync is not configured");
-        }
-
         var credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(credential.Username) || string.IsNullOrWhiteSpace(credential.Password))
         {
@@ -327,21 +332,11 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
         IList<string> scopes,
         CancellationToken cancellationToken)
     {
-        Credential credential;
-        if (ResolveCredentialAsync != null)
-        {
-            credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            credential = new Credential();
-        }
-
+        var credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrEmpty(credential.AccessToken))
         {
             return credential.AccessToken;
         }
-
         if (credential.IsEmpty() ||
             (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
         {

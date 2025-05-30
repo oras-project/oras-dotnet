@@ -1203,7 +1203,7 @@ public class ClientTest
         var exception = await Assert.ThrowsAsync<AuthenticationException>(async () => await client.SendAsync(request, CancellationToken.None));
 
         // Assert
-        Assert.Equal("ResolveCredentialAsync is not configured", exception.Message);
+        Assert.Equal("Missing username or password for basic authentication.", exception.Message);
     }
 
     [Fact]
@@ -1231,7 +1231,7 @@ public class ClientTest
         var cred = new Credential { Username = "user", Password = "pass" };
         client.UseStaticCredential("myregistry", cred);
 
-        var result = await client.ResolveCredentialAsync("myregistry", CancellationToken.None);
+        var result = await client.Resolver("myregistry", CancellationToken.None);
         Assert.Equal("user", result.Username);
         Assert.Equal("pass", result.Password);
     }
@@ -1243,7 +1243,7 @@ public class ClientTest
         var cred = new Credential { Username = "user", Password = "pass" };
         client.UseStaticCredential("myregistry", cred);
 
-        var result = await client.ResolveCredentialAsync("otherregistry", CancellationToken.None);
+        var result = await client.Resolver("otherregistry", CancellationToken.None);
         Assert.True(result.IsEmpty());
     }
 
@@ -1254,8 +1254,45 @@ public class ClientTest
         var cred = new Credential { Username = "user", Password = "pass" };
         client.UseStaticCredential("docker.io", cred);
 
-        var result = await client.ResolveCredentialAsync("registry-1.docker.io", CancellationToken.None);
+        var result = await client.Resolver("registry-1.docker.io", CancellationToken.None);
         Assert.Equal("user", result.Username);
         Assert.Equal("pass", result.Password);
+    }
+
+    [Fact]
+    public async Task ResolveCredentialAsync_DefaultResolver_ReturnsEmptyCredential()
+    {
+        // Arrange
+        var client = new Client();
+
+        // Act
+        var result = await client.ResolveCredentialAsync("anyregistry", CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsEmpty());
+    }
+
+    [Fact]
+    public async Task ResolveCredentialAsync_CustomResolver_ReturnsExpectedCredential()
+    {
+        // Arrange
+        var expected = new Credential
+        {
+            Username = "user",
+            Password = "pass",
+            RefreshToken = "refresh",
+            AccessToken = "access"
+        };
+        CredentialResolver resolver = (registry, token) => Task.FromResult(expected);
+        var client = new Client(new HttpClient(), resolver);
+
+        // Act
+        var result = await client.ResolveCredentialAsync("myregistry", CancellationToken.None);
+
+        // Assert
+        Assert.Equal(expected.Username, result.Username);
+        Assert.Equal(expected.Password, result.Password);
+        Assert.Equal(expected.RefreshToken, result.RefreshToken);
+        Assert.Equal(expected.AccessToken, result.AccessToken);
     }
 }
