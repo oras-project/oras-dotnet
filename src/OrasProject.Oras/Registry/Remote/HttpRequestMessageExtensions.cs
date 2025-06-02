@@ -34,7 +34,7 @@ internal static class HttpRequestMessageExtensions
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri)
         {
-            Content = await request.Content.RewindAsync(cancellationToken).ConfigureAwait(false),
+            Content = await request.Content.RewindAndCloneAsync(cancellationToken).ConfigureAwait(false),
             Version = request.Version
         };
         foreach (var option in request.Options)
@@ -56,7 +56,7 @@ internal static class HttpRequestMessageExtensions
     /// <param name="cancellationToken">A token that may be used to cancel the operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the new <see cref="HttpContent"/> with the same data as the original.</returns>
     /// <exception cref="IOException">Thrown when the source stream cannot be rewound.</exception>
-    internal static async Task<HttpContent?> RewindAsync(this HttpContent? content, CancellationToken cancellationToken)
+    internal static async Task<HttpContent?> RewindAndCloneAsync(this HttpContent? content, CancellationToken cancellationToken)
     {
         if (content == null)
         {
@@ -66,7 +66,7 @@ internal static class HttpRequestMessageExtensions
         var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         if (!stream.CanSeek)
         {
-            throw new IOException("Cannot rewind a non-seekable stream.");
+            throw new IOException("The content stream is non-seekable and cannot be rewound.");
         }
 
         stream.Position = 0; // rewind the stream to the beginning

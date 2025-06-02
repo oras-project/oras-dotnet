@@ -121,13 +121,13 @@ public class HttpRequestMessageExtensionsTest
     }
 
     [Fact]
-    public async Task RewindAsync_ShouldCloneContentData()
+    public async Task RewindAndCloneAsync_ShouldCloneContentData()
     {
         // Arrange
         var originalContent = new StringContent("Test content");
 
         // Act
-        var clonedContent = await originalContent.RewindAsync(CancellationToken.None);
+        var clonedContent = await originalContent.RewindAndCloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent);
@@ -135,7 +135,7 @@ public class HttpRequestMessageExtensionsTest
     }
 
     [Fact]
-    public async Task RewindAsync_ShouldCloneContentHeaders()
+    public async Task RewindAndCloneAsync_ShouldCloneContentHeaders()
     {
         // Arrange
         var originalContent = new StringContent("Test content");
@@ -143,7 +143,7 @@ public class HttpRequestMessageExtensionsTest
         originalContent.Headers.ContentLength = 12;
 
         // Act
-        var clonedContent = await originalContent.RewindAsync(CancellationToken.None);
+        var clonedContent = await originalContent.RewindAndCloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent);
@@ -153,13 +153,13 @@ public class HttpRequestMessageExtensionsTest
     }
 
     [Fact]
-    public async Task RewindAsync_ShouldHandleEmptyContent()
+    public async Task RewindAndCloneAsync_ShouldHandleEmptyContent()
     {
         // Arrange
         var originalContent = new StringContent(string.Empty);
 
         // Act
-        var clonedContent = await originalContent.RewindAsync(CancellationToken.None);
+        var clonedContent = await originalContent.RewindAndCloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent);
@@ -167,7 +167,7 @@ public class HttpRequestMessageExtensionsTest
     }
 
     [Fact]
-    public async Task RewindAsync_CloneMultipleTimes_ShouldCloneSameContent()
+    public async Task RewindAndCloneAsync_CloneMultipleTimes_ShouldCloneSameContent()
     {
         // Arrange
         var originalContent = new StringContent("Test content");
@@ -175,23 +175,23 @@ public class HttpRequestMessageExtensionsTest
         originalContent.Headers.ContentLength = 12;
 
         // Act & Assert
-        var clonedContent1 = await originalContent.RewindAsync(CancellationToken.None);
+        var clonedContent1 = await originalContent.RewindAndCloneAsync(CancellationToken.None);
         Assert.NotNull(clonedContent1);
         Assert.Equal(await originalContent.ReadAsStringAsync(), await clonedContent1.ReadAsStringAsync());
 
-        var clonedContent2 = await originalContent.RewindAsync(CancellationToken.None);
+        var clonedContent2 = await originalContent.RewindAndCloneAsync(CancellationToken.None);
         Assert.NotNull(clonedContent2);
         Assert.Equal(await originalContent.ReadAsStringAsync(), await clonedContent2.ReadAsStringAsync());
     }
 
     [Fact]
-    public async Task RewindAsync_ShouldHandleNullHeaders()
+    public async Task RewindAndCloneAsync_ShouldHandleNullHeaders()
     {
         // Arrange
         var originalContent = new ByteArrayContent(Array.Empty<byte>());
 
         // Act
-        var clonedContent = await originalContent.RewindAsync(CancellationToken.None);
+        var clonedContent = await originalContent.RewindAndCloneAsync(CancellationToken.None);
 
         // Assert
         Assert.NotNull(clonedContent);
@@ -199,24 +199,36 @@ public class HttpRequestMessageExtensionsTest
     }
 
     [Fact]
-    public async Task RewindAsync_ShouldHandleNullContent()
+    public async Task RewindAndCloneAsync_ShouldHandleNullContent()
     {
         // Arrange
         HttpContent? originalContent = null;
         // Act
-        var clonedContent = await originalContent.RewindAsync(CancellationToken.None);
+        var clonedContent = await originalContent.RewindAndCloneAsync(CancellationToken.None);
         // Assert
         Assert.Null(clonedContent);
     }
 
     [Fact]
-    public async Task RewindAsync_NonSeekableContent_ShouldThrow()
+    public async Task RewindAndCloneAsync_NonSeekableContent_ShouldThrow()
     {
         // Arrange
         var nonSeekableStream = new NonSeekableStream(new byte[] { 1, 2, 3, 4, 5 });
         var originalContent = new StreamContent(nonSeekableStream);
 
         // Act & Assert
-        await Assert.ThrowsAsync<IOException>(() => originalContent.RewindAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<IOException>(() => originalContent.RewindAndCloneAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RewindAndCloneAsync_DisposedStream_ShouldThrow()
+    {
+        // Arrange
+        var disposedStream = new MemoryStream();
+        var originalContent = new StreamContent(disposedStream);
+        originalContent.Dispose();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => originalContent.RewindAndCloneAsync(CancellationToken.None));
     }
 }
