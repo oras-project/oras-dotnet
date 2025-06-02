@@ -122,7 +122,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
             return await SendRequestAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
         var host = originalRequest.RequestUri?.Host ?? throw new ArgumentNullException(nameof(originalRequest.RequestUri));
-        using var requestAttempt1 = await originalRequest.CloneAsync(cancellationToken).ConfigureAwait(false);
+        using var requestAttempt1 = originalRequest;
         var attemptedKey = string.Empty;
 
         // attempt to send request with cached auth token

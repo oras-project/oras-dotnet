@@ -23,7 +23,6 @@ namespace OrasProject.Oras.Registry.Remote;
 internal static class HttpRequestMessageExtensions
 {
     private const string _userAgent = "oras-dotnet";
-    private const int _memoryBufferSize = 256 * 1024; // 256 KB
 
     /// <summary>
     /// CloneAsync creates a deep copy of the specified <see cref="HttpRequestMessage"/> instance, including its content, headers, and options.
@@ -35,9 +34,7 @@ internal static class HttpRequestMessageExtensions
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri)
         {
-            Content = request.Content != null
-                ? await request.Content.CloneAsync(cancellationToken).ConfigureAwait(false)
-                : null,
+            Content = await request.Content.RewindAsync(cancellationToken).ConfigureAwait(false),
             Version = request.Version
         };
         foreach (var option in request.Options)
@@ -53,63 +50,39 @@ internal static class HttpRequestMessageExtensions
     }
 
     /// <summary>
-    /// CloneAsync creates a deep copy of the specified <see cref="HttpContent"/> instance, including its headers.
+    /// Creates a new HttpContent instance by rewinding the stream of the original content.
     /// </summary>
-    /// <param name="content">The <see cref="HttpContent"/> to clone.</param>
+    /// <param name="content">The original <see cref="HttpContent"/> to rewind.</param>
     /// <param name="cancellationToken">A token that may be used to cancel the operation.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpContent"/>.</returns>
-    internal static async Task<HttpContent> CloneAsync(this HttpContent content, CancellationToken cancellationToken)
+    /// <returns>A task that represents the asynchronous operation. The task result contains the new <see cref="HttpContent"/> with the same data as the original.</returns>
+    /// <exception cref="IOException">Thrown when the source stream cannot be rewound.</exception>
+    internal static async Task<HttpContent?> RewindAsync(this HttpContent? content, CancellationToken cancellationToken)
     {
-        var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        HttpContent clone;
-        if (stream.CanSeek)
+        if (content == null)
         {
-            // If the stream supports seeking, we can rewind and reuse it
-            stream.Position = 0;
-            clone = new StreamContent(stream);
-            content.CopyHeadersTo(clone);
-            return clone;
+            return null;
         }
 
-        // If the stream does not support seeking, we clone it through a pipe
-        var pipe = new Pipe();
-        _ = Task.Run(async () =>
+        var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        if (!stream.CanSeek)
         {
-            try
-            {
-                while (true)
-                {
-                    var buffer = pipe.Writer.GetMemory(_memoryBufferSize);
-                    int bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                    if (bytesRead == 0)
-                    {
-                        break; // End of stream
-                    }
-                    pipe.Writer.Advance(bytesRead);
-                    var result = await pipe.Writer.FlushAsync(cancellationToken).ConfigureAwait(false);
-                    if (result.IsCompleted)
-                    {
-                        break; // No more data to write
-                    }
-                }
-            }
-            finally
-            {
-                await pipe.Writer.CompleteAsync().ConfigureAwait(false);
-            }
-        }, cancellationToken);
+            throw new IOException("Cannot rewind a non-seekable stream.");
+        }
 
-        var pipeReader = pipe.Reader.AsStream();
-        clone = new StreamContent(pipeReader);
-        content.CopyHeadersTo(clone);
+        stream.Position = 0; // rewind the stream to the beginning
+        var clone = new StreamContent(stream);
+        foreach (var header in content.Headers)
+        {
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
         return clone;
     }
 
     /// <summary>
     /// AddDefaultUserAgent adds the default user agent oras-dotnet
     /// </summary>
-    /// <param name="requestMessage"></param>
-    /// <returns></returns>
+    /// <param name="requestMessage">The <see cref="HttpRequestMessage"/> to add the default user agent to.</param>
+    /// <returns>The same <see cref="HttpRequestMessage"/> instance with the default user agent added (if needed).</returns>
     public static HttpRequestMessage AddDefaultUserAgent(this HttpRequestMessage requestMessage)
     {
         if (requestMessage.Headers.UserAgent.Count == 0)
@@ -117,18 +90,5 @@ internal static class HttpRequestMessageExtensions
             requestMessage.Headers.UserAgent.ParseAdd(_userAgent);
         }
         return requestMessage;
-    }
-
-    /// <summary>
-    /// Copies all HTTP headers from the source <see cref="HttpContent"/> to the target <see cref="HttpContent"/>.
-    /// </summary>
-    /// <param name="source">The source <see cref="HttpContent"/> whose headers will be copied.</param>
-    /// <param name="target">The target <see cref="HttpContent"/> to which headers will be added.</param>
-    private static void CopyHeadersTo(this HttpContent source, HttpContent target)
-    {
-        foreach (var header in source.Headers)
-        {
-            target.Headers.TryAddWithoutValidation(header.Key, header.Value);
-        }
     }
 }
