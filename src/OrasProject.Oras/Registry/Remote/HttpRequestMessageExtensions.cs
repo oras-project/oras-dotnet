@@ -13,7 +13,6 @@
 
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Pipelines;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
