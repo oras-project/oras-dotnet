@@ -51,6 +51,7 @@ internal static class HttpRequestMessageExtensions
 
     /// <summary>
     /// Creates a new HttpContent instance by rewinding the stream of the original content.
+    /// We avoid doing a deep copy of the content as it can be very expensive for large payloads.
     /// </summary>
     /// <param name="content">The original <see cref="HttpContent"/> to rewind.</param>
     /// <param name="cancellationToken">A token that may be used to cancel the operation.</param>
