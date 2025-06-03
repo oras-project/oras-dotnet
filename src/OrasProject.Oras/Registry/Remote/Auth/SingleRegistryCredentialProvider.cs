@@ -17,17 +17,17 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth
 {
-
     /// <summary>
-    /// A credential helper that provides static credentials for a specific registry.
+    /// Provides an implementation of <see cref="ICredentialProvider"/> that returns
+    /// a static credential for a specific registry hostname.
     /// </summary>
-    internal class StaticCredentialHelper : ICredentialHelper
+    public class SingleRegistryCredentialProvider : ICredentialProvider
     {
         private readonly string _registry;
         private readonly Credential _credential;
 
         /// <summary>
-        /// Initializes an implementation of <see cref="ICredentialHelper"/> with a static credential for a specified registry.
+        /// Initializes an implementation of <see cref="ICredentialProvider"/> with a static credential for a specified registry.
         /// </summary>
         /// <param name="registry">The registry hostname for which credentials will be provided.</param>
         /// <param name="credential">The credential to use for the specified registry.</param>
@@ -39,7 +39,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth
         /// If the registry is "docker.io", it will be automatically converted to "registry-1.docker.io"
         /// to match expected Docker registry behavior.
         /// </remarks>
-        public StaticCredentialHelper(string registry, Credential credential)
+        public SingleRegistryCredentialProvider(string registry, Credential credential)
         {
             if (string.IsNullOrWhiteSpace(registry))
             {
@@ -69,7 +69,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth
         /// A task that represents the asynchronous operation. The task result contains the configured 
         /// credential if the hostname matches the registry, otherwise returns an empty credential.
         /// </returns>
-        public Task<Credential> ResolveAsync(string hostname, CancellationToken cancellationToken)
+        public Task<Credential> ResolveCredentialAsync(string hostname, CancellationToken cancellationToken)
         {
             if (string.Equals(hostname, _registry, StringComparison.OrdinalIgnoreCase))
             {

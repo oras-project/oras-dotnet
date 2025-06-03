@@ -28,14 +28,14 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Client(HttpClient? httpClient = null, ICredentialHelper? credentialHelper = null)
+public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null)
     : IClient
 {
     /// <summary>
-    /// CredentialHelper provides the mechanism to retrieve
+    /// CredentialProvider provides the mechanism to retrieve
     /// credentials for accessing remote registries.
     /// </summary>
-    public ICredentialHelper? CredentialHelper { get; init; } = credentialHelper;
+    public ICredentialProvider? CredentialProvider { get; init; } = credentialProvider;
 
     /// <summary>
     /// BaseClient is an instance of HttpClient to send http requests
@@ -102,8 +102,8 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// If <see cref="CredentialResolver"/> is null, an empty credential is returned.
     /// </returns>
     public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken)
-        => CredentialHelper == null ? Task.FromResult(CredentialExtensions.EmptyCredential) :
-            CredentialHelper.ResolveAsync(registry, cancellationToken);
+        => CredentialProvider == null ? Task.FromResult(CredentialExtensions.EmptyCredential) :
+            CredentialProvider.ResolveCredentialAsync(registry, cancellationToken);
 
     /// <summary>
     /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.

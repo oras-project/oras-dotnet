@@ -604,16 +604,16 @@ public class ClientTest
         var password = "test_password";
         var expectedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
 
-        var mockCredentialHelper = new Mock<ICredentialHelper>();
-        mockCredentialHelper
-            .Setup(helper => helper.ResolveAsync(registry, It.IsAny<CancellationToken>()))
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(helper => helper.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = username,
                 Password = password
             });
 
-        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(), mockCredentialProvider.Object);
 
         // Act
         var result = await client.FetchBasicAuth(registry, CancellationToken.None);
@@ -629,16 +629,16 @@ public class ClientTest
         var registry = "https://example.com";
         var password = "test_password";
 
-        var mockCredentialHelper = new Mock<ICredentialHelper>();
-        mockCredentialHelper
-            .Setup(helper => helper.ResolveAsync(registry, It.IsAny<CancellationToken>()))
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(helper => helper.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = string.Empty,
                 Password = password
             });
 
-        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(), mockCredentialProvider.Object);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
@@ -653,16 +653,16 @@ public class ClientTest
         var registry = "https://example.com";
         var username = "test_user";
 
-        var mockCredentialHelper = new Mock<ICredentialHelper>();
-        mockCredentialHelper
-            .Setup(helper => helper.ResolveAsync(registry, It.IsAny<CancellationToken>()))
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(helper => helper.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = username,
                 Password = string.Empty
             });
 
-        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(), mockCredentialProvider.Object);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
@@ -1001,16 +1001,16 @@ public class ClientTest
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
 
-        var mockCredentialHelper = new Mock<ICredentialHelper>();
-        mockCredentialHelper
-            .Setup(helper => helper.ResolveAsync(host, It.IsAny<CancellationToken>()))
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(helper => helper.ResolveCredentialAsync(host, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 RefreshToken = refreshToken
             });
         var mockHandler = CustomHandler(MockHttpRequestHandler);
 
-        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialProvider.Object);
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"].Add("abc");
         client.CustomHeaders["key1"] = ["value1"];
@@ -1107,16 +1107,16 @@ public class ClientTest
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
 
-        var mockCredentialHelper = new Mock<ICredentialHelper>();
-        mockCredentialHelper
-            .Setup(helper => helper.ResolveAsync(host, It.IsAny<CancellationToken>()))
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(helper => helper.ResolveCredentialAsync(host, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = username,
                 Password = password
             });
         var mockHandler = CustomHandler(MockHttpRequestHandler);
-        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialProvider.Object);
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"].Add("abc");
         client.CustomHeaders["key1"] = ["value1"];
@@ -1225,11 +1225,11 @@ public class ClientTest
             RefreshToken = "refresh",
             AccessToken = "access"
         };
-        var mockCredentialHelper = new Mock<ICredentialHelper>();
-        mockCredentialHelper
-            .Setup(helper => helper.ResolveAsync("myregistry", It.IsAny<CancellationToken>()))
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(helper => helper.ResolveCredentialAsync("myregistry", It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
-        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
+        var client = new Client(new HttpClient(), mockCredentialProvider.Object);
 
         // Act
         var result = await client.ResolveCredentialAsync("myregistry", CancellationToken.None);

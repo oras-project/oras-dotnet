@@ -18,7 +18,7 @@ using Xunit;
 
 namespace OrasProject.Oras.Registry.Remote.Auth.Tests
 {
-    public class StaticCredentialHelperTests
+    public class SingleRegistryCredentialProviderTests
     {
         [Fact]
         public void Constructor_NullRegistry_ThrowsArgumentException()
@@ -32,7 +32,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             };
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => new StaticCredentialHelper(registry, credential));
+            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
         }
 
         [Fact]
@@ -47,7 +47,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             };
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => new StaticCredentialHelper(registry, credential));
+            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
         }
 
         [Fact]
@@ -58,7 +58,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             var credential = CredentialExtensions.EmptyCredential;
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => new StaticCredentialHelper(registry, credential));
+            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
         }
 
         [Fact]
@@ -73,10 +73,10 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             };
 
             // Act
-            var helper = new StaticCredentialHelper(registry, credential);
+            var helper = new SingleRegistryCredentialProvider(registry, credential);
 
             // Assert - Test through ResolveAsync
-            var result = await helper.ResolveAsync("registry-1.docker.io", CancellationToken.None).ConfigureAwait(false);
+            var result = await helper.ResolveCredentialAsync("registry-1.docker.io", CancellationToken.None).ConfigureAwait(false);
             Assert.Equal(credential, result);
         }
 
@@ -90,10 +90,10 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
                 Username = "user",
                 Password = "password"
             };
-            var helper = new StaticCredentialHelper(registry, credential);
+            var helper = new SingleRegistryCredentialProvider(registry, credential);
 
             // Act
-            var result = await helper.ResolveAsync("example.com", CancellationToken.None);
+            var result = await helper.ResolveCredentialAsync("example.com", CancellationToken.None);
 
             // Assert
             Assert.Equal(credential, result);
@@ -109,10 +109,10 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
                 Username = "user",
                 Password = "password"
             };
-            var helper = new StaticCredentialHelper(registry, credential);
+            var helper = new SingleRegistryCredentialProvider(registry, credential);
 
             // Act
-            var result = await helper.ResolveAsync("different.com", CancellationToken.None);
+            var result = await helper.ResolveCredentialAsync("different.com", CancellationToken.None);
 
             // Assert
             Assert.Equal(CredentialExtensions.EmptyCredential, result);
@@ -128,10 +128,10 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
                 Username = "user",
                 Password = "password"
             };
-            var helper = new StaticCredentialHelper(registry, credential);
+            var helper = new SingleRegistryCredentialProvider(registry, credential);
 
             // Act
-            var result = await helper.ResolveAsync("example.com", CancellationToken.None);
+            var result = await helper.ResolveCredentialAsync("example.com", CancellationToken.None);
 
             // Assert
             Assert.Equal(credential, result);
