@@ -102,7 +102,7 @@ public static class Extensions
     {
         if (descriptor.Size < 0)
         {
-            throw new InvalidDescriptorSizeException("Descriptor size is less than 0");
+            throw new InvalidDescriptorSizeException($"Descriptor size {descriptor.Size} is less than 0");
         }
 
         var buffer = new byte[descriptor.Size];
@@ -116,15 +116,16 @@ public static class Extensions
         }
 
         var extraBuffer = new byte[1];
-        int extraRead = await stream.ReadAsync(extraBuffer, 0, 1, cancellationToken).ConfigureAwait(false);
+        int extraRead = await stream.ReadAsync(extraBuffer.AsMemory(0, 1), cancellationToken).ConfigureAwait(false);
         if (extraRead != 0)
         {
             throw new MismatchedSizeException($"Descriptor size {descriptor.Size} is smaller than the content length");
         }
 
-        if (Digest.ComputeSha256(buffer) != descriptor.Digest)
+        var calculatedDigest = Digest.ComputeSha256(buffer);
+        if (calculatedDigest != descriptor.Digest)
         {
-            throw new MismatchedDigestException("Descriptor digest is different from content digest");
+            throw new MismatchedDigestException($"Descriptor digest {descriptor.Digest} is different from content digest {calculatedDigest}");
         }
         return buffer;
     }
