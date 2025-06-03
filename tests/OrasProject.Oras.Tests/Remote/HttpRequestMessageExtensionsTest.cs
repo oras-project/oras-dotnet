@@ -66,7 +66,7 @@ public class HttpRequestMessageExtensionsTest
     }
 
     [Fact]
-    public async Task CloneAsync_ShouldCloneRequest_NoRewindContent()
+    public async Task CloneAsync_ShouldCloneRequest_ReuseContent()
     {
         // Arrange
         var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com")

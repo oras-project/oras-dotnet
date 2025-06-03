@@ -27,6 +27,7 @@ internal static class HttpRequestMessageExtensions
     /// CloneAsync creates a deep copy of the specified <see cref="HttpRequestMessage"/> instance, including its content, headers, and options.
     /// </summary>
     /// <param name="request">The <see cref="HttpRequestMessage"/> to clone.</param>
+    /// <param name="rewindContent"> If true, the content stream will be rewound and cloned; otherwise, the original content will be reused without cloning.</param>
     /// <param name="cancellationToken">A token that may be used to cancel the operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpRequestMessage"/>.</returns>
     internal static async Task<HttpRequestMessage> CloneAsync(this HttpRequestMessage request, bool rewindContent = true, CancellationToken cancellationToken = default)
