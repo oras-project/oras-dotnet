@@ -1000,7 +1000,7 @@ public class ClientTest
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
-        ;
+
         var mockCredentialHelper = new Mock<ICredentialHelper>();
         mockCredentialHelper
             .Setup(helper => helper.ResolveAsync(host, It.IsAny<CancellationToken>()))
@@ -1202,7 +1202,7 @@ public class ClientTest
     }
 
     [Fact]
-    public async Task ResolveCredentialAsync_DefaultResolver_ReturnsEmptyCredential()
+    public async Task ResolveCredentialAsync_NullCredentialHelper_ReturnsEmptyCredential()
     {
         // Arrange
         var client = new Client();
@@ -1215,7 +1215,7 @@ public class ClientTest
     }
 
     [Fact]
-    public async Task ResolveCredentialAsync_CustomResolver_ReturnsExpectedCredential()
+    public async Task ResolveCredentialAsync_CredentialHelperConfigured_ReturnsExpectedCredential()
     {
         // Arrange
         var expected = new Credential

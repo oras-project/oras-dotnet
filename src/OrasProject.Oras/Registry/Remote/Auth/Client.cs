@@ -31,6 +31,10 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 public class Client(HttpClient? httpClient = null, ICredentialHelper? credentialHelper = null)
     : IClient
 {
+    /// <summary>
+    /// CredentialHelper provides the mechanism to retrieve
+    /// credentials for accessing remote registries.
+    /// </summary>
     public ICredentialHelper? CredentialHelper { get; init; } = credentialHelper;
 
     /// <summary>
@@ -97,11 +101,6 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// A task that represents the asynchronous operation. The task result contains the resolved credential.
     /// If <see cref="CredentialResolver"/> is null, an empty credential is returned.
     /// </returns>
-    /// <remarks>
-    /// This method delegates credential resolution to the configured <see cref="CredentialResolver"/>.
-    /// The credential resolver function is responsible for determining the appropriate authentication
-    /// credentials based on the registry identifier.
-    /// </remarks>
     public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken)
         => CredentialHelper == null ? Task.FromResult(CredentialExtensions.EmptyCredential) :
             CredentialHelper.ResolveAsync(registry, cancellationToken);

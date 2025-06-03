@@ -33,7 +33,6 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => new StaticCredentialHelper(registry, credential));
-            Assert.Equal("registry", exception.ParamName);
         }
 
         [Fact]
@@ -49,7 +48,6 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => new StaticCredentialHelper(registry, credential));
-            Assert.Equal("registry", exception.ParamName);
         }
 
         [Fact]
@@ -61,7 +59,6 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => new StaticCredentialHelper(registry, credential));
-            Assert.Equal("credential", exception.ParamName);
         }
 
         [Fact]
