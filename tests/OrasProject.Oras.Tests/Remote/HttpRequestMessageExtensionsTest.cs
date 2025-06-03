@@ -26,7 +26,7 @@ public class HttpRequestMessageExtensionsTest
         var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
+        var clonedRequest = await originalRequest.CloneAsync();
 
         // Assert
         Assert.Equal(originalRequest.Method, clonedRequest.Method);
@@ -45,7 +45,7 @@ public class HttpRequestMessageExtensionsTest
 
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
+        var clonedRequest = await originalRequest.CloneAsync();
 
         // Assert
         Assert.True(clonedRequest.Headers.Contains("Custom-Header"));
@@ -68,7 +68,7 @@ public class HttpRequestMessageExtensionsTest
         };
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
+        var clonedRequest = await originalRequest.CloneAsync();
 
         // Assert
         Assert.NotNull(clonedRequest.Content);
@@ -84,7 +84,7 @@ public class HttpRequestMessageExtensionsTest
         originalRequest.Options.TryAdd("Custom-Option", "OptionValue");
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
+        var clonedRequest = await originalRequest.CloneAsync();
 
         // Assert
         Assert.True(clonedRequest.Options.TryGetValue(customOptionKey, out var clonedOptionValue));
@@ -101,7 +101,7 @@ public class HttpRequestMessageExtensionsTest
         };
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
+        var clonedRequest = await originalRequest.CloneAsync();
 
         // Assert
         Assert.Equal(originalRequest.Version, clonedRequest.Version);
@@ -114,7 +114,7 @@ public class HttpRequestMessageExtensionsTest
         var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync(CancellationToken.None);
+        var clonedRequest = await originalRequest.CloneAsync();
 
         // Assert
         Assert.Null(clonedRequest.Content);

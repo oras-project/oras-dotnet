@@ -29,13 +29,20 @@ internal static class HttpRequestMessageExtensions
     /// <param name="request">The <see cref="HttpRequestMessage"/> to clone.</param>
     /// <param name="cancellationToken">A token that may be used to cancel the operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the cloned <see cref="HttpRequestMessage"/>.</returns>
-    internal static async Task<HttpRequestMessage> CloneAsync(this HttpRequestMessage request, CancellationToken cancellationToken)
+    internal static async Task<HttpRequestMessage> CloneAsync(this HttpRequestMessage request, bool rewindContent = true, CancellationToken cancellationToken = default)
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri)
         {
-            Content = await request.Content.RewindAndCloneAsync(cancellationToken).ConfigureAwait(false),
             Version = request.Version
         };
+        if (rewindContent)
+        {
+            clone.Content = await request.Content.RewindAndCloneAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            clone.Content = request.Content; // reuse the original content without cloning
+        }
         foreach (var option in request.Options)
         {
             clone.Options.TryAdd(option.Key, option.Value);
@@ -56,7 +63,7 @@ internal static class HttpRequestMessageExtensions
     /// <param name="cancellationToken">A token that may be used to cancel the operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the new <see cref="HttpContent"/> with the same data as the original.</returns>
     /// <exception cref="IOException">Thrown when the source stream cannot be rewound.</exception>
-    internal static async Task<HttpContent?> RewindAndCloneAsync(this HttpContent? content, CancellationToken cancellationToken)
+    internal static async Task<HttpContent?> RewindAndCloneAsync(this HttpContent? content, CancellationToken cancellationToken = default)
     {
         if (content == null)
         {
