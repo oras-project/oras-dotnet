@@ -606,7 +606,7 @@ public class ClientTest
 
         var mockCredentialProvider = new Mock<ICredentialProvider>();
         mockCredentialProvider
-            .Setup(helper => helper.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()))
+            .Setup(provider => provider.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = username,
@@ -631,7 +631,7 @@ public class ClientTest
 
         var mockCredentialProvider = new Mock<ICredentialProvider>();
         mockCredentialProvider
-            .Setup(helper => helper.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()))
+            .Setup(provider => provider.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = string.Empty,
@@ -655,7 +655,7 @@ public class ClientTest
 
         var mockCredentialProvider = new Mock<ICredentialProvider>();
         mockCredentialProvider
-            .Setup(helper => helper.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()))
+            .Setup(provider => provider.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = username,
@@ -1003,7 +1003,7 @@ public class ClientTest
 
         var mockCredentialProvider = new Mock<ICredentialProvider>();
         mockCredentialProvider
-            .Setup(helper => helper.ResolveCredentialAsync(host, It.IsAny<CancellationToken>()))
+            .Setup(provider => provider.ResolveCredentialAsync(host, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 RefreshToken = refreshToken
@@ -1109,7 +1109,7 @@ public class ClientTest
 
         var mockCredentialProvider = new Mock<ICredentialProvider>();
         mockCredentialProvider
-            .Setup(helper => helper.ResolveCredentialAsync(host, It.IsAny<CancellationToken>()))
+            .Setup(provider => provider.ResolveCredentialAsync(host, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential
             {
                 Username = username,
@@ -1202,7 +1202,7 @@ public class ClientTest
     }
 
     [Fact]
-    public async Task ResolveCredentialAsync_NullCredentialHelper_ReturnsEmptyCredential()
+    public async Task ResolveCredentialAsync_NullCredentialProvider_ReturnsEmptyCredential()
     {
         // Arrange
         var client = new Client();
@@ -1215,7 +1215,7 @@ public class ClientTest
     }
 
     [Fact]
-    public async Task ResolveCredentialAsync_CredentialHelperConfigured_ReturnsExpectedCredential()
+    public async Task ResolveCredentialAsync_CredentialProviderConfigured_ReturnsExpectedCredential()
     {
         // Arrange
         var expected = new Credential
@@ -1227,7 +1227,7 @@ public class ClientTest
         };
         var mockCredentialProvider = new Mock<ICredentialProvider>();
         mockCredentialProvider
-            .Setup(helper => helper.ResolveCredentialAsync("myregistry", It.IsAny<CancellationToken>()))
+            .Setup(provider => provider.ResolveCredentialAsync("myregistry", It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
         var client = new Client(new HttpClient(), mockCredentialProvider.Object);
 
