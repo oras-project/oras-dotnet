@@ -28,22 +28,10 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Client(HttpClient? httpClient = null, CredentialResolver? credentialResolver = null)
+public class Client(HttpClient? httpClient = null, ICredentialHelper? credentialHelper = null)
     : IClient
 {
-    /// <summary>
-    /// Represents an empty credential instance used as a default value when no credentials are provided.
-    /// This static field avoids creating multiple empty credential instances throughout the code.
-    /// </summary>
-    private static readonly Credential _emptyCredential = new();
-
-    /// <summary>
-    /// Specifies the function for resolving the credential for the given registry (i.e. host:port).
-    /// An empty credential is a valid return value and should not be considered an error.
-    /// If null, <see cref="ResolveCredentialAsync(string, CancellationToken)"/> always resolves to an empty credential.
-    /// Use <see cref="UseStaticCredential"/> to configure a simple static credential for a specific registry.
-    /// </summary>
-    public CredentialResolver? CredentialResolver { get; set; } = credentialResolver;
+    public ICredentialHelper? CredentialHelper { get; init; } = credentialHelper;
 
     /// <summary>
     /// BaseClient is an instance of HttpClient to send http requests
@@ -101,39 +89,6 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     }
 
     /// <summary>
-    /// Sets <see cref="CredentialResolver"/> to always return the specified static credentials for the given registry host.
-    /// </summary>
-    /// <param name="registry">Registry name or host:port to which the credentials apply.</param>
-    /// <param name="credential">Credential to use for authentication.</param>
-    [MemberNotNull(nameof(CredentialResolver))]
-    public void UseStaticCredential(string registry, Credential credential)
-    {
-        if (string.IsNullOrWhiteSpace(registry))
-        {
-            throw new ArgumentException("The registry name cannot be null or empty.", nameof(registry));
-        }
-        if (credential.IsEmpty())
-        {
-            throw new ArgumentException("The credential cannot be empty.", nameof(credential));
-        }
-        if (registry == "docker.io")
-        {
-            // It is expected that traffic targeting "docker.io" will be redirected to "registry-1.docker.io"
-            // Reference: https://github.com/moby/moby/blob/v24.0.0-beta.2/registry/config.go#L25-L48
-            registry = "registry-1.docker.io";
-        }
-
-        CredentialResolver = (host, _) =>
-        {
-            if (string.Equals(host, registry, StringComparison.OrdinalIgnoreCase))
-            {
-                return Task.FromResult(credential);
-            }
-            return Task.FromResult(_emptyCredential);
-        };
-    }
-
-    /// <summary>
     /// Asynchronously resolves the credential for the specified registry.
     /// </summary>
     /// <param name="registry">Registry name or host:port to authenticate with.</param>
@@ -148,8 +103,8 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     /// credentials based on the registry identifier.
     /// </remarks>
     public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken)
-        => CredentialResolver == null ? Task.FromResult(_emptyCredential) :
-            CredentialResolver(registry, cancellationToken);
+        => CredentialHelper == null ? Task.FromResult(CredentialExtensions.EmptyCredential) :
+            CredentialHelper.ResolveAsync(registry, cancellationToken);
 
     /// <summary>
     /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.

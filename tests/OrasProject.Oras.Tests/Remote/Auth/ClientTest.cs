@@ -604,16 +604,17 @@ public class ClientTest
         var password = "test_password";
         var expectedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
 
-        CredentialResolver credentialFunc = (_, _) =>
-        {
-            return Task.FromResult(new Credential
+        var mockCredentialHelper = new Mock<ICredentialHelper>();
+        mockCredentialHelper
+            .Setup(helper => helper.ResolveAsync(registry, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Credential
             {
                 Username = username,
                 Password = password
             });
-        };
 
-        var client = new Client(new HttpClient(), credentialFunc);
+        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
+
         // Act
         var result = await client.FetchBasicAuth(registry, CancellationToken.None);
 
@@ -628,15 +629,16 @@ public class ClientTest
         var registry = "https://example.com";
         var password = "test_password";
 
-        CredentialResolver credentialResolver = (_, _) =>
-        {
-            return Task.FromResult(new Credential
+        var mockCredentialHelper = new Mock<ICredentialHelper>();
+        mockCredentialHelper
+            .Setup(helper => helper.ResolveAsync(registry, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Credential
             {
                 Username = string.Empty,
                 Password = password
             });
-        };
-        var client = new Client(new HttpClient(), credentialResolver);
+
+        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
@@ -651,15 +653,16 @@ public class ClientTest
         var registry = "https://example.com";
         var username = "test_user";
 
-        CredentialResolver credentialResolver = (_, _) =>
-        {
-            return Task.FromResult(new Credential
+        var mockCredentialHelper = new Mock<ICredentialHelper>();
+        mockCredentialHelper
+            .Setup(helper => helper.ResolveAsync(registry, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Credential
             {
                 Username = username,
                 Password = string.Empty
             });
-        };
-        var client = new Client(new HttpClient(), credentialResolver);
+
+        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
@@ -997,16 +1000,17 @@ public class ClientTest
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
-
-        var mockHandler = CustomHandler(MockHttpRequestHandler);
-        CredentialResolver credentialResolver = (_, _) =>
-        {
-            return Task.FromResult(new Credential
+        ;
+        var mockCredentialHelper = new Mock<ICredentialHelper>();
+        mockCredentialHelper
+            .Setup(helper => helper.ResolveAsync(host, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Credential
             {
                 RefreshToken = refreshToken
             });
-        };
-        var client = new Client(new HttpClient(mockHandler.Object), credentialResolver);
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+
+        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialHelper.Object);
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"].Add("abc");
         client.CustomHeaders["key1"] = ["value1"];
@@ -1103,16 +1107,16 @@ public class ClientTest
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
 
-        var mockHandler = CustomHandler(MockHttpRequestHandler);
-        CredentialResolver credentialResolver = (_, _) =>
-        {
-            return Task.FromResult(new Credential
+        var mockCredentialHelper = new Mock<ICredentialHelper>();
+        mockCredentialHelper
+            .Setup(helper => helper.ResolveAsync(host, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Credential
             {
                 Username = username,
                 Password = password
             });
-        };
-        var client = new Client(new HttpClient(mockHandler.Object), credentialResolver);
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialHelper.Object);
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"].Add("abc");
         client.CustomHeaders["key1"] = ["value1"];
@@ -1183,7 +1187,6 @@ public class ClientTest
                 }
             }
 
-
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
 
@@ -1196,63 +1199,6 @@ public class ClientTest
 
         // Assert
         Assert.Equal("Missing username or password for basic authentication.", exception.Message);
-    }
-
-    [Fact]
-    public void UseStaticCredential_ThrowsOnNullRegistry()
-    {
-        var client = new Client();
-        var cred = new Credential { Username = "user", Password = "pass" };
-        Assert.Throws<ArgumentException>(() => client.UseStaticCredential(null!, cred));
-        Assert.Throws<ArgumentException>(() => client.UseStaticCredential("", cred));
-        Assert.Throws<ArgumentException>(() => client.UseStaticCredential("   ", cred));
-    }
-
-    [Fact]
-    public void UseStaticCredential_ThrowsOnEmptyCredential()
-    {
-        var client = new Client();
-        var emptyCred = new Credential();
-        Assert.Throws<ArgumentException>(() => client.UseStaticCredential("myregistry", emptyCred));
-    }
-
-    [Fact]
-    public async Task UseStaticCredential_ReturnsStaticCredential_ForMatchingHost()
-    {
-        var client = new Client();
-        var cred = new Credential { Username = "user", Password = "pass" };
-        client.UseStaticCredential("myregistry", cred);
-
-        var result1 = await client.CredentialResolver("myregistry", CancellationToken.None);
-        Assert.Equal("user", result1.Username);
-        Assert.Equal("pass", result1.Password);
-
-        var result2 = await client.CredentialResolver("MyRegistry", CancellationToken.None);
-        Assert.Equal("user", result2.Username);
-        Assert.Equal("pass", result2.Password);
-    }
-
-    [Fact]
-    public async Task UseStaticCredential_ReturnsEmptyCredential_ForNonMatchingHost()
-    {
-        var client = new Client();
-        var cred = new Credential { Username = "user", Password = "pass" };
-        client.UseStaticCredential("myregistry", cred);
-
-        var result = await client.CredentialResolver("otherregistry", CancellationToken.None);
-        Assert.True(result.IsEmpty());
-    }
-
-    [Fact]
-    public async Task UseStaticCredential_MapsDockerIoToRegistry1()
-    {
-        var client = new Client();
-        var cred = new Credential { Username = "user", Password = "pass" };
-        client.UseStaticCredential("docker.io", cred);
-
-        var result = await client.CredentialResolver("registry-1.docker.io", CancellationToken.None);
-        Assert.Equal("user", result.Username);
-        Assert.Equal("pass", result.Password);
     }
 
     [Fact]
@@ -1279,8 +1225,11 @@ public class ClientTest
             RefreshToken = "refresh",
             AccessToken = "access"
         };
-        CredentialResolver resolver = (registry, token) => Task.FromResult(expected);
-        var client = new Client(new HttpClient(), resolver);
+        var mockCredentialHelper = new Mock<ICredentialHelper>();
+        mockCredentialHelper
+            .Setup(helper => helper.ResolveAsync("myregistry", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+        var client = new Client(new HttpClient(), mockCredentialHelper.Object);
 
         // Act
         var result = await client.ResolveCredentialAsync("myregistry", CancellationToken.None);
