@@ -47,7 +47,7 @@ public class HttpRequestMessageExtensionsTest
         Assert.Equal(originalRequest.RequestUri, clonedRequest.RequestUri);
         // Check version
         Assert.Equal(originalRequest.Version, clonedRequest.Version);
-        // Checck content
+        // Check content
         Assert.NotNull(clonedRequest.Content);
         Assert.NotSame(originalRequest.Content, clonedRequest.Content);
         Assert.Equal(await originalRequest.Content.ReadAsStringAsync(), await clonedRequest.Content.ReadAsStringAsync());
@@ -93,7 +93,7 @@ public class HttpRequestMessageExtensionsTest
         Assert.Equal(originalRequest.RequestUri, clonedRequest.RequestUri);
         // Check version
         Assert.Equal(originalRequest.Version, clonedRequest.Version);
-        // Checck content
+        // Check content
         Assert.NotNull(clonedRequest.Content);
         Assert.Same(originalRequest.Content, clonedRequest.Content);
         Assert.Equal(await originalRequest.Content.ReadAsStringAsync(), await clonedRequest.Content.ReadAsStringAsync());
