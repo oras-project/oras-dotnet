@@ -32,12 +32,18 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     : IClient
 {
     /// <summary>
+    /// Represents an empty credential instance used as a default value when no credentials are provided.
+    /// This static field avoids creating multiple empty credential instances throughout the code.
+    /// </summary>
+    private static readonly Credential _emptyCredential = new();
+
+    /// <summary>
     /// Specifies the function for resolving the credential for the given registry (i.e. host:port).
     /// An empty credential is a valid return value and should not be considered an error.
     /// If null, <see cref="ResolveCredentialAsync(string, CancellationToken)"/> always resolves to an empty credential.
     /// Use <see cref="UseStaticCredential"/> to configure a simple static credential for a specific registry.
     /// </summary>
-    public CredentialResolver? CredentialResolverFunc { get; set; } = credentialResolver;
+    public CredentialResolver? CredentialResolver { get; set; } = credentialResolver;
 
     /// <summary>
     /// BaseClient is an instance of HttpClient to send http requests
@@ -95,11 +101,11 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     }
 
     /// <summary>
-    /// Sets <see cref="CredentialResolverFunc"/> to always return the specified static credentials for the given registry host.
+    /// Sets <see cref="CredentialResolver"/> to always return the specified static credentials for the given registry host.
     /// </summary>
     /// <param name="registry">Registry name or host:port to which the credentials apply.</param>
     /// <param name="credential">Credential to use for authentication.</param>
-    [MemberNotNull(nameof(CredentialResolverFunc))]
+    [MemberNotNull(nameof(CredentialResolver))]
     public void UseStaticCredential(string registry, Credential credential)
     {
         if (string.IsNullOrWhiteSpace(registry))
@@ -117,13 +123,13 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
             registry = "registry-1.docker.io";
         }
 
-        CredentialResolverFunc = (hostport, _) =>
+        CredentialResolver = (host, _) =>
         {
-            if (string.Equals(hostport, registry, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(host, registry, StringComparison.OrdinalIgnoreCase))
             {
                 return Task.FromResult(credential);
             }
-            return Task.FromResult(new Credential());
+            return Task.FromResult(_emptyCredential);
         };
     }
 
@@ -134,16 +140,16 @@ public class Client(HttpClient? httpClient = null, CredentialResolver? credentia
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
     /// A task that represents the asynchronous operation. The task result contains the resolved credential.
-    /// If <see cref="CredentialResolverFunc"/> is null, an empty credential is returned.
+    /// If <see cref="CredentialResolver"/> is null, an empty credential is returned.
     /// </returns>
     /// <remarks>
-    /// This method delegates credential resolution to the configured <see cref="CredentialResolverFunc"/>.
+    /// This method delegates credential resolution to the configured <see cref="CredentialResolver"/>.
     /// The credential resolver function is responsible for determining the appropriate authentication
     /// credentials based on the registry identifier.
     /// </remarks>
     public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken)
-        => CredentialResolverFunc == null ? Task.FromResult(new Credential()) :
-            CredentialResolverFunc(registry, cancellationToken);
+        => CredentialResolver == null ? Task.FromResult(_emptyCredential) :
+            CredentialResolver(registry, cancellationToken);
 
     /// <summary>
     /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
