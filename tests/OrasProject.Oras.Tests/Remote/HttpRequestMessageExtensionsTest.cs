@@ -20,34 +20,38 @@ namespace OrasProject.Oras.Tests.Remote;
 public class HttpRequestMessageExtensionsTest
 {
     [Fact]
-    public async Task CloneAsync_ShouldCloneRequestMethodAndUri()
+    public async Task CloneAsync_ShouldCloneRequest()
     {
         // Arrange
-        var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
-
-        // Act
-        var clonedRequest = await originalRequest.CloneAsync();
-
-        // Assert
-        Assert.Equal(originalRequest.Method, clonedRequest.Method);
-        Assert.Equal(originalRequest.RequestUri, clonedRequest.RequestUri);
-    }
-
-    [Fact]
-    public async Task CloneAsync_ShouldCloneHeaders()
-    {
-        // Arrange
-        var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
+        var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com")
+        {
+            Version = new Version(2, 0),
+            Content = new StringContent("Test content")
+        };
         originalRequest.Headers.Add("Custom-Header", "HeaderValue");
         originalRequest.Headers.Add("Custom-Header", "HeaderValue1");
-
         originalRequest.Headers.Add("key", "value");
+        var customOptionKey = new HttpRequestOptionsKey<string>("Custom-Option");
+        originalRequest.Options.TryAdd("Custom-Option", "OptionValue");
 
 
         // Act
         var clonedRequest = await originalRequest.CloneAsync();
 
         // Assert
+        Assert.NotNull(clonedRequest);
+        Assert.NotSame(originalRequest, clonedRequest);
+
+        // Check method and URI
+        Assert.Equal(originalRequest.Method, clonedRequest.Method);
+        Assert.Equal(originalRequest.RequestUri, clonedRequest.RequestUri);
+        // Check version
+        Assert.Equal(originalRequest.Version, clonedRequest.Version);
+        // Checck content
+        Assert.NotNull(clonedRequest.Content);
+        Assert.NotSame(originalRequest.Content, clonedRequest.Content);
+        Assert.Equal(await originalRequest.Content.ReadAsStringAsync(), await clonedRequest.Content.ReadAsStringAsync());
+        // Check headers
         Assert.True(clonedRequest.Headers.Contains("Custom-Header"));
         Assert.True(clonedRequest.Headers.Contains("key"));
         var expectedValues = new List<string> { "HeaderValue", "HeaderValue1" };
@@ -56,55 +60,55 @@ public class HttpRequestMessageExtensionsTest
             Assert.Contains(value, clonedRequest.Headers.GetValues("Custom-Header"));
         }
         Assert.Equal("value", clonedRequest.Headers.GetValues("key").FirstOrDefault());
-    }
-
-    [Fact]
-    public async Task CloneAsync_ShouldCloneContent()
-    {
-        // Arrange
-        var originalRequest = new HttpRequestMessage(HttpMethod.Post, "https://example.com")
-        {
-            Content = new StringContent("Test content")
-        };
-
-        // Act
-        var clonedRequest = await originalRequest.CloneAsync();
-
-        // Assert
-        Assert.NotNull(clonedRequest.Content);
-        Assert.Equal(await originalRequest.Content.ReadAsStringAsync(), await clonedRequest.Content.ReadAsStringAsync());
-    }
-
-    [Fact]
-    public async Task CloneAsync_ShouldCloneOptions()
-    {
-        // Arrange
-        var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
-        var customOptionKey = new HttpRequestOptionsKey<string>("Custom-Option");
-        originalRequest.Options.TryAdd("Custom-Option", "OptionValue");
-
-        // Act
-        var clonedRequest = await originalRequest.CloneAsync();
-
-        // Assert
+        // Check options
         Assert.True(clonedRequest.Options.TryGetValue(customOptionKey, out var clonedOptionValue));
         Assert.Equal("OptionValue", clonedOptionValue);
     }
 
     [Fact]
-    public async Task CloneAsync_ShouldCloneVersion()
+    public async Task CloneAsync_ShouldCloneRequest_NoRewindContent()
     {
         // Arrange
         var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com")
         {
-            Version = new Version(2, 0)
+            Version = new Version(2, 0),
+            Content = new StringContent("Test content")
         };
+        originalRequest.Headers.Add("Custom-Header", "HeaderValue");
+        originalRequest.Headers.Add("Custom-Header", "HeaderValue1");
+        originalRequest.Headers.Add("key", "value");
+        var customOptionKey = new HttpRequestOptionsKey<string>("Custom-Option");
+        originalRequest.Options.TryAdd("Custom-Option", "OptionValue");
+
 
         // Act
-        var clonedRequest = await originalRequest.CloneAsync();
+        var clonedRequest = await originalRequest.CloneAsync(rewindContent: false);
 
         // Assert
+        Assert.NotNull(clonedRequest);
+        Assert.NotSame(originalRequest, clonedRequest);
+
+        // Check method and URI
+        Assert.Equal(originalRequest.Method, clonedRequest.Method);
+        Assert.Equal(originalRequest.RequestUri, clonedRequest.RequestUri);
+        // Check version
         Assert.Equal(originalRequest.Version, clonedRequest.Version);
+        // Checck content
+        Assert.NotNull(clonedRequest.Content);
+        Assert.Same(originalRequest.Content, clonedRequest.Content);
+        Assert.Equal(await originalRequest.Content.ReadAsStringAsync(), await clonedRequest.Content.ReadAsStringAsync());
+        // Check headers
+        Assert.True(clonedRequest.Headers.Contains("Custom-Header"));
+        Assert.True(clonedRequest.Headers.Contains("key"));
+        var expectedValues = new List<string> { "HeaderValue", "HeaderValue1" };
+        foreach (var value in expectedValues)
+        {
+            Assert.Contains(value, clonedRequest.Headers.GetValues("Custom-Header"));
+        }
+        Assert.Equal("value", clonedRequest.Headers.GetValues("key").FirstOrDefault());
+        // Check options
+        Assert.True(clonedRequest.Options.TryGetValue(customOptionKey, out var clonedOptionValue));
+        Assert.Equal("OptionValue", clonedOptionValue);
     }
 
     [Fact]
