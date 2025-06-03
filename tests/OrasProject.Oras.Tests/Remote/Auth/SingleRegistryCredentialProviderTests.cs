@@ -24,7 +24,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
         public void Constructor_NullRegistry_ThrowsArgumentException()
         {
             // Arrange
-            string registry = null;
+            string? registry = null;
             var credential = new Credential()
             {
                 Username = "user",
@@ -32,7 +32,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             };
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
+            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry!, credential));
         }
 
         [Fact]
@@ -76,7 +76,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             var helper = new SingleRegistryCredentialProvider(registry, credential);
 
             // Assert - Test through ResolveAsync
-            var result = await helper.ResolveCredentialAsync("registry-1.docker.io", CancellationToken.None).ConfigureAwait(false);
+            var result = await helper.ResolveCredentialAsync("registry-1.docker.io", CancellationToken.None);
             Assert.Equal(credential, result);
         }
 
