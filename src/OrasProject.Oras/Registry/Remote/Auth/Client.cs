@@ -14,6 +14,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -27,14 +28,14 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Client(HttpClient? httpClient = null, ICredentialHelper? credentialHelper = null)
+public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null)
     : IClient
 {
     /// <summary>
-    /// CredentialHelper provides the mechanism to retrieve
+    /// CredentialProvider provides the mechanism to retrieve
     /// credentials for accessing remote registries.
     /// </summary>
-    public ICredentialHelper? CredentialHelper { get; } = credentialHelper;
+    public ICredentialProvider? CredentialProvider { get; init; } = credentialProvider;
 
     /// <summary>
     /// BaseClient is an instance of HttpClient to send http requests
@@ -90,6 +91,19 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
             CustomHeaders["User-Agent"] = [userAgent];
         }
     }
+
+    /// <summary>
+    /// Asynchronously resolves the credential for the specified registry.
+    /// </summary>
+    /// <param name="registry">Registry name or host:port to authenticate with.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains the resolved credential.
+    /// If <see cref="CredentialProvider"/> is null, an empty credential is returned.
+    /// </returns>
+    public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken)
+        => CredentialProvider == null ? Task.FromResult(CredentialExtensions.EmptyCredential) :
+            CredentialProvider.ResolveCredentialAsync(registry, cancellationToken);
 
     /// <summary>
     /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
@@ -168,7 +182,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
             case Challenge.Scheme.Basic:
                 {
                     response1.Dispose();
-                    var basicAuthToken = await FetchBasicAuth(host, cancellationToken).ConfigureAwait(false);
+                    var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
                     Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
 
                     // Attempt again with basic token
@@ -224,7 +238,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
                     }
 
                     // try to fetch bearer token based on the challenge header
-                    var bearerAuthToken = await FetchBearerAuth(
+                    var bearerAuthToken = await FetchBearerAuthAsync(
                         host,
                         realm,
                         service,
@@ -253,14 +267,9 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// <exception cref="AuthenticationException">
     /// Thrown when credentials are missing or when the username or password is null or empty.
     /// </exception>
-    internal async Task<string> FetchBasicAuth(string registry, CancellationToken cancellationToken)
+    internal async Task<string> FetchBasicAuthAsync(string registry, CancellationToken cancellationToken)
     {
-        if (CredentialHelper == null)
-        {
-            throw new AuthenticationException("CredentialHelper is not configured");
-        }
-
-        var credential = await CredentialHelper.ResolveAsync(registry, cancellationToken).ConfigureAwait(false);
+        var credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(credential.Username) || string.IsNullOrWhiteSpace(credential.Password))
         {
             throw new AuthenticationException("Missing username or password for basic authentication.");
@@ -285,26 +294,22 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// A task that represents the asynchronous operation. The task result contains the bearer authentication token as a string.
     /// </returns>
     /// <exception cref="AuthenticationException">Thrown when credentials are missing or invalid.</exception>
-    internal async Task<string> FetchBearerAuth(
+    internal async Task<string> FetchBearerAuthAsync(
         string registry,
         string realm,
         string service,
         IList<string> scopes,
         CancellationToken cancellationToken)
     {
-        var credential = await (CredentialHelper?.ResolveAsync(registry, cancellationToken)
-                                ?? Task.FromResult<Credential>(new Credential()))
-            .ConfigureAwait(false);
-
+        var credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrEmpty(credential.AccessToken))
         {
             return credential.AccessToken;
         }
-
         if (credential.IsEmpty() ||
             (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
         {
-            return await FetchDistributionToken(
+            return await FetchDistributionTokenAsync(
                 realm,
                 service,
                 scopes,
@@ -314,7 +319,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
             ).ConfigureAwait(false);
         }
 
-        return await FetchOauth2Token(
+        return await FetchOauth2TokenAsync(
             realm,
             service,
             scopes,
@@ -343,7 +348,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// <exception cref="HttpRequestException">
     /// Thrown when the HTTP request fails or the response status code is not OK.
     /// </exception>
-    internal async Task<string> FetchDistributionToken(
+    internal async Task<string> FetchDistributionTokenAsync(
         string realm,
         string service,
         IList<string> scopes,
@@ -416,7 +421,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
     /// <exception cref="HttpRequestException">
     /// Thrown when there is an issue with the HTTP request or response.
     /// </exception>
-    internal async Task<string> FetchOauth2Token(
+    internal async Task<string> FetchOauth2TokenAsync(
         string realm,
         string service,
         IList<string> scopes,

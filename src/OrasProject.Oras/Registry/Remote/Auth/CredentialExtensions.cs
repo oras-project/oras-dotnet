@@ -15,7 +15,11 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 
 public static class CredentialExtensions
 {
-    
+    /// <summary>
+    /// Represents an empty credential instance.
+    /// </summary>
+    internal static readonly Credential EmptyCredential = new();
+
     /// <summary>
     /// IsEmpty determines whether the specified credential object is empty.
     /// </summary>
