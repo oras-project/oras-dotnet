@@ -28,7 +28,7 @@ namespace OrasProject.Oras.Registry.Remote;
 
 public class ManifestStore(Repository repository) : IManifestStore
 {
-    private Repository Repository { get; } = repository;
+    private Repository Repository { get; } = repository ?? throw new ArgumentNullException(nameof(repository));
 
     /// <summary>
     /// Fetches the content identified by the descriptor.
