@@ -70,7 +70,7 @@ public static partial class Packer
     private static partial Regex MediaTypeRegex();
 
     /// <summary>
-    /// PackManifest generates an OCI Image Manifestbased on the given parameters
+    /// PackManifest generates an OCI Image Manifest based on the given parameters
     /// and pushes the packed manifest to a content storage/registry using pusher.
     /// The version of the manifest to be packed is determined by manifestVersion
     /// (Recommended value: Version1_1).
@@ -193,8 +193,7 @@ public static partial class Packer
         else
         {
             configDescriptor = Descriptor.Empty;
-            options.Config = configDescriptor;
-            var configBytes = new byte[] { 0x7B, 0x7D };
+            var configBytes = "{}"u8.ToArray();
             await PushIfNotExistAsync(pusher, configDescriptor, configBytes, cancellationToken).ConfigureAwait(false);
         }
 
@@ -213,7 +212,7 @@ public static partial class Packer
             MediaType = MediaType.ImageManifest,
             ArtifactType = artifactType,
             Subject = options.Subject,
-            Config = options.Config,
+            Config = configDescriptor,
             Layers = options.Layers,
             Annotations = annotations
         };
@@ -238,7 +237,8 @@ public static partial class Packer
         manifestDesc.ArtifactType = artifactType;
         manifestDesc.Annotations = annotations;
 
-        await pusher.PushAsync(manifestDesc, new MemoryStream(manifestJson), cancellationToken).ConfigureAwait(false);
+        using var memoryStream = new MemoryStream(manifestJson);
+        await pusher.PushAsync(manifestDesc, memoryStream, cancellationToken).ConfigureAwait(false);
         return manifestDesc;
     }
 
@@ -265,7 +265,7 @@ public static partial class Packer
     /// <returns></returns>
     private static async Task<Descriptor> PushCustomEmptyConfigAsync(IPushable pusher, string mediaType, IDictionary<string, string>? annotations, CancellationToken cancellationToken = default)
     {
-        var configBytes = JsonSerializer.SerializeToUtf8Bytes(new { });
+        var configBytes = "{}"u8.ToArray();
         var configDescriptor = Descriptor.Create(configBytes, mediaType);
         configDescriptor.Annotations = annotations;
 
@@ -302,8 +302,7 @@ public static partial class Packer
             annotations = new Dictionary<string, string>();
         }
 
-        string? value;
-        if (annotations.TryGetValue(key, out value))
+        if (annotations.TryGetValue(key, out string? value))
         {
             if (!DateTime.TryParse(value, out _))
             {
