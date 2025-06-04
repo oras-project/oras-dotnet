@@ -106,23 +106,30 @@ public class Repository : IRepository
     private readonly SemaphoreSlim _referrersPingSemaphore = new(1, 1);
 
     /// <summary>
-    /// Creates a client to the remote repository identified by a reference
+    /// Creates a client to the remote repository identified by a reference string, using a default PlainClient for HTTP operations.
     /// Example: localhost:5000/hello-world
     /// </summary>
-    /// <param name="reference"></param>
+    /// <param name="reference">The reference string identifying the repository</param>
     public Repository(string reference) : this(reference, new PlainClient()) { }
 
     /// <summary>
-    /// Creates a client to the remote repository using a reference and a HttpClient
+    /// Creates a client to the remote repository identified by a reference string, using the provided IClient implementation for HTTP operations.
     /// </summary>
-    /// <param name="reference"></param>
-    /// <param name="httpClient"></param>
-    public Repository(string reference, IClient httpClient) : this(new RepositoryOptions()
+    /// <param name="reference">The reference string identifying the repository</param>
+    /// <param name="client">The client implementation to use for HTTP operations</param>
+    public Repository(string reference, IClient client) : this(new RepositoryOptions()
     {
         Reference = Reference.Parse(reference),
-        Client = httpClient,
-    }){}
+        Client = client,
+    })
+    { }
 
+    /// <summary>
+    /// Creates a client to the remote repository with the specified options.
+    /// This is the primary constructor that the other constructors delegate to.
+    /// </summary>
+    /// <param name="options">The repository options to use</param>
+    /// <exception cref="InvalidReferenceException">Thrown when the repository name is missing in the reference</exception>
     public Repository(RepositoryOptions options)
     {
         if (string.IsNullOrEmpty(options.Reference.Repository))
