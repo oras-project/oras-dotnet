@@ -105,7 +105,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                     }
                     else
                     {
-                        desc = await response.GenerateDescriptorAsync(remoteReference, repository.Options.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
+                        desc = await response.GenerateDescriptorAsync(remoteReference, Repository.Options.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
                     }
                     return (desc, await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false));
                 case HttpStatusCode.NotFound:
@@ -351,7 +351,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         using var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         return response.StatusCode switch
         {
-            HttpStatusCode.OK => await response.GenerateDescriptorAsync(remoteReference, repository.Options.MaxMetadataBytes, cancellationToken).ConfigureAwait(false),
+            HttpStatusCode.OK => await response.GenerateDescriptorAsync(remoteReference, Repository.Options.MaxMetadataBytes, cancellationToken).ConfigureAwait(false),
             HttpStatusCode.NotFound => throw new NotFoundException($"Reference {reference} not found"),
             _ => throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false)
         };
