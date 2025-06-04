@@ -21,7 +21,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth
     /// Provides an implementation of <see cref="ICredentialProvider"/> that returns
     /// a static credential for a specific registry hostname.
     /// </summary>
-    public class SingleRegistryCredentialProvider : ICredentialProvider
+    public sealed class SingleRegistryCredentialProvider : ICredentialProvider
     {
         private readonly string _registry;
         private readonly Credential _credential;
@@ -43,13 +43,13 @@ namespace OrasProject.Oras.Registry.Remote.Auth
         {
             if (string.IsNullOrWhiteSpace(registry))
             {
-                throw new ArgumentException("The registry name cannot be null or empty.", nameof(registry));
+                throw new ArgumentNullException(nameof(registry), "The registry name cannot be null or empty.");
             }
             if (credential.IsEmpty())
             {
-                throw new ArgumentException("The credential cannot be empty.", nameof(credential));
+                throw new ArgumentNullException(nameof(credential), "The credential cannot be empty.");
             }
-            if (registry == "docker.io")
+            if (string.Equals(registry, "docker.io", StringComparison.OrdinalIgnoreCase))
             {
                 // It is expected that traffic targeting "docker.io" will be redirected to "registry-1.docker.io"
                 // Reference: https://github.com/moby/moby/blob/v24.0.0-beta.2/registry/config.go#L25-L48
@@ -69,8 +69,13 @@ namespace OrasProject.Oras.Registry.Remote.Auth
         /// A task that represents the asynchronous operation. The task result contains the configured 
         /// credential if the hostname matches the registry, otherwise returns an empty credential.
         /// </returns>
-        public Task<Credential> ResolveCredentialAsync(string hostname, CancellationToken cancellationToken)
+        public Task<Credential> ResolveCredentialAsync(string hostname, CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Task.FromCanceled<Credential>(cancellationToken);
+            }
+
             if (string.Equals(hostname, _registry, StringComparison.OrdinalIgnoreCase))
             {
                 return Task.FromResult(_credential);

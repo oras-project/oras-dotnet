@@ -175,7 +175,7 @@ public class ClientTest
 
         var cancellationToken = new CancellationToken();
         // Act
-        var result = await client.FetchOauth2Token(
+        var result = await client.FetchOauth2TokenAsync(
             realm,
             service,
             scopes,
@@ -238,7 +238,7 @@ public class ClientTest
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
         var cancellationToken = new CancellationToken();
         // Act
-        var result = await client.FetchOauth2Token(
+        var result = await client.FetchOauth2TokenAsync(
             realm,
             service,
             scopes,
@@ -261,7 +261,7 @@ public class ClientTest
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
-            client.FetchOauth2Token(
+            client.FetchOauth2TokenAsync(
             realm,
             service,
             scopes,
@@ -299,7 +299,7 @@ public class ClientTest
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
-            client.FetchOauth2Token(
+            client.FetchOauth2TokenAsync(
                 realm,
                 service,
                 scopes,
@@ -336,7 +336,7 @@ public class ClientTest
 
         // Act & Assert
         await Assert.ThrowsAsync<ResponseException>(() =>
-            client.FetchOauth2Token(
+            client.FetchOauth2TokenAsync(
                 realm,
                 service,
                 scopes,
@@ -388,7 +388,7 @@ public class ClientTest
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
         // Act
-        var result = await client.FetchDistributionToken(
+        var result = await client.FetchDistributionTokenAsync(
             realm,
             service,
             expectedScopes,
@@ -442,7 +442,7 @@ public class ClientTest
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
         // Act
-        var result = await client.FetchDistributionToken(
+        var result = await client.FetchDistributionTokenAsync(
             realm,
             service,
             expectedScopes,
@@ -480,7 +480,7 @@ public class ClientTest
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
-            client.FetchDistributionToken(
+            client.FetchDistributionTokenAsync(
                 realm,
                 service,
                 scopes,
@@ -516,7 +516,7 @@ public class ClientTest
 
         // Act & Assert
         await Assert.ThrowsAsync<ResponseException>(() =>
-            client.FetchDistributionToken(
+            client.FetchDistributionTokenAsync(
                 realm,
                 service,
                 scopes,
@@ -559,7 +559,7 @@ public class ClientTest
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
         // Act
-        var result = await client.FetchDistributionToken(
+        var result = await client.FetchDistributionTokenAsync(
             realm,
             service,
             expectedScopes,
@@ -571,7 +571,7 @@ public class ClientTest
         Assert.Equal("test_access_token", result);
 
         // with only username
-        result = await client.FetchDistributionToken(
+        result = await client.FetchDistributionTokenAsync(
             realm,
             service,
             expectedScopes,
@@ -583,7 +583,7 @@ public class ClientTest
         Assert.Equal("test_access_token", result);
 
         // with only password
-        result = await client.FetchDistributionToken(
+        result = await client.FetchDistributionTokenAsync(
             realm,
             service,
             expectedScopes,
@@ -616,7 +616,7 @@ public class ClientTest
         var client = new Client(new HttpClient(), mockCredentialProvider.Object);
 
         // Act
-        var result = await client.FetchBasicAuth(registry, CancellationToken.None);
+        var result = await client.FetchBasicAuthAsync(registry, CancellationToken.None);
 
         // Assert
         Assert.Equal(expectedToken, result);
@@ -642,7 +642,7 @@ public class ClientTest
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
-            client.FetchBasicAuth(registry, CancellationToken.None));
+            client.FetchBasicAuthAsync(registry, CancellationToken.None));
         Assert.Equal("Missing username or password for basic authentication.", exception.Message);
     }
 
@@ -666,7 +666,7 @@ public class ClientTest
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<AuthenticationException>(() =>
-            client.FetchBasicAuth(registry, CancellationToken.None));
+            client.FetchBasicAuthAsync(registry, CancellationToken.None));
         Assert.Equal("Missing username or password for basic authentication.", exception.Message);
     }
 

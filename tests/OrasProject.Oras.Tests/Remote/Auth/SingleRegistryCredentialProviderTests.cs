@@ -32,11 +32,11 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             };
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry!, credential));
+            var exception = Assert.Throws<ArgumentNullException>(() => new SingleRegistryCredentialProvider(registry!, credential));
         }
 
         [Fact]
-        public void Constructor_EmptyRegistry_ThrowsArgumentException()
+        public void Constructor_EmptyRegistry_ThrowsArgumentNullException()
         {
             // Arrange
             string registry = "   ";
@@ -47,18 +47,18 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             };
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
+            var exception = Assert.Throws<ArgumentNullException>(() => new SingleRegistryCredentialProvider(registry, credential));
         }
 
         [Fact]
-        public void Constructor_EmptyCredential_ThrowsArgumentException()
+        public void Constructor_EmptyCredential_ThrowsArgumentNullException()
         {
             // Arrange
             string registry = "example.com";
             var credential = CredentialExtensions.EmptyCredential;
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
+            var exception = Assert.Throws<ArgumentNullException>(() => new SingleRegistryCredentialProvider(registry, credential));
         }
 
         [Fact]
@@ -66,6 +66,25 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
         {
             // Arrange
             string registry = "docker.io";
+            var credential = new Credential()
+            {
+                Username = "user",
+                Password = "password"
+            };
+
+            // Act
+            var helper = new SingleRegistryCredentialProvider(registry, credential);
+
+            // Assert - Test through ResolveAsync
+            var result = await helper.ResolveCredentialAsync("registry-1.docker.io", CancellationToken.None);
+            Assert.Equal(credential, result);
+        }
+
+        [Fact]
+        public async Task Constructor_DockerIoRegistry_RedirectsToRegistry1_CaseInsensitive()
+        {
+            // Arrange
+            string registry = "docKeR.IO";
             var credential = new Credential()
             {
                 Username = "user",
@@ -135,6 +154,26 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
 
             // Assert
             Assert.Equal(credential, result);
+        }
+
+        [Fact]
+        public async Task ResolveAsync_CancellationRequested_ThrowsOperationCanceledException()
+        {
+            // Arrange
+            string registry = "example.com";
+            var credential = new Credential()
+            {
+                Username = "user",
+                Password = "password"
+            };
+            var helper = new SingleRegistryCredentialProvider(registry, credential);
+
+            using var cts = new CancellationTokenSource();
+            cts.Cancel(); // Cancel the token before calling the method
+
+            // Act & Assert
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => helper.ResolveCredentialAsync("example.com", cts.Token));
         }
     }
 }
