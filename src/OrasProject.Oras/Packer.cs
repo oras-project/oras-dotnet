@@ -197,11 +197,15 @@ public static partial class Packer
             await PushIfNotExistAsync(pusher, configDescriptor, configBytes, cancellationToken).ConfigureAwait(false);
         }
 
-        if (options.Layers == null || options.Layers.Count == 0)
+        IList<Descriptor> layers;
+        if (options.Layers != null && options.Layers.Count > 0)
         {
-            options.Layers ??= new List<Descriptor>();
+            layers = options.Layers;
+        }
+        else
+        {
             // use the empty descriptor as the single layer    
-            options.Layers.Add(Descriptor.Empty);
+            layers = [Descriptor.Empty];
         }
 
         var annotations = EnsureAnnotationCreated(options.ManifestAnnotations, "org.opencontainers.image.created");
@@ -213,7 +217,7 @@ public static partial class Packer
             ArtifactType = artifactType,
             Subject = options.Subject,
             Config = configDescriptor,
-            Layers = options.Layers,
+            Layers = layers,
             Annotations = annotations
         };
 
