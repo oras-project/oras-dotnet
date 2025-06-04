@@ -172,7 +172,7 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
                     Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
 
                     // Attempt again with basic token
-                    var requestAttempt2 = await originalRequest.CloneAsync(rewindContent:true, cancellationToken).ConfigureAwait(false);
+                    var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
                     return await SendRequestAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
                 }
@@ -474,6 +474,8 @@ public class Client(HttpClient? httpClient = null, ICredentialHelper? credential
 
     /// <summary>
     /// Sends an HTTP request using the configured HttpClient with response headers read optimization.
+    /// HttpCompletionOption.ResponseHeadersRead is used here to enable content streaming and to 
+    /// avoid buffering the entire response body in memory.
     /// </summary>
     /// <param name="request">The HTTP request message to send.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
