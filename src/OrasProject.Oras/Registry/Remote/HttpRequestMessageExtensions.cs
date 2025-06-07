@@ -91,7 +91,7 @@ internal static class HttpRequestMessageExtensions
     /// </summary>
     /// <param name="requestMessage">The <see cref="HttpRequestMessage"/> to add the default user agent to.</param>
     /// <returns>The same <see cref="HttpRequestMessage"/> instance with the default user agent added (if needed).</returns>
-    public static HttpRequestMessage AddDefaultUserAgent(this HttpRequestMessage requestMessage)
+    internal static HttpRequestMessage AddDefaultUserAgent(this HttpRequestMessage requestMessage)
     {
         if (requestMessage.Headers.UserAgent.Count == 0)
         {

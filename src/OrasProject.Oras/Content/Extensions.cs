@@ -61,7 +61,7 @@ public static class Extensions
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
                     var index = JsonSerializer.Deserialize<Index>(content) ??
-                                        throw new JsonException("Failed to deserialize manifest");
+                                        throw new JsonException("Failed to deserialize index manifest");
                     var descriptors = new List<Descriptor>();
                     if (index.Subject != null)
                     {
@@ -72,7 +72,7 @@ public static class Extensions
                     return descriptors;
                 }
         }
-        return [];
+        return Array.Empty<Descriptor>();
     }
 
     /// <summary>
