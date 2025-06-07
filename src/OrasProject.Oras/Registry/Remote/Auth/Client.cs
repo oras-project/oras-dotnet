@@ -133,10 +133,10 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         originalRequest.AddDefaultUserAgent();
         if (originalRequest.Headers.Authorization != null || BaseClient.DefaultRequestHeaders.Authorization != null)
         {
-            return await BaseClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
+            return await SendRequestAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
         var host = originalRequest.RequestUri?.Host ?? throw new ArgumentNullException(nameof(originalRequest.RequestUri));
-        using var requestAttempt1 = await originalRequest.CloneAsync().ConfigureAwait(false);
+        var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
         var attemptedKey = string.Empty;
 
         // attempt to send request with cached auth token
@@ -167,7 +167,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
             }
         }
 
-        var response1 = await BaseClient.SendAsync(requestAttempt1, cancellationToken).ConfigureAwait(false);
+        var response1 = await SendRequestAsync(requestAttempt1, cancellationToken).ConfigureAwait(false);
         if (response1.StatusCode != HttpStatusCode.Unauthorized)
         {
             return response1;
@@ -186,9 +186,9 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
                     Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
 
                     // Attempt again with basic token
-                    using var requestAttempt2 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                    var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
-                    return await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
+                    return await SendRequestAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
                 }
             case Challenge.Scheme.Bearer:
                 {
@@ -216,9 +216,9 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
                     if (newKey != attemptedKey &&
                         Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
                     {
-                        using var requestAttempt2 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                        var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                         requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                        var response2 = await BaseClient.SendAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
+                        var response2 = await SendRequestAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
 
                         if (response2.StatusCode != HttpStatusCode.Unauthorized)
                         {
@@ -247,9 +247,9 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
                     ).ConfigureAwait(false);
                     Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
 
-                    using var requestAttempt3 = await originalRequest.CloneAsync().ConfigureAwait(false);
+                    var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
-                    return await BaseClient.SendAsync(requestAttempt3, cancellationToken).ConfigureAwait(false);
+                    return await SendRequestAsync(requestAttempt3, cancellationToken).ConfigureAwait(false);
                 }
             default:
                 return response1;
@@ -382,7 +382,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         };
         request.RequestUri = uriBuilder.Uri;
 
-        using var response = await BaseClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await SendRequestAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -460,7 +460,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         request.Content = content;
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.FormUrlEncoded);
 
-        using var response = await BaseClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await SendRequestAsync(request, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -476,4 +476,17 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
 
         throw new AuthenticationException("AccessToken is empty or missing");
     }
+
+    /// <summary>
+    /// Sends an HTTP request using the configured HttpClient with response headers read optimization.
+    /// HttpCompletionOption.ResponseHeadersRead is used here to enable content streaming and to 
+    /// avoid buffering the entire response body in memory.
+    /// </summary>
+    /// <param name="request">The HTTP request message to send.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The HTTP response message.</returns>
+    private async Task<HttpResponseMessage> SendRequestAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+        => await BaseClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 }
