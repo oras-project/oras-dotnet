@@ -33,4 +33,12 @@ public class ExceptionTest
         await Assert.ThrowsAsync<MismatchedDigestException>(() => throw new MismatchedDigestException("Mismatched digest"));
         await Assert.ThrowsAsync<MismatchedDigestException>(() => throw new MismatchedDigestException("Mismatched digest", null));
     }
+
+    [Fact]
+    public async Task MismatchedSizeException()
+    {
+        await Assert.ThrowsAsync<MismatchedSizeException>(() => throw new MismatchedSizeException());
+        await Assert.ThrowsAsync<MismatchedSizeException>(() => throw new MismatchedSizeException("Mismatched size"));
+        await Assert.ThrowsAsync<MismatchedSizeException>(() => throw new MismatchedSizeException("Mismatched size", null));
+    }
 }
