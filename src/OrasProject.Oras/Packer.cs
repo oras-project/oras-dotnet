@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras;
 
-public static class Packer
+public static partial class Packer
 {
     /// <summary>
     /// ErrInvalidDateTimeFormat is returned
@@ -61,15 +61,16 @@ public static class Packer
     }
 
     /// <summary>
-    /// mediaTypeRegex checks the format of media types.
+    /// MediaTypeRegex checks the format of media types.
     /// References:
     /// - https://github.com/opencontainers/image-spec/blob/v1.1.1/schema/defs-descriptor.json#L7
     /// - https://datatracker.ietf.org/doc/html/rfc6838#section-4.2
     /// </summary>
-    private static readonly Regex _mediaTypeRegex = new Regex(@"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}(\+json)?$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}(\+json)?$", RegexOptions.Compiled)]
+    private static partial Regex MediaTypeRegex();
 
     /// <summary>
-    /// PackManifest generates an OCI Image Manifestbased on the given parameters
+    /// PackManifest generates an OCI Image Manifest based on the given parameters
     /// and pushes the packed manifest to a content storage/registry using pusher.
     /// The version of the manifest to be packed is determined by manifestVersion
     /// (Recommended value: Version1_1).
@@ -192,16 +193,19 @@ public static class Packer
         else
         {
             configDescriptor = Descriptor.Empty;
-            options.Config = configDescriptor;
-            var configBytes = new byte[] { 0x7B, 0x7D };
+            var configBytes = "{}"u8.ToArray();
             await PushIfNotExistAsync(pusher, configDescriptor, configBytes, cancellationToken).ConfigureAwait(false);
         }
 
-        if (options.Layers == null || options.Layers.Count == 0)
+        IList<Descriptor> layers;
+        if (options.Layers != null && options.Layers.Count > 0)
         {
-            options.Layers ??= new List<Descriptor>();
+            layers = options.Layers;
+        }
+        else
+        {
             // use the empty descriptor as the single layer    
-            options.Layers.Add(Descriptor.Empty);
+            layers = [Descriptor.Empty];
         }
 
         var annotations = EnsureAnnotationCreated(options.ManifestAnnotations, "org.opencontainers.image.created");
@@ -212,8 +216,8 @@ public static class Packer
             MediaType = MediaType.ImageManifest,
             ArtifactType = artifactType,
             Subject = options.Subject,
-            Config = options.Config,
-            Layers = options.Layers,
+            Config = configDescriptor,
+            Layers = layers,
             Annotations = annotations
         };
 
@@ -237,7 +241,8 @@ public static class Packer
         manifestDesc.ArtifactType = artifactType;
         manifestDesc.Annotations = annotations;
 
-        await pusher.PushAsync(manifestDesc, new MemoryStream(manifestJson), cancellationToken).ConfigureAwait(false);
+        using var memoryStream = new MemoryStream(manifestJson);
+        await pusher.PushAsync(manifestDesc, memoryStream, cancellationToken).ConfigureAwait(false);
         return manifestDesc;
     }
 
@@ -248,7 +253,7 @@ public static class Packer
     /// <exception cref="InvalidMediaTypeException"></exception>
     private static void ValidateMediaType(string mediaType)
     {
-        if (!_mediaTypeRegex.IsMatch(mediaType))
+        if (!MediaTypeRegex().IsMatch(mediaType))
         {
             throw new InvalidMediaTypeException($"{mediaType} is an invalid media type");
         }
@@ -264,7 +269,7 @@ public static class Packer
     /// <returns></returns>
     private static async Task<Descriptor> PushCustomEmptyConfigAsync(IPushable pusher, string mediaType, IDictionary<string, string>? annotations, CancellationToken cancellationToken = default)
     {
-        var configBytes = JsonSerializer.SerializeToUtf8Bytes(new { });
+        var configBytes = "{}"u8.ToArray();
         var configDescriptor = Descriptor.Create(configBytes, mediaType);
         configDescriptor.Annotations = annotations;
 
@@ -282,7 +287,8 @@ public static class Packer
     /// <returns></returns>
     private static async Task PushIfNotExistAsync(IPushable pusher, Descriptor descriptor, byte[] data, CancellationToken cancellationToken = default)
     {
-        await pusher.PushAsync(descriptor, new MemoryStream(data), cancellationToken).ConfigureAwait(false);
+        using var memoryStream = new MemoryStream(data);
+        await pusher.PushAsync(descriptor, memoryStream, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -300,8 +306,7 @@ public static class Packer
             annotations = new Dictionary<string, string>();
         }
 
-        string? value;
-        if (annotations.TryGetValue(key, out value))
+        if (annotations.TryGetValue(key, out string? value))
         {
             if (!DateTime.TryParse(value, out _))
             {

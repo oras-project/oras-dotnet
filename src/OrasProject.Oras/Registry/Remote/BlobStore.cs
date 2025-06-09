@@ -26,11 +26,9 @@ using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-public class BlobStore : IBlobStore, IMounter
+public class BlobStore(Repository repository) : IBlobStore, IMounter
 {
-    private Repository Repository { get; }
-
-    public BlobStore(Repository repository) => Repository = repository;
+    private Repository Repository { get; } = repository ?? throw new ArgumentNullException(nameof(repository));
 
     /// <summary>
     /// FetchAsync fetches the blob by the given Descriptor target
@@ -323,6 +321,5 @@ public class BlobStore : IBlobStore, IMounter
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
-        
     }
 }
