@@ -907,7 +907,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            HttpClient = CustomClient(func),
+            Client = CustomClient(func),
             PlainHttp = true,
             TagListPageSize = 4,
         });
