@@ -863,6 +863,67 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     }
 
     /// <summary>
+    /// Repository_TagsAsync tests the TagsAsync method of the Repository returning null tags 
+    /// (this is the case of ghcr.io/oras-project/registry).
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="Exception"></exception>
+    [Fact]
+    public async Task Repository_TagsAsync_Empty()
+    {
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get ||
+                req.RequestUri?.AbsolutePath != "/v2/test/tags/list"
+               )
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+
+            var q = req.RequestUri.Query;
+            try
+            {
+                var n = int.Parse(Regex.Match(q, @"(?<=n=)\d+").Value);
+                if (n != 4) throw new Exception();
+            }
+            catch
+            {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest);
+            }
+
+            var listOfTags = new Repository.TagList
+            {
+                Tags = null!
+            };
+            res.Content = new StringContent(JsonSerializer.Serialize(listOfTags));
+            return res;
+
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(func),
+            PlainHttp = true,
+            TagListPageSize = 4,
+        });
+
+        var cancellationToken = new CancellationToken();
+
+        var wantTags = new List<string>();
+        var gotTags = new List<string>();
+        await foreach (var tag in repo.ListTagsAsync().WithCancellation(cancellationToken))
+        {
+            gotTags.Add(tag);
+        }
+        Assert.Equal(wantTags, gotTags);
+    }
+
+    /// <summary>
     /// BlobStore_FetchAsync tests the FetchAsync method of the BlobStore
     /// </summary>
     /// <returns></returns>
