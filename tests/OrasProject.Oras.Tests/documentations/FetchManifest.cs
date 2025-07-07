@@ -11,61 +11,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
-using System.Net;
-using Xunit;
-using static OrasProject.Oras.Content.Digest;
-using static OrasProject.Oras.Tests.Remote.Util.Util;
+using Moq;
+using OrasProject.Oras.Registry.Remote.Auth;
 
 public class FetchManifest
 {
-
-    [Fact]
     public async Task FetchManifestWithConfigAsync()
     {
-        var manifest = """{"layers":[]}"""u8.ToArray();
-        var manifestDesc = new Descriptor
-        {
-            MediaType = MediaType.ImageManifest,
-            Digest = ComputeSha256(manifest),
-            Size = manifest.Length
-        };
-        var reference = "foobar";
+        // This example demonstrates how to fetch a manifest by tag/digest from a remote repository.
 
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
-        {
-            var res = new HttpResponseMessage
-            {
-                RequestMessage = req
-            };
-            if (req.Method != HttpMethod.Get)
-            {
-                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
-            }
-            if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}" || req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
-            {
-                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(MediaType.ImageManifest))
-                {
-                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
-                }
-                res.Content = new ByteArrayContent(manifest);
-                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
-                return res;
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        }
+        // Create a HttpClient instance to be used for making HTTP requests.
+        var httpClient = new HttpClient();
 
+        // Create a repository instance with the target registry.
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            Client = CustomClient(MockHandlerMockHandler),
-            PlainHttp = true,
+            Client = new Client(httpClient, mockCredentialProvider.Object),
         });
-        var cancellationToken = new CancellationToken();
 
-        var dataRef = await repo.FetchAsync(reference, cancellationToken);
-        var dataDigest = await repo.FetchAsync(manifestDesc.Digest, cancellationToken);
+
+        var cancellationToken = new CancellationToken();
+        var reference = "foobar";
+        // Fetch by tag
+        var dataByTag = await repo.FetchAsync(reference, cancellationToken);
+
+        // Fetch by digest
+        var digest = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        var dataByDigest = await repo.FetchAsync(digest, cancellationToken);
     }
 }

@@ -15,20 +15,29 @@ using OrasProject.Oras.Oci;
 using OrasProject.Oras;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
-using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using static OrasProject.Oras.Content.Digest;
-using System.Net;
-using System.Text.Json;
-using System.Text;
-using Xunit;
+using OrasProject.Oras.Registry.Remote.Auth;
+using Moq;
 
 public class AttachReferrer
 {
-
-    [Fact]
     public async Task AttachReferrerAsync()
     {
+        // This example demonstrates how to attach a referrer to an existing manifest.
+
+        // Create a HttpClient instance to be used for making HTTP requests.
+        var httpClient = new HttpClient();
+
+        // Create a repository instance with the target registry.
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = new Client(httpClient, mockCredentialProvider.Object),
+        });
+
+        // Generate a random manifest to be used as the target manifest.
         var (_, targetManifestBytes) = RandomManifest();
         var targetManifestDesc = new Descriptor
         {
@@ -37,64 +46,13 @@ public class AttachReferrer
             Size = targetManifestBytes.Length
         };
 
+        // Add annotations to the manifest.
         var artifactType = "doc/example";
         var annotations = new Dictionary<string, string>
         {
             { "org.opencontainers.image.created", "2000-01-01T00:00:00Z" },
             { "eol", "2025-07-01" }
         };
-
-        var manifest = new Manifest
-        {
-            SchemaVersion = 2,
-            MediaType = MediaType.ImageManifest,
-            ArtifactType = artifactType,
-            Subject = targetManifestDesc,
-            Config = Descriptor.Empty,
-            Layers = [Descriptor.Empty],
-            Annotations = annotations
-        };
-
-        var uuid = Guid.NewGuid().ToString();
-
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
-        {
-            var res = new HttpResponseMessage
-            {
-                RequestMessage = req
-            };
-            if (req.Method == HttpMethod.Put &&
-                req.RequestUri?.AbsolutePath.Contains($"/v2/test/manifests") == true)
-            {
-                res.Headers.Add("Docker-Content-Digest", [ComputeSha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest)))]);
-                res.Headers.Add("OCI-Subject", "test");
-                res.StatusCode = HttpStatusCode.Created;
-                return res;
-            }
-
-            if (req.Method == HttpMethod.Post && req.RequestUri?.AbsolutePath == "/v2/test/blobs/uploads/")
-            {
-                res.StatusCode = HttpStatusCode.Accepted;
-                res.Headers.Add("Location", $"/v2/test/blobs/uploads/{uuid}");
-                return res;
-            }
-
-            if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/blobs/uploads/{uuid}")
-            {
-                res.StatusCode = HttpStatusCode.Created;
-                return res;
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        }
-        
-        var repo = new Repository(new RepositoryOptions()
-        {
-            Reference = Reference.Parse("localhost:5000/test"),
-            Client = CustomClient(MockHttpRequestHandler),
-            PlainHttp = true,
-        });
-
 
         var options = new PackManifestOptions
         {
@@ -103,6 +61,7 @@ public class AttachReferrer
         };
 
         var cancellationToken = new CancellationToken();
+        // Pack the manifest with the specified artifact type and annotations and push it to the repository.
         await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options, cancellationToken);
     }
 }

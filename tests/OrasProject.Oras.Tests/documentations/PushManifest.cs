@@ -13,67 +13,67 @@
 
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
-using Xunit;
-using System.Net;
 using OrasProject.Oras.Oci;
-using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
-using static OrasProject.Oras.Tests.Remote.Util.Util;
-using static OrasProject.Oras.Content.Digest;
+using OrasProject.Oras.Registry.Remote.Auth;
+using OrasProject.Oras;
+using Moq;
+
 
 public class PushManifest
 {
-    [Fact]
     public async Task PushManifestWithConfigAsync()
     {
-        var (_, expectedManifestBytes) = RandomManifest();
-        var expectedManifestDesc = new Descriptor
-        {
-            MediaType = MediaType.ImageManifest,
-            Digest = ComputeSha256(expectedManifestBytes),
-            Size = expectedManifestBytes.Length
-        };
+        // This example demonstrates how to push a manifest to a remote repository.
 
-        byte[]? receivedManifest = null;
-
-        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken)
-        {
-            var res = new HttpResponseMessage
-            {
-                RequestMessage = req
-            };
-            if (req.Method == HttpMethod.Put &&
-                req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}")
-            {
-                if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values))
-                {
-                    if (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}" &&
-                         !values.Contains(MediaType.ImageManifest))
-                    {
-                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
-                    }
-                }
-
-                if (req.Content?.Headers?.ContentLength != null)
-                {
-                    var buf = new byte[req.Content.Headers.ContentLength.Value];
-                    (await req.Content.ReadAsByteArrayAsync(cancellationToken)).CopyTo(buf, 0);
-                    receivedManifest = buf;
-                }
-
-                res.StatusCode = HttpStatusCode.Created;
-                return res;
-            }
-            return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        }
-
+        // Create a HttpClient instance to be used for making HTTP requests.
+        var httpClient = new HttpClient();
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            Client = CustomClient(MockHttpRequestHandlerAsync),
-            PlainHttp = true,
+            Client = new Client(httpClient, mockCredentialProvider.Object),
         });
 
+        var configBytes = new byte[] { 0x01, 0x02, 0x03 }; // Example config data
+        var config = Descriptor.Create(
+            configBytes,
+            MediaType.ImageConfig
+        );
+
+        var layersBytes = new List<byte[]>
+        {
+            new byte[] { 0x04, 0x05, 0x06 }, // Example layer data
+            new byte[] { 0x07, 0x08, 0x09 }  // Another layer data
+        };
+        var layers = new List<Descriptor>
+        {
+            Descriptor.Create(
+                layersBytes[0],
+                MediaType.ImageLayer
+            ),
+            Descriptor.Create(
+                layersBytes[1],
+                MediaType.ImageLayer
+            )
+        };
+
         var cancellationToken = new CancellationToken();
-        await repo.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
+        // push config and layers to the repository
+        await repo.PushAsync(config, new MemoryStream(configBytes), cancellationToken: cancellationToken).ConfigureAwait(false);
+        for (int i = 0; i < layers.Count; i++)
+        {
+            await repo.PushAsync(layers[i], new MemoryStream(layersBytes[i]), cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        }
+
+        // Create a PackManifestOptions instance to specify the manifest configuration.
+        var options = new PackManifestOptions
+        {
+            Config = config,
+            Layers = layers
+        };
+
+        // Pack and push the manifest to the repository.
+        await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, "", options, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 }
