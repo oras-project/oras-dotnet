@@ -57,7 +57,6 @@ public class FetchManifest
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
 
-        #region Usage
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -68,6 +67,5 @@ public class FetchManifest
 
         var dataRef = await repo.FetchAsync(reference, cancellationToken);
         var dataDigest = await repo.FetchAsync(manifestDesc.Digest, cancellationToken);
-        #endregion
     }
 }

@@ -25,7 +25,9 @@
       {
         "files": [
           "api/**.yml",
-          "api/index.md"
+          "api/index.md",
+          "api/**.md",
+          "../tests/OrasProject.Oras.Tests/documentations/**.cs"
         ]
       },
       {

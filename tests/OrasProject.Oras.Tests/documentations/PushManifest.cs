@@ -25,7 +25,6 @@ public class PushManifest
     [Fact]
     public async Task PushManifestWithConfigAsync()
     {
-        #region Usage
         var (_, expectedManifestBytes) = RandomManifest();
         var expectedManifestDesc = new Descriptor
         {
@@ -33,7 +32,6 @@ public class PushManifest
             Digest = ComputeSha256(expectedManifestBytes),
             Size = expectedManifestBytes.Length
         };
-        #endregion
 
         byte[]? receivedManifest = null;
 
@@ -68,7 +66,6 @@ public class PushManifest
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
         }
 
-        #region Usage
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -78,6 +75,5 @@ public class PushManifest
 
         var cancellationToken = new CancellationToken();
         await repo.PushAsync(expectedManifestDesc, new MemoryStream(expectedManifestBytes), cancellationToken);
-        #endregion
     }
 }

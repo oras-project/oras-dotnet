@@ -29,8 +29,6 @@ public class AttachReferrer
     [Fact]
     public async Task AttachReferrerAsync()
     {
-        #region Usage
-        var artifactType = "doc/example";
         var (_, targetManifestBytes) = RandomManifest();
         var targetManifestDesc = new Descriptor
         {
@@ -38,6 +36,8 @@ public class AttachReferrer
             Digest = ComputeSha256(targetManifestBytes),
             Size = targetManifestBytes.Length
         };
+
+        var artifactType = "doc/example";
         var annotations = new Dictionary<string, string>
         {
             { "org.opencontainers.image.created", "2000-01-01T00:00:00Z" },
@@ -54,7 +54,6 @@ public class AttachReferrer
             Layers = [Descriptor.Empty],
             Annotations = annotations
         };
-        #endregion
 
         var uuid = Guid.NewGuid().ToString();
 
@@ -88,8 +87,7 @@ public class AttachReferrer
 
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
         }
-
-        #region Usage
+        
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
@@ -106,6 +104,5 @@ public class AttachReferrer
 
         var cancellationToken = new CancellationToken();
         await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options, cancellationToken);
-        #endregion
     }
 }

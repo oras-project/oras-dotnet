@@ -57,11 +57,9 @@ public class CopyManifest
         AppendBlob(MediaType.ImageLayer, GetBytes("bar")); // blob 2
         GenerateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
 
-        #region Usage
         var sourceTarget = new MemoryStore();
         var destinationTarget = new MemoryStore();
         var cancellationToken = new CancellationToken();
-        #endregion
 
         for (var i = 0; i < blobs.Count; i++)
         {
@@ -70,13 +68,9 @@ public class CopyManifest
 
         var root = descs[3];
 
-        #region Usage
         var reference = "foobar";
-        #endregion
         await sourceTarget.TagAsync(root, reference, cancellationToken);
 
-        #region Usage
         var gotDesc = await sourceTarget.CopyAsync(reference, destinationTarget, "", cancellationToken);
-        #endregion
     }
 }
