@@ -11,21 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
-using Moq;
+using OrasProject.Oras.Registry;
+using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry.Remote.Auth;
+using OrasProject.Oras;
+using Moq;
 
-public class FetchManifest
+
+public class PushArtifact
 {
-    public async Task FetchManifestWithConfigAsync()
+    public async Task PushArtifactWithConfigAsync()
     {
-        // This example demonstrates how to fetch a manifest by tag/digest from a remote repository.
+        // This example demonstrates how to push an artifact to a remote repository.
 
         // Create a HttpClient instance to be used for making HTTP requests.
         var httpClient = new HttpClient();
-
-        // Create a repository instance with the target registry.
         var mockCredentialProvider = new Mock<ICredentialProvider>();
         var repo = new Repository(new RepositoryOptions()
         {
@@ -33,14 +34,9 @@ public class FetchManifest
             Client = new Client(httpClient, mockCredentialProvider.Object),
         });
 
-
         var cancellationToken = new CancellationToken();
-        var reference = "foobar";
-        // Fetch by tag
-        var dataByTag = await repo.FetchAsync(reference, cancellationToken);
-
-        // Fetch by digest
-        var digest = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
-        var dataByDigest = await repo.FetchAsync(digest, cancellationToken);
+        var artifactType = "doc/example";
+        // Pack the artifact with the specified type and push it to the repository.
+        await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 }

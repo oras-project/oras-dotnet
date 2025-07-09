@@ -11,17 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras;
-using OrasProject.Oras.Registry.Remote;
+using System.Text.Json;
 using OrasProject.Oras.Registry;
-using OrasProject.Oras.Registry.Remote.Auth;
+using OrasProject.Oras.Registry.Remote;
 using Moq;
+using OrasProject.Oras.Registry.Remote.Auth;
+using OrasProject.Oras.Oci;
 
-public class AttachReferrer
+public class FetchManifest
 {
-    public async Task AttachReferrerAsync()
+    public async Task FetchArtifactWithConfigAsync()
     {
-        // This example demonstrates how to attach a referrer to an existing manifest.
+        // This example demonstrates how to fetch a manifest by tag/digest from a remote repository.
 
         // Create a HttpClient instance to be used for making HTTP requests.
         var httpClient = new HttpClient();
@@ -34,27 +35,24 @@ public class AttachReferrer
             Client = new Client(httpClient, mockCredentialProvider.Object),
         });
 
-        var targetReference = "target";
+
         var cancellationToken = new CancellationToken();
+        var reference = "foobar";
+        // Fetch by tag
+        var (descriptor, content) = await repo.FetchAsync(reference, cancellationToken);
 
-        // Resolve the target reference to get its descriptor.
-        var targetDescriptor = await repo.ResolveAsync(targetReference, cancellationToken);
-        
-        // Add annotations to the manifest.
-        var artifactType = "doc/example";
-        var annotations = new Dictionary<string, string>
-        {
-            { "org.opencontainers.image.created", "2000-01-01T00:00:00Z" },
-            { "eol", "2025-07-01" }
-        };
+        // Fetch blob content
+        if (descriptor.MediaType == MediaType.ImageManifest) {
+            var imageManifest = JsonSerializer.Deserialize<Manifest>(content) ??
+                                            throw new JsonException("Failed to deserialize manifest");
 
-        var options = new PackManifestOptions
-        {
-            ManifestAnnotations = annotations,
-            Subject = targetDescriptor,
-        };
+            foreach (var layer in imageManifest.Layers) {
+                var layerBlob = await repo.FetchAsync(layer.Digest, cancellationToken).ConfigureAwait(false);
+            }
+        }
 
-        // Pack the manifest with the specified artifact type and annotations and push it to the repository.
-        await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options, cancellationToken);
+        // Fetch by digest
+        var digest = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        var dataByDigest = await repo.FetchAsync(digest, cancellationToken);
     }
 }

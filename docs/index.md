@@ -42,10 +42,14 @@ If you wish to start publishing OCI Artifacts right away, take a look at the [OR
 
 For detailed information on how to use the Oras-dotnet library, please refer to the [API Documentation](/oras-dotnet/api).
 
-[Attach Referrer](./api/attach_referrer.md)
+## Examples
 
-[Copy Manifest](./api/copy_artifact.md)
+[Attach a referrer manifest to an existing manifest](./api/attach_referrer.md)
 
-[Fetch Manifest](./api/fetch_manifest.md)
+[Copy an artifact](./api/copy_artifact.md)
 
-[Push Manifest](./api/push_manifest.md)
+[Fetch an artifact from remote repository](./api/fetch_artifact.md)
+
+[Push a manifest to a remote repository](./api/push_manifest.md)
+
+[Push an artifact to a remote repository](./api/push_artifact.md)

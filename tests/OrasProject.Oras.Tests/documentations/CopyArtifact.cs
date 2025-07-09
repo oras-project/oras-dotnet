@@ -31,18 +31,25 @@ public class CopyArtifact
         var sourceCred = new Mock<ICredentialProvider>();
         var sourceRepository = new Repository(new RepositoryOptions
         {
-            Reference = Reference.Parse("source.io/testregistry"),
+            Reference = Reference.Parse("source.io/testrepository"),
             Client = new Client(httpClient, credentialProvider: sourceCred.Object),
         });
 
         // destination repository
         var destinationCred = new Mock<ICredentialProvider>();
+        // Create a ScopeManager and Cache instance to manage scopes and cache for the client.
+        var scopeMananger = new ScopeManager();
+        var cache = new Cache();
+        var client = new Client(httpClient, credentialProvider: destinationCred.Object);
+        client.ScopeManager = scopeMananger;
+        client.Cache = cache;
         var destRepository = new Repository(new RepositoryOptions
         {
-            Reference = Reference.Parse("target.io/testregistry"),
-            Client = new Client(httpClient, credentialProvider: destinationCred.Object)
+            Reference = Reference.Parse("target.io/testrepository"),
+            Client = client
         });
 
+        // Copy the artifact tagged by reference from the source repository to the destination
         var reference = "tag";
         var cancellationToken = new CancellationToken();
         var gotDesc = await sourceRepository.CopyAsync(reference, destRepository, "", cancellationToken);
