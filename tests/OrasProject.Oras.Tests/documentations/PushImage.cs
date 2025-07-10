@@ -74,6 +74,15 @@ public class PushImage
         };
 
         // Pack and push the manifest to the repository.
-        await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, "", options, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var pushedDescriptor = await Packer.PackManifestAsync(
+            repo,
+            Packer.ManifestVersion.Version1_1,
+            "",
+            options,
+            cancellationToken).ConfigureAwait(false);
+
+        var tag = "tag";
+        // Tag the pushed image.
+        await repo.TagAsync(pushedDescriptor, tag, cancellationToken).ConfigureAwait(false);
     }
 }
