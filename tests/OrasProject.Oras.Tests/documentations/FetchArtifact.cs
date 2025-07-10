@@ -17,12 +17,13 @@ using OrasProject.Oras.Registry.Remote;
 using Moq;
 using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Content;
 
-public class FetchManifest
+public class FetchArtifact
 {
-    public async Task FetchArtifactWithConfigAsync()
+    public async Task FetchArtifactAsync()
     {
-        // This example demonstrates how to fetch a manifest by tag/digest from a remote repository.
+        // This example demonstrates how to fetch an artifact by tag/digest from a remote repository.
 
         // Create a HttpClient instance to be used for making HTTP requests.
         var httpClient = new HttpClient();
@@ -37,22 +38,20 @@ public class FetchManifest
 
 
         var cancellationToken = new CancellationToken();
-        var reference = "foobar";
-        // Fetch by tag
-        var (descriptor, content) = await repo.FetchAsync(reference, cancellationToken);
+        var reference = "foobar"; // The tag or digest of the artifact to fetch, such as "latest" or "sha256:abc123...".
+        var (manifestDescriptor, manifestContent) = await repo.FetchAsync(reference, cancellationToken);
+        
+        // Verify received content against received descriptor
+        var manifestData = await manifestContent.ReadAllAsync(manifestDescriptor, cancellationToken).ConfigureAwait(false);
 
         // Fetch blob content
-        if (descriptor.MediaType == MediaType.ImageManifest) {
-            var imageManifest = JsonSerializer.Deserialize<Manifest>(content) ??
+        if (manifestDescriptor.MediaType == MediaType.ImageManifest) {
+            var imageManifest = JsonSerializer.Deserialize<Manifest>(manifestData) ??
                                             throw new JsonException("Failed to deserialize manifest");
 
             foreach (var layer in imageManifest.Layers) {
-                var layerBlob = await repo.FetchAsync(layer.Digest, cancellationToken).ConfigureAwait(false);
+                var layerBlob = await repo.FetchAllAsync(layer, cancellationToken).ConfigureAwait(false);
             }
         }
-
-        // Fetch by digest
-        var digest = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
-        var dataByDigest = await repo.FetchAsync(digest, cancellationToken);
     }
 }

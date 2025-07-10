@@ -21,7 +21,7 @@ using Moq;
 
 public class PushArtifact
 {
-    public async Task PushArtifactWithConfigAsync()
+    public async Task PushArtifactAsync()
     {
         // This example demonstrates how to push an artifact to a remote repository.
 
@@ -34,9 +34,32 @@ public class PushArtifact
             Client = new Client(httpClient, mockCredentialProvider.Object),
         });
 
+        var layersBytes = new List<byte[]>
+        {
+            new byte[] { 0x04, 0x05, 0x06 }, // Example layer data
+        };
+        var layers = new List<Descriptor>
+        {
+            Descriptor.Create(
+                layersBytes[0],
+                MediaType.ImageLayer
+            )
+        };
+
         var cancellationToken = new CancellationToken();
+        // Push layers to the repository
+        for (int i = 0; i < layers.Count; i++)
+        {
+            await repo.PushAsync(layers[i], new MemoryStream(layersBytes[i]), cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+
+        // Create a PackManifestOptions instance to specify the manifest configuration.
+        var options = new PackManifestOptions
+        {
+            Layers = layers
+        };
         var artifactType = "doc/example";
         // Pack the artifact with the specified type and push it to the repository.
-        await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 }

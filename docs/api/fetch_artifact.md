@@ -1,4 +1,4 @@
 
-## Fetch an artifact from remote repository
+## Fetch an artifact from a remote repository
 
-[!code-csharp[](../../tests/OrasProject.Oras.Tests/documentations/FetchArtifact.cs#L25-L56)]
+[!code-csharp[](../../tests/OrasProject.Oras.Tests/documentations/FetchArtifact.cs#L26-L55)]

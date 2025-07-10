@@ -27,7 +27,7 @@ public class CopyArtifact
         // Create a HttpClient instance to be used for making HTTP requests.
         var httpClient = new HttpClient();
 
-        // source repository
+        // Source repository
         var sourceCred = new Mock<ICredentialProvider>();
         var sourceRepository = new Repository(new RepositoryOptions
         {
@@ -35,23 +35,17 @@ public class CopyArtifact
             Client = new Client(httpClient, credentialProvider: sourceCred.Object),
         });
 
-        // destination repository
+        // Destination repository
         var destinationCred = new Mock<ICredentialProvider>();
-        // Create a ScopeManager and Cache instance to manage scopes and cache for the client.
-        var scopeMananger = new ScopeManager();
-        var cache = new Cache();
-        var client = new Client(httpClient, credentialProvider: destinationCred.Object);
-        client.ScopeManager = scopeMananger;
-        client.Cache = cache;
         var destRepository = new Repository(new RepositoryOptions
         {
             Reference = Reference.Parse("target.io/testrepository"),
-            Client = client
+            Client = new Client(httpClient, credentialProvider: destinationCred.Object)
         });
 
         // Copy the artifact tagged by reference from the source repository to the destination
         var reference = "tag";
         var cancellationToken = new CancellationToken();
-        var gotDesc = await sourceRepository.CopyAsync(reference, destRepository, "", cancellationToken);
+        var rootDescriptor = await sourceRepository.CopyAsync(reference, destRepository, "", cancellationToken);
     }
 }

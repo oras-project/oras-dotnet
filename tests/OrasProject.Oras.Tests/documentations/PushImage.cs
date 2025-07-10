@@ -19,9 +19,9 @@ using OrasProject.Oras;
 using Moq;
 
 
-public class PushManifest
+public class PushImage
 {
-    public async Task PushManifestWithConfigAsync()
+    public async Task PushImageAsync()
     {
         // This example demonstrates how to push a manifest to a remote repository.
 
@@ -58,7 +58,7 @@ public class PushManifest
         };
 
         var cancellationToken = new CancellationToken();
-        // push config and layers to the repository
+        // Push config and layers to the repository
         await repo.PushAsync(config, new MemoryStream(configBytes), cancellationToken: cancellationToken).ConfigureAwait(false);
         for (int i = 0; i < layers.Count; i++)
         {
