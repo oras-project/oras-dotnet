@@ -10,7 +10,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 using OrasProject.Oras;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
@@ -35,10 +34,9 @@ public class AttachReferrer
         });
 
         var targetReference = "target";
-        var cancellationToken = new CancellationToken();
 
         // Resolve the target reference to get its descriptor.
-        var targetDescriptor = await repo.ResolveAsync(targetReference, cancellationToken);
+        var targetDescriptor = await repo.ResolveAsync(targetReference);
         
         // Add annotations to the manifest.
         var artifactType = "doc/example";
@@ -55,6 +53,6 @@ public class AttachReferrer
         };
 
         // Pack the manifest with the specified artifact type and annotations and push it to the repository.
-        await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options, cancellationToken);
+        await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options);
     }
 }

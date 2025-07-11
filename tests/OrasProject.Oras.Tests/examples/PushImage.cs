@@ -10,14 +10,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras;
 using Moq;
-
 
 public class PushImage
 {
@@ -57,12 +55,11 @@ public class PushImage
             )
         };
 
-        var cancellationToken = new CancellationToken();
         // Push config and layers to the repository
-        await repo.PushAsync(config, new MemoryStream(configBytes), cancellationToken: cancellationToken).ConfigureAwait(false);
+        await repo.PushAsync(config, new MemoryStream(configBytes));
         for (int i = 0; i < layers.Count; i++)
         {
-            await repo.PushAsync(layers[i], new MemoryStream(layersBytes[i]), cancellationToken: cancellationToken).ConfigureAwait(false);
+            await repo.PushAsync(layers[i], new MemoryStream(layersBytes[i]));
 
         }
 
@@ -78,11 +75,10 @@ public class PushImage
             repo,
             Packer.ManifestVersion.Version1_1,
             "",
-            options,
-            cancellationToken).ConfigureAwait(false);
+            options);
 
         var tag = "tag";
         // Tag the pushed image.
-        await repo.TagAsync(pushedDescriptor, tag, cancellationToken).ConfigureAwait(false);
+        await repo.TagAsync(pushedDescriptor, tag);
     }
 }

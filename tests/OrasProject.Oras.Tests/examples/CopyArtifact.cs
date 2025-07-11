@@ -10,13 +10,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 using Moq;
 using OrasProject.Oras;
 using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
-
 
 public class CopyArtifact
 {
@@ -45,7 +43,6 @@ public class CopyArtifact
 
         // Copy the artifact tagged by reference from the source repository to the destination
         var reference = "tag";
-        var cancellationToken = new CancellationToken();
-        var rootDescriptor = await sourceRepository.CopyAsync(reference, destRepository, "", cancellationToken);
+        var rootDescriptor = await sourceRepository.CopyAsync(reference, destRepository, "");
     }
 }

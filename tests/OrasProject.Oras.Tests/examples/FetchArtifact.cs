@@ -10,7 +10,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 using System.Text.Json;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
@@ -36,13 +35,11 @@ public class FetchArtifact
             Client = new Client(httpClient, mockCredentialProvider.Object),
         });
 
-
-        var cancellationToken = new CancellationToken();
         var reference = "foobar"; // The tag or digest of the artifact to fetch, such as "latest" or "sha256:abc123...".
-        var (manifestDescriptor, manifestContent) = await repo.FetchAsync(reference, cancellationToken);
-        
+        var (manifestDescriptor, manifestContent) = await repo.FetchAsync(reference);
+
         // Verify received content against received descriptor
-        var manifestData = await manifestContent.ReadAllAsync(manifestDescriptor, cancellationToken).ConfigureAwait(false);
+        var manifestData = await manifestContent.ReadAllAsync(manifestDescriptor);
 
         // Fetch blob content
         if (manifestDescriptor.MediaType == MediaType.ImageManifest) {
@@ -50,7 +47,7 @@ public class FetchArtifact
                                             throw new JsonException("Failed to deserialize manifest");
 
             foreach (var layer in imageManifest.Layers) {
-                var layerBlob = await repo.FetchAllAsync(layer, cancellationToken).ConfigureAwait(false);
+                var layerBlob = await repo.FetchAllAsync(layer);
             }
         }
     }
