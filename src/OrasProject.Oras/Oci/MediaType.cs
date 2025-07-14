@@ -13,6 +13,10 @@
 
 namespace OrasProject.Oras.Oci;
 
+/// <summary>
+/// MediaType constants for OCI image specification.
+/// Specification: https://github.com/opencontainers/image-spec/blob/v1.1.0/media-types.md
+/// </summary>
 public static class MediaType
 {
     /// <summary>

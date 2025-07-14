@@ -18,6 +18,10 @@ using System.Text.Json.Serialization;
 
 namespace OrasProject.Oras.Oci;
 
+/// <summary>
+/// Index is a higher-level manifest which points to specific image manifests, ideal for one or more platforms.
+/// Specification: https://github.com/opencontainers/image-spec/blob/v1.1.0/image-index.md
+/// </summary>
 public class Index : Versioned
 {
     // MediaType specifies the type of this document data structure e.g. `application/vnd.oci.image.index.v1+json`

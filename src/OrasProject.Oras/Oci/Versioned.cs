@@ -15,6 +15,10 @@ using System.Text.Json.Serialization;
 
 namespace OrasProject.Oras.Oci;
 
+/// <summary>
+/// Versioned provides the base structure for versioned schema definitions.
+/// Specification: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md#image-manifest-property-descriptions
+/// </summary>
 public class Versioned
 {
     [JsonPropertyName("schemaVersion")]

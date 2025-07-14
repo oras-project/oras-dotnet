@@ -16,6 +16,11 @@ using System.Text.Json.Serialization;
 
 namespace OrasProject.Oras.Oci;
 
+/// <summary>
+/// Platform describes the platform which the image in the manifest runs on.
+/// This should only be used when referring to a manifest.
+/// Specification: https://github.com/opencontainers/image-spec/blob/v1.1.0/image-index.md#platform-object
+/// </summary>
 public class Platform
 {
     [JsonPropertyName("architecture")]
