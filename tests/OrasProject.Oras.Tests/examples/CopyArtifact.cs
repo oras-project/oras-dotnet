@@ -20,6 +20,7 @@ public class CopyArtifact
 {
     public async Task CopyArtifactAsync()
     {
+        #region Usage
         // This example demonstrates how to copy an artifact from one repository to another.
 
         // Create a HttpClient instance to be used for making HTTP requests.
@@ -44,5 +45,6 @@ public class CopyArtifact
         // Copy the artifact tagged by reference from the source repository to the destination
         var reference = "tag";
         var rootDescriptor = await sourceRepository.CopyAsync(reference, destRepository, "");
+        #endregion
     }
 }

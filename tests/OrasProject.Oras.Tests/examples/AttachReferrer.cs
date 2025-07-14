@@ -20,6 +20,7 @@ public class AttachReferrer
 {
     public async Task AttachReferrerAsync()
     {
+        #region Usage
         // This example demonstrates how to attach a referrer to an existing manifest.
 
         // Create a HttpClient instance to be used for making HTTP requests.
@@ -37,7 +38,7 @@ public class AttachReferrer
 
         // Resolve the target reference to get its descriptor.
         var targetDescriptor = await repo.ResolveAsync(targetReference);
-        
+
         // Add annotations to the manifest.
         var artifactType = "doc/example";
         var annotations = new Dictionary<string, string>
@@ -54,5 +55,6 @@ public class AttachReferrer
 
         // Pack the manifest with the specified artifact type and annotations and push it to the repository.
         await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options);
+        #endregion
     }
 }

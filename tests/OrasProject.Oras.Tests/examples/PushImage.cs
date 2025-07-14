@@ -21,6 +21,7 @@ public class PushImage
 {
     public async Task PushImageAsync()
     {
+        #region Usage
         // This example demonstrates how to push a manifest to a remote repository.
 
         // Create a HttpClient instance to be used for making HTTP requests.
@@ -80,5 +81,6 @@ public class PushImage
         var tag = "tag";
         // Tag the pushed image.
         await repo.TagAsync(pushedDescriptor, tag);
+        #endregion
     }
 }

@@ -21,6 +21,7 @@ public class PushArtifact
 {
     public async Task PushArtifactAsync()
     {
+        #region Usage
         // This example demonstrates how to push an artifact to a remote repository.
 
         // Create a HttpClient instance to be used for making HTTP requests.
@@ -66,5 +67,6 @@ public class PushArtifact
         var tag = "tag";
         // Tag the pushed artifact.
         await repo.TagAsync(pushedDescriptor, tag);
+        #endregion
     }
 }

@@ -22,6 +22,7 @@ public class FetchArtifact
 {
     public async Task FetchArtifactAsync()
     {
+        #region Usage
         // This example demonstrates how to fetch an artifact by tag/digest from a remote repository.
 
         // Create a HttpClient instance to be used for making HTTP requests.
@@ -42,13 +43,16 @@ public class FetchArtifact
         var manifestData = await manifestContent.ReadAllAsync(manifestDescriptor);
 
         // Fetch blob content
-        if (manifestDescriptor.MediaType == MediaType.ImageManifest) {
+        if (manifestDescriptor.MediaType == MediaType.ImageManifest)
+        {
             var imageManifest = JsonSerializer.Deserialize<Manifest>(manifestData) ??
                                             throw new JsonException("Failed to deserialize manifest");
 
-            foreach (var layer in imageManifest.Layers) {
+            foreach (var layer in imageManifest.Layers)
+            {
                 var layerBlob = await repo.FetchAllAsync(layer);
             }
         }
+        #endregion
     }
 }
