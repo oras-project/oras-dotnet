@@ -16,6 +16,10 @@ using System.Text.Json.Serialization;
 
 namespace OrasProject.Oras.Oci;
 
+/// <summary>
+/// Manifest describes an image or artifact.
+/// Specification: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md
+/// </summary>
 public class Manifest : Versioned
 {
     [JsonPropertyName("mediaType")]

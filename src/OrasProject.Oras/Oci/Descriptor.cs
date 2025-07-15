@@ -17,6 +17,10 @@ using System.Text.Json.Serialization;
 
 namespace OrasProject.Oras.Oci;
 
+/// <summary>
+/// Descriptor describes a content addressable blob.
+/// Specification: https://github.com/opencontainers/image-spec/blob/v1.1.0/descriptor.md
+/// </summary>
 public class Descriptor
 {
     [JsonPropertyName("mediaType")]
