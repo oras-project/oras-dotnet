@@ -580,7 +580,7 @@ public class ManifestStoreTest
         {
             Manifests =
             [
-                new ()
+                new()
                 {
                     MediaType = MediaType.ImageManifest,
                     Digest = ComputeSha256(oldManifestBytes),
