@@ -47,20 +47,20 @@ public class Scope : IComparable<Scope>
         /// </summary>
         All
     }
-    
+
     /// <summary>
     /// ScopeRegistryCatalog is the scope for registry catalog access.
     /// </summary>
     public const string ScopeRegistryCatalog = "registry:catalog:*";
 
     internal const string ActionWildcard = "*";
-    
+
     internal const string ActionPull = "pull";
-    
+
     internal const string ActionPush = "push";
-    
+
     internal const string ActionDelete = "delete";
-    
+
     public required string ResourceType { get; init; }
     public required string ResourceName { get; init; }
     public required HashSet<string> Actions { get; init; }
@@ -81,7 +81,7 @@ public class Scope : IComparable<Scope>
     /// <returns>A string representation of the scope.</returns>
     public override string ToString()
     {
-        return Actions.Contains(ActionWildcard) 
+        return Actions.Contains(ActionWildcard)
             ? $"{ResourceType}:{ResourceName}:{ActionWildcard}"
             : $"{ResourceType}:{ResourceName}:{string.Join(",", Actions.OrderBy(action => action, StringComparer.OrdinalIgnoreCase))}";
     }
@@ -119,7 +119,7 @@ public class Scope : IComparable<Scope>
         scope = new Scope(parts[0], parts[1], actions);
         return true;
     }
-    
+
     /// <summary>
     /// ActionToString converts an <see cref="Action"/> enumeration value to its corresponding string representation.
     /// </summary>
@@ -145,7 +145,7 @@ public class Scope : IComparable<Scope>
             _ => ""
         };
     }
-    
+
     /// <summary>
     /// AddOrMergeScope adds a new scope to the collection or merges it with an existing scope if a matching scope is found.
     /// </summary>

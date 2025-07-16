@@ -66,13 +66,13 @@ public class ProxyTest
         var ct = CancellationToken.None;
         using var expectedStream = new MemoryStream(manifestBytes);
 
-       
+
         sourceMock.Setup(s => s.FetchAsync(manifestDesc, ct)).ReturnsAsync(expectedStream);
-       
+
         var proxy = new Proxy { Cache = cache, Source = sourceMock.Object };
 
         var result = await proxy.FetchAsync(manifestDesc, ct);
-        
+
         var actualBytes = new MemoryStream();
         await result.CopyToAsync(actualBytes, ct);
         Assert.Equal(manifestBytes, actualBytes.ToArray());
@@ -103,14 +103,14 @@ public class ProxyTest
 
         var proxy = new Proxy { Cache = cacheMock.Object, Source = sourceMock.Object };
 
-       var result = await proxy.FetchAsync(manifestDesc, ct);
-       Assert.Same(expectedStream, result);
-       sourceMock.Verify(source => source.FetchAsync(manifestDesc, ct), Times.Once);
-       cacheMock.Verify(cache => cache.PushAsync(manifestDesc, It.IsAny<Stream>(), ct), Times.Once);
-       cacheMock.Verify(cache => cache.FetchAsync(manifestDesc, ct), Times.Once);
-       cacheMock.Verify(cache => cache.ExistsAsync(manifestDesc, ct), Times.Once);
+        var result = await proxy.FetchAsync(manifestDesc, ct);
+        Assert.Same(expectedStream, result);
+        sourceMock.Verify(source => source.FetchAsync(manifestDesc, ct), Times.Once);
+        cacheMock.Verify(cache => cache.PushAsync(manifestDesc, It.IsAny<Stream>(), ct), Times.Once);
+        cacheMock.Verify(cache => cache.FetchAsync(manifestDesc, ct), Times.Once);
+        cacheMock.Verify(cache => cache.ExistsAsync(manifestDesc, ct), Times.Once);
     }
-    
+
     [Fact]
     public async Task FetchAsync_SourceImplementsIReferenceFetchable_ManifestType_CachesAndReturnsCacheStream()
     {
@@ -153,7 +153,7 @@ public class ProxyTest
         srcRefMock.Verify();
         storageMock.Verify();
     }
-    
+
     [Fact]
     public async Task FetchAsync_SourceDoesNotImplementIReferenceFetchable_NonManifestType_DoesNotCache_ReturnsSourceStream()
     {
@@ -190,7 +190,7 @@ public class ProxyTest
         Assert.Same(sourceStream, resultStream);
         sourceMock.Verify();
     }
-    
+
     [Fact]
     public async Task FetchAsync_SourceDoesNotImplementIReferenceFetchable_ManifestType_CachesAndReturnsCacheStream()
     {
@@ -236,8 +236,8 @@ public class ProxyTest
         sourceMock.Verify();
         storageMock.Verify();
     }
-    
-    
+
+
     [Fact]
     public async Task FetchAsync_CachePushThrowsAlreadyExists_ReturnsCacheFetchStream()
     {

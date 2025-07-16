@@ -37,7 +37,7 @@ internal static class HttpResponseMessageExtensions
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return new ResponseException(response, body);
     }
-    
+
     /// <summary>
     /// Parses the error returned by the remote registry.
     /// </summary>

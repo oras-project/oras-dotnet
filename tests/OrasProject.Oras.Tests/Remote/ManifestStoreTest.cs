@@ -30,7 +30,7 @@ namespace OrasProject.Oras.Tests.Remote;
 public class ManifestStoreTest
 {
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
-    
+
     [Fact]
     public async Task ManifestStore_PullReferrersIndexListSuccessfully()
     {

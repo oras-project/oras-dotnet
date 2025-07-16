@@ -37,7 +37,7 @@ public class ScopeTest
         Assert.Equal(2, scope.Actions.Count);
         Assert.DoesNotContain(Scope.ActionDelete, scope.Actions);
     }
-    
+
     [Fact]
     public void TryParse_ValidScopeStringWithWildCard_ReturnsTrueAndParsesCorrectly()
     {
@@ -111,7 +111,7 @@ public class ScopeTest
         Assert.False(result);
         Assert.Null(scope);
     }
-    
+
     [Fact]
     public void EqualsInSortedSet_DifferentScopeInstancesWithSameValues_ReturnsTrue()
     {
@@ -214,7 +214,7 @@ public class ScopeTest
         var scopes = new SortedSet<Scope>();
         var scope1 = new Scope("repository", "my-repo", new HashSet<string> { Scope.ActionWildcard });
         var scope2 = new Scope("repository", "my-repo", new HashSet<string> { Scope.ActionPull });
-        
+
         var scope3 = new Scope("registry", "catalog", new HashSet<string> { "metadata-read" });
         var scope4 = new Scope("registry", "catalog", new HashSet<string> { Scope.ActionWildcard });
 
@@ -224,7 +224,7 @@ public class ScopeTest
         Scope.AddOrMergeScope(scopes, scope2);
         Scope.AddOrMergeScope(scopes, scope3);
         Scope.AddOrMergeScope(scopes, scope4);
-        
+
         // Assert
         Assert.Equal(2, scopes.Count);
         Assert.Contains(scopes, s => s.ToString() == "repository:my-repo:*");

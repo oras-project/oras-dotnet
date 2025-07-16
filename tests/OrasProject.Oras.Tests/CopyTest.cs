@@ -161,10 +161,10 @@ public class CopyTest
         var sourceTarget = new MemoryStore();
         var destinationTarget = new MemoryStore();
 
-        
+
         await Assert.ThrowsAsync<ArgumentNullException>(async () => await sourceTarget.CopyAsync("", destinationTarget, "", cancellationToken));
     }
-    
+
     [Fact]
     public async Task CopyGraphAsync_DescIsInvalid_ThrowsError()
     {
@@ -176,7 +176,7 @@ public class CopyTest
             MediaType = MediaType.ImageConfig,
             Digest = ""
         };
-        
+
         await Assert.ThrowsAsync<ArgumentNullException>(async () => await sourceTarget.CopyGraphAsync(destinationTarget, invalidDesc, cancellationToken));
     }
 }
