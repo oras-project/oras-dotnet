@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Run Super-Linter
         uses: super-linter/super-linter@v6.6.0
         env:
