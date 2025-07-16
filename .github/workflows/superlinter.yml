@@ -29,7 +29,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Run Super-Linter
-        uses: super-linter/super-linter@v6.6.0
+        uses: super-linter/super-linter@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_CSHARP: true # to only check C# linting
