@@ -32,3 +32,5 @@ jobs:
         uses: super-linter/super-linter@v6.6.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_CSHARP: true # to only check C# linting
+          VALIDATE_ALL_CODEBASE: false # to only check changes in the current PR
