@@ -41,7 +41,7 @@ public static class Extensions
         return await src.CopyAsync(srcRef, dst, dstRef, new CopyOptions(), cancellationToken).ConfigureAwait(false);
     }
 
-    
+
     /// <summary>
     /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
     /// in the source Target to the destination Target.
@@ -63,19 +63,19 @@ public static class Extensions
         {
             throw new ArgumentNullException(nameof(srcRef));
         }
-        
+
         if (string.IsNullOrEmpty(dstRef))
         {
             dstRef = srcRef;
         }
-        
+
         var proxy = new Proxy()
         {
             Cache = new MemoryStorage(),
             Source = src
         };
 
-        var (root, _ ) = await proxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
+        var (root, _) = await proxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
         await src.CopyGraphAsync(dst, root, proxy, copyOptions, cancellationToken).ConfigureAwait(false);
         await dst.TagAsync(root, dstRef, cancellationToken).ConfigureAwait(false);
         return root;
@@ -99,7 +99,7 @@ public static class Extensions
         await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, cancellationToken)
             .ConfigureAwait(false);
     }
-    
+
     /// <summary>
     /// CopyGraphAsync concurrently copy node from src to dst by using customized copyGraphOptions
     /// </summary>
@@ -118,7 +118,7 @@ public static class Extensions
         await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, cancellationToken)
             .ConfigureAwait(false);
     }
-    
+
     /// <summary>
     /// CopyGraphAsync concurrently copy node from src to dst by using customized copyGraphOptions and cached proxy
     /// </summary>
@@ -150,12 +150,12 @@ public static class Extensions
         {
             throw new ArgumentNullException(nameof(node));
         }
-        
+
         // acquire lock to find successors of the current node
         await limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
         IEnumerable<Descriptor> successors;
         try
-        {        
+        {
             // check if node exists in target
             if (await dst.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
             {
@@ -167,15 +167,15 @@ public static class Extensions
         {
             limiter.Release();
         }
-        
+
         var childNodesCopies = new List<Task>();
         foreach (var childNode in successors)
         {
-            childNodesCopies.Add(Task.Run(async () => 
+            childNodesCopies.Add(Task.Run(async () =>
                     await src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, cancellationToken).ConfigureAwait(false), cancellationToken));
         }
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
-        
+
         // acquire lock again to perform copy
         await limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
         try

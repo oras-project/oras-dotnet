@@ -22,7 +22,7 @@ namespace OrasProject.Oras.Registry.Remote;
 internal class DefaultHttpClient
 {
     private static readonly Lazy<HttpClient> _client =
-        new (() => new HttpClient());
+        new(() => new HttpClient());
 
     internal static HttpClient Instance => _client.Value;
 }

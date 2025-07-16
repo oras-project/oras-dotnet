@@ -23,16 +23,16 @@ public class ChallengeTest
     [InlineData("Bearer realm=\"example\",service=\"example.com\"", Challenge.Scheme.Bearer, new[] { "realm", "example", "service", "example.com" })]
     [InlineData("Bearer realm=\"example\",service=\"example.com\",key1=value1,key2=value2", Challenge.Scheme.Bearer, new[] { "realm", "example", "service", "example.com", "key1", "value1", "key2", "value2" })]
     [InlineData(
-        "Bearer realm=\"https://abc.io/oauth2/token\",service=\"abc.io\",scope=\"repository:nginx:push,pull\",error=\"insufficient_scope\"", 
-        Challenge.Scheme.Bearer, 
+        "Bearer realm=\"https://abc.io/oauth2/token\",service=\"abc.io\",scope=\"repository:nginx:push,pull\",error=\"insufficient_scope\"",
+        Challenge.Scheme.Bearer,
         new[] { "realm", "https://abc.io/oauth2/token", "service", "abc.io", "scope", "repository:nginx:push,pull", "error", "insufficient_scope" })]
     [InlineData(
-        "bearer realm=\"https://abc.io/oauth2/token\"  ,   service=\"abc.io\",  scope=\"repository:nginx:push,pull\"   ,  key1=value1  ,  key2=value2  ", 
-        Challenge.Scheme.Bearer, 
-        new[] { "realm", "https://abc.io/oauth2/token", "service", "abc.io", "scope", "repository:nginx:push,pull", "key1", "value1",  "key2", "value2" })]
+        "bearer realm=\"https://abc.io/oauth2/token\"  ,   service=\"abc.io\",  scope=\"repository:nginx:push,pull\"   ,  key1=value1  ,  key2=value2  ",
+        Challenge.Scheme.Bearer,
+        new[] { "realm", "https://abc.io/oauth2/token", "service", "abc.io", "scope", "repository:nginx:push,pull", "key1", "value1", "key2", "value2" })]
     [InlineData(
-        "BEARER realm=\"https://registry.io/oauth2/token\",service=\"registry.io\",scope=\"repository:nginx:push,pull repository:abc:delete\",error=\"insufficient_scope\"", 
-        Challenge.Scheme.Bearer, 
+        "BEARER realm=\"https://registry.io/oauth2/token\",service=\"registry.io\",scope=\"repository:nginx:push,pull repository:abc:delete\",error=\"insufficient_scope\"",
+        Challenge.Scheme.Bearer,
         new[] { "realm", "https://registry.io/oauth2/token", "service", "registry.io", "scope", "repository:nginx:push,pull repository:abc:delete", "error", "insufficient_scope" })]
 
     [InlineData("Unknown realm=\"example\"", Challenge.Scheme.Unknown, null)]
@@ -56,7 +56,7 @@ public class ChallengeTest
             }
         }
     }
-    
+
     [Fact]
     public void ParseChallenge_ThrowsArgumentException()
     {
@@ -92,7 +92,7 @@ public class ChallengeTest
         Assert.Equal(expectedToken, parsedToken);
         Assert.Equal(expectedRest, rest);
     }
-    
+
     [Theory]
     [InlineData('A', true)] // Uppercase letter
     [InlineData('z', true)] // Lowercase letter
