@@ -37,7 +37,7 @@ public class CacheTest
         Assert.True(cache.TryGetToken(registry, scheme, key, out var retrievedToken));
         Assert.Equal(token, retrievedToken);
     }
-    
+
     [Fact]
     public void SetCache_ShouldAddNewEntryForBasicToken()
     {
@@ -56,11 +56,11 @@ public class CacheTest
         Assert.Equal(scheme, actualScheme1);
         Assert.True(cache.TryGetToken(registry, scheme, key, out var retrievedToken1));
         Assert.Equal(token1, retrievedToken1);
-        
+
         // update token
         var token2 = "token2";
         cache.SetCache(registry, scheme, key, token2);
-        
+
         // Assert
         Assert.True(cache.TryGetScheme(registry, out var actualScheme2));
         Assert.Equal(scheme, actualScheme2);
@@ -85,8 +85,8 @@ public class CacheTest
         Assert.True(cache.TryGetScheme(registry, out var actualScheme1));
         Assert.Equal(initialScheme, actualScheme1);
         Assert.True(cache.TryGetToken(registry, initialScheme, key, out var retrievedToken1));
-        Assert.Equal(initialToken, retrievedToken1);        
-        
+        Assert.Equal(initialToken, retrievedToken1);
+
         // Act
         cache.SetCache(registry, newScheme, key, token);
 
@@ -119,7 +119,7 @@ public class CacheTest
         Assert.True(cache.TryGetToken(registry, scheme, key, out var retrievedToken));
         Assert.Equal(updatedToken, retrievedToken);
     }
-    
+
     [Fact]
     public void SetCache_ShouldSetTokenWithDifferentKeys()
     {
@@ -143,11 +143,11 @@ public class CacheTest
         Assert.Equal(token1, retrievedToken1);
         Assert.True(cache.TryGetToken(registry, scheme, key2, out var retrievedToken2));
         Assert.Equal(token2, retrievedToken2);
-        
+
         // update key2's token
         var token3 = "token3";
         cache.SetCache(registry, scheme, key2, token3);
-        
+
         // Assert
         Assert.True(cache.TryGetScheme(registry, out var actualScheme2));
         Assert.Equal(scheme, actualScheme2);

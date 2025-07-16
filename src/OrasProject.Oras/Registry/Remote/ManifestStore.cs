@@ -45,7 +45,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(target.MediaType);
-        
+
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         try
         {
@@ -92,7 +92,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-       
+
         try
         {
             switch (response.StatusCode)

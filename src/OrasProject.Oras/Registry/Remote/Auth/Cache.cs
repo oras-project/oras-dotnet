@@ -28,9 +28,9 @@ public class Cache : ICache
     /// <summary>
     /// A thread-safe dictionary used to store cache entries for authentication purposes.
     /// </summary>
-    private readonly ConcurrentDictionary<string, CacheEntry> _caches = new ();
+    private readonly ConcurrentDictionary<string, CacheEntry> _caches = new();
 
-    
+
     /// <summary>
     /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified registry.
     /// </summary>
@@ -53,7 +53,7 @@ public class Cache : ICache
         scheme = Challenge.Scheme.Unknown;
         return false;
     }
-    
+
     /// <summary>
     /// Sets or updates the cache for a specific registry and authentication scheme.
     /// </summary>
@@ -68,15 +68,15 @@ public class Cache : ICache
     /// </remarks>
     public void SetCache(string registry, Challenge.Scheme scheme, string key, string token)
     {
-        _caches.AddOrUpdate(registry, 
+        _caches.AddOrUpdate(registry,
             new CacheEntry(scheme, new Dictionary<string, string> { { key, token } }),
             (_, oldEntry) =>
             {
                 if (scheme != oldEntry.Scheme)
-                { 
+                {
                     return new CacheEntry(scheme, new Dictionary<string, string> { { key, token } });
                 }
-                
+
                 oldEntry.Tokens[key] = token;
                 return oldEntry;
             });
@@ -98,8 +98,8 @@ public class Cache : ICache
     public bool TryGetToken(string registry, Challenge.Scheme scheme, string key, out string token)
     {
         token = string.Empty;
-        if (_caches.TryGetValue(registry, out var cacheEntry) 
-            && cacheEntry.Scheme == scheme 
+        if (_caches.TryGetValue(registry, out var cacheEntry)
+            && cacheEntry.Scheme == scheme
             && cacheEntry.Tokens.TryGetValue(key, out var cachedToken))
         {
             token = cachedToken;

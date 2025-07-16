@@ -43,7 +43,7 @@ internal class Proxy : IReferenceFetchable, IFetchable
         {
             return await Cache.FetchAsync(target, cancellationToken).ConfigureAwait(false);
         }
-        
+
         var dataStream = await Source.FetchAsync(target, cancellationToken).ConfigureAwait(false);
         return await CacheContent(target, dataStream, cancellationToken).ConfigureAwait(false);
     }
@@ -58,7 +58,7 @@ internal class Proxy : IReferenceFetchable, IFetchable
     {
         Descriptor node;
         Stream contentStream;
-        
+
         if (Source is IReferenceFetchable srcRefFetchable)
         {
             (node, contentStream) = await srcRefFetchable.FetchAsync(reference, cancellationToken).ConfigureAwait(false);
@@ -68,7 +68,7 @@ internal class Proxy : IReferenceFetchable, IFetchable
             node = await Source.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
             contentStream = await Source.FetchAsync(node, cancellationToken).ConfigureAwait(false);
         }
-        
+
         return (node, await CacheContent(node, contentStream, cancellationToken).ConfigureAwait(false));
     }
 
@@ -85,7 +85,7 @@ internal class Proxy : IReferenceFetchable, IFetchable
         {
             return contentStream;
         }
-        
+
         try
         {
             // Caching index/image manifest is to reduce the number of requests

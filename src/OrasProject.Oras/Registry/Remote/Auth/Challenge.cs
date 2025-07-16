@@ -38,7 +38,7 @@ public static class Challenge
         /// </summary>
         Unknown,
     }
-    
+
     private const string _specialChars = "!#$%&'*+-.^_`|~";
 
     /// <summary>
@@ -74,13 +74,13 @@ public static class Challenge
         {
             return (scheme, null);
         }
-        
+
         rest = rest.Trim();
         if (string.IsNullOrEmpty(rest))
         {
             return (scheme, null);
         }
-        
+
         var paramsDictionary = new Dictionary<string, string>();
 
         // parse params for bearer auth.
@@ -90,14 +90,14 @@ public static class Challenge
         {
             // split the rest string by non-token char
             var (key, remaining) = ParseToken(rest.Trim());
-            
+
             if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(remaining) || !remaining.StartsWith("="))
             {
                 break;
             }
             remaining = remaining.Substring(1).Trim();
             string value;
-            
+
             // extract value if it is quoted
             if (remaining.StartsWith('"'))
             {
@@ -119,19 +119,19 @@ public static class Challenge
                 }
             }
             paramsDictionary.Add(key, value);
-            
+
             rest = rest.Trim();
             if (string.IsNullOrEmpty(rest) || !rest.StartsWith(','))
             {
                 break;
             }
-            
+
             rest = rest.TrimStart(',');
         }
-        
+
         return (scheme, paramsDictionary);
     }
-    
+
     /// <summary>
     /// ParseScheme parses the authentication scheme from a string.
     /// </summary>
@@ -149,7 +149,7 @@ public static class Challenge
             _ => Scheme.Unknown,
         };
     }
-    
+
     /// <summary>
     /// ParseToken parses a token from a string, splitting it into the token and the remaining string by non-token char.
     /// </summary>
@@ -172,7 +172,7 @@ public static class Challenge
 
         return (token[..index], token[index..]);
     }
-    
+
     /// <summary>
     /// IsValidTokenChar determines whether a character is a valid token character defined in RFC 7230 section 3.2.6.
     /// </summary>
@@ -180,9 +180,9 @@ public static class Challenge
     /// <returns>
     /// <c>true</c> if the character is not a valid token character; otherwise, <c>false</c>.
     /// </returns>
-    internal static bool IsValidTokenChar(char c) => 
-        ('A' <= c && c <= 'Z') || 
-        ('a' <= c && c <= 'z') || 
-        ('0' <= c && c <= '9') || 
+    internal static bool IsValidTokenChar(char c) =>
+        ('A' <= c && c <= 'Z') ||
+        ('a' <= c && c <= 'z') ||
+        ('0' <= c && c <= '9') ||
         _specialChars.Contains(c);
 }

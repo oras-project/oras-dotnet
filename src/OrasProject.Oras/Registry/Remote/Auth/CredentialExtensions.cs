@@ -31,9 +31,9 @@ public static class CredentialExtensions
     /// </returns>
     public static bool IsEmpty(this Credential credential)
     {
-        return string.IsNullOrEmpty(credential.Username) && 
-               string.IsNullOrEmpty(credential.Password) && 
-               string.IsNullOrEmpty(credential.RefreshToken) && 
+        return string.IsNullOrEmpty(credential.Username) &&
+               string.IsNullOrEmpty(credential.Password) &&
+               string.IsNullOrEmpty(credential.RefreshToken) &&
                string.IsNullOrEmpty(credential.AccessToken);
     }
 }
