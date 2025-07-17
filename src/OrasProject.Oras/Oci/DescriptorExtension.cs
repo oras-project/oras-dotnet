@@ -1,4 +1,4 @@
-﻿// Copyright The ORAS Authors.
+// Copyright The ORAS Authors.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -15,7 +15,7 @@ using OrasProject.Oras.Exceptions;
 
 namespace OrasProject.Oras.Oci
 {
-    public static class DescriptorExtension
+    internal static class DescriptorExtension
     {
         /// <summary>
         /// LimitSize throws SizeLimitExceededException if the size of desc exceeds the limit limitSize.
@@ -23,7 +23,7 @@ namespace OrasProject.Oras.Oci
         /// <param name="desc"></param>
         /// <param name="limitSize"></param>
         /// <exception cref="SizeLimitExceededException"></exception>
-        public static void LimitSize(this Descriptor desc, long limitSize)
+        internal static void LimitSize(this Descriptor desc, long limitSize)
         {
             if (desc.Size > limitSize)
             {

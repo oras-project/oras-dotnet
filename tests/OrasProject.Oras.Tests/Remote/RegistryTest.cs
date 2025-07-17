@@ -110,7 +110,7 @@ public partial class RegistryTest
             };
             if (req.Method != HttpMethod.Get ||
                 req.RequestUri?.AbsolutePath != "/v2/_catalog"
-               )
+                )
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }

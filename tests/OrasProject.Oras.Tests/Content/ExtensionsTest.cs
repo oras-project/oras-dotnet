@@ -1,4 +1,4 @@
-﻿// Copyright The ORAS Authors.
+// Copyright The ORAS Authors.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -115,7 +115,7 @@ public class ExtensionsTest
             };
 
             if (req.Method == HttpMethod.Get &&
-                 req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedIndexManifestDesc.Digest}")
+                req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedIndexManifestDesc.Digest}")
             {
                 if (!req.Headers.Accept.Contains(new MediaTypeWithQualityHeaderValue(MediaType.ImageIndex)))
                 {

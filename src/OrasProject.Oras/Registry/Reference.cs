@@ -367,7 +367,7 @@ public partial class Reference
     private static string ValidateRegistry(string registry)
     {
         return TryValidateRegistry(registry, out string error) ?
-             registry : throw new InvalidReferenceException(error);
+            registry : throw new InvalidReferenceException(error);
     }
 
     private static bool TryValidateRegistry(string registry, out string error)

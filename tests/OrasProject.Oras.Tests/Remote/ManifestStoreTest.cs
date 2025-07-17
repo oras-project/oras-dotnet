@@ -194,9 +194,9 @@ public class ManifestStoreTest
                 if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values))
                 {
                     if ((req.RequestUri.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}" &&
-                         !values.Contains(MediaType.ImageManifest)) ||
+                        !values.Contains(MediaType.ImageManifest)) ||
                         (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{expectedConfigDesc.Digest}" &&
-                         !values.Contains(MediaType.ImageConfig)))
+                        !values.Contains(MediaType.ImageConfig)))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -285,9 +285,9 @@ public class ManifestStoreTest
                 if (req.Headers.TryGetValues("Content-Type", out IEnumerable<string>? values))
                 {
                     if ((req.RequestUri.AbsolutePath == $"/v2/test/manifests/{expectedManifestDesc.Digest}" &&
-                         !values.Contains(MediaType.ImageManifest)) ||
+                        !values.Contains(MediaType.ImageManifest)) ||
                         (req.RequestUri.AbsolutePath == $"/v2/test/manifests/{expectedIndexManifestDesc.Digest}" &&
-                         !values.Contains(MediaType.ImageIndex)))
+                        !values.Contains(MediaType.ImageIndex)))
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);
                     }
@@ -577,7 +577,7 @@ public class ManifestStoreTest
         {
             Manifests =
             [
-                new ()
+                new()
                 {
                     MediaType = MediaType.ImageManifest,
                     Digest = ComputeSha256(oldManifestBytes),

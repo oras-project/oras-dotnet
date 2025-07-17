@@ -1,4 +1,4 @@
-﻿// Copyright The ORAS Authors.
+// Copyright The ORAS Authors.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -744,24 +744,24 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null
-                                                 && req.Headers.Authorization.Scheme == "Bearer"
-                                                 && req.Headers.Authorization.Parameter == expectedToken),
+                                                && req.Headers.Authorization.Scheme == "Bearer"
+                                                && req.Headers.Authorization.Parameter == expectedToken),
             ItExpr.IsAny<CancellationToken>());
 
         mockHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization == null
-                                                 && req.RequestUri != null
-                                                 && req.RequestUri.Host.TrimEnd('/') == host.TrimEnd('/')),
+                                                && req.RequestUri != null
+                                                && req.RequestUri.Host.TrimEnd('/') == host.TrimEnd('/')),
             ItExpr.IsAny<CancellationToken>());
 
         mockHandler.Protected().Verify(
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization == null
-                                                 && req.RequestUri != null
-                                                 && req.RequestUri.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/')),
+                                                && req.RequestUri != null
+                                                && req.RequestUri.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/')),
             ItExpr.IsAny<CancellationToken>());
     }
 
@@ -827,9 +827,9 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Bearer" &&
-                                                 req.Headers.Authorization.Parameter == expectedToken &&
-                                                 string.Join(" ", req.Headers.GetValues("foo")).Equals("bar bar1")),
+                                                req.Headers.Authorization.Scheme == "Bearer" &&
+                                                req.Headers.Authorization.Parameter == expectedToken &&
+                                                string.Join(" ", req.Headers.GetValues("foo")).Equals("bar bar1")),
             ItExpr.IsAny<CancellationToken>());
     }
 
@@ -867,9 +867,9 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null
-                                                 && req.Headers.Authorization.Scheme == "Basic"
-                                                 && req.Headers.Authorization.Parameter == token
-                                                 && "newBar".Equals(req.Headers.GetValues("foo").FirstOrDefault())),
+                                                && req.Headers.Authorization.Scheme == "Basic"
+                                                && req.Headers.Authorization.Parameter == token
+                                                && "newBar".Equals(req.Headers.GetValues("foo").FirstOrDefault())),
             ItExpr.IsAny<CancellationToken>());
     }
 
@@ -913,10 +913,10 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Bearer"
-                                                 && req.Headers.Authorization.Parameter == token
-                                                 && "newBar".Equals(req.Headers.GetValues("foo").FirstOrDefault())
-                                                 && "value1".Equals(req.Headers.GetValues("key1").FirstOrDefault())),
+                                                req.Headers.Authorization.Scheme == "Bearer"
+                                                && req.Headers.Authorization.Parameter == token
+                                                && "newBar".Equals(req.Headers.GetValues("foo").FirstOrDefault())
+                                                && "value1".Equals(req.Headers.GetValues("key1").FirstOrDefault())),
             ItExpr.IsAny<CancellationToken>());
     }
 
@@ -1022,8 +1022,8 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Bearer"
-                                                 && req.Headers.Authorization.Parameter == expectedToken),
+                                                req.Headers.Authorization.Scheme == "Bearer"
+                                                && req.Headers.Authorization.Parameter == expectedToken),
             ItExpr.IsAny<CancellationToken>());
         mockHandler.Protected().Verify(
             "SendAsync",
@@ -1048,8 +1048,8 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Bearer"
-                                                 && req.Headers.Authorization.Parameter == expectedToken),
+                                                req.Headers.Authorization.Scheme == "Bearer"
+                                                && req.Headers.Authorization.Parameter == expectedToken),
             ItExpr.IsAny<CancellationToken>());
     }
 
@@ -1133,8 +1133,8 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Basic"
-                                                 && req.Headers.Authorization.Parameter == basicToken),
+                                                req.Headers.Authorization.Scheme == "Basic"
+                                                && req.Headers.Authorization.Parameter == basicToken),
             ItExpr.IsAny<CancellationToken>());
 
         mockHandler.Invocations.Clear(); // Clear invocations to ensure no residual state between tests
@@ -1149,8 +1149,8 @@ public class ClientTest
             "SendAsync",
             Times.Once(),
             ItExpr.Is<HttpRequestMessage>(req => req.Headers.Authorization != null &&
-                                                 req.Headers.Authorization.Scheme == "Basic"
-                                                 && req.Headers.Authorization.Parameter == basicToken),
+                                                req.Headers.Authorization.Scheme == "Basic"
+                                                && req.Headers.Authorization.Parameter == basicToken),
             ItExpr.IsAny<CancellationToken>());
     }
 

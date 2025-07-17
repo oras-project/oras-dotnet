@@ -440,7 +440,7 @@ public class Repository : IRepository
         {
             // fall back to tag schema to retrieve referrers
             await foreach (var referrer in FetchReferrersByTagSchema(descriptor, artifactType, cancellationToken)
-                               .ConfigureAwait(false))
+                                .ConfigureAwait(false))
             {
                 yield return referrer;
             }
@@ -450,7 +450,7 @@ public class Repository : IRepository
 
         // referrers state is unknown or supported
         await foreach (var referrer in FetchReferrersByApi(descriptor, artifactType, cancellationToken)
-                           .ConfigureAwait(false))
+                            .ConfigureAwait(false))
         {
             // If Referrers API is supported, then it would return referrers continuously
             // otherwise, this line of code is not executed
@@ -462,7 +462,7 @@ public class Repository : IRepository
         {
             // referrers state is set to NotSupported by ReferrersByApi, fall back to tag schema to retrieve referrers
             await foreach (var referrer in FetchReferrersByTagSchema(descriptor, artifactType, cancellationToken)
-                               .ConfigureAwait(false))
+                                .ConfigureAwait(false))
             {
                 yield return referrer;
             }
@@ -479,7 +479,7 @@ public class Repository : IRepository
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var referrer in FetchReferrersByApi(descriptor, null, cancellationToken)
-                               .ConfigureAwait(false))
+                                .ConfigureAwait(false))
         {
             yield return referrer;
         }
@@ -556,8 +556,8 @@ public class Repository : IRepository
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             var limitedStreamContent = await stream.ReadStreamWithLimitAsync(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
             var referrersIndex = JsonSerializer.Deserialize<Index>(limitedStreamContent) ??
-                                     throw new InvalidResponseException(
-                                         $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");
+                                    throw new InvalidResponseException(
+                                        $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");
 
             // Set ReferrerState to Supported
             SetReferrersState(true);
@@ -597,7 +597,7 @@ public class Repository : IRepository
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var referrer in FetchReferrersByTagSchema(descriptor, null, cancellationToken)
-                               .ConfigureAwait(false))
+                                .ConfigureAwait(false))
         {
             yield return referrer;
         }
