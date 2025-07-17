@@ -796,7 +796,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             };
             if (req.Method != HttpMethod.Get ||
                 req.RequestUri?.AbsolutePath != "/v2/test/tags/list"
-               )
+                )
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
@@ -879,7 +879,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             };
             if (req.Method != HttpMethod.Get ||
                 req.RequestUri?.AbsolutePath != "/v2/test/tags/list"
-               )
+                )
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
