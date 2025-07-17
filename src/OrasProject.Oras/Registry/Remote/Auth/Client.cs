@@ -46,7 +46,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// Cache used for storing and retrieving 
     /// authentication-related data to optimize remote registry operations.
     /// </summary>
-    public ICache Cache { get; set; } = new Cache();
+    public ICache Cache { get; set; } = new cache();
 
     /// <summary>
     /// ClientId used in fetching OAuth2 token as a required field.
