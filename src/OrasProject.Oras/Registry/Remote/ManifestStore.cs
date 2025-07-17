@@ -275,7 +275,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     private async Task UpdateReferrersIndex(Descriptor subject,
-       Referrers.ReferrerChange referrerChange, CancellationToken cancellationToken = default)
+        Referrers.ReferrerChange referrerChange, CancellationToken cancellationToken = default)
     {
         // 1. pull the original referrers index list using referrers tag schema
         var referrersTag = Referrers.BuildReferrersTag(subject);

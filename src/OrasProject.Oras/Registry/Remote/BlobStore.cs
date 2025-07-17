@@ -232,7 +232,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         }.Uri);
 
         using (var response = await Repository.Options.Client.SendAsync(mountReq, cancellationToken)
-                   .ConfigureAwait(false))
+                    .ConfigureAwait(false))
         {
             switch (response.StatusCode)
             {
@@ -244,7 +244,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
                     {
                         // 202, mounting failed. upload session has begun
                         var location = response.Headers.Location ??
-                                       throw new HttpRequestException("missing location header");
+                                        throw new HttpRequestException("missing location header");
                         url = location.IsAbsoluteUri ? location : new Uri(url, location);
                         break;
                     }

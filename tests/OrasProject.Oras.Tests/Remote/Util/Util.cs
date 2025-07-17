@@ -37,8 +37,8 @@ public class Util
         else if (a != null && b != null)
         {
             return a.MediaType == b.MediaType &&
-                   a.Digest == b.Digest &&
-                   a.Size == b.Size;
+                    a.Digest == b.Digest &&
+                    a.Size == b.Size;
         }
 
         return false;
