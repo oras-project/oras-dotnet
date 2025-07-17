@@ -15,7 +15,7 @@ using OrasProject.Oras.Exceptions;
 
 namespace OrasProject.Oras.Oci
 {
-    public static class DescriptorExtension
+    internal static class DescriptorExtension
     {
         /// <summary>
         /// LimitSize throws SizeLimitExceededException if the size of desc exceeds the limit limitSize.
@@ -23,7 +23,7 @@ namespace OrasProject.Oras.Oci
         /// <param name="desc"></param>
         /// <param name="limitSize"></param>
         /// <exception cref="SizeLimitExceededException"></exception>
-        public static void LimitSize(this Descriptor desc, long limitSize)
+        internal static void LimitSize(this Descriptor desc, long limitSize)
         {
             if (desc.Size > limitSize)
             {
