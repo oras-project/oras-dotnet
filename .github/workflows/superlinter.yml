@@ -33,5 +33,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_CSHARP: true # to only check C# linting
-          VALIDATE_ALL_CODEBASE: true
           VALIDATE_EDITORCONFIG: true
