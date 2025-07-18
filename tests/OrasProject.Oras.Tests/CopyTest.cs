@@ -161,7 +161,6 @@ public class CopyTest
         var sourceTarget = new MemoryStore();
         var destinationTarget = new MemoryStore();
 
-
         await Assert.ThrowsAsync<ArgumentNullException>(async () => await sourceTarget.CopyAsync("", destinationTarget, "", cancellationToken));
     }
 

@@ -24,7 +24,6 @@ using static OrasProject.Oras.Content.Digest;
 using Index = OrasProject.Oras.Oci.Index;
 using Xunit;
 
-
 namespace OrasProject.Oras.Tests.Remote;
 
 public class ManifestStoreTest
@@ -330,7 +329,6 @@ public class ManifestStoreTest
         Assert.Equal(Referrers.ReferrersState.Supported, repo.ReferrersState);
     }
 
-
     [Fact]
     public async Task ManifestStore_PushAsyncWithSubjectAndReferrerNotSupported()
     {
@@ -485,7 +483,6 @@ public class ManifestStoreTest
         Assert.Equal(firstExpectedManifestBytes, receivedManifestContent);
         Assert.True(oldIndexDeleted);
         Assert.Equal(firstExpectedIndexReferrersBytes, receivedIndexContent);
-
 
         // Second push with referrer tag schema
         Assert.Equal(Referrers.ReferrersState.NotSupported, repo.ReferrersState);
@@ -847,7 +844,6 @@ public class ManifestStoreTest
         var secondUpdatedReferrersList = new List<Descriptor>(firstUpdatedReferrersList);
         secondUpdatedReferrersList.Remove(indexToDeleteDesc);
         var (secondUpdatedIndexReferrersDesc, secondUpdatedIndexReferrersBytes) = Index.GenerateIndex(secondUpdatedReferrersList);
-
 
         var manifestDeleted = false;
         var oldIndexDeleted = false;

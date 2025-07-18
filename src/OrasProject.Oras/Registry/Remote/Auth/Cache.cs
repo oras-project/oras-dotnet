@@ -30,7 +30,6 @@ public class Cache : ICache
     /// </summary>
     private readonly ConcurrentDictionary<string, CacheEntry> _caches = new();
 
-
     /// <summary>
     /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified registry.
     /// </summary>
@@ -105,6 +104,7 @@ public class Cache : ICache
             token = cachedToken;
             return true;
         }
+        
 
         return false;
     }

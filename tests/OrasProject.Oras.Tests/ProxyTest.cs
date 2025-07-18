@@ -66,7 +66,6 @@ public class ProxyTest
         var ct = CancellationToken.None;
         using var expectedStream = new MemoryStream(manifestBytes);
 
-
         sourceMock.Setup(s => s.FetchAsync(manifestDesc, ct)).ReturnsAsync(expectedStream);
 
         var proxy = new Proxy { Cache = cache, Source = sourceMock.Object };
@@ -99,7 +98,6 @@ public class ProxyTest
                     .ThrowsAsync(new AlreadyExistsException());
         cacheMock.Setup(cache => cache.FetchAsync(manifestDesc, ct)).ReturnsAsync(expectedStream);
         sourceMock.Setup(source => source.FetchAsync(manifestDesc, ct)).ReturnsAsync(expectedStream);
-
 
         var proxy = new Proxy { Cache = cacheMock.Object, Source = sourceMock.Object };
 
@@ -236,7 +234,6 @@ public class ProxyTest
         sourceMock.Verify();
         storageMock.Verify();
     }
-
 
     [Fact]
     public async Task FetchAsync_CachePushThrowsAlreadyExists_ReturnsCacheFetchStream()

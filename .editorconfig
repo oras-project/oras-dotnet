@@ -54,3 +54,7 @@ dotnet_naming_style.public_uppercase_style.capitalization = pascal_case
 
 # CA2007: Consider calling ConfigureAwait on the awaited task
 dotnet_diagnostic.CA2007.severity = warning
+
+# disallow blank consecutive blank lines
+# This setting is experimental and may change in future versions of the .NET SDK
+csharp_style_allow_blank_lines_between_consecutive_braces_experimental = false:error

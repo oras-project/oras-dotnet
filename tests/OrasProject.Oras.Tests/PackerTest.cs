@@ -691,7 +691,6 @@ public class PackerTest
             // Check if the caught exception is of type InvalidDateTimeFormatException
             Assert.True(ex is InvalidDateTimeFormatException, $"Expected InvalidDateTimeFormatException but got {ex.GetType().Name}");
         }
-
     }
 
     [Fact]

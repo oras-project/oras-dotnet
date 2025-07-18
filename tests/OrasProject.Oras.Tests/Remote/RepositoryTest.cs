@@ -1011,7 +1011,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 {
                 }
 
-
                 if (!seekable || rangeHeader == null || rangeHeader.FirstOrDefault() == "")
                 {
                     res.StatusCode = HttpStatusCode.OK;
@@ -1020,7 +1019,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                     res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                     return res;
                 }
-
 
                 long start = -1, end = -1;
                 var hv = req.Headers?.Range?.Ranges?.FirstOrDefault();
@@ -1492,7 +1490,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 {
                 }
 
-
                 if (!seekable || rangeHeader == null || rangeHeader.FirstOrDefault() == "")
                 {
                     res.StatusCode = HttpStatusCode.OK;
@@ -1501,7 +1498,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                     res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                     return res;
                 }
-
 
                 var hv = req.Headers?.Range?.Ranges?.FirstOrDefault();
                 var start = hv != null && hv.To.HasValue ? hv.To.Value : -1;
@@ -1555,7 +1551,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(blob[3..], buf);
     }
-
 
     /// <summary>
     /// GenerateBlobDescriptor_WithVariusDockerContentDigestHeaders tests the GenerateBlobDescriptor method of BlobStore with various Docker-Content-Digest headers.
@@ -1633,7 +1628,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                         throw new Exception(
                             $"[Blob.{method}] {testName}; expected no error for request, but got err; {e.Message}");
                     }
-
                 }
 
                 if (errExpected && !err)
@@ -1643,7 +1637,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             }
         }
     }
-
 
     /// <summary>
     /// ManifestStore_FetchAsync tests the FetchAsync method of ManifestStore.
@@ -2284,12 +2277,10 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 return res;
             }
 
-
             if (path.Contains("/blobs/") && (method == HttpMethod.Get || method == HttpMethod.Head))
             {
                 var arr = path.Split("/");
                 var digest = arr[^1];
-
 
                 if (digest == exampleManifestDescriptor.Digest)
                 {
@@ -2370,7 +2361,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                         throw new Exception(
                             $"[Manifest.{method}] {testName}; expected no error for request, but got err; {e.Message}");
                     }
-
                 }
                 if (errExpected && !err)
                 {
@@ -2378,7 +2368,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 }
             }
         }
-
     }
 
     /// <summary>
@@ -3512,7 +3501,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Client = CustomClient(MockedHttpHandler),
             PlainHttp = true,
         });
-
 
         var cancellationToken = new CancellationToken();
         var returnedReferrers1 = new List<Descriptor>();

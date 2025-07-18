@@ -34,7 +34,6 @@ public class HttpRequestMessageExtensionsTest
         var customOptionKey = new HttpRequestOptionsKey<string>("Custom-Option");
         originalRequest.Options.TryAdd("Custom-Option", "OptionValue");
 
-
         // Act
         var clonedRequest = await originalRequest.CloneAsync();
 
@@ -79,7 +78,6 @@ public class HttpRequestMessageExtensionsTest
         originalRequest.Headers.Add("key", "value");
         var customOptionKey = new HttpRequestOptionsKey<string>("Custom-Option");
         originalRequest.Options.TryAdd("Custom-Option", "OptionValue");
-
 
         // Act
         var clonedRequest = await originalRequest.CloneAsync(rewindContent: false);

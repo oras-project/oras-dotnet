@@ -174,5 +174,4 @@ public partial class RegistryTest
         }
         Assert.Equal(wantRepositories, gotRepositories);
     }
-
 }
