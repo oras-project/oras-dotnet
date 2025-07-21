@@ -16,7 +16,7 @@ using OrasProject.Oras.Registry.Remote;
 using Xunit;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class UriFactoryTest
 {

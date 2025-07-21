@@ -15,7 +15,7 @@ using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Exceptions;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class ReferenceTest
 {

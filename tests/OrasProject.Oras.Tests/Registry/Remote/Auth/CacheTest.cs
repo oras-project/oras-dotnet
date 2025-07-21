@@ -14,7 +14,7 @@
 using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote.Auth;
+namespace OrasProject.Oras.Tests.Registry.Remote.Auth;
 
 public class CacheTest
 {

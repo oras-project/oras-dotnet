@@ -18,7 +18,7 @@ using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class ReferrersTest
 {

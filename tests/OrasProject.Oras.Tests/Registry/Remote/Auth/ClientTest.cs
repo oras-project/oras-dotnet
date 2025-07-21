@@ -22,7 +22,7 @@ using OrasProject.Oras.Registry.Remote.Exceptions;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote.Auth;
+namespace OrasProject.Oras.Tests.Registry.Remote.Auth;
 
 public class ClientTest
 {

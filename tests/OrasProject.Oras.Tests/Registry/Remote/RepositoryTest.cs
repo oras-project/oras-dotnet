@@ -30,7 +30,7 @@ using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 {
@@ -2313,7 +2313,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             return res;
         }
 
-        var reg = new Registry.Remote.Registry(new RepositoryOptions()
+        var reg = new Oras.Registry.Remote.Registry(new RepositoryOptions()
         {
             Reference = new Reference("localhost:5000"),
             Client = CustomClient(MockHandlerMockHandler),

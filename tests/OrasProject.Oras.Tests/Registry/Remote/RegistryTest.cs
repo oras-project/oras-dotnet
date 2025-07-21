@@ -20,7 +20,7 @@ using OrasProject.Oras.Registry.Remote.Auth;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public partial class RegistryTest
 {
@@ -37,7 +37,7 @@ public partial class RegistryTest
     public void Registry()
     {
         var registryName = "foobar";
-        var registry = new Registry.Remote.Registry(registryName);
+        var registry = new Oras.Registry.Remote.Registry(registryName);
         var options = registry.RepositoryOptions;
         Assert.Equal(registryName, options.Reference.Registry);
     }
@@ -75,7 +75,7 @@ public partial class RegistryTest
                 return res;
             }
         }
-        var registry = new Registry.Remote.Registry(new RepositoryOptions()
+        var registry = new Oras.Registry.Remote.Registry(new RepositoryOptions()
         {
             Reference = new Reference("localhost:5000"),
             PlainHttp = true,
@@ -144,7 +144,7 @@ public partial class RegistryTest
                     break;
             }
 
-            var repositoryList = new Registry.Remote.Registry.RepositoryList
+            var repositoryList = new Oras.Registry.Remote.Registry.RepositoryList
             {
                 Repositories = [.. repos]
             };
@@ -153,7 +153,7 @@ public partial class RegistryTest
 
         }
 
-        var registry = new Registry.Remote.Registry(new RepositoryOptions()
+        var registry = new Oras.Registry.Remote.Registry(new RepositoryOptions()
         {
             Reference = new Reference("localhost:5000"),
             PlainHttp = true,

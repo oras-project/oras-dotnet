@@ -14,7 +14,7 @@
 using OrasProject.Oras.Registry.Remote.Exceptions;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class ExceptionTest
 {
