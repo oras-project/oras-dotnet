@@ -12,6 +12,8 @@
 // limitations under the License.
 
 using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Registry.Exceptions;
+using OrasProject.Oras.Registry.Remote.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;

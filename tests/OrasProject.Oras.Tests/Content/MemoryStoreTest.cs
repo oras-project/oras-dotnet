@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Content.Exceptions;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using Index = OrasProject.Oras.Oci.Index;

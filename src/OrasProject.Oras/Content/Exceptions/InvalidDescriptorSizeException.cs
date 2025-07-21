@@ -13,7 +13,7 @@
 
 using System;
 
-namespace OrasProject.Oras.Content;
+namespace OrasProject.Oras.Content.Exceptions;
 
 /// <summary>
 /// InvalidDescriptorSizeException is thrown when a descriptor size is invalid.

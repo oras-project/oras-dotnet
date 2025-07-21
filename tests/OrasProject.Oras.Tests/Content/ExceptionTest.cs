@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Content.Exceptions;
 using Xunit;
 
 namespace OrasProject.Oras.Tests.Content;

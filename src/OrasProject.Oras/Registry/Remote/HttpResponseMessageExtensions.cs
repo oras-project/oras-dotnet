@@ -13,6 +13,7 @@
 
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Registry.Remote.Exceptions;
 using System;
 using System.Linq;
 using System.Net.Http;

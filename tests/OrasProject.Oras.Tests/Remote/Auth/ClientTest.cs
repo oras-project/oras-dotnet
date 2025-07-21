@@ -19,6 +19,7 @@ using Moq;
 using Moq.Protected;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry.Remote.Auth;
+using OrasProject.Oras.Registry.Remote.Exceptions;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using Xunit;
 using Xunit.Abstractions;
