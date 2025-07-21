@@ -24,7 +24,7 @@ using Index = OrasProject.Oras.Oci.Index;
 namespace OrasProject.Oras.Content;
 
 
-public static class Extensions
+public static class ContentExtensions
 {
     private const int _defaultBufferSize = 8192; // 8 KB, standard for stream I/O
 

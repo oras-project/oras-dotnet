@@ -20,7 +20,7 @@ using OrasProject.Oras.Content;
 
 namespace OrasProject.Oras;
 
-public static class Extensions
+public static class TargetExtensions
 {
     /// <summary>
     /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
