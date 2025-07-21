@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Content;
 using OrasProject.Oras.Content.Exceptions;
 using Xunit;
 
@@ -42,4 +41,13 @@ public class ExceptionTest
         await Assert.ThrowsAsync<MismatchedSizeException>(() => throw new MismatchedSizeException("Mismatched size"));
         await Assert.ThrowsAsync<MismatchedSizeException>(() => throw new MismatchedSizeException("Mismatched size", null));
     }
+
+    [Fact]
+    public async Task InvalidDigestException()
+    {
+        await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException());
+        await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException("Invalid digest"));
+        await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException("Invalid digest", null));
+    }
+
 }
