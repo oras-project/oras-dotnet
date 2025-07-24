@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Net;
 using OrasProject.Oras.Registry.Remote;
 using Xunit;
 
@@ -18,6 +19,53 @@ namespace OrasProject.Oras.Tests.Remote;
 
 public class HttpResponseMessageExtensionsTests
 {
+    [Fact]
+        public async Task ParseErrorResponseAsync_ReturnsResponseException_WithErrors()
+        {
+            // Arrange
+            var expectedBody = "{\"errors\":[{\"code\":\"UNAUTHORIZED\",\"message\":\"authentication required\"}]}";
+            var response = new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Content = new StringContent(expectedBody)
+            };
+
+            // Act
+            var ex = await response.ParseErrorResponseAsync(CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(ex);
+            Assert.NotNull(ex.Errors);
+            Assert.Single(ex.Errors);
+            Assert.Equal("HTTP 401 error received", ex.Message);
+            Assert.Equal("UNAUTHORIZED", ex.Errors[0].Code);
+            Assert.Equal("authentication required", ex.Errors[0].Message);
+            Assert.Equal(HttpMethod.Get, ex.Method ?? HttpMethod.Get); // Default to GET if null
+        }
+
+        [Fact]
+        public async Task ParseErrorResponseAsync_WithMessage_ReturnsResponseException_WithErrorsAndMessage()
+        {
+            // Arrange
+            var expectedBody = "{\"errors\":[{\"code\":\"NOT_FOUND\",\"message\":\"not found\"}]}";
+            var customMessage = "Custom error message";
+            var response = new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                Content = new StringContent(expectedBody)
+            };
+
+            // Act
+            var ex = await response.ParseErrorResponseAsync(customMessage, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(ex);
+            Assert.NotNull(ex.Errors);
+            Assert.Single(ex.Errors);
+            Assert.Equal("HTTP 404 error received", ex.Message);
+            Assert.Equal("NOT_FOUND", ex.Errors[0].Code);
+            Assert.Equal("not found", ex.Errors[0].Message);
+            Assert.Contains(customMessage, ex.Message);
+        }
+
     [Theory]
     [InlineData("", "")] // no header
     [InlineData("<http://example.com/next>", "http://example.com/next")]
