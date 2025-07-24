@@ -406,7 +406,6 @@ public class Repository : IRepository
     public async Task MountAsync(Descriptor descriptor, string fromRepository, Func<CancellationToken, Task<Stream>>? getContent = null, CancellationToken cancellationToken = default)
         => await ((IMounter)Blobs).MountAsync(descriptor, fromRepository, getContent, cancellationToken).ConfigureAwait(false);
 
-
     /// <summary>
     /// FetchReferrersAsync retrieves referrers for the given descriptor
     /// and return a streaming of descriptors asynchronously for consumption.
