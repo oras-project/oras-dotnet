@@ -14,6 +14,7 @@
 using System;
 
 namespace OrasProject.Oras.Registry.Exceptions;
+
 /// <summary>
 /// InvalidReferenceException is thrown when the reference is invalid.
 /// </summary>
