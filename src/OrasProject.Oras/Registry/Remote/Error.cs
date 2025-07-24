@@ -20,6 +20,7 @@ public enum ErrorCode
 {
     NAME_UNKNOWN
 }
+
 public class Error
 {
     [JsonPropertyName("code")]
