@@ -104,7 +104,6 @@ public class Cache : ICache
             token = cachedToken;
             return true;
         }
-        
 
         return false;
     }
