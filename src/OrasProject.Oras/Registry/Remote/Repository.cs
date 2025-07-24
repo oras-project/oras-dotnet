@@ -529,7 +529,7 @@ public class Repository : IRepository
                     // If the status code is NotFound, handle as an error, possibly a non-existent repository
                     var exception = await response.ParseErrorResponseAsync(cancellationToken)
                         .ConfigureAwait(false);
-                    if (exception.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
+                    if (exception.Errors?.First().Code == nameof(ErrorCode.NAME_UNKNOWN))
                     {
                         // Repository is not found, Referrers API status is unknown
                         // Propagate the exception to the caller
@@ -701,7 +701,7 @@ public class Repository : IRepository
                 case HttpStatusCode.NotFound:
                     var err = await response.ParseErrorResponseAsync(cancellationToken)
                         .ConfigureAwait(false);
-                    if (err.Errors?.First().Code == nameof(ResponseException.ErrorCode.NAME_UNKNOWN))
+                    if (err.Errors?.First().Code == nameof(ErrorCode.NAME_UNKNOWN))
                     {
                         // referrer state is unknown because the repository is not found
                         throw err;

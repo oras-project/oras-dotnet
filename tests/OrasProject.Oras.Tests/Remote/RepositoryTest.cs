@@ -3621,7 +3621,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                     new
                     {
                         message = "The repository could not be found.",
-                        code = nameof(ResponseException.ErrorCode.NAME_UNKNOWN)
+                        code = nameof(ErrorCode.NAME_UNKNOWN)
                     }
                 }
             };
