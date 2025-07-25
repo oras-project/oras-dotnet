@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 /// <summary>
 /// A stream implementation that wraps another stream and disables seeking.

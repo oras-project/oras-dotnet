@@ -13,23 +13,23 @@
 
 using System;
 
-namespace OrasProject.Oras.Exceptions;
+namespace OrasProject.Oras.Registry.Remote.Exceptions;
 
 /// <summary>
-/// InvalidDigestException is thrown when a digest is invalid.
+/// InvalidResponseException is thrown when the response is invalid.
 /// </summary>
-public class InvalidDigestException : FormatException
+public class InvalidResponseException : FormatException
 {
-    public InvalidDigestException()
+    public InvalidResponseException()
     {
     }
 
-    public InvalidDigestException(string? message)
+    public InvalidResponseException(string? message)
         : base(message)
     {
     }
 
-    public InvalidDigestException(string? message, Exception? inner)
+    public InvalidResponseException(string? message, Exception? inner)
         : base(message, inner)
     {
     }

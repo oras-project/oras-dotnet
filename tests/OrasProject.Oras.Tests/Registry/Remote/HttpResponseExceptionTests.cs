@@ -14,7 +14,7 @@
 using OrasProject.Oras.Registry.Remote;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class HttpResponseMessageExtensionsTests
 {
@@ -67,7 +67,6 @@ public class HttpResponseMessageExtensionsTests
         var exception = Assert.Throws<HttpIOException>(() => response.ParseLink());
         Assert.Equal(HttpRequestError.InvalidResponse, exception.HttpRequestError);
     }
-
 
     [Fact]
     public async Task VerifyContentDigest_ValidDigest_DoesNotThrow()

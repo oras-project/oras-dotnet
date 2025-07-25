@@ -17,13 +17,12 @@ using System.Security.Authentication;
 using System.Text;
 using Moq;
 using Moq.Protected;
-using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry.Remote.Auth;
+using OrasProject.Oras.Registry.Remote.Exceptions;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using Xunit;
-using Xunit.Abstractions;
 
-namespace OrasProject.Oras.Tests.Remote.Auth;
+namespace OrasProject.Oras.Tests.Registry.Remote.Auth;
 
 public class ClientTest
 {
@@ -383,7 +382,6 @@ public class ClientTest
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
-
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
 
@@ -903,7 +901,6 @@ public class ClientTest
         client.CustomHeaders["foo"] = ["newBar"];
         client.CustomHeaders["key1"] = ["value1"];
 
-
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
@@ -996,7 +993,6 @@ public class ClientTest
                         RequestMessage = req
                     };
                 }
-
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
@@ -1102,7 +1098,6 @@ public class ClientTest
                     };
                 }
             }
-
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }

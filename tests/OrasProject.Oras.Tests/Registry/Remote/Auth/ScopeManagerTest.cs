@@ -16,7 +16,7 @@ using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote.Auth;
+namespace OrasProject.Oras.Tests.Registry.Remote.Auth;
 
 public class ScopeManagerTest
 {
@@ -126,9 +126,7 @@ public class ScopeManagerTest
             Assert.Equal(expectedResources[resourceIndex++], result.ResourceType);
             Assert.Equal(expectedResources[resourceIndex++], result.ResourceName);
         }
-
     }
-
 
     [Fact]
     public void SetScopeForRegistry_MergesActions_WhenScopeExists()
@@ -206,7 +204,6 @@ public class ScopeManagerTest
     public void SetScopeForRegistry_AddsMultipleScopes_ForDifferentRepositories()
     {
 
-
         // Arrange
         var scopeManager = new ScopeManager();
         var scope1 = new Scope("repository", "repo1", new() { Scope.ActionPull });
@@ -247,11 +244,9 @@ public class ScopeManagerTest
 
     }
 
-
     [Fact]
     public void GetScopesStringForHost_ReturnsEmptyList_WhenNoScopesExistForRegistry()
     {
-
 
         // Arrange
         var scopeManager = new ScopeManager();
@@ -268,7 +263,6 @@ public class ScopeManagerTest
     [Fact]
     public void GetScopesStringForHost_ReturnsSortedActions_ForSingleScope()
     {
-
 
         // Arrange
         var scopeManager = new ScopeManager();
@@ -287,7 +281,6 @@ public class ScopeManagerTest
     [Fact]
     public void GetScopesStringForHost_ReturnsFormattedStrings_ForMultipleScopes()
     {
-
 
         // Arrange
         var scopeManager = new ScopeManager();
@@ -323,7 +316,6 @@ public class ScopeManagerTest
         scopeManager.SetScopeForRegistry("registry1", scope3);
         scopeManager.SetScopeForRegistry("registry1", scope4);
 
-
         // Act
         var result = scopeManager.GetScopesStringForHost("registry1");
 
@@ -339,7 +331,6 @@ public class ScopeManagerTest
     [Fact]
     public void GetScopesStringForHost_ReturnsFormattedStrings_ForWildCardScope()
     {
-
 
         // Arrange
         var scopeManager = new ScopeManager();
@@ -364,7 +355,6 @@ public class ScopeManagerTest
     public void GetScopesForHost_ReturnsEmptySet_WhenRegistryNotFound()
     {
 
-
         // Arrange
         var scopeManager = new ScopeManager();
 
@@ -379,7 +369,6 @@ public class ScopeManagerTest
     [Fact]
     public void SetRepositoryScope_AddsScopeForValidReference()
     {
-
 
         // Arrange
         var scopeManager = new ScopeManager();
@@ -405,7 +394,6 @@ public class ScopeManagerTest
     [Fact]
     public void SetRepositoryScope_MergesActions_WhenScopeAlreadyExists()
     {
-
 
         // Arrange
         var scopeManager = new ScopeManager();
@@ -433,7 +421,6 @@ public class ScopeManagerTest
     [Fact]
     public void SetRepositoryScope_ReplacesActionsWithAll_WhenAllActionIsAdded()
     {
-
 
         // Arrange
         var scopeManager = new ScopeManager();
@@ -509,7 +496,6 @@ public class ScopeManagerTest
         Assert.Contains(Scope.ActionWildcard, scope.Actions);
     }
 
-
     [Fact]
     public void SetScopeForRegistry_Static_DoesNothing_ForPlainHttpClient()
     {
@@ -584,5 +570,4 @@ public class ScopeManagerTest
         Assert.Single(updated.Actions);
         Assert.Contains(Scope.ActionWildcard, updated.Actions);
     }
-
 }

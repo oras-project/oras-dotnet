@@ -14,7 +14,7 @@
 using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote.Auth;
+namespace OrasProject.Oras.Tests.Registry.Remote.Auth;
 
 public class ScopeTest
 {
@@ -121,7 +121,6 @@ public class ScopeTest
         var scope3 = new Scope("repository", "my-repo", new HashSet<string> { Scope.ActionPush, Scope.ActionPull });
         var scope4 = new Scope("repository", "my-repo1", new HashSet<string> { Scope.ActionPush, Scope.ActionPull });
 
-
         // Act
         var sortedSet = new SortedSet<Scope>();
         Scope.AddOrMergeScope(sortedSet, scope1);
@@ -198,7 +197,6 @@ public class ScopeTest
         Scope.AddOrMergeScope(scopes, scope2);
         Scope.AddOrMergeScope(scopes, scope3);
 
-
         // Assert
         Assert.Equal(3, scopes.Count);
         Assert.Contains(scopes, s => s.ToString() == "repository:my-repo:pull");
@@ -217,7 +215,6 @@ public class ScopeTest
 
         var scope3 = new Scope("registry", "catalog", new HashSet<string> { "metadata-read" });
         var scope4 = new Scope("registry", "catalog", new HashSet<string> { Scope.ActionWildcard });
-
 
         // Act
         Scope.AddOrMergeScope(scopes, scope1);

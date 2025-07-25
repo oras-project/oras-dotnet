@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content.Exceptions;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
@@ -19,7 +20,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 namespace OrasProject.Oras.Content;
-
 
 public static class StreamExtensions
 {

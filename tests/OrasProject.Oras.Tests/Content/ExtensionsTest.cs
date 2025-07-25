@@ -17,6 +17,7 @@ using System.Text;
 using System.Text.Json;
 using Moq;
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Content.Exceptions;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
@@ -84,7 +85,6 @@ public class ExtensionsTest
         var cancellationToken = new CancellationToken();
         var actualManifestSuccessors = (await repo.GetSuccessorsAsync(expectedManifestDesc, cancellationToken)).ToList();
 
-
         // assert
         Assert.Equal(3, actualManifestSuccessors.Count);
         Assert.Equal(manifest.Subject.Digest, actualManifestSuccessors[0].Digest);
@@ -106,7 +106,6 @@ public class ExtensionsTest
             Size = expectedIndexManifestBytes.Length,
             ArtifactType = MediaType.ImageIndex,
         };
-
 
         HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req,
             CancellationToken cancellationToken)
@@ -146,7 +145,6 @@ public class ExtensionsTest
         var cancellationToken = new CancellationToken();
         var actualIndexManifestSuccessors = (await repo.GetSuccessorsAsync(expectedIndexManifestDesc, cancellationToken)).ToList();
 
-
         // assert
         Assert.Equal(4, actualIndexManifestSuccessors.Count);
         Assert.Equal(expectedIndexManifest.Subject.Digest, actualIndexManifestSuccessors[0].Digest);
@@ -154,7 +152,6 @@ public class ExtensionsTest
         Assert.Equal(expectedIndexManifest.Manifests[1].Digest, actualIndexManifestSuccessors[2].Digest);
         Assert.Equal(expectedIndexManifest.Manifests[2].Digest, actualIndexManifestSuccessors[3].Digest);
     }
-
 
     [Fact]
     public async Task GetSuccessorsAsync_ImageConfig_ReturnsEmptyList()

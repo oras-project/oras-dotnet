@@ -15,7 +15,7 @@ using System.Net.Http.Headers;
 using OrasProject.Oras.Registry.Remote;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class HttpRequestMessageExtensionsTest
 {
@@ -33,7 +33,6 @@ public class HttpRequestMessageExtensionsTest
         originalRequest.Headers.Add("key", "value");
         var customOptionKey = new HttpRequestOptionsKey<string>("Custom-Option");
         originalRequest.Options.TryAdd("Custom-Option", "OptionValue");
-
 
         // Act
         var clonedRequest = await originalRequest.CloneAsync();
@@ -79,7 +78,6 @@ public class HttpRequestMessageExtensionsTest
         originalRequest.Headers.Add("key", "value");
         var customOptionKey = new HttpRequestOptionsKey<string>("Custom-Option");
         originalRequest.Options.TryAdd("Custom-Option", "OptionValue");
-
 
         // Act
         var clonedRequest = await originalRequest.CloneAsync(rewindContent: false);

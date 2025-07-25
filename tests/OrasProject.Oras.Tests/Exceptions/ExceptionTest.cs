@@ -27,45 +27,11 @@ public class ExceptionTest
     }
 
     [Fact]
-    public async Task InvalidDigestException()
-    {
-        await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException());
-        await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException("Invalid digest"));
-        await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException("Invalid digest", null));
-    }
-
-    [Fact]
-    public async Task InvalidReferenceException()
-    {
-        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException());
-        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException("Invalid reference"));
-        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException("Invalid reference", null));
-    }
-
-    [Fact]
     public async Task NotFoundException()
     {
         await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException());
         await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException("Not found"));
         await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException("Not found", null));
-    }
-
-    [Fact]
-    public async Task ReferrersSupportLevelAlreadySetException()
-    {
-        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException());
-        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set"));
-        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set", null));
-    }
-
-    [Fact]
-    public async Task InvalidResponseException()
-    {
-        await Assert.ThrowsAsync<InvalidResponseException>(() => throw new InvalidResponseException());
-        await Assert.ThrowsAsync<InvalidResponseException>(() =>
-            throw new InvalidResponseException("Invalid response"));
-        await Assert.ThrowsAsync<InvalidResponseException>(() =>
-            throw new InvalidResponseException("Invalid response", null));
     }
 
     [Fact]

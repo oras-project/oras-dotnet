@@ -11,13 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Registry.Exceptions;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
 namespace OrasProject.Oras.Registry;
-
 
 /// <summary>
 /// Reference represents a reference to a registry, repository, and content within the repository.
@@ -34,7 +33,6 @@ public partial class Reference
 
     // This can be the tag or digest part of the reference.
     private string? _reference;
-
 
     /// <summary>
     /// ContentReferenceType is used to identify the type of <see cref="ContentReference"/>
@@ -380,7 +378,6 @@ public partial class Reference
             return false;
         }
 
-
         string uriStringWithScheme = "dummy://" + registry;
         if (!Uri.IsWellFormedUriString(uriStringWithScheme, UriKind.Absolute))
         {
@@ -388,7 +385,6 @@ public partial class Reference
             return false;
 
         }
-
 
         // Check if the authority part of the URI matches the registry
         // This is a workaround for the fact that Uri does not support

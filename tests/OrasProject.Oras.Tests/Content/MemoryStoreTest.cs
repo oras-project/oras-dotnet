@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Content.Exceptions;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using Index = OrasProject.Oras.Oci.Index;
@@ -231,7 +232,6 @@ public class MemoryStoreTest
             new() { }, // blob 7
             new() { } // blob 8
         };
-
 
         foreach (var (i, want) in wants.Select((v, i) => (i, v)))
         {

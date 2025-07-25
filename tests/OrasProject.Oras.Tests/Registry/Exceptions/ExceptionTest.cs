@@ -11,25 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.IO;
+using OrasProject.Oras.Registry.Exceptions;
+using Xunit;
 
-namespace OrasProject.Oras.Content
+namespace OrasProject.Oras.Tests.Registry.Exceptions;
+
+public class ExceptionTest
 {
-    public class MismatchedSizeException : IOException
+    [Fact]
+    public async Task InvalidReferenceException()
     {
-        public MismatchedSizeException()
-        {
-        }
-
-        public MismatchedSizeException(string? message)
-            : base(message)
-        {
-        }
-
-        public MismatchedSizeException(string? message, Exception? inner)
-            : base(message, inner)
-        {
-        }
+        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException());
+        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException("Invalid reference"));
+        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException("Invalid reference", null));
     }
 }

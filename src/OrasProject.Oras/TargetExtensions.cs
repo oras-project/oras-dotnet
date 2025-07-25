@@ -41,7 +41,6 @@ public static class TargetExtensions
         return await src.CopyAsync(srcRef, dst, dstRef, new CopyOptions(), cancellationToken).ConfigureAwait(false);
     }
 
-
     /// <summary>
     /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
     /// in the source Target to the destination Target.

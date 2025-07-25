@@ -11,26 +11,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
+namespace OrasProject.Oras.Registry.Remote;
 
-namespace OrasProject.Oras.Exceptions;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
-/// <summary>
-/// InvalidReferenceException is thrown when the reference is invalid.
-/// </summary>
-public class InvalidReferenceException : FormatException
+public enum ErrorCode
 {
-    public InvalidReferenceException()
-    {
-    }
+    NAME_UNKNOWN
+}
 
-    public InvalidReferenceException(string? message)
-        : base(message)
-    {
-    }
+public class Error
+{
+    [JsonPropertyName("code")]
+    public required string Code { get; set; }
 
-    public InvalidReferenceException(string? message, Exception? inner)
-        : base(message, inner)
-    {
-    }
+    [JsonPropertyName("message")]
+    public required string Message { get; set; }
+
+    [JsonPropertyName("detail")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public JsonElement? Detail { get; set; }
 }

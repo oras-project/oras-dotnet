@@ -12,25 +12,21 @@
 // limitations under the License.
 
 using System;
-using System.IO;
 
-namespace OrasProject.Oras.Content;
+namespace OrasProject.Oras.Registry.Remote.Exceptions;
 
-/// <summary>
-/// MismatchedDigestException is thrown when a digest does not match the content.
-/// </summary>
-public class MismatchedDigestException : IOException
+public class ReferrersStateAlreadySetException : Exception
 {
-    public MismatchedDigestException()
+    public ReferrersStateAlreadySetException()
     {
     }
 
-    public MismatchedDigestException(string? message)
+    public ReferrersStateAlreadySetException(string? message)
         : base(message)
     {
     }
 
-    public MismatchedDigestException(string? message, Exception? inner)
+    public ReferrersStateAlreadySetException(string? message, Exception? inner)
         : base(message, inner)
     {
     }
