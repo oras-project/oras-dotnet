@@ -49,5 +49,4 @@ public class ExceptionTest
         await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException("Invalid digest"));
         await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException("Invalid digest", null));
     }
-
 }
