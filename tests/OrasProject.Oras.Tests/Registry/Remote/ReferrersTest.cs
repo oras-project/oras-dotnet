@@ -103,7 +103,6 @@ public class ReferrersTest
         Assert.True(updateRequired);
     }
 
-
     [Fact]
     public void ApplyReferrerChanges_ShouldDeleteReferrersWithDuplicates()
     {
@@ -382,5 +381,4 @@ public class ReferrersTest
         var result = Referrers.FilterReferrers(referrers, artifactType);
         Assert.Empty(result);
     }
-
 }

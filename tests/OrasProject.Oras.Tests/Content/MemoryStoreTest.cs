@@ -233,7 +233,6 @@ public class MemoryStoreTest
             new() { } // blob 8
         };
 
-
         foreach (var (i, want) in wants.Select((v, i) => (i, v)))
         {
             var predecessors = await memoryTarget.GetPredecessorsAsync(descs[i], cancellationToken);

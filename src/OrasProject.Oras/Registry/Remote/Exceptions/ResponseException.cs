@@ -22,23 +22,6 @@ namespace OrasProject.Oras.Registry.Remote.Exceptions;
 
 public class ResponseException : HttpRequestException
 {
-    public enum ErrorCode
-    {
-        NAME_UNKNOWN
-    }
-    public class Error
-    {
-        [JsonPropertyName("code")]
-        public required string Code { get; set; }
-
-        [JsonPropertyName("message")]
-        public required string Message { get; set; }
-
-        [JsonPropertyName("detail")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public JsonElement? Detail { get; set; }
-    }
-
     private class ErrorResponse
     {
         [JsonPropertyName("errors")]

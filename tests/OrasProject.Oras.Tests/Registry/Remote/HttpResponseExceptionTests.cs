@@ -68,7 +68,6 @@ public class HttpResponseMessageExtensionsTests
         Assert.Equal(HttpRequestError.InvalidResponse, exception.HttpRequestError);
     }
 
-
     [Fact]
     public async Task VerifyContentDigest_ValidDigest_DoesNotThrow()
     {
