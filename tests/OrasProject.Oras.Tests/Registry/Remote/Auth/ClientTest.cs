@@ -17,13 +17,12 @@ using System.Security.Authentication;
 using System.Text;
 using Moq;
 using Moq.Protected;
-using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry.Remote.Auth;
+using OrasProject.Oras.Registry.Remote.Exceptions;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using Xunit;
-using Xunit.Abstractions;
 
-namespace OrasProject.Oras.Tests.Remote.Auth;
+namespace OrasProject.Oras.Tests.Registry.Remote.Auth;
 
 public class ClientTest
 {

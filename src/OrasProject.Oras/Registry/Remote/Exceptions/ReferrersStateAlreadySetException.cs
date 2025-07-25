@@ -12,24 +12,22 @@
 // limitations under the License.
 
 using System;
-using System.IO;
 
-namespace OrasProject.Oras.Content
+namespace OrasProject.Oras.Registry.Remote.Exceptions;
+
+public class ReferrersStateAlreadySetException : Exception
 {
-    public class MismatchedSizeException : IOException
+    public ReferrersStateAlreadySetException()
     {
-        public MismatchedSizeException()
-        {
-        }
+    }
 
-        public MismatchedSizeException(string? message)
-            : base(message)
-        {
-        }
+    public ReferrersStateAlreadySetException(string? message)
+        : base(message)
+    {
+    }
 
-        public MismatchedSizeException(string? message, Exception? inner)
-            : base(message, inner)
-        {
-        }
+    public ReferrersStateAlreadySetException(string? message, Exception? inner)
+        : base(message, inner)
+    {
     }
 }

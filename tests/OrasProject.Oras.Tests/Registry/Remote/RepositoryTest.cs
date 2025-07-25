@@ -16,13 +16,13 @@ using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
+using OrasProject.Oras.Registry.Remote.Exceptions;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 using Xunit.Abstractions;
 using static OrasProject.Oras.Content.Digest;
@@ -30,7 +30,7 @@ using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 {
@@ -2304,7 +2304,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             return res;
         }
 
-        var reg = new Registry.Remote.Registry(new RepositoryOptions()
+        var reg = new Oras.Registry.Remote.Registry(new RepositoryOptions()
         {
             Reference = new Reference("localhost:5000"),
             Client = CustomClient(MockHandlerMockHandler),

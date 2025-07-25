@@ -11,26 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
+using OrasProject.Oras.Registry.Exceptions;
+using Xunit;
 
-namespace OrasProject.Oras.Exceptions;
+namespace OrasProject.Oras.Tests.Registry.Exceptions;
 
-/// <summary>
-/// InvalidDigestException is thrown when a digest is invalid.
-/// </summary>
-public class InvalidDigestException : FormatException
+public class ExceptionTest
 {
-    public InvalidDigestException()
+    [Fact]
+    public async Task InvalidReferenceException()
     {
-    }
-
-    public InvalidDigestException(string? message)
-        : base(message)
-    {
-    }
-
-    public InvalidDigestException(string? message, Exception? inner)
-        : base(message, inner)
-    {
+        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException());
+        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException("Invalid reference"));
+        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException("Invalid reference", null));
     }
 }

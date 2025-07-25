@@ -18,7 +18,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace OrasProject.Oras.Registry.Remote;
+namespace OrasProject.Oras.Registry.Remote.Exceptions;
 
 public class ResponseException : HttpRequestException
 {

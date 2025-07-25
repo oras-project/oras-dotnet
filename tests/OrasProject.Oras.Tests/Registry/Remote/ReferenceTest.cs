@@ -11,11 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Registry;
+using OrasProject.Oras.Registry.Exceptions;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class ReferenceTest
 {

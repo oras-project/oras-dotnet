@@ -12,7 +12,7 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
-using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Content.Exceptions;
 using System.Text;
 using Xunit;
 

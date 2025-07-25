@@ -13,23 +13,23 @@
 
 using System;
 
-namespace OrasProject.Oras.Exceptions;
+namespace OrasProject.Oras.Registry.Remote.Exceptions;
 
 /// <summary>
-/// InvalidReferenceException is thrown when the reference is invalid.
+/// InvalidResponseException is thrown when the response is invalid.
 /// </summary>
-public class InvalidReferenceException : FormatException
+public class InvalidResponseException : FormatException
 {
-    public InvalidReferenceException()
+    public InvalidResponseException()
     {
     }
 
-    public InvalidReferenceException(string? message)
+    public InvalidResponseException(string? message)
         : base(message)
     {
     }
 
-    public InvalidReferenceException(string? message, Exception? inner)
+    public InvalidResponseException(string? message, Exception? inner)
         : base(message, inner)
     {
     }

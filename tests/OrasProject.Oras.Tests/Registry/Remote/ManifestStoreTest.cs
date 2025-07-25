@@ -24,7 +24,7 @@ using static OrasProject.Oras.Content.Digest;
 using Index = OrasProject.Oras.Oci.Index;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class ManifestStoreTest
 {

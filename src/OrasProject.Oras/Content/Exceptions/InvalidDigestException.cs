@@ -12,25 +12,24 @@
 // limitations under the License.
 
 using System;
-using System.IO;
 
-namespace OrasProject.Oras.Content;
+namespace OrasProject.Oras.Content.Exceptions;
 
 /// <summary>
-/// MismatchedDigestException is thrown when a digest does not match the content.
+/// InvalidDigestException is thrown when a digest is invalid.
 /// </summary>
-public class MismatchedDigestException : IOException
+public class InvalidDigestException : FormatException
 {
-    public MismatchedDigestException()
+    public InvalidDigestException()
     {
     }
 
-    public MismatchedDigestException(string? message)
+    public InvalidDigestException(string? message)
         : base(message)
     {
     }
 
-    public MismatchedDigestException(string? message, Exception? inner)
+    public InvalidDigestException(string? message, Exception? inner)
         : base(message, inner)
     {
     }

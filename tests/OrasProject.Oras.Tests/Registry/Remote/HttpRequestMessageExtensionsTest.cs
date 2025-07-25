@@ -15,7 +15,7 @@ using System.Net.Http.Headers;
 using OrasProject.Oras.Registry.Remote;
 using Xunit;
 
-namespace OrasProject.Oras.Tests.Remote;
+namespace OrasProject.Oras.Tests.Registry.Remote;
 
 public class HttpRequestMessageExtensionsTest
 {
