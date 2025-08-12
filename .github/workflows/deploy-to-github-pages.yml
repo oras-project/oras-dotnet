@@ -27,7 +27,7 @@ jobs:
       pages: write
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
