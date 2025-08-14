@@ -13,10 +13,11 @@
 
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Cache : ICache
+public class Cache(IMemoryCache memoryCache) : ICache
 {
     /// <summary>
     /// CacheEntry represents a cache entry for storing authentication tokens associated with a specific challenge scheme.
@@ -31,6 +32,13 @@ public class Cache : ICache
     private readonly ConcurrentDictionary<string, CacheEntry> _caches = new();
 
     /// <summary>
+    /// The memory cache used to store authentication schemes and tokens.
+    /// </summary>
+    private readonly IMemoryCache _memoryCache = memoryCache;
+
+    private readonly object _lock = new();
+
+    /// <summary>
     /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified registry.
     /// </summary>
     /// <param name="registry">The registry for which to retrieve the authentication scheme.</param>
@@ -43,7 +51,13 @@ public class Cache : ICache
     /// </returns>
     public bool TryGetScheme(string registry, out Challenge.Scheme scheme)
     {
-        if (_caches.TryGetValue(registry, out var cacheEntry))
+        // if (_caches.TryGetValue(registry, out var cacheEntry))
+        // {
+        //     scheme = cacheEntry.Scheme;
+        //     return true;
+        // }
+
+        if (_memoryCache.TryGetValue(registry, out CacheEntry? cacheEntry) && cacheEntry != null)
         {
             scheme = cacheEntry.Scheme;
             return true;
@@ -67,18 +81,35 @@ public class Cache : ICache
     /// </remarks>
     public void SetCache(string registry, Challenge.Scheme scheme, string key, string token)
     {
-        _caches.AddOrUpdate(registry,
-            new CacheEntry(scheme, new Dictionary<string, string> { { key, token } }),
-            (_, oldEntry) =>
-            {
-                if (scheme != oldEntry.Scheme)
-                {
-                    return new CacheEntry(scheme, new Dictionary<string, string> { { key, token } });
-                }
+        // _caches.AddOrUpdate(registry,
+        //     new CacheEntry(scheme, new Dictionary<string, string> { { key, token } }),
+        //     (_, oldEntry) =>
+        //     {
+        //         if (scheme != oldEntry.Scheme)
+        //         {
+        //             return new CacheEntry(scheme, new Dictionary<string, string> { { key, token } });
+        //         }
 
+        //         oldEntry.Tokens[key] = token;
+        //         return oldEntry;
+        //     });
+
+        // Lock for atomicity
+        lock (_lock)
+        {
+            if (_memoryCache.TryGetValue(registry, out CacheEntry? oldEntry) &&
+                oldEntry != null &&
+                scheme == oldEntry.Scheme)
+            {
+                // When the scheme matches, update the token in the old entry
                 oldEntry.Tokens[key] = token;
-                return oldEntry;
-            });
+                _memoryCache.Set(registry, oldEntry);
+                return;
+            }
+
+            var newEntry = new CacheEntry(scheme, new Dictionary<string, string> { { key, token } });
+            _memoryCache.Set(registry, newEntry);
+        }
     }
 
     /// <summary>
@@ -96,15 +127,30 @@ public class Cache : ICache
     /// </returns>
     public bool TryGetToken(string registry, Challenge.Scheme scheme, string key, out string token)
     {
-        token = string.Empty;
-        if (_caches.TryGetValue(registry, out var cacheEntry)
-            && cacheEntry.Scheme == scheme
-            && cacheEntry.Tokens.TryGetValue(key, out var cachedToken))
+        // token = string.Empty;
+        // if (_caches.TryGetValue(registry, out var cacheEntry)
+        //     && cacheEntry.Scheme == scheme
+        //     && cacheEntry.Tokens.TryGetValue(key, out var cachedToken))
+        // {
+        //     token = cachedToken;
+        //     return true;
+        // }
+
+        // return false;
+
+        if (_memoryCache.TryGetValue(registry, out CacheEntry? cacheEntry) &&
+            cacheEntry != null &&
+            cacheEntry.Scheme == scheme)
         {
-            token = cachedToken;
-            return true;
+            if (cacheEntry.Tokens.TryGetValue(key, out string? cachedToken) &&
+                !string.IsNullOrEmpty(cachedToken))
+            {
+                token = cachedToken;
+                return true;
+            }
         }
 
+        token = string.Empty;
         return false;
     }
 }
