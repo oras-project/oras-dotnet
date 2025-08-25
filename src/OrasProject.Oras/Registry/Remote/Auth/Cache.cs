@@ -12,29 +12,24 @@
 // limitations under the License.
 
 using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Cache(IMemoryCache memoryCache) : ICache
+public sealed class Cache(IMemoryCache memoryCache) : ICache
 {
     /// <summary>
     /// CacheEntry represents a cache entry for storing authentication tokens associated with a specific challenge scheme.
     /// </summary>
     /// <param name="Scheme">The authentication scheme associated with the cache entry.</param>
     /// <param name="Tokens">A dictionary containing authentication tokens, where the key is the scopes and the value is the token itself.</param>
-    private record CacheEntry(Challenge.Scheme Scheme, Dictionary<string, string> Tokens);
+    private sealed record CacheEntry(Challenge.Scheme Scheme, ConcurrentDictionary<string, string> Tokens);
 
     /// <summary>
     /// The memory cache used to store authentication schemes and tokens.
     /// </summary>
     private readonly IMemoryCache _memoryCache = memoryCache;
-
-    /// <summary>
-    /// Dictionary that stores lock objects for each registry to synchronize update operations.
-    /// </summary>
-    private readonly ConcurrentDictionary<string, object> _registryLocks = new();
 
     /// <summary>
     /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified registry.
@@ -73,25 +68,22 @@ public class Cache(IMemoryCache memoryCache) : ICache
     /// </remarks>
     public void SetCache(string registry, Challenge.Scheme scheme, string key, string token)
     {
-        var registryLock = _registryLocks.GetOrAdd(registry, _ => new object());
-
-        // Lock for atomicity
-        lock (registryLock)
+        if (_memoryCache.TryGetValue(registry, out CacheEntry? oldEntry) &&
+            oldEntry != null &&
+            scheme == oldEntry.Scheme)
         {
-            if (_memoryCache.TryGetValue(registry, out CacheEntry? oldEntry) &&
-                oldEntry != null &&
-                scheme == oldEntry.Scheme)
-            {
-                // When the scheme matches, update the token in the old entry
-                oldEntry.Tokens[key] = token;
-                _memoryCache.Set(registry, oldEntry);
-                return;
-            }
-
-            // Otherwise, replace with new entry
-            var newEntry = new CacheEntry(scheme, new Dictionary<string, string> { { key, token } });
-            _memoryCache.Set(registry, newEntry);
+            // When the scheme matches, update the token in the existing entry atomically
+            oldEntry.Tokens.AddOrUpdate(key, token, (_, _) => token);
+            return;
         }
+
+        // Otherwise, set a new entry
+        var tokens = new ConcurrentDictionary<string, string>(StringComparer.Ordinal)
+        {
+            [key] = token
+        };
+        var newEntry = new CacheEntry(scheme, tokens);
+        _memoryCache.Set(registry, newEntry);
     }
 
     /// <summary>

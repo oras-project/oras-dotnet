@@ -15,7 +15,6 @@ using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -136,7 +135,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         {
             return await SendRequestAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
-        var host = originalRequest.RequestUri?.Host ?? throw new ArgumentNullException(nameof(originalRequest.RequestUri));
+        var host = originalRequest.RequestUri?.Authority ?? throw new ArgumentNullException(nameof(originalRequest.RequestUri));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
         var attemptedKey = string.Empty;
 
