@@ -27,16 +27,14 @@ public class Cache(IMemoryCache memoryCache) : ICache
     private record CacheEntry(Challenge.Scheme Scheme, Dictionary<string, string> Tokens);
 
     /// <summary>
-    /// A thread-safe dictionary used to store cache entries for authentication purposes.
-    /// </summary>
-    private readonly ConcurrentDictionary<string, CacheEntry> _caches = new();
-
-    /// <summary>
     /// The memory cache used to store authentication schemes and tokens.
     /// </summary>
     private readonly IMemoryCache _memoryCache = memoryCache;
 
-    private readonly object _lock = new();
+    /// <summary>
+    /// Dictionary that stores lock objects for each registry to synchronize update operations.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, object> _registryLocks = new();
 
     /// <summary>
     /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified registry.
@@ -51,12 +49,6 @@ public class Cache(IMemoryCache memoryCache) : ICache
     /// </returns>
     public bool TryGetScheme(string registry, out Challenge.Scheme scheme)
     {
-        // if (_caches.TryGetValue(registry, out var cacheEntry))
-        // {
-        //     scheme = cacheEntry.Scheme;
-        //     return true;
-        // }
-
         if (_memoryCache.TryGetValue(registry, out CacheEntry? cacheEntry) && cacheEntry != null)
         {
             scheme = cacheEntry.Scheme;
@@ -81,21 +73,10 @@ public class Cache(IMemoryCache memoryCache) : ICache
     /// </remarks>
     public void SetCache(string registry, Challenge.Scheme scheme, string key, string token)
     {
-        // _caches.AddOrUpdate(registry,
-        //     new CacheEntry(scheme, new Dictionary<string, string> { { key, token } }),
-        //     (_, oldEntry) =>
-        //     {
-        //         if (scheme != oldEntry.Scheme)
-        //         {
-        //             return new CacheEntry(scheme, new Dictionary<string, string> { { key, token } });
-        //         }
-
-        //         oldEntry.Tokens[key] = token;
-        //         return oldEntry;
-        //     });
+        var registryLock = _registryLocks.GetOrAdd(registry, _ => new object());
 
         // Lock for atomicity
-        lock (_lock)
+        lock (registryLock)
         {
             if (_memoryCache.TryGetValue(registry, out CacheEntry? oldEntry) &&
                 oldEntry != null &&
@@ -107,6 +88,7 @@ public class Cache(IMemoryCache memoryCache) : ICache
                 return;
             }
 
+            // Otherwise, replace with new entry
             var newEntry = new CacheEntry(scheme, new Dictionary<string, string> { { key, token } });
             _memoryCache.Set(registry, newEntry);
         }
@@ -127,17 +109,6 @@ public class Cache(IMemoryCache memoryCache) : ICache
     /// </returns>
     public bool TryGetToken(string registry, Challenge.Scheme scheme, string key, out string token)
     {
-        // token = string.Empty;
-        // if (_caches.TryGetValue(registry, out var cacheEntry)
-        //     && cacheEntry.Scheme == scheme
-        //     && cacheEntry.Tokens.TryGetValue(key, out var cachedToken))
-        // {
-        //     token = cachedToken;
-        //     return true;
-        // }
-
-        // return false;
-
         if (_memoryCache.TryGetValue(registry, out CacheEntry? cacheEntry) &&
             cacheEntry != null &&
             cacheEntry.Scheme == scheme)
