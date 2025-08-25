@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -28,7 +29,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null)
+public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null, IMemoryCache? memoryCache = null)
     : IClient
 {
     /// <summary>
@@ -46,7 +47,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// Cache used for storing and retrieving 
     /// authentication-related data to optimize remote registry operations.
     /// </summary>
-    public ICache Cache { get; set; } = new Cache();
+    public ICache Cache { get; set; } = new Cache(memoryCache ?? new MemoryCache(new MemoryCacheOptions()));
 
     /// <summary>
     /// ClientId used in fetching OAuth2 token as a required field.

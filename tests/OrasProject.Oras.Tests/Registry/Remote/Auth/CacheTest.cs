@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Microsoft.Extensions.Caching.Memory;
 using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 
@@ -22,7 +23,7 @@ public class CacheTest
     public void SetCache_ShouldAddNewEntry_WhenRegistryDoesNotExist()
     {
         // Arrange
-        var cache = new Cache();
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
         var scheme = Challenge.Scheme.Bearer;
         var key = "testKey";
@@ -42,7 +43,7 @@ public class CacheTest
     public void SetCache_ShouldAddNewEntryForBasicToken()
     {
         // Arrange
-        var cache = new Cache();
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
         var scheme = Challenge.Scheme.Basic;
         var key = "";
@@ -72,7 +73,7 @@ public class CacheTest
     public void SetCache_ShouldUpdateSchemeAndTokens_WhenSchemeDiffers()
     {
         // Arrange
-        var cache = new Cache();
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
         var initialScheme = Challenge.Scheme.Basic;
         var newScheme = Challenge.Scheme.Bearer;
@@ -101,7 +102,7 @@ public class CacheTest
     public void SetCache_ShouldUpdateToken_WhenKeyExists()
     {
         // Arrange
-        var cache = new Cache();
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
         var scheme = Challenge.Scheme.Bearer;
         var key = "repository:repo1:delete,pull,push repository:repo2:*";
@@ -124,7 +125,7 @@ public class CacheTest
     public void SetCache_ShouldSetTokenWithDifferentKeys()
     {
         // Arrange
-        var cache = new Cache();
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
         var scheme = Challenge.Scheme.Bearer;
         var key1 = "repository:repo1:delete,pull,push repository:repo2:*";
@@ -159,7 +160,7 @@ public class CacheTest
     public void TryGetToken_ShouldReturnFalse_WhenRegistryDoesNotExist()
     {
         // Arrange
-        var cache = new Cache();
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "nonexistent.registry";
         var scheme = Challenge.Scheme.Bearer;
         var key = "testKey";
@@ -176,7 +177,7 @@ public class CacheTest
     public void TryGetToken_ShouldReturnFalse_WhenSchemeDoesNotMatch()
     {
         // Arrange
-        var cache = new Cache();
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
         var storedScheme = Challenge.Scheme.Basic;
         var requestedScheme = Challenge.Scheme.Bearer;
@@ -197,7 +198,7 @@ public class CacheTest
     public void TryGetToken_ShouldReturnFalse_WhenKeyDoesNotExist()
     {
         // Arrange
-        var cache = new Cache();
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
         var scheme = Challenge.Scheme.Bearer;
         var key = "nonexistentKey";
@@ -217,7 +218,7 @@ public class CacheTest
     public void TryGetToken_ShouldReturnTrueAndToken_WhenEntryExists()
     {
         // Arrange
-        var cache = new Cache();
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
         var scheme = Challenge.Scheme.Bearer;
         var key = "testKey";
