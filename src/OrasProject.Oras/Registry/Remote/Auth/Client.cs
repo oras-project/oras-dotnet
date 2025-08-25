@@ -29,7 +29,7 @@ using System.Threading.Tasks;
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null, IMemoryCache? memoryCache = null)
-    : IClient
+    : IClient, IDisposable
 {
     /// <summary>
     /// CredentialProvider provides the mechanism to retrieve
@@ -42,11 +42,32 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// </summary>
     public HttpClient BaseClient { get; } = httpClient ?? DefaultHttpClient.Instance;
 
+
+    /// <summary>
+    /// Memory cache for storing authentication tokens.
+    /// </summary>
+    private readonly IMemoryCache _memoryCache = memoryCache ?? new MemoryCache(new MemoryCacheOptions());
+
+    /// <summary>
+    /// Indicates whether the client owns the memory cache instance.
+    /// </summary>
+    private readonly bool _ownsCache = memoryCache is null;
+
+    /// <summary>
+    /// Cache used for storing and retrieving
+    /// authentication-related data to optimize remote registry operations.
+    /// </summary>
+    private ICache? _cache;
+
     /// <summary>
     /// Cache used for storing and retrieving 
     /// authentication-related data to optimize remote registry operations.
     /// </summary>
-    public ICache Cache { get; set; } = new Cache(memoryCache ?? new MemoryCache(new MemoryCacheOptions()));
+    public ICache Cache
+    {
+        get => _cache ??= new Cache(_memoryCache);
+        set => _cache = value;
+    }
 
     /// <summary>
     /// ClientId used in fetching OAuth2 token as a required field.
@@ -74,7 +95,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// <summary>
     /// CustomHeaders is for users to customize headers
     /// </summary>
-    public ConcurrentDictionary<string, List<string>> CustomHeaders { get; set; } = new();
+    public ConcurrentDictionary<string, List<string>> CustomHeaders { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// SetUserAgent is to set customized user agent per user requests.
@@ -127,7 +148,11 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     {
         foreach (var (headerName, headerValues) in CustomHeaders)
         {
-            originalRequest.Headers.TryAddWithoutValidation(headerName, headerValues);
+            var values = headerValues?.ToArray() ?? [];
+            if (values.Length > 0)
+            {
+                originalRequest.Headers.TryAddWithoutValidation(headerName, values);
+            }
         }
 
         originalRequest.AddDefaultUserAgent();
@@ -135,7 +160,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         {
             return await SendRequestAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
-        var host = originalRequest.RequestUri?.Authority ?? throw new ArgumentNullException(nameof(originalRequest.RequestUri));
+        var host = originalRequest.RequestUri?.Authority ?? throw new ArgumentNullException(nameof(originalRequest));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
         var attemptedKey = string.Empty;
 
@@ -489,4 +514,16 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         HttpRequestMessage request,
         CancellationToken cancellationToken)
         => await BaseClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// Disposes the resources used by the client.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_ownsCache)
+        {
+            (_cache as IDisposable)?.Dispose();
+        }
+        GC.SuppressFinalize(this);
+    }
 }

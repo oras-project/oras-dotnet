@@ -1300,7 +1300,7 @@ public class ClientTest
             return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
         }
 
-    var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
 
         // Act: call port 5000
@@ -1316,14 +1316,14 @@ public class ClientTest
             "SendAsync",
             Times.AtLeastOnce(),
             ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.Host == host && req.RequestUri.Port == 5000 &&
-                                                 req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Bearer" && req.Headers.Authorization.Parameter == token5000),
+                                            req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Bearer" && req.Headers.Authorization.Parameter == token5000),
             ItExpr.IsAny<CancellationToken>());
 
         mockHandler.Protected().Verify(
             "SendAsync",
             Times.AtLeastOnce(),
             ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.Host == host && req.RequestUri.Port == 443 &&
-                                                 req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Bearer" && req.Headers.Authorization.Parameter == token443),
+                                            req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Bearer" && req.Headers.Authorization.Parameter == token443),
             ItExpr.IsAny<CancellationToken>());
     }
 
@@ -1381,14 +1381,14 @@ public class ClientTest
             "SendAsync",
             Times.AtLeastOnce(),
             ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.Host == host && req.RequestUri.Port == 5000 &&
-                                                 req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Basic" && req.Headers.Authorization.Parameter == tok5000),
+                                            req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Basic" && req.Headers.Authorization.Parameter == tok5000),
             ItExpr.IsAny<CancellationToken>());
 
         mockHandler.Protected().Verify(
             "SendAsync",
             Times.AtLeastOnce(),
             ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.Host == host && (req.RequestUri.Port == 443 || req.RequestUri.Port == -1) &&
-                                                 req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Basic" && req.Headers.Authorization.Parameter == tok443),
+                                            req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Basic" && req.Headers.Authorization.Parameter == tok443),
             ItExpr.IsAny<CancellationToken>());
     }
 }
