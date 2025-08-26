@@ -21,6 +21,7 @@ using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras.Registry.Remote.Exceptions;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using Xunit;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace OrasProject.Oras.Tests.Registry.Remote.Auth;
 
@@ -1390,5 +1391,92 @@ public class ClientTest
             ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.Host == host && (req.RequestUri.Port == 443 || req.RequestUri.Port == -1) &&
                                             req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Basic" && req.Headers.Authorization.Parameter == tok443),
             ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Cache_Setter_UsesInjectedCache_ForBearer()
+    {
+        // Arrange
+        var host = "example.com";
+        var authority = $"{host}:5000";
+        string[] scopes = ["repository:repo1:pull", "repository:repo2:push"]; // any values
+        var expectedKey = string.Join(" ", scopes);
+        var expectedToken = "cached_bearer";
+
+        HttpResponseMessage Mock(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host && req.RequestUri.Port == 5000)
+            {
+                if (req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Bearer" && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req };
+                }
+                return new HttpResponseMessage(HttpStatusCode.BadRequest) { RequestMessage = req };
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var handler = CustomHandler(Mock);
+        var client = new Client(new HttpClient(handler.Object));
+        // Inject scopes for the authority so the client builds the same key
+        Assert.True(Scope.TryParse(scopes[0], out var s1));
+        client.ScopeManager.SetScopeForRegistry(authority, s1);
+        Assert.True(Scope.TryParse(scopes[1], out var s2));
+        client.ScopeManager.SetScopeForRegistry(authority, s2);
+
+        // Inject mocked ICache to supply pre-cached token
+        var cacheMock = new Mock<ICache>(MockBehavior.Strict);
+        var schemeOut = Challenge.Scheme.Bearer;
+        cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut)).Returns(true);
+        var tokenOut = expectedToken;
+        cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut)).Returns(true);
+        client.Cache = cacheMock.Object;
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{authority}");
+
+        // Act
+        var resp = await client.SendAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut), Times.AtLeastOnce());
+        cacheMock.Verify(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut), Times.AtLeastOnce());
+        handler.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(r => r.RequestUri != null && r.RequestUri.Host == host && r.RequestUri.Port == 5000 && r.Headers.Authorization != null && r.Headers.Authorization.Scheme == "Bearer" && r.Headers.Authorization.Parameter == expectedToken),
+            ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public void Dispose_DisposesOwnedMemoryCache()
+    {
+        // Arrange
+        var client = new Client();
+        // Touch Cache to ensure it is created with the internally-owned MemoryCache
+        var cache = client.Cache;
+
+        // Act
+        client.Dispose();
+
+        // Assert: using the cache after disposing should throw due to disposed MemoryCache
+        Assert.Throws<ObjectDisposedException>(() => cache.TryGetScheme("any", out var _));
+    }
+
+    [Fact]
+    public void Dispose_DoesNotDisposeExternalMemoryCache()
+    {
+        // Arrange
+        using var external = new MemoryCache(new MemoryCacheOptions());
+        var client = new Client(new HttpClient(), null, external);
+        var cache = client.Cache; // uses the external memory cache
+
+        // Act
+        client.Dispose();
+
+        // Assert: external cache should still be usable; TryGetScheme shouldn't throw
+        var ok = cache.TryGetScheme("any", out var scheme);
+        Assert.False(ok);
+        Assert.Equal(Challenge.Scheme.Unknown, scheme);
     }
 }
