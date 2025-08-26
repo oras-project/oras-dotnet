@@ -78,7 +78,7 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
         }
 
         // Otherwise, set a new entry
-        var tokens = new ConcurrentDictionary<string, string>(StringComparer.Ordinal)
+        var tokens = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             [key] = token
         };
@@ -103,14 +103,11 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     {
         if (_memoryCache.TryGetValue(registry, out CacheEntry? cacheEntry) &&
             cacheEntry != null &&
-            cacheEntry.Scheme == scheme)
+            cacheEntry.Scheme == scheme &&
+            cacheEntry.Tokens.TryGetValue(key, out var cachedToken))
         {
-            if (cacheEntry.Tokens.TryGetValue(key, out string? cachedToken) &&
-                !string.IsNullOrEmpty(cachedToken))
-            {
-                token = cachedToken;
-                return true;
-            }
+            token = cachedToken;
+            return true;
         }
 
         token = string.Empty;

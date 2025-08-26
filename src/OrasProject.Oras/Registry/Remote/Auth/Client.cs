@@ -51,7 +51,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// <summary>
     /// Indicates whether the client owns the memory cache instance.
     /// </summary>
-    private readonly bool _ownsCache = memoryCache is null;
+    private readonly bool _ownsMemoryCache = memoryCache is null;
 
     /// <summary>
     /// Cache used for storing and retrieving
@@ -160,7 +160,8 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         {
             return await SendRequestAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
-        var host = originalRequest.RequestUri?.Authority ?? throw new ArgumentNullException(nameof(originalRequest));
+        var host = originalRequest.RequestUri?.Authority ??
+                    throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
         var attemptedKey = string.Empty;
 
@@ -520,9 +521,9 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// </summary>
     public void Dispose()
     {
-        if (_ownsCache)
+        if (_ownsMemoryCache)
         {
-            (_cache as IDisposable)?.Dispose();
+            (_memoryCache as IDisposable)?.Dispose();
         }
         GC.SuppressFinalize(this);
     }
