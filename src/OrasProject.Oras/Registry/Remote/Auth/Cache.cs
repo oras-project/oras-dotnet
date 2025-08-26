@@ -78,7 +78,7 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
         }
 
         // Otherwise, set a new entry
-        var tokens = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        var tokens = new ConcurrentDictionary<string, string>(StringComparer.Ordinal)
         {
             [key] = token
         };

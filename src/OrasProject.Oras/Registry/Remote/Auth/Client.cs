@@ -29,7 +29,7 @@ using System.Threading.Tasks;
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null, IMemoryCache? memoryCache = null)
-    : IClient, IDisposable
+    : IClient
 {
     /// <summary>
     /// CredentialProvider provides the mechanism to retrieve
@@ -42,16 +42,11 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// </summary>
     public HttpClient BaseClient { get; } = httpClient ?? DefaultHttpClient.Instance;
 
-
     /// <summary>
-    /// Memory cache for storing authentication tokens.
+    /// Lazy singleton memory cache for scenarios where no IMemoryCache is injected.
     /// </summary>
-    private readonly IMemoryCache _memoryCache = memoryCache ?? new MemoryCache(new MemoryCacheOptions());
-
-    /// <summary>
-    /// Indicates whether the client owns the memory cache instance.
-    /// </summary>
-    private readonly bool _ownsMemoryCache = memoryCache is null;
+    private static readonly Lazy<IMemoryCache> _sharedMemoryCache =
+        new(() => new MemoryCache(new MemoryCacheOptions()), LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
     /// Cache used for storing and retrieving
@@ -65,7 +60,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// </summary>
     public ICache Cache
     {
-        get => _cache ??= new Cache(_memoryCache);
+        get => _cache ??= new Cache(memoryCache ?? _sharedMemoryCache.Value);
         set => _cache = value;
     }
 
@@ -515,16 +510,4 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         HttpRequestMessage request,
         CancellationToken cancellationToken)
         => await BaseClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-
-    /// <summary>
-    /// Disposes the resources used by the client.
-    /// </summary>
-    public void Dispose()
-    {
-        if (_ownsMemoryCache)
-        {
-            (_memoryCache as IDisposable)?.Dispose();
-        }
-        GC.SuppressFinalize(this);
-    }
 }

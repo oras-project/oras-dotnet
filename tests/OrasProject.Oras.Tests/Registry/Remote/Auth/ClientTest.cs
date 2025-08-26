@@ -10,7 +10,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Authentication;
@@ -21,13 +20,11 @@ using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras.Registry.Remote.Exceptions;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using Xunit;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace OrasProject.Oras.Tests.Registry.Remote.Auth;
 
 public class ClientTest
 {
-
     private const string _userAgent = "oras-dotnet";
 
     [Fact]
@@ -1449,34 +1446,48 @@ public class ClientTest
     }
 
     [Fact]
-    public void Dispose_DisposesOwnedMemoryCache()
+    public async Task Cache_Setter_UsesInjectedCache_ForBasic()
     {
         // Arrange
-        var client = new Client();
-        // Touch Cache to ensure it is created with the internally-owned MemoryCache
-        var cache = client.Cache;
+        var host = "example.com";
+        var authority = host; // Uri.Authority omits default :443 for https
+        var basicToken = Convert.ToBase64String(Encoding.UTF8.GetBytes("u:p"));
+
+        HttpResponseMessage Mock(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Basic" && req.Headers.Authorization.Parameter == basicToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req };
+                }
+                return new HttpResponseMessage(HttpStatusCode.BadRequest) { RequestMessage = req };
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var handler = CustomHandler(Mock);
+        var client = new Client(new HttpClient(handler.Object));
+        var cacheMock = new Mock<ICache>(MockBehavior.Strict);
+        var schemeOut = Challenge.Scheme.Basic;
+        cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut)).Returns(true);
+        var tokenOut = basicToken;
+        cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut)).Returns(true);
+        client.Cache = cacheMock.Object;
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        client.Dispose();
+        var resp = await client.SendAsync(request, CancellationToken.None);
 
-        // Assert: using the cache after disposing should throw due to disposed MemoryCache
-        Assert.Throws<ObjectDisposedException>(() => cache.TryGetScheme("any", out var _));
-    }
-
-    [Fact]
-    public void Dispose_DoesNotDisposeExternalMemoryCache()
-    {
-        // Arrange
-        using var external = new MemoryCache(new MemoryCacheOptions());
-        var client = new Client(new HttpClient(), null, external);
-        var cache = client.Cache; // uses the external memory cache
-
-        // Act
-        client.Dispose();
-
-        // Assert: external cache should still be usable; TryGetScheme shouldn't throw
-        var ok = cache.TryGetScheme("any", out var scheme);
-        Assert.False(ok);
-        Assert.Equal(Challenge.Scheme.Unknown, scheme);
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut), Times.AtLeastOnce());
+        cacheMock.Verify(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut), Times.AtLeastOnce());
+        handler.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(r => r.RequestUri != null && r.RequestUri.Host == host && r.Headers.Authorization != null && r.Headers.Authorization.Scheme == "Basic" && r.Headers.Authorization.Parameter == basicToken),
+            ItExpr.IsAny<CancellationToken>());
     }
 }
