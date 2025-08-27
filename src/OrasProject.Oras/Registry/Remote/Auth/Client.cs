@@ -28,7 +28,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null, IMemoryCache? memoryCache = null)
+public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null, ICache? cache = null)
     : IClient
 {
     /// <summary>
@@ -52,7 +52,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// Cache used for storing and retrieving
     /// authentication-related data to optimize remote registry operations.
     /// </summary>
-    private ICache? _cache;
+    private ICache? _cache = cache;
 
     /// <summary>
     /// Cache used for storing and retrieving 
@@ -60,7 +60,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// </summary>
     public ICache Cache
     {
-        get => _cache ??= new Cache(memoryCache ?? _sharedMemoryCache.Value);
+        get => _cache ??= new Cache(_sharedMemoryCache.Value);
         set => _cache = value;
     }
 
