@@ -44,9 +44,14 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
 
     /// <summary>
     /// Lazy singleton memory cache for scenarios where no IMemoryCache is injected.
+    /// Configured with a size limit to prevent unbounded memory growth.
     /// </summary>
     private static readonly Lazy<IMemoryCache> _sharedMemoryCache =
-        new(() => new MemoryCache(new MemoryCacheOptions()), LazyThreadSafetyMode.ExecutionAndPublication);
+        new(() => new MemoryCache(new MemoryCacheOptions
+        {
+            SizeLimit = 1024, // cache limit of 1024 entries
+            CompactionPercentage = 0.2 // remove 20% when limit is reached
+        }), LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
     /// Cache used for storing and retrieving
@@ -55,12 +60,26 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     private ICache? _cache = cache;
 
     /// <summary>
-    /// Cache used for storing and retrieving 
-    /// authentication-related data to optimize remote registry operations.
+    /// Object used for locking during cache initialization.
+    /// </summary>
+    private readonly object _cacheLock = new();
+
+    /// <summary>
+    /// Cache used for storing and retrieving authentication tokens.
     /// </summary>
     public ICache Cache
     {
-        get => _cache ??= new Cache(_sharedMemoryCache.Value);
+        get
+        {
+            if (_cache == null)
+            {
+                lock (_cacheLock)
+                {
+                    _cache ??= new Cache(_sharedMemoryCache.Value);
+                }
+            }
+            return _cache;
+        }
         set => _cache = value;
     }
 

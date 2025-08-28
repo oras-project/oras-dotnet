@@ -32,6 +32,27 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     private readonly IMemoryCache _memoryCache = memoryCache;
 
     /// <summary>
+    /// Prefix for cache keys to prevent collisions with other users of the same memory cache
+    /// </summary>
+    private const string _cacheKeyPrefix = "ORAS_AUTH_";
+
+    /// <summary>
+    /// Generates a consistent cache key for a registry
+    /// </summary>
+    /// <param name="registry">The registry name</param>
+    /// <returns>A prefixed cache key for the registry</returns>
+    private static string GetCacheKey(string registry) => $"{_cacheKeyPrefix}{registry}";
+
+    /// <summary>
+    /// Gets or sets cache entry options for configuring token caching behavior.
+    /// If not set, entries will be cached without expiration until removed by memory pressure.
+    /// </summary>
+    /// <remarks>
+    /// Users can configure options like expiration policies and size limits through this property.
+    /// </remarks>
+    public MemoryCacheEntryOptions? CacheEntryOptions { get; set; }
+
+    /// <summary>
     /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified registry.
     /// </summary>
     /// <param name="registry">The registry for which to retrieve the authentication scheme.</param>
@@ -44,7 +65,8 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     /// </returns>
     public bool TryGetScheme(string registry, out Challenge.Scheme scheme)
     {
-        if (_memoryCache.TryGetValue(registry, out CacheEntry? cacheEntry) && cacheEntry != null)
+        var cacheKey = GetCacheKey(registry);
+        if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? cacheEntry) && cacheEntry != null)
         {
             scheme = cacheEntry.Scheme;
             return true;
@@ -68,7 +90,8 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     /// </remarks>
     public void SetCache(string registry, Challenge.Scheme scheme, string key, string token)
     {
-        if (_memoryCache.TryGetValue(registry, out CacheEntry? oldEntry) &&
+        var cacheKey = GetCacheKey(registry);
+        if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? oldEntry) &&
             oldEntry != null &&
             scheme == oldEntry.Scheme)
         {
@@ -83,7 +106,7 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
             [key] = token
         };
         var newEntry = new CacheEntry(scheme, tokens);
-        _memoryCache.Set(registry, newEntry);
+        _memoryCache.Set(GetCacheKey(registry), newEntry, CacheEntryOptions);
     }
 
     /// <summary>
@@ -101,7 +124,8 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     /// </returns>
     public bool TryGetToken(string registry, Challenge.Scheme scheme, string key, out string token)
     {
-        if (_memoryCache.TryGetValue(registry, out CacheEntry? cacheEntry) &&
+        var cacheKey = GetCacheKey(registry);
+        if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? cacheEntry) &&
             cacheEntry != null &&
             cacheEntry.Scheme == scheme &&
             cacheEntry.Tokens.TryGetValue(key, out var cachedToken))
