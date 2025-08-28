@@ -19,6 +19,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 
 public sealed class Cache(IMemoryCache memoryCache) : ICache
 {
+    #region private members
     /// <summary>
     /// CacheEntry represents a cache entry for storing authentication tokens associated with a specific challenge scheme.
     /// </summary>
@@ -27,21 +28,22 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     private sealed record CacheEntry(Challenge.Scheme Scheme, ConcurrentDictionary<string, string> Tokens);
 
     /// <summary>
-    /// The memory cache used to store authentication schemes and tokens.
+    /// The underlying memory cache used to store authentication schemes and tokens.
     /// </summary>
     private readonly IMemoryCache _memoryCache = memoryCache;
 
     /// <summary>
-    /// Prefix for cache keys to prevent collisions with other users of the same memory cache
+    /// Prefix for cache keys to prevent collisions with other users of the same memory cache.
     /// </summary>
     private const string _cacheKeyPrefix = "ORAS_AUTH_";
 
     /// <summary>
-    /// Generates a consistent cache key for a registry
+    /// Generates a consistent cache key for a registry.
     /// </summary>
     /// <param name="registry">The registry name</param>
     /// <returns>A prefixed cache key for the registry</returns>
     private static string GetCacheKey(string registry) => $"{_cacheKeyPrefix}{registry}";
+    #endregion
 
     /// <summary>
     /// Gets or sets cache entry options for configuring token caching behavior.

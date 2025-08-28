@@ -31,6 +31,25 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null, ICache? cache = null)
     : IClient
 {
+    #region private members
+    /// <summary>
+    /// Lazy singleton memory cache for scenarios where no IMemoryCache is injected.
+    /// </summary>
+    private static readonly Lazy<IMemoryCache> _sharedMemoryCache =
+        new(() => new MemoryCache(new MemoryCacheOptions { }), LazyThreadSafetyMode.ExecutionAndPublication);
+
+    /// <summary>
+    /// Cache used for storing and retrieving authentication tokens
+    /// to optimize remote registry operations.
+    /// </summary>
+    private ICache? _cache = cache;
+
+    /// <summary>
+    /// Object used for locking during cache initialization.
+    /// </summary>
+    private readonly object _cacheLock = new();
+    #endregion
+
     /// <summary>
     /// CredentialProvider provides the mechanism to retrieve
     /// credentials for accessing remote registries.
@@ -41,28 +60,6 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// BaseClient is an instance of HttpClient to send http requests
     /// </summary>
     public HttpClient BaseClient { get; } = httpClient ?? DefaultHttpClient.Instance;
-
-    /// <summary>
-    /// Lazy singleton memory cache for scenarios where no IMemoryCache is injected.
-    /// Configured with a size limit to prevent unbounded memory growth.
-    /// </summary>
-    private static readonly Lazy<IMemoryCache> _sharedMemoryCache =
-        new(() => new MemoryCache(new MemoryCacheOptions
-        {
-            SizeLimit = 1024, // cache limit of 1024 entries
-            CompactionPercentage = 0.2 // remove 20% when limit is reached
-        }), LazyThreadSafetyMode.ExecutionAndPublication);
-
-    /// <summary>
-    /// Cache used for storing and retrieving
-    /// authentication-related data to optimize remote registry operations.
-    /// </summary>
-    private ICache? _cache = cache;
-
-    /// <summary>
-    /// Object used for locking during cache initialization.
-    /// </summary>
-    private readonly object _cacheLock = new();
 
     /// <summary>
     /// Cache used for storing and retrieving authentication tokens.
