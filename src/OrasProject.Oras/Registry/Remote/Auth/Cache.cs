@@ -161,9 +161,6 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     public bool TryGetToken(string registry, Challenge.Scheme scheme, string key, out string token)
     {
         var cacheKey = GetCacheKey(registry);
-        // Reading from IMemoryCache is thread-safe, and we're only reading from Dictionary
-        // Even though Dictionary isn't thread-safe for concurrent read/write operations,
-        // our architecture ensures that writes are always done under a lock
         if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? cacheEntry) &&
             cacheEntry != null &&
             cacheEntry.Scheme == scheme &&
