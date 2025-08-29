@@ -21,15 +21,15 @@ namespace OrasProject.Oras.Exceptions;
 /// </summary>
 public class SkipNodeException : Exception
 {
-    public SkipNodeException() : base("skip node")
+    public SkipNodeException() : base("Skip node")
     {
     }
 
-    public SkipNodeException(string message) : base(message)
+    public SkipNodeException(string? message) : base(message)
     {
     }
 
-    public SkipNodeException(string message, Exception innerException) : base(message, innerException)
+    public SkipNodeException(string? message, Exception? innerException) : base(message, innerException)
     {
     }
 }
