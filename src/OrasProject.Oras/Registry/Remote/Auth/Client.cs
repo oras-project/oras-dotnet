@@ -36,8 +36,8 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// Lazy singleton memory cache for scenarios where no IMemoryCache is injected.
     /// </summary>
     private static readonly Lazy<IMemoryCache> _sharedMemoryCache =
-        new(() => new MemoryCache(new MemoryCacheOptions 
-        { 
+        new(() => new MemoryCache(new MemoryCacheOptions
+        {
             SizeLimit = 1024, // cache at most 1024 entries
         }), LazyThreadSafetyMode.ExecutionAndPublication);
 
