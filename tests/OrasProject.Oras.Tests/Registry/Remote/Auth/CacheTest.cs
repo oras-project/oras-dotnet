@@ -314,13 +314,7 @@ public class CacheTest
 
         // Assert token should expire
         bool tokenExpired = !cache.TryGetToken(registry, scheme, key, out _);
-
-        // For test stability, we check if the token has expired, but don't fail the test if it hasn't
-        // This accommodates variance in how quickly the expiration is processed
-        if (!tokenExpired)
-        {
-            Console.WriteLine("Note: Token did not expire as expected, but this may be due to timing variations.");
-        }
+        Assert.True(tokenExpired, "Token should expire after sliding expiration time without access");
     }
 
     [Fact]
