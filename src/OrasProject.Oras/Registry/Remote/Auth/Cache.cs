@@ -38,6 +38,15 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     private const string _cacheKeyPrefix = "ORAS_AUTH_";
 
     /// <summary>
+    /// Default cache entry options with size=1.
+    /// These options are used when user-provided options are null.
+    /// </summary>
+    private static readonly MemoryCacheEntryOptions _defaultCacheEntryOptions = new()
+    {
+        Size = 1 // always set size to ensure size limits work properly
+    };
+
+    /// <summary>
     /// Generates a consistent cache key for a registry.
     /// </summary>
     /// <param name="registry">The registry name</param>
@@ -46,11 +55,13 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     #endregion
 
     /// <summary>
-    /// Gets or sets cache entry options for configuring token caching behavior.
-    /// If not set, entries will be cached without expiration until removed by memory pressure.
+    /// Cache entry options used in SetCache for configuring token caching behavior.
+    /// If not set, default options with size=1 are used.
     /// </summary>
     /// <remarks>
-    /// Users can configure options like expiration policies and size limits through this property.
+    /// Note: If the underlying memory cache has a size limit configured, you should
+    /// always set the <see cref="MemoryCacheEntryOptions.Size"/> property on your custom
+    /// options to ensure proper cache eviction behavior.
     /// </remarks>
     public MemoryCacheEntryOptions? CacheEntryOptions { get; set; }
 
@@ -86,9 +97,18 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     /// <param name="key">The key used to identify the token within the cache entry.</param>
     /// <param name="token">The token to be stored in the cache.</param>
     /// <remarks>
+    /// <para>
     /// If the registry already exists in the cache:
-    /// - If the provided scheme differs from the existing scheme, the cache entry is replaced with a new one.
-    /// - Otherwise, the token is added or updated in the existing cache entry.
+    /// <list type="bullet">
+    /// <item> If the provided scheme differs from the existing scheme, the cache entry is replaced with a new one.</item>
+    /// <item> Otherwise, the token is added or updated in the existing cache entry.</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// This method uses the <see cref="CacheEntryOptions"/> property if set, or falls back to
+    /// the default options with size=1. Using these options ensures proper cache eviction behavior
+    /// when size limits are configured.
+    /// </para>
     /// </remarks>
     public void SetCache(string registry, Challenge.Scheme scheme, string key, string token)
     {
@@ -108,7 +128,9 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
             [key] = token
         };
         var newEntry = new CacheEntry(scheme, tokens);
-        _memoryCache.Set(GetCacheKey(registry), newEntry, CacheEntryOptions);
+
+        var entryOptions = CacheEntryOptions ?? _defaultCacheEntryOptions;
+        _memoryCache.Set(GetCacheKey(registry), newEntry, entryOptions);
     }
 
     /// <summary>

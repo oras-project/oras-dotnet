@@ -36,7 +36,10 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// Lazy singleton memory cache for scenarios where no IMemoryCache is injected.
     /// </summary>
     private static readonly Lazy<IMemoryCache> _sharedMemoryCache =
-        new(() => new MemoryCache(new MemoryCacheOptions { }), LazyThreadSafetyMode.ExecutionAndPublication);
+        new(() => new MemoryCache(new MemoryCacheOptions 
+        { 
+            SizeLimit = 1024, // cache at most 1024 entries
+        }), LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
     /// Cache used for storing and retrieving authentication tokens
@@ -64,6 +67,25 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// <summary>
     /// Cache used for storing and retrieving authentication tokens.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// If no <see cref="ICache"/> is provided during construction, a default <see cref="Cache"/> 
+    /// implementation is created using a shared <see cref="MemoryCache"/> instance with a size 
+    /// limit of 1024 entries.
+    /// </para>
+    /// <para>
+    /// The shared memory cache uses a size-based eviction policy, where each cache entry counts
+    /// as 1 unit of size by default. When the cache reaches its limit of 1024 entries, the least
+    /// recently used entries will be evicted.
+    /// </para>
+    /// <para>
+    /// To customize caching behavior, you can either:
+    /// <list type="bullet">
+    /// <item><description>Provide your own <see cref="ICache"/> implementation in the constructor</description></item>
+    /// <item><description>Configure <see cref="Cache.CacheEntryOptions"/> on the default implementation</description></item>
+    /// </list>
+    /// </para>
+    /// </remarks>
     public ICache Cache
     {
         get
@@ -159,11 +181,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     {
         foreach (var (headerName, headerValues) in CustomHeaders)
         {
-            var values = headerValues?.ToArray() ?? [];
-            if (values.Length > 0)
-            {
-                originalRequest.Headers.TryAddWithoutValidation(headerName, values);
-            }
+            originalRequest.Headers.TryAddWithoutValidation(headerName, headerValues);
         }
 
         originalRequest.AddDefaultUserAgent();
