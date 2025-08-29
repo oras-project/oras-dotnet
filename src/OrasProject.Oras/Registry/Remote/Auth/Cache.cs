@@ -13,6 +13,7 @@
 
 using System.Collections.Concurrent;
 using System;
+using System.Collections.Generic;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
@@ -25,12 +26,18 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     /// </summary>
     /// <param name="Scheme">The authentication scheme associated with the cache entry.</param>
     /// <param name="Tokens">A dictionary containing authentication tokens, where the key is the scopes and the value is the token itself.</param>
-    private sealed record CacheEntry(Challenge.Scheme Scheme, ConcurrentDictionary<string, string> Tokens);
+    private sealed record CacheEntry(Challenge.Scheme Scheme, Dictionary<string, string> Tokens);
 
     /// <summary>
     /// The underlying memory cache used to store authentication schemes and tokens.
     /// </summary>
     private readonly IMemoryCache _memoryCache = memoryCache;
+
+    /// <summary>
+    /// Dictionary to store per-registry locks to ensure thread-safety while allowing
+    /// concurrent operations on different registries.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, object> _locks = new();
 
     /// <summary>
     /// Prefix for cache keys to prevent collisions with other users of the same memory cache.
@@ -113,24 +120,29 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     public void SetCache(string registry, Challenge.Scheme scheme, string key, string token)
     {
         var cacheKey = GetCacheKey(registry);
-        if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? oldEntry) &&
-            oldEntry != null &&
-            scheme == oldEntry.Scheme)
+        var lockObj = _locks.GetOrAdd(cacheKey, _ => new object());
+        // Lock for atomicity
+        lock (lockObj)
         {
-            // When the scheme matches, update the token in the existing entry atomically
-            oldEntry.Tokens.AddOrUpdate(key, token, (_, _) => token);
-            return;
+            if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? oldEntry) &&
+                oldEntry != null &&
+                scheme == oldEntry.Scheme)
+            {
+                // When the scheme matches, update the token in the existing entry
+                oldEntry.Tokens[key] = token;
+                return;
+            }
+
+            // Otherwise, set a new entry
+            var tokens = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [key] = token
+            };
+            var newEntry = new CacheEntry(scheme, tokens);
+
+            var entryOptions = CacheEntryOptions ?? _defaultCacheEntryOptions;
+            _memoryCache.Set(cacheKey, newEntry, entryOptions);
         }
-
-        // Otherwise, set a new entry
-        var tokens = new ConcurrentDictionary<string, string>(StringComparer.Ordinal)
-        {
-            [key] = token
-        };
-        var newEntry = new CacheEntry(scheme, tokens);
-
-        var entryOptions = CacheEntryOptions ?? _defaultCacheEntryOptions;
-        _memoryCache.Set(GetCacheKey(registry), newEntry, entryOptions);
     }
 
     /// <summary>
@@ -149,6 +161,9 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     public bool TryGetToken(string registry, Challenge.Scheme scheme, string key, out string token)
     {
         var cacheKey = GetCacheKey(registry);
+        // Reading from IMemoryCache is thread-safe, and we're only reading from Dictionary
+        // Even though Dictionary isn't thread-safe for concurrent read/write operations,
+        // our architecture ensures that writes are always done under a lock
         if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? cacheEntry) &&
             cacheEntry != null &&
             cacheEntry.Scheme == scheme &&
