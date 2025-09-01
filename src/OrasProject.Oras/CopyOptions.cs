@@ -20,6 +20,9 @@ using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras;
 
+/// <summary>
+/// CopyOptions contains parameters for oras.Copy.
+/// </summary>
 public class CopyOptions : CopyGraphOptions
 {
     /// <summary>
@@ -43,8 +46,8 @@ public class CopyOptions : CopyGraphOptions
     /// <param name="findSuccessors">Function to find successors of current node. If null, uses default implementation.</param>
     /// <param name="mapRoot">Function to map the resolved root node to a desired root node for copy.</param>
     public CopyOptions(
-        int maxConcurrency = 0,
-        long maxMetadataBytes = 0,
+        int maxConcurrency = _defaultConcurrency,
+        long maxMetadataBytes = _defaultMaxMetadataBytes,
         Func<Descriptor, CancellationToken, Task>? preCopy = null,
         Func<Descriptor, CancellationToken, Task>? postCopy = null,
         Func<Descriptor, CancellationToken, Task>? onCopySkipped = null,

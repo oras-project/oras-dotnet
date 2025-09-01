@@ -21,12 +21,12 @@ using OrasProject.Oras.Oci;
 namespace OrasProject.Oras;
 
 /// <summary>
-/// CopyGraphOptions allows users to customize copy operation's options
+/// CopyGraphOptions contains parameters for oras.CopyGraph.
 /// </summary>
 public class CopyGraphOptions
 {
-    private const int _defaultConcurrency = 10;
-    private const long _defaultMaxMetadataBytes = 4 * 1024 * 1024; // 4 MiB
+    protected const int _defaultConcurrency = 10;
+    protected const long _defaultMaxMetadataBytes = 4 * 1024 * 1024; // 4 MiB
 
     /// <summary>
     /// MaxConcurrency limits the maximum number of concurrent copy tasks.
@@ -72,10 +72,10 @@ public class CopyGraphOptions
     /// <summary>
     /// FindSuccessors finds the successors of the current node.
     /// IFetchable provides cached access to the source storage, and is suitable
-	/// for fetching non-leaf nodes like manifests. Since anything fetched from
-	/// fetcher will be cached in the memory, it is recommended to use original
-	/// source storage to fetch large blobs.
-	/// If FindSuccessors is not set, FetchableExtensions.GetSuccessorsAsync will be used.
+    /// for fetching non-leaf nodes like manifests. Since anything fetched from
+    /// fetcher will be cached in the memory, it is recommended to use original
+    /// source storage to fetch large blobs.
+    /// If FindSuccessors is not set, FetchableExtensions.GetSuccessorsAsync will be used.
     /// </summary>
     public Func<IFetchable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>> FindSuccessors { get; set; }
 
