@@ -10,7 +10,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Authentication;
@@ -26,7 +25,6 @@ namespace OrasProject.Oras.Tests.Registry.Remote.Auth;
 
 public class ClientTest
 {
-
     private const string _userAgent = "oras-dotnet";
 
     [Fact]
@@ -1234,5 +1232,262 @@ public class ClientTest
         Assert.Equal(expected.Password, result.Password);
         Assert.Equal(expected.RefreshToken, result.RefreshToken);
         Assert.Equal(expected.AccessToken, result.AccessToken);
+    }
+
+    [Fact]
+    public async Task SendAsync_UsesAuthorityForCacheKey_Bearer()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = "https://auth.example.com";
+        var service = "test_service";
+        string[] scopes5000 = ["repository:repo1:pull5000"]; // distinct per port
+        string[] scopes443 = ["repository:repo1:pull443"];  // distinct per port
+        var token5000 = "token5000";
+        var token443 = "token443";
+
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
+            {
+                var query = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+                var scope = query["scope"] ?? string.Empty;
+                var svc = query["service"] ?? string.Empty;
+                if (svc == service && (scope == string.Join(" ", scopes5000) || scope == string.Join(" ", scopes443)))
+                {
+                    var tok = scope == string.Join(" ", scopes5000) ? token5000 : token443;
+                    return new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Content = new StringContent($"{{\"access_token\": \"{tok}\"}}"),
+                        RequestMessage = req
+                    };
+                }
+                return new HttpResponseMessage(HttpStatusCode.BadRequest) { RequestMessage = req };
+            }
+
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                var expectedTok = req.RequestUri!.Port == 5000 ? token5000 : token443;
+                if (req.Headers.Authorization == null || req.Headers.Authorization.Scheme != "Bearer" || req.Headers.Authorization.Parameter != expectedTok)
+                {
+                    var scopes = req.RequestUri.Port == 5000 ? scopes5000 : scopes443;
+                    return new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        Headers =
+                        {
+                            WwwAuthenticate =
+                            {
+                                new AuthenticationHeaderValue(
+                                    "Bearer",
+                                    $"realm=\"{realm}\",service=\"{service}\",scope=\"{string.Join(" ", scopes)}\"")
+                            }
+                        },
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+
+        // Act: call port 5000
+        var r1 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000"), CancellationToken.None);
+        Assert.Equal(HttpStatusCode.OK, r1.StatusCode);
+
+        // Act: call port 443 (explicit)
+        var r2 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:443"), CancellationToken.None);
+        Assert.Equal(HttpStatusCode.OK, r2.StatusCode);
+
+        // Assert: ensure an authorized call happened with token per port
+        mockHandler.Protected().Verify(
+            "SendAsync",
+            Times.AtLeastOnce(),
+            ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.Host == host && req.RequestUri.Port == 5000 &&
+                                            req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Bearer" && req.Headers.Authorization.Parameter == token5000),
+            ItExpr.IsAny<CancellationToken>());
+
+        mockHandler.Protected().Verify(
+            "SendAsync",
+            Times.AtLeastOnce(),
+            ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.Host == host && req.RequestUri.Port == 443 &&
+                                            req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Bearer" && req.Headers.Authorization.Parameter == token443),
+            ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SendAsync_UsesAuthorityForCacheKey_Basic()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = "https://auth.example.com";
+        var service = "test_service";
+        var up5000 = (User: "u5000", Pass: "p5000");
+        var up443 = (User: "u443", Pass: "p443");
+        var tok5000 = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{up5000.User}:{up5000.Pass}"));
+        var tok443 = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{up443.User}:{up443.Pass}"));
+
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                var expectedTok = req.RequestUri!.Port == 5000 ? tok5000 : tok443;
+                if (req.Headers.Authorization == null || req.Headers.Authorization.Scheme != "Basic" || req.Headers.Authorization.Parameter != expectedTok)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                    {
+                        RequestMessage = req,
+                        Headers = { WwwAuthenticate = { new AuthenticationHeaderValue("Basic", $"realm=\"{realm}\",service=\"{service}\"") } }
+                    };
+                }
+                return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req };
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(p => p.ResolveCredentialAsync(It.Is<string>(s => s.Contains(":5000")), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Credential { Username = up5000.User, Password = up5000.Pass });
+        mockCredentialProvider
+            .Setup(p => p.ResolveCredentialAsync(It.Is<string>(s => s.Contains(":443") || s == host), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Credential { Username = up443.User, Password = up443.Pass });
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialProvider.Object);
+
+        // Act: call port 5000
+        var r1 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000"), CancellationToken.None);
+        Assert.Equal(HttpStatusCode.OK, r1.StatusCode);
+
+        // Act: call port 443 (explicit)
+        var r2 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:443"), CancellationToken.None);
+        Assert.Equal(HttpStatusCode.OK, r2.StatusCode);
+
+        // Assert: ensure proper basic auth token per port was used
+        mockHandler.Protected().Verify(
+            "SendAsync",
+            Times.AtLeastOnce(),
+            ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.Host == host && req.RequestUri.Port == 5000 &&
+                                            req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Basic" && req.Headers.Authorization.Parameter == tok5000),
+            ItExpr.IsAny<CancellationToken>());
+
+        mockHandler.Protected().Verify(
+            "SendAsync",
+            Times.AtLeastOnce(),
+            ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.Host == host && (req.RequestUri.Port == 443 || req.RequestUri.Port == -1) &&
+                                            req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Basic" && req.Headers.Authorization.Parameter == tok443),
+            ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Cache_Setter_UsesInjectedCache_ForBearer()
+    {
+        // Arrange
+        var host = "example.com";
+        var authority = $"{host}:5000";
+        string[] scopes = ["repository:repo1:pull", "repository:repo2:push"]; // any values
+        var expectedKey = string.Join(" ", scopes);
+        var expectedToken = "cached_bearer";
+
+        HttpResponseMessage Mock(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host && req.RequestUri.Port == 5000)
+            {
+                if (req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Bearer" && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req };
+                }
+                return new HttpResponseMessage(HttpStatusCode.BadRequest) { RequestMessage = req };
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var handler = CustomHandler(Mock);
+        var client = new Client(new HttpClient(handler.Object));
+        // Inject scopes for the authority so the client builds the same key
+        Assert.True(Scope.TryParse(scopes[0], out var s1));
+        client.ScopeManager.SetScopeForRegistry(authority, s1);
+        Assert.True(Scope.TryParse(scopes[1], out var s2));
+        client.ScopeManager.SetScopeForRegistry(authority, s2);
+
+        // Inject mocked ICache to supply pre-cached token
+        var cacheMock = new Mock<ICache>(MockBehavior.Strict);
+        var schemeOut = Challenge.Scheme.Bearer;
+        cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut)).Returns(true);
+        var tokenOut = expectedToken;
+        cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut)).Returns(true);
+        client.Cache = cacheMock.Object;
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{authority}");
+
+        // Act
+        var resp = await client.SendAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut), Times.AtLeastOnce());
+        cacheMock.Verify(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut), Times.AtLeastOnce());
+        handler.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(r => r.RequestUri != null && r.RequestUri.Host == host && r.RequestUri.Port == 5000 && r.Headers.Authorization != null && r.Headers.Authorization.Scheme == "Bearer" && r.Headers.Authorization.Parameter == expectedToken),
+            ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Cache_Setter_UsesInjectedCache_ForBasic()
+    {
+        // Arrange
+        var host = "example.com";
+        var authority = host; // Uri.Authority omits default :443 for https
+        var basicToken = Convert.ToBase64String(Encoding.UTF8.GetBytes("u:p"));
+
+        HttpResponseMessage Mock(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization != null && req.Headers.Authorization.Scheme == "Basic" && req.Headers.Authorization.Parameter == basicToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req };
+                }
+                return new HttpResponseMessage(HttpStatusCode.BadRequest) { RequestMessage = req };
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var handler = CustomHandler(Mock);
+        var client = new Client(new HttpClient(handler.Object));
+        var cacheMock = new Mock<ICache>(MockBehavior.Strict);
+        var schemeOut = Challenge.Scheme.Basic;
+        cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut)).Returns(true);
+        var tokenOut = basicToken;
+        cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut)).Returns(true);
+        client.Cache = cacheMock.Object;
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+
+        // Act
+        var resp = await client.SendAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut), Times.AtLeastOnce());
+        cacheMock.Verify(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut), Times.AtLeastOnce());
+        handler.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(r => r.RequestUri != null && r.RequestUri.Host == host && r.Headers.Authorization != null && r.Headers.Authorization.Scheme == "Basic" && r.Headers.Authorization.Parameter == basicToken),
+            ItExpr.IsAny<CancellationToken>());
     }
 }
