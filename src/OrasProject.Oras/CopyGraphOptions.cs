@@ -34,8 +34,8 @@ public class CopyGraphOptions
     /// <summary>
     /// MaxConcurrency limits the maximum number of concurrent copy tasks.
     /// </summary>
-    public int MaxConcurrency 
-    { 
+    public int MaxConcurrency
+    {
         get => _maxConcurrency == 0 ? _defaultMaxConcurrency : _maxConcurrency;
         set
         {
@@ -45,7 +45,7 @@ public class CopyGraphOptions
             }
             else
             {
-                _maxConcurrency = _defaultMaxConcurrency;   
+                _maxConcurrency = _defaultMaxConcurrency;
             }
         }
     }
@@ -54,8 +54,8 @@ public class CopyGraphOptions
     /// MaxMetadataBytes limits the maximum size of the metadata that can be
     /// cached in the memory.
     /// </summary>
-    public long MaxMetadataBytes 
-    { 
+    public long MaxMetadataBytes
+    {
         get => _maxMetadataBytes == 0 ? _defaultMaxMetadataBytes : _maxMetadataBytes;
         set
         {
@@ -65,7 +65,7 @@ public class CopyGraphOptions
             }
             else
             {
-                _maxMetadataBytes = _defaultMaxMetadataBytes;   
+                _maxMetadataBytes = _defaultMaxMetadataBytes;
             }
         }
     }
