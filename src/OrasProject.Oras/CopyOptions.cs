@@ -32,31 +32,4 @@ public class CopyOptions : CopyGraphOptions
     /// used as the root node for copy.
     /// </summary>
     public Func<IReadOnlyStorage, Descriptor, CancellationToken, Task<Descriptor>>? MapRoot { get; set; }
-
-    /// <summary>
-    /// Initializes a new instance of the CopyOptions class with the specified parameters.
-    /// </summary>
-    /// <param name="maxConcurrency">Maximum number of concurrent copy tasks. If less than or equal to 0, uses default value of 10.</param>
-    /// <param name="maxMetadataBytes">Maximum size of metadata that can be cached in memory. If less than or equal to 0, uses default value of 4 MiB.</param>
-    /// <param name="preCopy">Handler for descriptors before they are copied. Can return SkipNodeException to skip existing items.</param>
-    /// <param name="postCopy">Handler for descriptors after they are copied.</param>
-    /// <param name="onCopySkipped">Handler called when sub-DAG rooted by current node is skipped.</param>
-    /// <param name="mountFrom">Function returning candidate repositories for mounting. If null, falls back to copy.</param>
-    /// <param name="onMounted">Handler invoked when descriptor is mounted.</param>
-    /// <param name="findSuccessors">Function to find successors of current node. If null, uses default implementation.</param>
-    /// <param name="mapRoot">Function to map the resolved root node to a desired root node for copy.</param>
-    public CopyOptions(
-        int maxConcurrency = _defaultConcurrency,
-        long maxMetadataBytes = _defaultMaxMetadataBytes,
-        Func<Descriptor, CancellationToken, Task>? preCopy = null,
-        Func<Descriptor, CancellationToken, Task>? postCopy = null,
-        Func<Descriptor, CancellationToken, Task>? onCopySkipped = null,
-        Func<Descriptor, CancellationToken, Task<IEnumerable<string>>>? mountFrom = null,
-        Func<Descriptor, CancellationToken, Task>? onMounted = null,
-        Func<IFetchable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>>? findSuccessors = null,
-        Func<IReadOnlyStorage, Descriptor, CancellationToken, Task<Descriptor>>? mapRoot = null)
-        : base(maxConcurrency, maxMetadataBytes, preCopy, postCopy, onCopySkipped, mountFrom, onMounted, findSuccessors)
-    {
-        MapRoot = mapRoot;
-    }
 }
