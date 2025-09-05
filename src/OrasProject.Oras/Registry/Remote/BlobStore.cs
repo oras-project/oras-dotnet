@@ -38,7 +38,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <returns></returns>
     /// <exception cref="HttpIOException"></exception>
     /// <exception cref="NotFoundException"></exception>
-    /// <exception cref="ResponseException"></exception>
+    /// <exception cref="Exceptions.ResponseException"></exception>
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
