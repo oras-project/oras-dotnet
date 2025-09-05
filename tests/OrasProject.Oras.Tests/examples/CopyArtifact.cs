@@ -11,15 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 using Moq;
-using OrasProject.Oras;
 using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
 using Microsoft.Extensions.Caching.Memory;
 
-public class CopyArtifact
+namespace OrasProject.Oras.Tests.Examples;
+
+public static class CopyArtifact
 {
-    public async Task CopyArtifactAsync()
+    public static async Task CopyArtifactAsync()
     {
         #region Usage
         // This example demonstrates how to copy an artifact from one repository to another.

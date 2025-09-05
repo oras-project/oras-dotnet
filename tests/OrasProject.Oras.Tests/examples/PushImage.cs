@@ -14,13 +14,14 @@ using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry.Remote.Auth;
-using OrasProject.Oras;
 using Moq;
 using Microsoft.Extensions.Caching.Memory;
 
-public class PushImage
+namespace OrasProject.Oras.Tests.Examples;
+
+public static class PushImage
 {
-    public async Task PushImageAsync()
+    public static async Task PushImageAsync()
     {
         #region Usage
         // This example demonstrates how to push a manifest to a remote repository.

@@ -19,9 +19,11 @@ using OrasProject.Oras.Oci;
 using OrasProject.Oras.Content;
 using Microsoft.Extensions.Caching.Memory;
 
-public class FetchArtifact
+namespace OrasProject.Oras.Tests.Examples;
+
+public static class FetchArtifact
 {
-    public async Task FetchArtifactAsync()
+    public static async Task FetchArtifactAsync()
     {
         #region Usage
         // This example demonstrates how to fetch an artifact by tag/digest from a remote repository.

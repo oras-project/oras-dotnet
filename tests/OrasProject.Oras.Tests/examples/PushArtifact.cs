@@ -14,13 +14,14 @@ using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry.Remote.Auth;
-using OrasProject.Oras;
 using Moq;
 using Microsoft.Extensions.Caching.Memory;
 
-public class PushArtifact
+namespace OrasProject.Oras.Tests.Examples;
+
+public static class PushArtifact
 {
-    public async Task PushArtifactAsync()
+    public static async Task PushArtifactAsync()
     {
         #region Usage
         // This example demonstrates how to push an artifact to a remote repository.

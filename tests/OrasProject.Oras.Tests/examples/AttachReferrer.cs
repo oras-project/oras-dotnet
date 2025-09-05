@@ -10,16 +10,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-using OrasProject.Oras;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote.Auth;
 using Moq;
 using Microsoft.Extensions.Caching.Memory;
 
-public class AttachReferrer
+namespace OrasProject.Oras.Tests.Examples;
+
+public static class AttachReferrer
 {
-    public async Task AttachReferrerAsync()
+    public static async Task AttachReferrerAsync()
     {
         #region Usage
         // This example demonstrates how to attach a referrer to an existing manifest.
