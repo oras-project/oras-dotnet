@@ -41,13 +41,4 @@ public class ExceptionTest
         await Assert.ThrowsAsync<SizeLimitExceededException>(() => throw new SizeLimitExceededException("Size limit exceeded"));
         await Assert.ThrowsAsync<SizeLimitExceededException>(() => throw new SizeLimitExceededException("Size limit exceeded", null));
     }
-
-
-    [Fact]
-    public async Task SkipNodeException()
-    {
-        await Assert.ThrowsAsync<SkipNodeException>(() => throw new SkipNodeException());
-        await Assert.ThrowsAsync<SkipNodeException>(() => throw new SkipNodeException("Skip node"));
-        await Assert.ThrowsAsync<SkipNodeException>(() => throw new SkipNodeException("Skip node", null));
-    }
 }

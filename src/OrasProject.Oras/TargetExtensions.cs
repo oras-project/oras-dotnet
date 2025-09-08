@@ -70,7 +70,7 @@ public static class TargetExtensions
 
         var proxy = new Proxy()
         {
-            Cache = new MemoryStorage(),
+            Cache = new LimitedStorage(new MemoryStorage(), copyOptions.MaxMetadataBytes),
             Source = src
         };
 
@@ -89,12 +89,12 @@ public static class TargetExtensions
     /// <param name="cancellationToken"></param>
     public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
     {
+        var copyGraphOptions = new CopyGraphOptions();
         var proxy = new Proxy()
         {
-            Cache = new MemoryStorage(),
+            Cache = new LimitedStorage(new MemoryStorage(), copyGraphOptions.MaxMetadataBytes),
             Source = src
         };
-        var copyGraphOptions = new CopyGraphOptions();
         await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -111,7 +111,7 @@ public static class TargetExtensions
     {
         var proxy = new Proxy()
         {
-            Cache = new MemoryStorage(),
+            Cache = new LimitedStorage(new MemoryStorage(), copyGraphOptions.MaxMetadataBytes),
             Source = src
         };
         await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, cancellationToken)
@@ -158,9 +158,13 @@ public static class TargetExtensions
             // check if node exists in target
             if (await dst.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
             {
+                if (copyGraphOptions.OnCopySkipped != null)
+                {
+                    await copyGraphOptions.OnCopySkipped(node, cancellationToken).ConfigureAwait(false);
+                }
                 return;
             }
-            successors = await proxy.GetSuccessorsAsync(node, cancellationToken).ConfigureAwait(false);
+            successors = await copyGraphOptions.FindSuccessors(proxy, node, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -179,9 +183,21 @@ public static class TargetExtensions
         await limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (copyGraphOptions.PreCopy != null)
+            {
+                var copyAction = await copyGraphOptions.PreCopy(node, cancellationToken).ConfigureAwait(false);
+                if (copyAction == CopyAction.SkipNode)
+                {
+                    return;
+                }
+            }
             // obtain datastream
             using var dataStream = await proxy.FetchAsync(node, cancellationToken).ConfigureAwait(false);
             await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
+            if (copyGraphOptions.PostCopy != null)
+            {
+                await copyGraphOptions.PostCopy(node, cancellationToken).ConfigureAwait(false);
+            }
         }
         finally
         {

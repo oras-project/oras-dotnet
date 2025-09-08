@@ -11,26 +11,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-
-namespace OrasProject.Oras.Exceptions;
+namespace OrasProject.Oras;
 
 /// <summary>
-/// SkipNodeException signals to stop copying a node. When thrown from PreCopy the blob must exist in the target.
-/// This can be used to signal that a blob has been made available in the target repository by "Mount()" or some other technique.
+/// Specifies the action to take during a copy operation.
 /// </summary>
-public class SkipNodeException : Exception
+public enum CopyAction
 {
-    public SkipNodeException() : base("Skip node")
-    {
-    }
+    /// <summary>
+    /// Continue with the copy operation.
+    /// </summary>
+    Continue = 0,
 
-    public SkipNodeException(string? message) : base(message)
-    {
-    }
-
-    public SkipNodeException(string? message, Exception? innerException) : base(message, innerException)
-    {
-    }
+    /// <summary>
+    /// Skip the current node and do not copy it.
+    /// </summary>
+    SkipNode = 1
 }
-
