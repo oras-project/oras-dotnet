@@ -20,16 +20,4 @@ using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras;
 
-/// <summary>
-/// CopyOptions contains parameters for oras.Copy.
-/// </summary>
-public class CopyOptions : CopyGraphOptions
-{
-    /// <summary>
-    /// MapRoot maps the resolved root node to a desired root node for copy.
-    /// When MapRoot is provided, the descriptor resolved from the source
-    /// reference will be passed to MapRoot, and the mapped descriptor will be
-    /// used as the root node for copy.
-    /// </summary>
-    public Func<IReadOnlyStorage, Descriptor, CancellationToken, Task<Descriptor>>? MapRoot { get; set; }
-}
+public class CopyOptions : CopyGraphOptions { }
