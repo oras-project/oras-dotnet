@@ -15,6 +15,7 @@ using OrasProject.Oras;
 using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
+using Microsoft.Extensions.Caching.Memory;
 
 public class CopyArtifact
 {
@@ -27,11 +28,12 @@ public class CopyArtifact
         var httpClient = new HttpClient();
 
         // Source repository
-        var sourceCred = new Mock<ICredentialProvider>();
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
         var sourceRepository = new Repository(new RepositoryOptions
         {
             Reference = Reference.Parse("source.io/testrepository"),
-            Client = new Client(httpClient, credentialProvider: sourceCred.Object),
+            Client = new Client(httpClient, credentialProvider: mockCredentialProvider.Object, new Cache(memoryCache)),
         });
 
         // Destination repository

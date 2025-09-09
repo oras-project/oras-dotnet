@@ -15,6 +15,7 @@ using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote.Auth;
 using Moq;
+using Microsoft.Extensions.Caching.Memory;
 
 public class AttachReferrer
 {
@@ -28,10 +29,11 @@ public class AttachReferrer
 
         // Create a repository instance with the target registry.
         var mockCredentialProvider = new Mock<ICredentialProvider>();
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            Client = new Client(httpClient, mockCredentialProvider.Object),
+            Client = new Client(httpClient, mockCredentialProvider.Object, new Cache(memoryCache)),
         });
 
         var targetReference = "target";

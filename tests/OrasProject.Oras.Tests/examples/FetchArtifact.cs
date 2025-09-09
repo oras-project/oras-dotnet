@@ -17,6 +17,7 @@ using Moq;
 using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Content;
+using Microsoft.Extensions.Caching.Memory;
 
 public class FetchArtifact
 {
@@ -30,10 +31,11 @@ public class FetchArtifact
 
         // Create a repository instance with the target registry.
         var mockCredentialProvider = new Mock<ICredentialProvider>();
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
         var repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
-            Client = new Client(httpClient, mockCredentialProvider.Object),
+            Client = new Client(httpClient, mockCredentialProvider.Object, new Cache(memoryCache)),
         });
 
         var reference = "foobar"; // The tag or digest of the artifact to fetch, such as "latest" or "sha256:abc123...".

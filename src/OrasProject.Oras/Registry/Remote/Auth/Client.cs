@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -28,9 +28,31 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null)
+public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null, ICache? cache = null)
     : IClient
 {
+    #region private members
+    /// <summary>
+    /// Lazy singleton memory cache for scenarios where no IMemoryCache is injected.
+    /// </summary>
+    private static readonly Lazy<IMemoryCache> _sharedMemoryCache =
+        new(() => new MemoryCache(new MemoryCacheOptions
+        {
+            SizeLimit = 1024, // cache at most 1024 entries
+        }), LazyThreadSafetyMode.ExecutionAndPublication);
+
+    /// <summary>
+    /// Cache used for storing and retrieving authentication tokens
+    /// to optimize remote registry operations.
+    /// </summary>
+    private ICache? _cache = cache;
+
+    /// <summary>
+    /// Object used for locking during cache initialization.
+    /// </summary>
+    private readonly object _cacheLock = new();
+    #endregion
+
     /// <summary>
     /// CredentialProvider provides the mechanism to retrieve
     /// credentials for accessing remote registries.
@@ -43,10 +65,42 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     public HttpClient BaseClient { get; } = httpClient ?? DefaultHttpClient.Instance;
 
     /// <summary>
-    /// Cache used for storing and retrieving 
-    /// authentication-related data to optimize remote registry operations.
+    /// Cache used for storing and retrieving authentication tokens.
     /// </summary>
-    public ICache Cache { get; set; } = new Cache();
+    /// <remarks>
+    /// <para>
+    /// If no <see cref="ICache"/> is provided during construction, a default <see cref="Cache"/> 
+    /// implementation is created using a shared <see cref="MemoryCache"/> instance with a size 
+    /// limit of 1024 entries.
+    /// </para>
+    /// <para>
+    /// The shared memory cache uses a size-based eviction policy, where each cache entry counts
+    /// as 1 unit of size by default. When the cache reaches its limit of 1024 entries, the least
+    /// recently used entries will be evicted.
+    /// </para>
+    /// <para>
+    /// To customize caching behavior, you can either:
+    /// <list type="bullet">
+    /// <item><description>Provide your own <see cref="ICache"/> implementation in the constructor</description></item>
+    /// <item><description>Configure <see cref="Cache.CacheEntryOptions"/> on the default implementation</description></item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    public ICache Cache
+    {
+        get
+        {
+            if (_cache == null)
+            {
+                lock (_cacheLock)
+                {
+                    _cache ??= new Cache(_sharedMemoryCache.Value);
+                }
+            }
+            return _cache;
+        }
+        set => _cache = value;
+    }
 
     /// <summary>
     /// ClientId used in fetching OAuth2 token as a required field.
@@ -74,7 +128,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// <summary>
     /// CustomHeaders is for users to customize headers
     /// </summary>
-    public ConcurrentDictionary<string, List<string>> CustomHeaders { get; set; } = new();
+    public ConcurrentDictionary<string, List<string>> CustomHeaders { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// SetUserAgent is to set customized user agent per user requests.
@@ -135,7 +189,8 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         {
             return await SendRequestAsync(originalRequest, cancellationToken).ConfigureAwait(false);
         }
-        var host = originalRequest.RequestUri?.Host ?? throw new ArgumentNullException(nameof(originalRequest.RequestUri));
+        var host = originalRequest.RequestUri?.Authority ??
+                    throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
         var attemptedKey = string.Empty;
 
