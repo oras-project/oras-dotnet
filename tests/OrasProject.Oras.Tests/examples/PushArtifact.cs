@@ -65,7 +65,7 @@ public static class PushArtifact
             await repo.PushAsync(layers[i], new MemoryStream(layersBytes[i]));
         }
 
-        //Pack the artifact with the specified type and push it to the repository.
+        // Pack the artifact with the specified type and push it to the repository.
         var options = new PackManifestOptions
         {
             Layers = layers

@@ -23,7 +23,7 @@ namespace OrasProject.Oras.Tests.Examples;
 
 public static class FetchArtifact
 {
-    // This example demonstrates a basic implmentation of fetching an artifact by tag/digest from a remote repository.
+    // This example demonstrates a basic implementation of fetching an artifact by tag/digest from a remote repository.
     // Cancellation tokens and exception handling are omitted for simplicity.
     public static async Task FetchArtifactAsync()
     {

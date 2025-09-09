@@ -30,7 +30,7 @@ public static class AttachReferrer
         // Create a HttpClient instance for making HTTP requests.
         var httpClient = new HttpClient();
 
-        //  Create a simple credential provider with static credentials.
+        // Create a simple credential provider with static credentials.
         var credentialProvider = new SingleRegistryCredentialProvider(registry, new Credential
         {
             Username = "username",
