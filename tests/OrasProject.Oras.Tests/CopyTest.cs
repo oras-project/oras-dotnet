@@ -89,7 +89,7 @@ public class CopyTest
     }
 
     /// <summary>
-    ///  Can copy a rooted directed acyclic graph (DAG) from the source Memory Target to the destination Memory Target.
+    /// Can copy a rooted directed acyclic graph (DAG) from the source Memory Target to the destination Memory Target.
     /// </summary>
     /// <returns></returns>
     [Fact]
@@ -155,7 +155,7 @@ public class CopyTest
     }
 
     /// <summary>
-    ///  Can copy a rooted directed acyclic graph (DAG) from the source Memory Target to the destination Memory Target
+    /// Can copy a rooted directed acyclic graph (DAG) from the source Memory Target to the destination Memory Target
     /// with customized CopyGraphOptions.
     /// </summary>
     /// <returns></returns>
@@ -209,6 +209,8 @@ public class CopyTest
         var destinationTarget = new MemoryStore();
         var copyGraphOptions = new CopyGraphOptions
         {
+            MaxConcurrency = 3,
+            MaxMetadataBytes = 2 * 1024 * 1024,
             PreCopy = (desc, ct) =>
             {
                 preCopyCount++;
@@ -226,6 +228,8 @@ public class CopyTest
             }
         };
 
+        Assert.Equal(3, copyGraphOptions.MaxConcurrency);
+        Assert.Equal(2 * 1024 * 1024, copyGraphOptions.MaxMetadataBytes);
         await sourceTarget.CopyGraphAsync(destinationTarget, root, copyGraphOptions, cancellationToken);
         for (var i = 0; i < descs.Count; i++)
         {
@@ -242,6 +246,18 @@ public class CopyTest
         Assert.Equal(4, preCopyCount);
         Assert.Equal(4, postCopyCount);
         Assert.Equal(1, copySkipCount);
+    }
+
+    [Fact]
+    public void CanCreateCopyGraphOptionsWithDefaultValues()
+    {
+        var options = new CopyGraphOptions()
+        {
+            MaxConcurrency = 0,
+            MaxMetadataBytes = 0
+        };
+        Assert.Equal(10, options.MaxConcurrency);
+        Assert.Equal(4 * 1024 * 1024, options.MaxMetadataBytes);
     }
 
     [Fact]
