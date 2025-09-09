@@ -154,6 +154,96 @@ public class CopyTest
         }
     }
 
+    /// <summary>
+    ///  Can copy a rooted directed acyclic graph (DAG) from the source Memory Target to the destination Memory Target
+    /// with customized CopyGraphOptions.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task CanCopyWithCopyGraphOptions()
+    {
+        var sourceTarget = new MemoryStore();
+        var cancellationToken = new CancellationToken();
+        var blobs = new List<byte[]>();
+        var descs = new List<Descriptor>();
+        var preCopyCount = 0;
+        var postCopyCount = 0;
+        var copySkipCount = 0;
+
+        void AppendBlob(string mediaType, byte[] blob)
+        {
+            blobs.Add(blob);
+            var desc = new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = Digest.ComputeSha256(blob),
+                Size = blob.Length
+            };
+            descs.Add(desc);
+        }
+
+        void GenerateManifest(Descriptor config, List<Descriptor> layers)
+        {
+            var manifest = new Manifest
+            {
+                Config = config,
+                Layers = layers
+            };
+            var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+            AppendBlob(MediaType.ImageManifest, manifestBytes);
+        }
+
+        byte[] GetBytes(string data) => Encoding.UTF8.GetBytes(data);
+
+        AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
+        AppendBlob(MediaType.ImageLayer, GetBytes("foo")); // blob 1
+        AppendBlob(MediaType.ImageLayer, GetBytes("bar")); // blob 2
+        GenerateManifest(descs[0], descs.GetRange(1, 2)); // blob 3
+
+        for (var i = 0; i < blobs.Count; i++)
+        {
+            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+        }
+
+        var root = descs[3];
+        var destinationTarget = new MemoryStore();
+        var copyGraphOptions = new CopyGraphOptions
+        {
+            PreCopy = (desc, ct) =>
+            {
+                preCopyCount++;
+                return Task.FromResult(CopyAction.Continue);
+            },
+            PostCopy = (desc, ct) =>
+            {
+                postCopyCount++;
+                return Task.CompletedTask;
+            },
+            OnCopySkipped = (desc, ct) =>
+            {
+                copySkipCount++;
+                return Task.CompletedTask;
+            }
+        };
+
+        await sourceTarget.CopyGraphAsync(destinationTarget, root, copyGraphOptions, cancellationToken);
+        for (var i = 0; i < descs.Count; i++)
+        {
+            Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
+            var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
+            var memoryStream = new MemoryStream();
+            await fetchContent.CopyToAsync(memoryStream);
+            var bytes = memoryStream.ToArray();
+            Assert.Equal(blobs[i], bytes);
+        }
+
+        // do another copy to trigger OnCopySkipped
+        await sourceTarget.CopyGraphAsync(destinationTarget, root, copyGraphOptions, cancellationToken);
+        Assert.Equal(4, preCopyCount);
+        Assert.Equal(4, postCopyCount);
+        Assert.Equal(1, copySkipCount);
+    }
+
     [Fact]
     public async Task CopyAsync_SrcRefIsNull_ThrowsError()
     {

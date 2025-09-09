@@ -21,7 +21,7 @@ using OrasProject.Oras.Oci;
 namespace OrasProject.Oras;
 
 /// <summary>
-/// CopyGraphOptions contains parameters for oras.CopyGraph.
+/// CopyGraphOptions allows users to customize copy operation's options
 /// </summary>
 public class CopyGraphOptions
 {
