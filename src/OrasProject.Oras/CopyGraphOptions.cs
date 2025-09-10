@@ -33,6 +33,7 @@ public class CopyGraphOptions
 
     /// <summary>
     /// MaxConcurrency limits the maximum number of concurrent copy tasks.
+    /// If less than or equal to 0, a default (currently 10) is used.
     /// </summary>
     public int MaxConcurrency
     {
@@ -52,7 +53,7 @@ public class CopyGraphOptions
 
     /// <summary>
     /// MaxMetadataBytes limits the maximum size of the metadata that can be
-    /// cached in the memory.
+    /// cached in the memory. If less than or equal to 0, a default (currently 4 MiB) is used.
     /// </summary>
     public long MaxMetadataBytes
     {
