@@ -36,7 +36,7 @@ public class CopyGraphOptions
     /// </summary>
     public int MaxConcurrency
     {
-        get => _maxConcurrency == 0 ? _defaultMaxConcurrency : _maxConcurrency;
+        get => _maxConcurrency <= 0 ? _defaultMaxConcurrency : _maxConcurrency;
         set
         {
             if (value > 0)
@@ -56,7 +56,7 @@ public class CopyGraphOptions
     /// </summary>
     public long MaxMetadataBytes
     {
-        get => _maxMetadataBytes == 0 ? _defaultMaxMetadataBytes : _maxMetadataBytes;
+        get => _maxMetadataBytes <= 0 ? _defaultMaxMetadataBytes : _maxMetadataBytes;
         set
         {
             if (value > 0)
