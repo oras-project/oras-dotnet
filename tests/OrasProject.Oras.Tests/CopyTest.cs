@@ -154,6 +154,55 @@ public class CopyTest
         }
     }
 
+    /// <summary>
+    /// Can copy a rooted directed acyclic graph (DAG) from the source Memory Target to the destination Memory Target
+    /// with customized CopyOptions.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task CanCopyWithCopyOptions()
+    {
+        var sourceTarget = new MemoryStore();
+        var cancellationToken = new CancellationToken();
+        var blobs = new List<byte[]>();
+        var descs = new List<Descriptor>();
+
+        void AppendBlob(string mediaType, byte[] blob)
+        {
+            blobs.Add(blob);
+            var desc = new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = Digest.ComputeSha256(blob),
+                Size = blob.Length
+            };
+            descs.Add(desc);
+        }
+
+        byte[] GetBytes(string data) => Encoding.UTF8.GetBytes(data);
+
+        AppendBlob(MediaType.ImageConfig, GetBytes("foo")); // blob 0
+        AppendBlob(MediaType.ImageLayer, GetBytes("bar")); // blob 1
+
+        for (var i = 0; i < blobs.Count; i++)
+        {
+            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+        }
+
+        var root = descs[0];
+        var reference = "foo";
+        await sourceTarget.TagAsync(root, reference, cancellationToken);
+
+        var destinationTarget = new MemoryStore();
+        CopyOptions copyOptions = new CopyOptions()
+        {
+            MapRoot = (IReadOnlyStorage storage, Descriptor descriptor, CancellationToken token) => Task.FromResult(descs[1])
+        };
+        await sourceTarget.CopyAsync(reference, destinationTarget, "bar", copyOptions, cancellationToken);
+        Assert.True(await destinationTarget.ExistsAsync(descs[1], cancellationToken));
+        Assert.False(await destinationTarget.ExistsAsync(descs[0], cancellationToken));
+    }
+
     [Fact]
     public async Task CopyAsync_SrcRefIsNull_ThrowsError()
     {
