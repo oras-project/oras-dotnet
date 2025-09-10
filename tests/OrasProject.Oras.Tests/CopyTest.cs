@@ -209,7 +209,7 @@ public class CopyTest
         var destinationTarget = new MemoryStore();
         var copyGraphOptions = new CopyGraphOptions
         {
-            MaxConcurrency = 3,
+            Concurrency = 3,
             MaxMetadataBytes = 2 * 1024 * 1024,
             PreCopy = (desc, ct) =>
             {
@@ -228,7 +228,7 @@ public class CopyTest
             }
         };
 
-        Assert.Equal(3, copyGraphOptions.MaxConcurrency);
+        Assert.Equal(3, copyGraphOptions.Concurrency);
         Assert.Equal(2 * 1024 * 1024, copyGraphOptions.MaxMetadataBytes);
         await sourceTarget.CopyGraphAsync(destinationTarget, root, copyGraphOptions, cancellationToken);
         for (var i = 0; i < descs.Count; i++)
@@ -253,10 +253,10 @@ public class CopyTest
     {
         var options = new CopyGraphOptions()
         {
-            MaxConcurrency = 0,
+            Concurrency = 0,
             MaxMetadataBytes = 0
         };
-        Assert.Equal(10, options.MaxConcurrency);
+        Assert.Equal(10, options.Concurrency);
         Assert.Equal(4 * 1024 * 1024, options.MaxMetadataBytes);
     }
 

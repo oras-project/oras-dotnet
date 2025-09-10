@@ -35,7 +35,7 @@ public class CopyGraphOptions
     /// MaxConcurrency limits the maximum number of concurrent copy tasks.
     /// If less than or equal to 0, a default (currently 10) is used.
     /// </summary>
-    public int MaxConcurrency
+    public int Concurrency
     {
         get => _maxConcurrency;
         set
