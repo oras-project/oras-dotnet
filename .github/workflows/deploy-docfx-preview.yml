@@ -26,6 +26,7 @@ on:
 jobs:
   build-and-deploy-preview:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       pages: write
@@ -56,6 +57,8 @@ jobs:
           cd docs
           docfx metadata docfx.json
           docfx build
+        env:
+          DOCFX_SOURCE_BRANCH_NAME: ${{ github.head_ref }}
 
       - name: Prepare Preview Directory Structure
         run: |
@@ -96,6 +99,7 @@ jobs:
 
       - name: Comment PR with Preview URL
         uses: actions/github-script@v7
+        if: success()
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
@@ -108,32 +112,41 @@ jobs:
             **🔗 [View Preview](${previewUrl})**
             
             This preview will be updated automatically when you push changes to this PR.
+            
+            _Preview generated from commit ${context.sha.substring(0, 7)}_
             `;
             
-            // Check if we already commented
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-            });
-            
-            const existingComment = comments.data.find(comment => 
-              comment.user.login === 'github-actions[bot]' && 
-              comment.body.includes('DocFX Preview Deployment')
-            );
-            
-            if (existingComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existingComment.id,
-                body: body
-              });
-            } else {
-              await github.rest.issues.createComment({
+            try {
+              // Check if we already commented
+              const comments = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: prNumber,
-                body: body
               });
+              
+              const existingComment = comments.data.find(comment => 
+                comment.user.login === 'github-actions[bot]' && 
+                comment.body.includes('DocFX Preview Deployment')
+              );
+              
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body: body
+                });
+                console.log('Updated existing preview comment');
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: body
+                });
+                console.log('Created new preview comment');
+              }
+            } catch (error) {
+              console.error('Failed to comment on PR:', error);
+              // Don't fail the workflow if commenting fails
             }
