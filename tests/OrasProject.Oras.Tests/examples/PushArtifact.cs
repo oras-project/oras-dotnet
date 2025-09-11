@@ -34,7 +34,7 @@ public static class PushArtifact
         // Create a simple credential provider with static credentials.
         var credentialProvider = new SingleRegistryCredentialProvider(registry, new Credential
         {
-            RefreshToken = "refresh_token"
+            RefreshToken = "refresh_token" // change to your actual refresh token
         });
 
         // Create a memory cache for caching access tokens to improve auth performance.
