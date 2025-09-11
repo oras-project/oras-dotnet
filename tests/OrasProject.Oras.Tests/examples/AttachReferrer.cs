@@ -20,12 +20,12 @@ namespace OrasProject.Oras.Tests.Examples;
 
 public static class AttachReferrer
 {
-    // This example demonstrates a basic implementation of attaching a referrer manifest to an existing subject manifest.
-    // Cancellation tokens and exception handling are omitted for simplicity.
+    // This example demonstrates how to attach a referrer artifact to an existing manifest in a remote registry.
+    // For production use: Implement proper exception handling, cancellation, and dependency injection.
     public static async Task AttachReferrerAsync()
     {
-        const string registry = "localhost:5000";
-        const string repository = "myrepo/test";
+        const string registry = "localhost:5000"; // change to your target registry
+        const string repository = "myrepo/test"; // change to your target repository
 
         // Create a HttpClient instance for making HTTP requests.
         var httpClient = new HttpClient();
@@ -33,8 +33,7 @@ public static class AttachReferrer
         // Create a simple credential provider with static credentials.
         var credentialProvider = new SingleRegistryCredentialProvider(registry, new Credential
         {
-            Username = "username",
-            RefreshToken = "refresh_token"
+            RefreshToken = "refresh_token" // change to your actual refresh token
         });
 
         // Create a memory cache for caching access tokens to improve auth performance.
@@ -47,7 +46,7 @@ public static class AttachReferrer
             Client = new Client(httpClient, credentialProvider, new Cache(memoryCache)),
         });
 
-        // Resolve the target reference to get its descriptor.
+        // Resolve the target reference (tag or digest) to get its descriptor.
         const string subjectReference = "target"; // could also be a digest like "sha256:..."
         var subjectDescriptor = await repo.ResolveAsync(subjectReference);
 
@@ -63,7 +62,7 @@ public static class AttachReferrer
             Subject = subjectDescriptor, // set subject to make this manifest a referrer
         };
         const string artifactType = "doc/example";
-        await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options);
+        var referrerManifestDescriptor = await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options);
     }
 }
 #endregion

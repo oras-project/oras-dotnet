@@ -23,12 +23,12 @@ namespace OrasProject.Oras.Tests.Examples;
 
 public static class FetchArtifact
 {
-    // This example demonstrates a basic implementation of fetching an artifact by tag/digest from a remote repository.
-    // Cancellation tokens and exception handling are omitted for simplicity.
+    // This example demonstrates how to fetch an artifact by tag/digest from a remote repository.
+    // For production use: Implement proper exception handling, cancellation, and dependency injection.
     public static async Task FetchArtifactAsync()
     {
-        const string registry = "localhost:5000";
-        const string repository = "myrepo/test";
+        const string registry = "localhost:5000"; // change to your target registry
+        const string repository = "myrepo/test"; // change to your target repository
         const string reference = "foobar"; // the tag or digest of the artifact to fetch, such as "latest" or "sha256:abc123...".
 
         // Create a HttpClient instance for making HTTP requests.
@@ -37,8 +37,7 @@ public static class FetchArtifact
         // Create a simple credential provider with static credentials.
         var credentialProvider = new SingleRegistryCredentialProvider(registry, new Credential
         {
-            Username = "username",
-            RefreshToken = "refresh_token"
+            RefreshToken = "refresh_token" // change to your actual refresh token
         });
 
         // Create a memory cache for caching access tokens to improve auth performance.

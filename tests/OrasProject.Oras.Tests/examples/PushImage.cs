@@ -21,13 +21,12 @@ namespace OrasProject.Oras.Tests.Examples;
 
 public static class PushImage
 {
-    // This example demonstrates a basic implementation of pushing an image to a remote repository.
-    // Cancellation tokens and exception handling are omitted for simplicity.
+    // This example demonstrates how to push an image to a remote repository.
+    // For production use: Implement proper exception handling, cancellation, and dependency injection.
     public static async Task PushImageAsync()
     {
-        const string registry = "localhost:5000";
-        const string repository = "test";
-        const string tag = "tag";
+        const string registry = "localhost:5000"; // change to your target registry
+        const string repository = "myrepo/test"; // change to your target repository
 
         // Create a HttpClient instance for making HTTP requests.
         var httpClient = new HttpClient();
@@ -49,6 +48,7 @@ public static class PushImage
             Client = new Client(httpClient, credentialProvider, new Cache(memoryCache)),
         });
 
+        // Push config and layers to the repository.
         var configBytes = new byte[] { 0x01, 0x02, 0x03 }; // Example config bytes.
         var config = Descriptor.Create(configBytes, MediaType.ImageConfig);
 
@@ -62,24 +62,23 @@ public static class PushImage
             Descriptor.Create(layerBytesList[0], MediaType.ImageLayer),
             Descriptor.Create(layerBytesList[1], MediaType.ImageLayer)
         };
-
-        // Push config and layers to the repository.
         await repo.PushAsync(config, new MemoryStream(configBytes));
         for (int i = 0; i < layers.Count; i++)
         {
             await repo.PushAsync(layers[i], new MemoryStream(layerBytesList[i]));
         }
 
-        // Pack and push the manifest to the repository.
+        // Pack a manifest for the artifact and push it to the repository.
         var options = new PackManifestOptions
         {
             Config = config,
             Layers = layers
         };
-        var pushedDescriptor = await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, "", options);
+        var manifestDescriptor = await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, "", options);
 
-        // Tag the pushed image.
-        await repo.TagAsync(pushedDescriptor, tag);
+        // Tag the pushed manifest so it can be referenced by a human-readable name.
+        const string tag = "tag"; // choose a tag for your image
+        await repo.TagAsync(manifestDescriptor, tag);
     }
 }
 #endregion

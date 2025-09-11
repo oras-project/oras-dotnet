@@ -20,14 +20,14 @@ namespace OrasProject.Oras.Tests.Examples;
 
 public static class CopyArtifact
 {
-    // This example demonstrates a basic implementation of copying an artifact by tag/digest from one repository to another.
-    // Cancellation tokens and exception handling are omitted for simplicity.
+    // This example demonstrates how to copy an artifact by tag/digest from a remote repository to another.
+    // For production use: Implement proper exception handling, cancellation, and dependency injection.
     public static async Task CopyArtifactAsync()
     {
-        const string srcRegistry = "source.io";
-        const string srcRepository = "src/test";
-        const string dstRegistry = "target.io";
-        const string dstRepository = "dst/test";
+        const string srcRegistry = "source.io"; // change to your source registry
+        const string srcRepository = "src/test"; // change to your source repository
+        const string dstRegistry = "target.io"; // change to your destination registry
+        const string dstRepository = "dst/test"; // change to your destination repository
 
         // Create a HttpClient instance for making HTTP requests.
         var httpClient = new HttpClient();
@@ -35,13 +35,12 @@ public static class CopyArtifact
         // Create simple credential providers with static credentials.
         var srcCredential = new SingleRegistryCredentialProvider(srcRegistry, new Credential
         {
-            Username = "src-user",
-            RefreshToken = "src-refresh-token"
+            RefreshToken = "src_refresh_token" // change to your actual refresh token
         });
         var dstCredential = new SingleRegistryCredentialProvider(dstRegistry, new Credential
         {
-            Username = "dst-user",
-            RefreshToken = "dst-refresh-token"
+            Username = "username", // change to your actual username
+            Password = "password" // change to your actual password
         });
 
         // Create a memory cache for caching access tokens to improve auth performance.
@@ -59,7 +58,7 @@ public static class CopyArtifact
             Client = new Client(httpClient, dstCredential, new Cache(memoryCache)),
         });
 
-        // Copy the artifact identified by reference from the source repository to the destination
+        // Copy the artifact identified by reference (tag or digest) from the source repository to the destination
         const string reference = "tag"; // could also be a digest like "sha256:..."
         var copiedRoot = await sourceRepository.CopyAsync(reference, destinationRepository, "");
     }

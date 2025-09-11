@@ -17,6 +17,7 @@ The ORAS .NET library follows [Semantic Versioning](https://semver.org/), where 
 ## Documentations
 
 - [API documentation](https://oras-project.github.io/oras-dotnet/api/): API Documentation for the ORAS .NET library.
+- [Code Examples](https://oras-project.github.io/oras-dotnet/api/index.html#examples): Example usages of the ORAS .NET library.
 - [ORAS client libraries](https://oras.land/docs/category/client-libraries): Documentation for general ORAS libraries.
 - [Reviewing guide](https://github.com/oras-project/community/blob/main/REVIEWING.md): All reviewers must read the reviewing guide and agree to follow the project review guidelines.
 - [Release checklist](RELEASE_CHECKLIST.md): Checklist for releasing a new version of the ORAS .NET library.
