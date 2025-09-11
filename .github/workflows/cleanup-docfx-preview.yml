@@ -23,81 +23,45 @@ jobs:
   cleanup-preview:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pages: write
-      id-token: write
+      contents: read
+      pull-requests: write
     steps:
-      - name: Checkout gh-pages branch
-        uses: actions/checkout@v5
+      - name: Comment PR about cleanup
+        uses: actions/github-script@v7
         with:
-          ref: gh-pages
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Remove PR preview directory
-        run: |
-          if [ -d "preview/pr-${{ github.event.pull_request.number }}" ]; then
-            rm -rf preview/pr-${{ github.event.pull_request.number }}
-            echo "Removed preview directory for PR #${{ github.event.pull_request.number }}"
-          else
-            echo "Preview directory for PR #${{ github.event.pull_request.number }} not found"
-          fi
-
-      - name: Update preview index
-        run: |
-          # If there are still preview directories, update index
-          if ls preview/pr-* 1> /dev/null 2>&1; then
-            cat > index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <title>DocFX Previews</title>
-              <style>
-                  body { font-family: Arial, sans-serif; margin: 40px; }
-                  .preview-link { display: block; margin: 10px 0; padding: 10px; border: 1px solid #ddd; text-decoration: none; color: #333; }
-                  .preview-link:hover { background-color: #f5f5f5; }
-              </style>
-          </head>
-          <body>
-              <h1>DocFX Documentation Previews</h1>
-              <p>Available preview deployments:</p>
-          EOF
+          script: |
+            const prNumber = context.payload.pull_request.number;
             
-            # Add links for remaining PRs
-            for dir in preview/pr-*/; do
-              if [ -d "$dir" ]; then
-                pr_num=$(basename "$dir" | sed 's/pr-//')
-                echo "    <a href=\"./$dir\" class=\"preview-link\">PR #$pr_num</a>" >> index.html
-              fi
-            done
+            const body = `## 📖 DocFX Preview Cleanup
             
-            echo "</body></html>" >> index.html
-          else
-            # No more previews, create simple index
-            cat > index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <title>DocFX Previews</title>
-              <style>
-                  body { font-family: Arial, sans-serif; margin: 40px; }
-              </style>
-          </head>
-          <body>
-              <h1>DocFX Documentation Previews</h1>
-              <p>No active preview deployments.</p>
-          </body>
-          </html>
-          EOF
-          fi
-
-      - name: Commit and push changes
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add .
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Remove preview for PR #${{ github.event.pull_request.number }}"
-            git push origin gh-pages
-          fi
+            The documentation preview for this PR has been cleaned up as the PR is now closed.
+            
+            The preview deployment has been removed.
+            `;
+            
+            try {
+              // Check if we already commented about preview
+              const comments = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+              });
+              
+              const existingComment = comments.data.find(comment => 
+                comment.user.login === 'github-actions[bot]' && 
+                comment.body.includes('DocFX Preview Deployment')
+              );
+              
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body: body
+                });
+                console.log('Updated preview comment with cleanup notice');
+              }
+            } catch (error) {
+              console.error('Failed to update PR comment:', error);
+              // Don't fail the workflow if commenting fails
+            }

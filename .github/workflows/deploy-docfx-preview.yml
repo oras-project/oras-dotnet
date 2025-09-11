@@ -27,6 +27,9 @@ jobs:
   build-and-deploy-preview:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       contents: read
       pages: write
@@ -60,42 +63,21 @@ jobs:
         env:
           DOCFX_SOURCE_BRANCH_NAME: ${{ github.head_ref }}
 
-      - name: Prepare Preview Directory Structure
-        run: |
-          mkdir -p preview-site/preview/pr-${{ github.event.pull_request.number }}
-          cp -r docs/_site/* preview-site/preview/pr-${{ github.event.pull_request.number }}/
-          
-          # Create or update index file for preview listing
-          cat > preview-site/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <title>DocFX Previews</title>
-              <style>
-                  body { font-family: Arial, sans-serif; margin: 40px; }
-                  .preview-link { display: block; margin: 10px 0; padding: 10px; border: 1px solid #ddd; text-decoration: none; color: #333; }
-                  .preview-link:hover { background-color: #f5f5f5; }
-              </style>
-          </head>
-          <body>
-              <h1>DocFX Documentation Previews</h1>
-              <p>Available preview deployments:</p>
-              <a href="./preview/pr-${{ github.event.pull_request.number }}/" class="preview-link">
-                  PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
-              </a>
-          </body>
-          </html>
-          EOF
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./docs/_site
+          name: preview-pr-${{ github.event.pull_request.number }}
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+        id: deployment
+        uses: actions/deploy-pages@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./preview-site
-          destination_dir: .
-          keep_files: true
-          enable_jekyll: false
-          commit_message: 'Deploy DocFX preview for PR #${{ github.event.pull_request.number }}'
+          artifact_name: preview-pr-${{ github.event.pull_request.number }}
+          preview: true
 
       - name: Comment PR with Preview URL
         uses: actions/github-script@v7
@@ -103,7 +85,7 @@ jobs:
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
-            const previewUrl = `https://${context.repo.owner}.github.io/${context.repo.repo}/preview/pr-${prNumber}/`;
+            const previewUrl = '${{ steps.deployment.outputs.page_url }}';
             
             const body = `## 📖 DocFX Preview Deployment
             
