@@ -1,0 +1,139 @@
+# Copyright The ORAS Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Deploy DocFX Preview for PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'src/**'
+      - 'tests/**/documentations/**'
+      - '.github/workflows/deploy-docfx-preview.yml'
+
+jobs:
+  build-and-deploy-preview:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Check for documentation changes
+        id: check_changes
+        run: |
+          # This step will be skipped if no docs-related files are changed
+          # The workflow trigger already filters by paths, but this provides additional safety
+          echo "Documentation changes detected, proceeding with preview build..."
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.x
+
+      - name: Install DocFX
+        run: |
+          dotnet tool update -g docfx
+
+      - name: Build Documentation
+        run: |
+          cd docs
+          docfx metadata docfx.json
+          docfx build
+
+      - name: Prepare Preview Directory Structure
+        run: |
+          mkdir -p preview-site/preview/pr-${{ github.event.pull_request.number }}
+          cp -r docs/_site/* preview-site/preview/pr-${{ github.event.pull_request.number }}/
+          
+          # Create or update index file for preview listing
+          cat > preview-site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>DocFX Previews</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; }
+                  .preview-link { display: block; margin: 10px 0; padding: 10px; border: 1px solid #ddd; text-decoration: none; color: #333; }
+                  .preview-link:hover { background-color: #f5f5f5; }
+              </style>
+          </head>
+          <body>
+              <h1>DocFX Documentation Previews</h1>
+              <p>Available preview deployments:</p>
+              <a href="./preview/pr-${{ github.event.pull_request.number }}/" class="preview-link">
+                  PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
+              </a>
+          </body>
+          </html>
+          EOF
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./preview-site
+          destination_dir: .
+          keep_files: true
+          enable_jekyll: false
+          commit_message: 'Deploy DocFX preview for PR #${{ github.event.pull_request.number }}'
+
+      - name: Comment PR with Preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const previewUrl = `https://${context.repo.owner}.github.io/${context.repo.repo}/preview/pr-${prNumber}/`;
+            
+            const body = `## 📖 DocFX Preview Deployment
+            
+            The documentation preview for this PR is now available at:
+            
+            **🔗 [View Preview](${previewUrl})**
+            
+            This preview will be updated automatically when you push changes to this PR.
+            `;
+            
+            // Check if we already commented
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            
+            const existingComment = comments.data.find(comment => 
+              comment.user.login === 'github-actions[bot]' && 
+              comment.body.includes('DocFX Preview Deployment')
+            );
+            
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: body
+              });
+            }

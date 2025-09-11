@@ -1,0 +1,103 @@
+# Copyright The ORAS Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Cleanup DocFX Preview
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  cleanup-preview:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v5
+        with:
+          ref: gh-pages
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove PR preview directory
+        run: |
+          if [ -d "preview/pr-${{ github.event.pull_request.number }}" ]; then
+            rm -rf preview/pr-${{ github.event.pull_request.number }}
+            echo "Removed preview directory for PR #${{ github.event.pull_request.number }}"
+          else
+            echo "Preview directory for PR #${{ github.event.pull_request.number }} not found"
+          fi
+
+      - name: Update preview index
+        run: |
+          # If there are still preview directories, update index
+          if ls preview/pr-* 1> /dev/null 2>&1; then
+            cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>DocFX Previews</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; }
+                  .preview-link { display: block; margin: 10px 0; padding: 10px; border: 1px solid #ddd; text-decoration: none; color: #333; }
+                  .preview-link:hover { background-color: #f5f5f5; }
+              </style>
+          </head>
+          <body>
+              <h1>DocFX Documentation Previews</h1>
+              <p>Available preview deployments:</p>
+          EOF
+            
+            # Add links for remaining PRs
+            for dir in preview/pr-*/; do
+              if [ -d "$dir" ]; then
+                pr_num=$(basename "$dir" | sed 's/pr-//')
+                echo "    <a href=\"./$dir\" class=\"preview-link\">PR #$pr_num</a>" >> index.html
+              fi
+            done
+            
+            echo "</body></html>" >> index.html
+          else
+            # No more previews, create simple index
+            cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>DocFX Previews</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; }
+              </style>
+          </head>
+          <body>
+              <h1>DocFX Documentation Previews</h1>
+              <p>No active preview deployments.</p>
+          </body>
+          </html>
+          EOF
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Remove preview for PR #${{ github.event.pull_request.number }}"
+            git push origin gh-pages
+          fi
