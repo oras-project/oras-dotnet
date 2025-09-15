@@ -1,5 +1,4 @@
 - name: Home
-  href: /oras-dotnet/index.md
+  href: /
 - name: Documentation
-  href: /oras-dotnet/api/
-  homepage: api/index.md
+  href: /api/
