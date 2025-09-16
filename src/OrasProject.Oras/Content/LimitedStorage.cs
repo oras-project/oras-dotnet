@@ -33,12 +33,13 @@ internal class LimitedStorage(IStorage storage, long limit) : IStorage
         return _storage.FetchAsync(target, cancellationToken);
     }
 
-    public Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
+    public async Task PushAsync(Descriptor expected, Stream stream, CancellationToken cancellationToken = default)
     {
         if (expected.Size > _pushLimit)
         {
             throw new SizeLimitExceededException($"content size {expected.Size} exceeds push size limit {_pushLimit}");
         }
-        return _storage.PushAsync(expected, content, cancellationToken);
+        using var streamWithLimit = await stream.ReadWithLimitAsync(_pushLimit, cancellationToken).ConfigureAwait(false);
+        await _storage.PushAsync(expected, streamWithLimit, cancellationToken).ConfigureAwait(false);
     }
 }
