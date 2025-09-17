@@ -77,13 +77,29 @@ public static class StreamExtensions
         long maxBytes,
         CancellationToken cancellationToken = default)
     {
+        using var limitedStream = await stream.ReadWithLimitAsync(maxBytes, cancellationToken).ConfigureAwait(false);
+        return limitedStream.ToArray();
+    }
+
+    /// <summary>
+    /// Reads a stream up to a specified byte limit.
+    /// Throws SizeLimitExceededException if the content exceeds the limit.
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="maxBytes"></param>
+    /// <exception cref="SizeLimitExceededException"></exception>
+    internal static async Task<MemoryStream> ReadWithLimitAsync(
+        this Stream stream,
+        long maxBytes,
+        CancellationToken cancellationToken = default)
+    {
         if (stream.CanSeek)
         {
             long remaining = stream.Length - stream.Position;
             if (remaining > maxBytes)
                 throw new SizeLimitExceededException($"Content size exceeds limit {maxBytes} bytes");
         }
-        using var ms = new MemoryStream((int)Math.Min(maxBytes, _defaultBufferSize));
+        var ms = new MemoryStream((int)Math.Min(maxBytes, _defaultBufferSize));
         byte[] buffer = ArrayPool<byte>.Shared.Rent(_defaultBufferSize);
         try
         {
@@ -94,12 +110,14 @@ public static class StreamExtensions
                 // Prevent overflow if totalRead + read exceeds maxBytes.
                 if (totalRead > maxBytes - read)
                 {
+                    ms.Dispose();
                     throw new SizeLimitExceededException($"Content size exceeds limit {maxBytes} bytes.");
                 }
                 ms.Write(buffer, 0, read);
                 totalRead += read;
             }
-            return ms.ToArray();
+            ms.Position = 0;
+            return ms;
         }
         finally
         {
