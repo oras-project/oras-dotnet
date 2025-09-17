@@ -166,7 +166,10 @@ public class ProxyTest
         var sourceStream = new MemoryStream(data);
 
         var storageMock = new Mock<IStorage>(MockBehavior.Strict);
-        // No setup on PushAsync or FetchAsync => should not be called
+        storageMock
+            .Setup(s => s.ExistsAsync(descriptor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false)
+            .Verifiable();
 
         var sourceMock = new Mock<ITarget>();
         sourceMock
