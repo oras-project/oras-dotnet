@@ -68,17 +68,14 @@ internal class Proxy : IReferenceFetchable, IReadOnlyStorage
         if (Source is IReferenceFetchable srcRefFetchable)
         {
             (node, contentStream) = await srcRefFetchable.FetchAsync(reference, cancellationToken).ConfigureAwait(false);
+            if (StopCaching)
+            {
+                return (node, contentStream);
+            }
+            return (node, await CacheContent(node, contentStream, cancellationToken).ConfigureAwait(false));
         }
-        else
-        {
-            node = await Source.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
-            contentStream = await Source.FetchAsync(node, cancellationToken).ConfigureAwait(false);
-        }
-        if (StopCaching)
-        {
-            return (node, contentStream);
-        }
-        return (node, await CacheContent(node, contentStream, cancellationToken).ConfigureAwait(false));
+        node = await Source.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
+        return (node, await FetchAsync(node, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>
