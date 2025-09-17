@@ -10,65 +10,68 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#region Usage
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry.Remote.Auth;
-using OrasProject.Oras;
-using Moq;
 using Microsoft.Extensions.Caching.Memory;
 
-public class PushArtifact
-{
-    public async Task PushArtifactAsync()
-    {
-        #region Usage
-        // This example demonstrates how to push an artifact to a remote repository.
+namespace OrasProject.Oras.Tests.Examples;
 
-        // Create a HttpClient instance to be used for making HTTP requests.
+public static class PushArtifact
+{
+    // This example demonstrates how to push an artifact to a remote repository.
+    // For production use: Implement proper exception handling, cancellation, and dependency injection.
+    public static async Task PushArtifactAsync()
+    {
+        const string registry = "localhost:5000"; // change to your target registry
+        const string repository = "myrepo/test"; // change to your target repository
+
+        // Create a HttpClient instance for making HTTP requests.
         var httpClient = new HttpClient();
-        var mockCredentialProvider = new Mock<ICredentialProvider>();
-        var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var repo = new Repository(new RepositoryOptions()
+
+        // Create a simple credential provider with static credentials.
+        var credentialProvider = new SingleRegistryCredentialProvider(registry, new Credential
         {
-            Reference = Reference.Parse("localhost:5000/test"),
-            Client = new Client(httpClient, mockCredentialProvider.Object, new Cache(memoryCache)),
+            RefreshToken = "refresh_token" // change to your actual refresh token
         });
 
+        // Create a memory cache for caching access tokens to improve auth performance.
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
+
+        // Create a repository instance to interact with the target repository.
+        var repo = new Repository(new RepositoryOptions
+        {
+            Reference = Reference.Parse($"{registry}/{repository}"),
+            Client = new Client(httpClient, credentialProvider, new Cache(memoryCache)),
+        });
+
+        // Push layers to the repository.
         var layersBytes = new List<byte[]>
         {
-            new byte[] { 0x04, 0x05, 0x06 }, // Example layer data
+            new byte[] { 0x04, 0x05, 0x06 }, // example layer data
         };
         var layers = new List<Descriptor>
         {
-            Descriptor.Create(
-                layersBytes[0],
-                MediaType.ImageLayer
-            )
+            Descriptor.Create(layersBytes[0], MediaType.ImageLayer)
         };
-
-        // Push layers to the repository
         for (int i = 0; i < layers.Count; i++)
         {
             await repo.PushAsync(layers[i], new MemoryStream(layersBytes[i]));
         }
 
-        // Create a PackManifestOptions instance to specify the manifest configuration.
+        // Pack a manifest for the artifact and push it to the repository.
         var options = new PackManifestOptions
         {
             Layers = layers
         };
-        var artifactType = "doc/example";
-        // Pack the artifact with the specified type and push it to the repository.
-        var pushedDescriptor = await Packer.PackManifestAsync(
-            repo,
-            Packer.ManifestVersion.Version1_1,
-            artifactType,
-            options);
+        const string artifactType = "doc/example"; // choose an appropriate media type for your artifact
+        var manifestDescriptor = await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options);
 
-        var tag = "tag";
-        // Tag the pushed artifact.
-        await repo.TagAsync(pushedDescriptor, tag);
-        #endregion
+        // Tag the pushed manifest so it can be referenced by a human-readable name.
+        const string tag = "tag"; // choose a tag for your artifact
+        await repo.TagAsync(manifestDescriptor, tag);
     }
 }
+#endregion

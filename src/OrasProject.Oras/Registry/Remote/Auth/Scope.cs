@@ -188,7 +188,7 @@ public class Scope : IComparable<Scope>
     /// <summary>
     /// CompareTo is to implement the method defined in the interface in IComparable.
     ///
-    /// Note: This comparer is intended for use with SortedSet<Scope> in the ScopeManager.
+    /// Note: This comparer is intended for use with SortedSet&lt;Scope&gt; in the ScopeManager.
     /// If two Scope instances have the same ResourceType and ResourceName,
     /// they are considered equivalent and will be merged into a single entry by uniting their Actions.
     /// 
