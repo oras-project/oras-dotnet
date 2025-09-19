@@ -12,23 +12,65 @@
 // limitations under the License.
 
 using System.Collections.Concurrent;
+using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Cache : ICache
+public sealed class Cache(IMemoryCache memoryCache) : ICache
 {
+    #region private members
     /// <summary>
     /// CacheEntry represents a cache entry for storing authentication tokens associated with a specific challenge scheme.
     /// </summary>
     /// <param name="Scheme">The authentication scheme associated with the cache entry.</param>
     /// <param name="Tokens">A dictionary containing authentication tokens, where the key is the scopes and the value is the token itself.</param>
-    private record CacheEntry(Challenge.Scheme Scheme, Dictionary<string, string> Tokens);
+    private sealed record CacheEntry(Challenge.Scheme Scheme, Dictionary<string, string> Tokens);
 
     /// <summary>
-    /// A thread-safe dictionary used to store cache entries for authentication purposes.
+    /// The underlying memory cache used to store authentication schemes and tokens.
     /// </summary>
-    private readonly ConcurrentDictionary<string, CacheEntry> _caches = new();
+    private readonly IMemoryCache _memoryCache = memoryCache;
+
+    /// <summary>
+    /// Dictionary to store per-registry locks to ensure thread-safety while allowing
+    /// concurrent operations on different registries.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, object> _locks = new();
+
+    /// <summary>
+    /// Prefix for cache keys to prevent collisions with other users of the same memory cache.
+    /// </summary>
+    private const string _cacheKeyPrefix = "ORAS_AUTH_";
+
+    /// <summary>
+    /// Default cache entry options with size=1.
+    /// These options are used when user-provided options are null.
+    /// </summary>
+    private static readonly MemoryCacheEntryOptions _defaultCacheEntryOptions = new()
+    {
+        Size = 1 // always set size to ensure size limits work properly
+    };
+
+    /// <summary>
+    /// Generates a consistent cache key for a registry.
+    /// </summary>
+    /// <param name="registry">The registry name</param>
+    /// <returns>A prefixed cache key for the registry</returns>
+    private static string GetCacheKey(string registry) => $"{_cacheKeyPrefix}{registry}";
+    #endregion
+
+    /// <summary>
+    /// Cache entry options used in SetCache for configuring token caching behavior.
+    /// If not set, default options with size=1 are used.
+    /// </summary>
+    /// <remarks>
+    /// Note: If the underlying memory cache has a size limit configured, you should
+    /// always set the <see cref="MemoryCacheEntryOptions.Size"/> property on your custom
+    /// options to ensure proper cache eviction behavior.
+    /// </remarks>
+    public MemoryCacheEntryOptions? CacheEntryOptions { get; set; }
 
     /// <summary>
     /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified registry.
@@ -43,7 +85,8 @@ public class Cache : ICache
     /// </returns>
     public bool TryGetScheme(string registry, out Challenge.Scheme scheme)
     {
-        if (_caches.TryGetValue(registry, out var cacheEntry))
+        var cacheKey = GetCacheKey(registry);
+        if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? cacheEntry) && cacheEntry != null)
         {
             scheme = cacheEntry.Scheme;
             return true;
@@ -61,24 +104,45 @@ public class Cache : ICache
     /// <param name="key">The key used to identify the token within the cache entry.</param>
     /// <param name="token">The token to be stored in the cache.</param>
     /// <remarks>
+    /// <para>
     /// If the registry already exists in the cache:
-    /// - If the provided scheme differs from the existing scheme, the cache entry is replaced with a new one.
-    /// - Otherwise, the token is added or updated in the existing cache entry.
+    /// <list type="bullet">
+    /// <item> If the provided scheme differs from the existing scheme, the cache entry is replaced with a new one.</item>
+    /// <item> Otherwise, the token is added or updated in the existing cache entry.</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// This method uses the <see cref="CacheEntryOptions"/> property if set, or falls back to
+    /// the default options with size=1. Using these options ensures proper cache eviction behavior
+    /// when size limits are configured.
+    /// </para>
     /// </remarks>
     public void SetCache(string registry, Challenge.Scheme scheme, string key, string token)
     {
-        _caches.AddOrUpdate(registry,
-            new CacheEntry(scheme, new Dictionary<string, string> { { key, token } }),
-            (_, oldEntry) =>
+        var cacheKey = GetCacheKey(registry);
+        var lockObj = _locks.GetOrAdd(cacheKey, _ => new object());
+        // Lock for atomicity
+        lock (lockObj)
+        {
+            if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? oldEntry) &&
+                oldEntry != null &&
+                scheme == oldEntry.Scheme)
             {
-                if (scheme != oldEntry.Scheme)
-                {
-                    return new CacheEntry(scheme, new Dictionary<string, string> { { key, token } });
-                }
-
+                // When the scheme matches, update the token in the existing entry
                 oldEntry.Tokens[key] = token;
-                return oldEntry;
-            });
+                return;
+            }
+
+            // Otherwise, set a new entry
+            var tokens = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [key] = token
+            };
+            var newEntry = new CacheEntry(scheme, tokens);
+
+            var entryOptions = CacheEntryOptions ?? _defaultCacheEntryOptions;
+            _memoryCache.Set(cacheKey, newEntry, entryOptions);
+        }
     }
 
     /// <summary>
@@ -96,15 +160,17 @@ public class Cache : ICache
     /// </returns>
     public bool TryGetToken(string registry, Challenge.Scheme scheme, string key, out string token)
     {
-        token = string.Empty;
-        if (_caches.TryGetValue(registry, out var cacheEntry)
-            && cacheEntry.Scheme == scheme
-            && cacheEntry.Tokens.TryGetValue(key, out var cachedToken))
+        var cacheKey = GetCacheKey(registry);
+        if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? cacheEntry) &&
+            cacheEntry != null &&
+            cacheEntry.Scheme == scheme &&
+            cacheEntry.Tokens.TryGetValue(key, out var cachedToken))
         {
             token = cachedToken;
             return true;
         }
 
+        token = string.Empty;
         return false;
     }
 }

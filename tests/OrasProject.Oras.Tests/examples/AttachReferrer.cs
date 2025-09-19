@@ -10,51 +10,59 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-using OrasProject.Oras;
+#region Usage
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote.Auth;
-using Moq;
+using Microsoft.Extensions.Caching.Memory;
 
-public class AttachReferrer
+namespace OrasProject.Oras.Tests.Examples;
+
+public static class AttachReferrer
 {
-    public async Task AttachReferrerAsync()
+    // This example demonstrates how to attach a referrer artifact to an existing manifest in a remote registry.
+    // For production use: Implement proper exception handling, cancellation, and dependency injection.
+    public static async Task AttachReferrerAsync()
     {
-        #region Usage
-        // This example demonstrates how to attach a referrer to an existing manifest.
+        const string registry = "localhost:5000"; // change to your target registry
+        const string repository = "myrepo/test"; // change to your target repository
 
-        // Create a HttpClient instance to be used for making HTTP requests.
+        // Create a HttpClient instance for making HTTP requests.
         var httpClient = new HttpClient();
 
-        // Create a repository instance with the target registry.
-        var mockCredentialProvider = new Mock<ICredentialProvider>();
-        var repo = new Repository(new RepositoryOptions()
+        // Create a simple credential provider with static credentials.
+        var credentialProvider = new SingleRegistryCredentialProvider(registry, new Credential
         {
-            Reference = Reference.Parse("localhost:5000/test"),
-            Client = new Client(httpClient, mockCredentialProvider.Object),
+            RefreshToken = "refresh_token" // change to your actual refresh token
         });
 
-        var targetReference = "target";
+        // Create a memory cache for caching access tokens to improve auth performance.
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
 
-        // Resolve the target reference to get its descriptor.
-        var targetDescriptor = await repo.ResolveAsync(targetReference);
+        // Create a repository instance to interact with the target repository.
+        var repo = new Repository(new RepositoryOptions
+        {
+            Reference = Reference.Parse($"{registry}/{repository}"),
+            Client = new Client(httpClient, credentialProvider, new Cache(memoryCache)),
+        });
 
-        // Add annotations to the manifest.
-        var artifactType = "doc/example";
+        // Resolve the target reference (tag or digest) to get its descriptor.
+        const string subjectReference = "target"; // could also be a digest like "sha256:..."
+        var subjectDescriptor = await repo.ResolveAsync(subjectReference);
+
+        // Pack the manifest with the specified artifact type and annotations and push it to the repository.
         var annotations = new Dictionary<string, string>
         {
-            { "org.opencontainers.image.created", "2000-01-01T00:00:00Z" },
-            { "eol", "2025-07-01" }
+            ["org.opencontainers.image.created"] = "2000-01-01T00:00:00Z",
+            ["eol"] = "2025-07-01"
         };
-
         var options = new PackManifestOptions
         {
             ManifestAnnotations = annotations,
-            Subject = targetDescriptor,
+            Subject = subjectDescriptor, // set subject to make this manifest a referrer
         };
-
-        // Pack the manifest with the specified artifact type and annotations and push it to the repository.
-        await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options);
-        #endregion
+        const string artifactType = "doc/example";
+        var referrerManifestDescriptor = await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, artifactType, options);
     }
 }
+#endregion

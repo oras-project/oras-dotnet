@@ -10,77 +10,74 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#region Usage
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry.Remote.Auth;
-using OrasProject.Oras;
-using Moq;
+using Microsoft.Extensions.Caching.Memory;
 
-public class PushImage
+namespace OrasProject.Oras.Tests.Examples;
+
+public static class PushImage
 {
-    public async Task PushImageAsync()
+    // This example demonstrates how to push an image to a remote repository.
+    // For production use: Implement proper exception handling, cancellation, and dependency injection.
+    public static async Task PushImageAsync()
     {
-        #region Usage
-        // This example demonstrates how to push a manifest to a remote repository.
+        const string registry = "localhost:5000"; // change to your target registry
+        const string repository = "myrepo/test"; // change to your target repository
 
-        // Create a HttpClient instance to be used for making HTTP requests.
+        // Create a HttpClient instance for making HTTP requests.
         var httpClient = new HttpClient();
-        var mockCredentialProvider = new Mock<ICredentialProvider>();
-        var repo = new Repository(new RepositoryOptions()
+
+        // Create a simple credential provider with static credentials.
+        var credentialProvider = new SingleRegistryCredentialProvider(registry, new Credential
         {
-            Reference = Reference.Parse("localhost:5000/test"),
-            Client = new Client(httpClient, mockCredentialProvider.Object),
+            RefreshToken = "refresh_token" // change to your actual refresh token
         });
 
-        var configBytes = new byte[] { 0x01, 0x02, 0x03 }; // Example config data
-        var config = Descriptor.Create(
-            configBytes,
-            MediaType.ImageConfig
-        );
+        // Create a memory cache for caching access tokens to improve auth performance.
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
 
-        var layersBytes = new List<byte[]>
+        // Create a repository instance to interact with the target repository.
+        var repo = new Repository(new RepositoryOptions
         {
-            new byte[] { 0x04, 0x05, 0x06 }, // Example layer data
-            new byte[] { 0x07, 0x08, 0x09 }  // Another layer data
+            Reference = Reference.Parse($"{registry}/{repository}"),
+            Client = new Client(httpClient, credentialProvider, new Cache(memoryCache)),
+        });
+
+        // Push config and layers to the repository.
+        var configBytes = new byte[] { 0x01, 0x02, 0x03 }; // Example config bytes.
+        var config = Descriptor.Create(configBytes, MediaType.ImageConfig);
+
+        var layerBytesList = new List<byte[]>
+        {
+            new byte[] { 0x04, 0x05, 0x06 }, // example layer data
+            new byte[] { 0x07, 0x08, 0x09 } // another example layer data
         };
         var layers = new List<Descriptor>
         {
-            Descriptor.Create(
-                layersBytes[0],
-                MediaType.ImageLayer
-            ),
-            Descriptor.Create(
-                layersBytes[1],
-                MediaType.ImageLayer
-            )
+            Descriptor.Create(layerBytesList[0], MediaType.ImageLayer),
+            Descriptor.Create(layerBytesList[1], MediaType.ImageLayer)
         };
-
-        // Push config and layers to the repository
         await repo.PushAsync(config, new MemoryStream(configBytes));
         for (int i = 0; i < layers.Count; i++)
         {
-            await repo.PushAsync(layers[i], new MemoryStream(layersBytes[i]));
-
+            await repo.PushAsync(layers[i], new MemoryStream(layerBytesList[i]));
         }
 
-        // Create a PackManifestOptions instance to specify the manifest configuration.
+        // Pack a manifest for the artifact and push it to the repository.
         var options = new PackManifestOptions
         {
             Config = config,
             Layers = layers
         };
+        var manifestDescriptor = await Packer.PackManifestAsync(repo, Packer.ManifestVersion.Version1_1, "", options);
 
-        // Pack and push the manifest to the repository.
-        var pushedDescriptor = await Packer.PackManifestAsync(
-            repo,
-            Packer.ManifestVersion.Version1_1,
-            "",
-            options);
-
-        var tag = "tag";
-        // Tag the pushed image.
-        await repo.TagAsync(pushedDescriptor, tag);
-        #endregion
+        // Tag the pushed manifest so it can be referenced by a human-readable name.
+        const string tag = "tag"; // choose a tag for your image
+        await repo.TagAsync(manifestDescriptor, tag);
     }
 }
+#endregion
