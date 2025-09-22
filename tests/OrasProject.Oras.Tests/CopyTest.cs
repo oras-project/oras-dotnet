@@ -196,7 +196,7 @@ public class CopyTest
         var destinationTarget = new MemoryStore();
         CopyOptions copyOptions = new CopyOptions()
         {
-            MapRoot = (IReadOnlyStorage storage, Descriptor descriptor, CancellationToken token) => Task.FromResult(descs[1])
+            MapRoot = (_, _, _) => Task.FromResult(descs[1])
         };
         await sourceTarget.CopyAsync(reference, destinationTarget, "bar", copyOptions, cancellationToken);
         Assert.True(await destinationTarget.ExistsAsync(descs[1], cancellationToken));
