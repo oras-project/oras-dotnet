@@ -129,7 +129,7 @@ public static class TargetExtensions
     /// <param name="cancellationToken"></param>
     internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
     {
-        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, new SemaphoreSlim(1, copyGraphOptions.Concurrency), cancellationToken)
+        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, new SemaphoreSlim(copyGraphOptions.Concurrency, copyGraphOptions.Concurrency), cancellationToken)
             .ConfigureAwait(false);
     }
 
