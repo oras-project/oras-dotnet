@@ -25,10 +25,10 @@ namespace OrasProject.Oras;
 /// </summary>
 public class CopyGraphOptions
 {
-    private const int _defaultMaxConcurrency = 10;
+    private const int _defaultConcurrency = 3;
     private const long _defaultMaxMetadataBytes = 4 * 1024 * 1024; // 4 MiB
 
-    private int _maxConcurrency = _defaultMaxConcurrency;
+    private int _maxConcurrency = _defaultConcurrency;
     private long _maxMetadataBytes = _defaultMaxMetadataBytes;
 
     /// <summary>
@@ -46,7 +46,7 @@ public class CopyGraphOptions
             }
             else
             {
-                _maxConcurrency = _defaultMaxConcurrency;
+                _maxConcurrency = _defaultConcurrency;
             }
         }
     }

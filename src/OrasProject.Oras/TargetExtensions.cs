@@ -174,8 +174,7 @@ public static class TargetExtensions
         var childNodesCopies = new List<Task>();
         foreach (var childNode in successors)
         {
-            childNodesCopies.Add(Task.Run(async () =>
-                    await src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, cancellationToken).ConfigureAwait(false), cancellationToken));
+            childNodesCopies.Add(src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, cancellationToken));
         }
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
 
