@@ -16,7 +16,7 @@ namespace OrasProject.Oras;
 /// <summary>
 /// Specifies the action to take during a copy operation.
 /// </summary>
-public enum CopyAction
+public enum CopyNodeDecision
 {
     /// <summary>
     /// Continue with the copy operation.

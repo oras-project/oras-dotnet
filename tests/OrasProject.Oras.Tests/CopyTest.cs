@@ -214,7 +214,7 @@ public class CopyTest
             PreCopy = (desc, ct) =>
             {
                 preCopyCount++;
-                return Task.FromResult(CopyAction.Continue);
+                return Task.FromResult(CopyNodeDecision.Continue);
             },
             PostCopy = (desc, ct) =>
             {

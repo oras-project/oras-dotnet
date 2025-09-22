@@ -185,7 +185,7 @@ public static class TargetExtensions
             if (copyGraphOptions.PreCopy != null)
             {
                 var copyAction = await copyGraphOptions.PreCopy(node, cancellationToken).ConfigureAwait(false);
-                if (copyAction == CopyAction.SkipNode)
+                if (copyAction == CopyNodeDecision.SkipNode)
                 {
                     return;
                 }
