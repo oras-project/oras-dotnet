@@ -73,7 +73,7 @@ public class CopyGraphOptions
 
     /// <summary>
     /// PreCopy handles the current descriptor before it is copied. PreCopy can
-    /// return CopyAction.SkipNode to signal that desc should be skipped when it already
+    /// return CopyNodeDecision.SkipNode to signal that desc should be skipped when it already
     /// exists in the target.
     /// </summary>
     public Func<Descriptor, CancellationToken, Task<CopyNodeDecision>>? PreCopy { get; set; }
