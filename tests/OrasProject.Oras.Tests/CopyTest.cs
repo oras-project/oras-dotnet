@@ -256,7 +256,7 @@ public class CopyTest
             Concurrency = 0,
             MaxMetadataBytes = 0
         };
-        Assert.Equal(10, options.Concurrency);
+        Assert.Equal(3, options.Concurrency);
         Assert.Equal(4 * 1024 * 1024, options.MaxMetadataBytes);
     }
 
