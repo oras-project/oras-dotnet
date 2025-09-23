@@ -39,7 +39,6 @@ internal class LimitedStorage(IStorage storage, long limit) : IStorage
         {
             throw new SizeLimitExceededException($"content size {expected.Size} exceeds push size limit {_pushLimit}");
         }
-        using var streamWithLimit = await stream.ReadWithLimitAsync(_pushLimit, cancellationToken).ConfigureAwait(false);
-        await _storage.PushAsync(expected, streamWithLimit, cancellationToken).ConfigureAwait(false);
+        await _storage.PushAsync(expected, stream, cancellationToken).ConfigureAwait(false);
     }
 }
