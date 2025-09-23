@@ -7,8 +7,8 @@ namespace OrasProject.Oras.Content;
 
 internal sealed class LimitedStream(Stream inner, long limit) : Stream
 {
-    private Stream _inner = inner;
-    private long _limit = limit;
+    private readonly Stream _inner = inner;
+    private readonly long _limit = limit;
     private long _bytesRead = 0;
 
     public override bool CanRead => _inner.CanRead;
@@ -44,7 +44,7 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
     {
         if (_bytesRead >= _limit)
         {
-            return 0; // End of limited stream
+            throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
         }
         // Limit the read count to not exceed the remaining bytes
         var readLimit = (int)Math.Min(count, _limit - _bytesRead);
@@ -53,11 +53,25 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
         return read;
     }
 
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        if (_bytesRead >= _limit)
+        {
+            throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
+        }
+        // Limit the read count to not exceed the remaining bytes
+        var readLimit = (int)Math.Min(buffer.Length, _limit - _bytesRead);
+        var limitedBuffer = buffer[..readLimit];
+        var read = await _inner.ReadAsync(limitedBuffer, cancellationToken).ConfigureAwait(false);
+        _bytesRead += read;
+        return read;
+    }
+
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
         if (_bytesRead >= _limit)
         {
-            return 0; // End of limited stream
+            throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
         }
         // Limit the read count to not exceed the remaining bytes
         var readLimit = (int)Math.Min(count, _limit - _bytesRead);
