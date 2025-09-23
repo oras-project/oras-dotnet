@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 namespace OrasProject.Oras.Content;
 
-
 internal sealed class LimitedStream(Stream inner, long limit) : Stream
 {
     private Stream _inner = inner;
