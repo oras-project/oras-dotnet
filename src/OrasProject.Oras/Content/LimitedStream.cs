@@ -9,11 +9,12 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
 {
     private Stream _inner = inner;
     private long _limit = limit;
+    private long _bytesRead = 0;
 
     public override bool CanRead => _inner.CanRead;
     public override bool CanSeek => _inner.CanSeek;
     public override bool CanWrite => _inner.CanWrite;
-    public override long Length => _inner.Length;
+    public override long Length => Math.Min(_inner.Length, _limit);
     public override long Position { get => _inner.Position; set => _inner.Position = value; }
 
     public override void Flush()
@@ -23,7 +24,10 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
 
     public override long Seek(long offset, SeekOrigin origin)
     {
-        return _inner.Seek(offset, origin);
+        var newPosition = _inner.Seek(offset, origin);
+        // Update bytes read tracking based on new position
+        _bytesRead = Math.Min(newPosition, _limit);
+        return newPosition;
     }
 
     public override void SetLength(long value)
@@ -38,21 +42,27 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
 
     public override int Read(byte[] buffer, int offset, int count)
     {
-        var read = _inner.Read(buffer, offset, count);
-        if (read > _limit)
+        if (_bytesRead >= _limit)
         {
-            throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
+            return 0; // End of limited stream
         }
+        // Limit the read count to not exceed the remaining bytes
+        var readLimit = (int)Math.Min(count, _limit - _bytesRead);
+        var read = _inner.Read(buffer, offset, readLimit);
+        _bytesRead += read;
         return read;
     }
 
-    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
-        var read = await _inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-        if (read > _limit)
+        if (_bytesRead >= _limit)
         {
-            throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
+            return 0; // End of limited stream
         }
+        // Limit the read count to not exceed the remaining bytes
+        var readLimit = (int)Math.Min(count, _limit - _bytesRead);
+        var read = await _inner.ReadAsync(buffer, offset, readLimit, cancellationToken).ConfigureAwait(false);
+        _bytesRead += read;
         return read;
     }
 }
