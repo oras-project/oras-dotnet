@@ -10,7 +10,7 @@ Concise guidance for producing code and docs consistent with the ORAS .NET libra
 - Core domain: OCI descriptors, manifests (image + generic artifacts), blobs, registries, push / fetch / copy, referrers.
 
 ## Spec & Lineage
-- Origin: .NET‑native redesign inspired by [oras-go v2](https://github.com/opencontainers/oras-go) ([pkg docs](https://pkg.go.dev/oras.land/oras-go/v2)). Not a mechanical port.
+- Origin: .NET-native redesign inspired by [oras-go v2](https://github.com/opencontainers/oras-go) ([pkg docs](https://pkg.go.dev/oras.land/oras-go/v2)). Not a mechanical port.
 - Goal: Provide idiomatic C# (async/await, explicit interfaces, POCO models, typed exceptions) while preserving semantics of OCI artifacts operations.
 - Current Target Specs (v1.1.1):
 	- OCI Image Spec – https://github.com/opencontainers/image-spec/tree/v1.1.1
