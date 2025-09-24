@@ -26,7 +26,7 @@ Concise guidance for producing code and docs consistent with the ORAS .NET libra
 	- Only async I/O; add sync wrapper only if unavoidable.
 - Spec Linkage in Code: Public members that directly model spec structures (e.g., `Descriptor`, `Manifest`) should include an XML doc link to the relevant spec section.
 - Validation Priority: Enforce digest + size integrity, required media type presence, and optional `artifactType` non-empty if set before storing/publishing.
-- Compatibility: Keep JSON property names & omission behavior aligned with spec (use conditional ignore attributes rather than post‑serialization filtering).
+- Compatibility: Keep JSON property names & omission behavior aligned with spec (use conditional ignore attributes rather than post-serialization filtering).
 - Error Mapping: HTTP 4xx -> specific domain exceptions when meaningful; 5xx -> surfaced with context (do not over-wrap). Digest mismatch always hard-fails.
 - Non-Goals: Do not expose raw HTTP plumbing unless required for advanced extensibility; abstractions added only after repeated need.
 
