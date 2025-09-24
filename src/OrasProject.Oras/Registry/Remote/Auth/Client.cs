@@ -284,10 +284,10 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
 
                     if (!parameters.TryGetValue("realm", out var realm))
                     {
-                        // The `realm` parameter is used to construct the token request URL, so it's mandatory.
-                        throw new KeyNotFoundException("Realm was not present in the request.");
+                        // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
+                        throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
                     }
-                    // Some registries may omit the `service` parameter. Use empty string when absent.
+                    // some registries may omit the `service` parameter. Use empty string when absent.
                     parameters.TryGetValue("service", out var service);
                     service ??= string.Empty;
 
