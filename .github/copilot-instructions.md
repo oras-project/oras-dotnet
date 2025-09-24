@@ -139,4 +139,3 @@ Clarify intent in comments, e.g.:
 
 ---
 Update this file as conventions evolve; keep it succinct.
-// Copyright The ORAS Authors.
