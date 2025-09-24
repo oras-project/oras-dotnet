@@ -65,7 +65,7 @@ Media vs Artifact Type: Media type drives processing; `artifactType` is optional
 - Tests should cover: duplicate push, digest mismatch, tag -> digest resolution.
 
 ## Coding Style & Architecture
-- File‑scoped namespaces: `namespace OrasProject.Oras.<Area>;`
+- File-scoped namespaces: `namespace OrasProject.Oras.<Area>;`
 - Explicit access modifiers; small, single-responsibility types.
 - Public API: minimal, purposeful. Internal helpers remain internal.
 - Use `required` properties when logically mandatory.
