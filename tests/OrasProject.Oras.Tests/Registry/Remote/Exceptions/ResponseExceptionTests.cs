@@ -49,7 +49,7 @@ public class ResponseExceptionTests
         var message = exception.Message;
         
         // Should contain HTTP status
-        Assert.Contains("HTTP 404", message);
+        Assert.Contains("404", message);
         Assert.Contains("NotFound", message);
         
         // Should contain request method and URL
@@ -59,6 +59,9 @@ public class ResponseExceptionTests
         // Should contain error details (more concise format now)
         Assert.Contains("NAME_UNKNOWN:", message);
         Assert.Contains("repository name not known to registry", message);
+        
+        // Expected format
+        Assert.Equal("GET https://example.com/v2/repo/manifests/tag returned 404 NotFound: NAME_UNKNOWN: repository name not known to registry", message);
     }
     
     [Fact]
@@ -76,7 +79,7 @@ public class ResponseExceptionTests
         var exception = new ResponseException(response, null, customMessage);
         
         // Assert
-        string expectedMessage = "HTTP 401 Unauthorized for POST https://example.com/v2/token: Authentication failed";
+        string expectedMessage = "POST https://example.com/v2/token returned 401 Unauthorized: Authentication failed";
         Assert.Equal(expectedMessage, exception.Message);
     }
     
@@ -106,13 +109,7 @@ public class ResponseExceptionTests
         var exception = new ResponseException(response, responseBody);
         
         // Assert
-        string expectedMessage = 
-            "HTTP 400 BadRequest for PUT https://example.com/v2/repo/blobs/uploads/: Registry errors:" +
-            Environment.NewLine +
-            "  - BLOB_UPLOAD_INVALID: blob upload invalid" +
-            Environment.NewLine +
-            "  - DIGEST_INVALID: provided digest did not match uploaded content";
-            
+        string expectedMessage = "PUT https://example.com/v2/repo/blobs/uploads/ returned 400 BadRequest: BLOB_UPLOAD_INVALID: blob upload invalid; DIGEST_INVALID: provided digest did not match uploaded content";
         Assert.Equal(expectedMessage, exception.Message);
     }
     
@@ -144,13 +141,7 @@ public class ResponseExceptionTests
         var exception = new ResponseException(response, responseBody, customMessage);
         
         // Assert
-        string expectedMessage = 
-            "HTTP 400 BadRequest for PUT https://example.com/v2/repo/blobs/uploads/: Failed to upload blob; Registry errors:" +
-            Environment.NewLine +
-            "  - BLOB_UPLOAD_INVALID: blob upload invalid" +
-            Environment.NewLine +
-            "  - DIGEST_INVALID: provided digest did not match uploaded content";
-            
+        string expectedMessage = "PUT https://example.com/v2/repo/blobs/uploads/ returned 400 BadRequest: Failed to upload blob; BLOB_UPLOAD_INVALID: blob upload invalid; DIGEST_INVALID: provided digest did not match uploaded content";
         Assert.Equal(expectedMessage, exception.Message);
     }
     
@@ -176,8 +167,119 @@ public class ResponseExceptionTests
         var exception = new ResponseException(response, responseBody);
         
         // Expected format: HTTP status + request info + error details
-        string expectedMessage = "HTTP 404 NotFound for GET https://example.com/v2/repo/manifests/tag: NAME_UNKNOWN: repository name not known to registry";
+        string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 404 NotFound: NAME_UNKNOWN: repository name not known to registry";
             
+        Assert.Equal(expectedMessage, exception.Message);
+    }
+
+    [Fact]
+    public void ResponseException_Message_WithoutRequestMessage_UsesHttpPrefix()
+    {
+        // Arrange
+        var response = new HttpResponseMessage(HttpStatusCode.NotFound);
+        var responseBody = @"{
+            ""errors"": [
+                {
+                    ""code"": ""NAME_UNKNOWN"",
+                    ""message"": ""repository name not known to registry""
+                }
+            ]
+        }";
+
+        // Act
+        var exception = new ResponseException(response, responseBody);
+        
+        // Assert
+        string expectedMessage = "HTTP 404 NotFound: NAME_UNKNOWN: repository name not known to registry";
+            
+        Assert.Equal(expectedMessage, exception.Message);
+    }
+    
+    [Fact]
+    public void ResponseException_Message_WithNoErrorsAtAll_OnlyShowsStatusCode()
+    {
+        // Arrange
+        var response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
+        };
+
+        // Act
+        var exception = new ResponseException(response, null);
+        
+        // Assert
+        string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 500 InternalServerError";
+            
+        Assert.Equal(expectedMessage, exception.Message);
+    }
+    
+    [Fact]
+    public void ResponseException_Message_WithEmptyErrorsList_OnlyShowsStatusCode()
+    {
+        // Arrange
+        var response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
+        };
+        
+        var responseBody = @"{""errors"": []}";
+
+        // Act
+        var exception = new ResponseException(response, responseBody);
+        
+        // Assert
+        string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 500 InternalServerError";
+            
+        Assert.Equal(expectedMessage, exception.Message);
+    }
+    
+    [Fact]
+    public void ResponseException_Message_NoErrors_ShowsBasicInfo()
+    {
+        // Arrange
+        var response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            RequestMessage = new HttpRequestMessage(HttpMethod.Head, "https://registry.example/v2/library/alpine/blobs/sha256:deadbeef")
+        };
+
+        // Act
+        var ex = new ResponseException(response, "not-json");
+
+        // Assert
+        Assert.Equal("HEAD https://registry.example/v2/library/alpine/blobs/sha256:deadbeef returned 500 InternalServerError", ex.Message);
+    }
+    
+    [Fact]
+    public void ResponseException_Message_WithDetailField_StillFormatsCorrectly()
+    {
+        // Arrange
+        var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            RequestMessage = new HttpRequestMessage(HttpMethod.Put, "https://registry.example/v2/library/alpine/blobs/uploads/")
+        };
+        
+        var responseBody = @"{
+            ""errors"": [
+                {
+                    ""code"": ""MANIFEST_INVALID"",
+                    ""message"": ""manifest invalid"",
+                    ""detail"": {
+                        ""validationErrors"": [
+                            {
+                                ""field"": ""layers.0.mediaType"",
+                                ""message"": ""invalid media type""
+                            }
+                        ]
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var exception = new ResponseException(response, responseBody);
+        
+        // Assert
+        string expectedMessage = "PUT https://registry.example/v2/library/alpine/blobs/uploads/ returned 400 BadRequest: MANIFEST_INVALID: manifest invalid";
         Assert.Equal(expectedMessage, exception.Message);
     }
 }

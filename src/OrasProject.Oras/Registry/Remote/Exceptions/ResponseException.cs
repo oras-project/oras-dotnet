@@ -61,16 +61,19 @@ public class ResponseException : HttpRequestException
         {
             var message = new StringBuilder();
             
-            // Start with HTTP status info
-            message.Append($"HTTP {(int)StatusCode} {StatusCode}");
-            
-            // Add request details if available
+            // Start with request details (Method and URI) if available
             if (Method != null && RequestUri != null)
             {
-                message.Append($" for {Method} {RequestUri}");
+                message.Append($"{Method} {RequestUri}");
+                message.Append($" returned {(int)StatusCode} {StatusCode}");
+            }
+            else
+            {
+                // Fallback if request details aren't available
+                message.Append($"HTTP {(int)StatusCode} {StatusCode}");
             }
             
-            // Add custom message if provided
+            // Add custom message if provided (and it's not the default exception message)
             string? customMessage = null;
             if (!string.IsNullOrWhiteSpace(base.Message) && 
                 !base.Message.StartsWith("Exception of type"))
@@ -82,23 +85,24 @@ public class ResponseException : HttpRequestException
             // Add error details
             if (Errors != null && Errors.Count > 0)
             {
-                // Add semicolon before errors if there's already content
-                message.Append(customMessage == null ? ": " : "; ");
-                
-                if (Errors.Count == 1)
+                // If no custom message was added, add a colon before errors
+                if (customMessage == null)
                 {
-                    // For a single error, include it in the same line
-                    message.Append($"{Errors[0].Code}: {Errors[0].Message}");
+                    message.Append(": ");
                 }
                 else
                 {
-                    // For multiple errors, list them on separate lines
-                    message.Append("Registry errors:");
-                    foreach (var error in Errors)
+                    message.Append("; ");
+                }
+                
+                // Join multiple errors with semicolons
+                for (int i = 0; i < Errors.Count; i++)
+                {
+                    if (i > 0)
                     {
-                        message.AppendLine();
-                        message.Append($"  - {error.Code}: {error.Message}");
+                        message.Append("; ");
                     }
+                    message.Append($"{Errors[i].Code}: {Errors[i].Message}");
                 }
             }
 
