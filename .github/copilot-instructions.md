@@ -51,10 +51,10 @@ Concise guidance for producing code and docs consistent with the ORAS .NET libra
 6. Tests: include at least one normative MUST scenario + negative case.
 
 ## Core Concepts (Essentials)
-Artifact: Any OCI object (image, signature, SBOM, provenance, etc.). Identity = descriptor (media type + digest + size). Avoid image-only assumptions.
-Referrers: Manifests with a `subject` linking to another digest. Validate subject digest, media type, and size.
-References: Accept tags, normalize early to digest; propagate descriptors internally. Distinguish parse errors vs. not found via specific exceptions.
-Media vs Artifact Type: Media type drives processing; `artifactType` is optional metadata—preserve if provided (validate non-empty string if present).
+- Artifact: Any OCI object (image, signature, SBOM, provenance, etc.). Identity = descriptor (media type + digest + size). Avoid image-only assumptions.
+- Referrers: Manifests with a `subject` linking to another digest. Validate subject digest, media type, and size.
+- References: Accept tags, normalize early to digest; propagate descriptors internally. Distinguish parse errors vs. not found via specific exceptions.
+- Media vs Artifact Type: Media type drives processing; `artifactType` is optional metadata—preserve if provided (validate non-empty string if present).
 
 ## CAS (Content Addressable Storage) Rules
 - Key = digest (e.g., `sha256:<hex>`). Immutability is strict.
