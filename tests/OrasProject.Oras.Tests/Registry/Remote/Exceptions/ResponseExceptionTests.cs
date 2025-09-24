@@ -56,8 +56,8 @@ public class ResponseExceptionTests
         Assert.Contains("GET", message);
         Assert.Contains("https://example.com/v2/repo/manifests/tag", message);
         
-        // Should contain error details
-        Assert.Contains("NAME_UNKNOWN", message);
+        // Should contain error details (more concise format now)
+        Assert.Contains("NAME_UNKNOWN:", message);
         Assert.Contains("repository name not known to registry", message);
     }
     
@@ -76,18 +76,8 @@ public class ResponseExceptionTests
         var exception = new ResponseException(response, null, customMessage);
         
         // Assert
-        var message = exception.Message;
-        
-        // Should contain the custom message
-        Assert.Contains(customMessage, message);
-        
-        // Should contain HTTP status
-        Assert.Contains("HTTP 401", message);
-        Assert.Contains("Unauthorized", message);
-        
-        // Should contain request info
-        Assert.Contains("POST", message);
-        Assert.Contains("https://example.com/v2/token", message);
+        string expectedMessage = "HTTP 401 Unauthorized for POST https://example.com/v2/token: Authentication failed";
+        Assert.Equal(expectedMessage, exception.Message);
     }
     
     [Fact]
@@ -116,16 +106,78 @@ public class ResponseExceptionTests
         var exception = new ResponseException(response, responseBody);
         
         // Assert
-        var message = exception.Message;
+        string expectedMessage = 
+            "HTTP 400 BadRequest for PUT https://example.com/v2/repo/blobs/uploads/: Registry errors:" +
+            Environment.NewLine +
+            "  - BLOB_UPLOAD_INVALID: blob upload invalid" +
+            Environment.NewLine +
+            "  - DIGEST_INVALID: provided digest did not match uploaded content";
+            
+        Assert.Equal(expectedMessage, exception.Message);
+    }
+    
+    [Fact]
+    public void ResponseException_Message_WithCustomMessageAndMultipleErrors_ShouldFormatCorrectly()
+    {
+        // Arrange
+        var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            RequestMessage = new HttpRequestMessage(HttpMethod.Put, "https://example.com/v2/repo/blobs/uploads/")
+        };
         
-        // Should contain HTTP status
-        Assert.Contains("HTTP 400", message);
-        Assert.Contains("BadRequest", message);
+        var responseBody = @"{
+            ""errors"": [
+                {
+                    ""code"": ""BLOB_UPLOAD_INVALID"",
+                    ""message"": ""blob upload invalid""
+                },
+                {
+                    ""code"": ""DIGEST_INVALID"",
+                    ""message"": ""provided digest did not match uploaded content""
+                }
+            ]
+        }";
         
-        // Should contain all error details
-        Assert.Contains("BLOB_UPLOAD_INVALID", message);
-        Assert.Contains("blob upload invalid", message);
-        Assert.Contains("DIGEST_INVALID", message);
-        Assert.Contains("provided digest did not match uploaded content", message);
+        var customMessage = "Failed to upload blob";
+
+        // Act
+        var exception = new ResponseException(response, responseBody, customMessage);
+        
+        // Assert
+        string expectedMessage = 
+            "HTTP 400 BadRequest for PUT https://example.com/v2/repo/blobs/uploads/: Failed to upload blob; Registry errors:" +
+            Environment.NewLine +
+            "  - BLOB_UPLOAD_INVALID: blob upload invalid" +
+            Environment.NewLine +
+            "  - DIGEST_INVALID: provided digest did not match uploaded content";
+            
+        Assert.Equal(expectedMessage, exception.Message);
+    }
+    
+    [Fact]
+    public void ResponseException_Message_Format_ShouldMatchExactExpectedFormat()
+    {
+        // Arrange
+        var response = new HttpResponseMessage(HttpStatusCode.NotFound)
+        {
+            RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
+        };
+        
+        var responseBody = @"{
+            ""errors"": [
+                {
+                    ""code"": ""NAME_UNKNOWN"",
+                    ""message"": ""repository name not known to registry""
+                }
+            ]
+        }";
+
+        // Act
+        var exception = new ResponseException(response, responseBody);
+        
+        // Expected format: HTTP status + request info + error details
+        string expectedMessage = "HTTP 404 NotFound for GET https://example.com/v2/repo/manifests/tag: NAME_UNKNOWN: repository name not known to registry";
+            
+        Assert.Equal(expectedMessage, exception.Message);
     }
 }

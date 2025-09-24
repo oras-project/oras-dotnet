@@ -61,35 +61,44 @@ public class ResponseException : HttpRequestException
         {
             var message = new StringBuilder();
             
-            // Add base message if it has meaningful content
-            if (!string.IsNullOrWhiteSpace(base.Message))
-            {
-                message.Append(base.Message);
-                if (!base.Message.EndsWith('.'))
-                {
-                    message.Append('.');
-                }
-                message.Append(' ');
-            }
-            
-            // Add HTTP status info
+            // Start with HTTP status info
             message.Append($"HTTP {(int)StatusCode} {StatusCode}");
             
             // Add request details if available
             if (Method != null && RequestUri != null)
             {
-                message.Append($" from {Method} {RequestUri}");
+                message.Append($" for {Method} {RequestUri}");
+            }
+            
+            // Add custom message if provided
+            string? customMessage = null;
+            if (!string.IsNullOrWhiteSpace(base.Message) && 
+                !base.Message.StartsWith("Exception of type"))
+            {
+                customMessage = base.Message;
+                message.Append($": {customMessage}");
             }
             
             // Add error details
             if (Errors != null && Errors.Count > 0)
             {
-                message.Append(". Registry errors:");
+                // Add semicolon before errors if there's already content
+                message.Append(customMessage == null ? ": " : "; ");
                 
-                foreach (var error in Errors)
+                if (Errors.Count == 1)
                 {
-                    message.AppendLine();
-                    message.Append($"  - {error.Code}: {error.Message}");
+                    // For a single error, include it in the same line
+                    message.Append($"{Errors[0].Code}: {Errors[0].Message}");
+                }
+                else
+                {
+                    // For multiple errors, list them on separate lines
+                    message.Append("Registry errors:");
+                    foreach (var error in Errors)
+                    {
+                        message.AppendLine();
+                        message.Append($"  - {error.Code}: {error.Message}");
+                    }
                 }
             }
 
