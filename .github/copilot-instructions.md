@@ -15,7 +15,7 @@ Concise guidance for producing code and docs consistent with the ORAS .NET libra
 - Current Target Specs (v1.1.1):
 	- OCI Image Spec – https://github.com/opencontainers/image-spec/tree/v1.1.1
 	- OCI Distribution Spec – https://github.com/opencontainers/distribution-spec/tree/v1.1.1
-- Evolution: Prefer additive changes; open follow-up issues referencing spec deltas when specs advance. Avoid breaking public APIs outside a new MAJOR version.
+- Evolution: Prefer additive changes; open follow-up issues referencing spec deltas when specs advance. Avoid breaking public APIs outside a new major version.
 - Normative Behavior: Descriptor / Manifest / Index handling must follow MUST / MUST NOT statements from specs. When ambiguity exists, mirror oras-go behavior unless it conflicts with .NET idioms or analyzers.
 - Design Translation Principles:
 	- Go `context.Context` -> trailing `CancellationToken` (defaultable) in public async APIs.
