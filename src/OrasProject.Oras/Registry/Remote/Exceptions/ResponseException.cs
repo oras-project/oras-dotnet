@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
@@ -45,7 +46,7 @@ public class ResponseException : HttpRequestException
     }
 
     public ResponseException(HttpResponseMessage response, string? responseBody, HttpRequestError httpRequestError, string? message, Exception? inner)
-        : base(httpRequestError, message, inner, response.StatusCode)
+        : base(httpRequestError, message ?? GenerateDefaultMessage(response, responseBody), inner, response.StatusCode)
     {
         var request = response.RequestMessage;
         Method = request?.Method;
@@ -59,5 +60,40 @@ public class ResponseException : HttpRequestException
             }
             catch { }
         }
+    }
+
+    private static string GenerateDefaultMessage(HttpResponseMessage response, string? responseBody)
+    {
+        var request = response.RequestMessage;
+        var method = request?.Method?.ToString() ?? "UNKNOWN";
+        var uri = request?.RequestUri?.ToString() ?? "unknown";
+        var statusCode = (int)response.StatusCode;
+        var statusName = response.StatusCode.ToString();
+
+        var message = $"{method} {uri}: {statusCode} {statusName}";
+
+        // Try to parse and include error details from response body
+        if (!string.IsNullOrEmpty(responseBody))
+        {
+            try
+            {
+                var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(responseBody);
+                if (errorResponse?.Errors != null && errorResponse.Errors.Count > 0)
+                {
+                    var errorMessages = errorResponse.Errors.Select(e => $"{e.Code}: {e.Message}").ToArray();
+                    message += $" - {string.Join(", ", errorMessages)}";
+                }
+            }
+            catch
+            {
+                // If we can't parse the response body, include it as-is if it's short enough
+                if (responseBody.Length <= 200)
+                {
+                    message += $" - {responseBody}";
+                }
+            }
+        }
+
+        return message;
     }
 }
