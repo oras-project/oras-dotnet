@@ -174,7 +174,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown if the request URI is null.</exception>
     /// <exception cref="KeyNotFoundException">
-    /// Thrown if required parameters (e.g., "realm" or "service") are missing in the authentication challenge.
+    /// Thrown if required parameters (e.g., "realm") are missing in the authentication challenge.
     /// </exception>
     public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest,
         CancellationToken cancellationToken)
@@ -284,12 +284,13 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
 
                     if (!parameters.TryGetValue("realm", out var realm))
                     {
-                        throw new KeyNotFoundException("Realm was not present in the request.");
+                        // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
+                        throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
                     }
-
                     if (!parameters.TryGetValue("service", out var service))
                     {
-                        throw new KeyNotFoundException("Service was not present in the request.");
+                        // some registries may omit the `service` parameter; use an empty string when absent.
+                        service = string.Empty;
                     }
 
                     // try to fetch bearer token based on the challenge header
@@ -486,9 +487,13 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     {
         var form = new Dictionary<string, string>
         {
-            ["service"] = service,
             ["client_id"] = string.IsNullOrEmpty(ClientId) ? _defaultClientId : ClientId
         };
+
+        if (!string.IsNullOrWhiteSpace(service))
+        {
+            form["service"] = service;
+        }
 
         if (!string.IsNullOrEmpty(credential.RefreshToken))
         {
