@@ -287,9 +287,11 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
                         // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
                         throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
                     }
-                    // some registries may omit the `service` parameter. Use empty string when absent.
-                    parameters.TryGetValue("service", out var service);
-                    service ??= string.Empty;
+                    if(!parameters.TryGetValue("service", out var service))
+                    {
+                        // some registries may omit the `service` parameter, use an empty string when absent.
+                        service = string.Empty;
+                    }
 
                     // try to fetch bearer token based on the challenge header
                     var bearerAuthToken = await FetchBearerAuthAsync(
