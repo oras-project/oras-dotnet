@@ -64,17 +64,17 @@ public class ErrorTests
 
         // Assert again - Should use "unknown message" for null message
         Assert.Equal("SOME_CODE: unknown message", result);
-        
+
         // Arrange with both null
         error = new Error
         {
             Code = null!,
             Message = null!
         };
-        
+
         // Act with both null
         result = error.ToString();
-        
+
         // Assert with both null - Should use defaults for both
         Assert.Equal("UNKNOWN: unknown message", result);
     }
