@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -55,64 +56,51 @@ public class ResponseException : HttpRequestException
     /// <summary>
     /// Gets the error message including HTTP details and registry errors.
     /// </summary>
+    /// <remarks>
+    /// The message format follows this structure:
+    /// 1. HTTP request info: "{Method} {RequestUri} returned {StatusCode}"
+    /// 2. Custom message (if provided): ": {CustomMessage}"
+    /// 3. Registry errors (if available): ": {Error1}; {Error2}; ..."
+    /// </remarks>
     public override string Message
     {
         get
         {
-            var messageBuilder = new StringBuilder();
-            
+            // Pre-allocate a reasonable buffer size for better performance
+            var messageBuilder = new StringBuilder(128);
+
             // Add HTTP request and status information
             if (Method != null && RequestUri != null)
             {
-                messageBuilder.Append($"{Method} {RequestUri}");
-                messageBuilder.Append($" returned {(int)StatusCode} {StatusCode}");
+                messageBuilder.Append($"{Method} {RequestUri} returned {(int)StatusCode} {StatusCode}");
             }
             else
             {
                 messageBuilder.Append($"HTTP {(int)StatusCode} {StatusCode}");
             }
-            
-            // Add custom message if provided and it's not the default exception message
+
+            // Add custom message if provided (and it's not the default exception message)
             string? customMessage = null;
-            if (!string.IsNullOrWhiteSpace(base.Message) && 
-                !base.Message.StartsWith("Exception of type"))
+            if (!string.IsNullOrWhiteSpace(base.Message) && !base.Message.StartsWith("Exception of type"))
             {
                 customMessage = base.Message;
                 messageBuilder.Append($": {customMessage}");
             }
-            
-            // Add error details if available
+
+            // Add registry error details if available
             if (Errors != null && Errors.Count > 0)
             {
-                // Add appropriate delimiter before errors
+                // Add delimiter: use ":" after HTTP info or ";" after custom message
                 messageBuilder.Append(customMessage == null ? ": " : "; ");
-                
-                // Format and add all error information
-                for (int i = 0; i < Errors.Count; i++)
+
+                if (Errors.Count == 1)
                 {
-                    if (i > 0)
-                    {
-                        messageBuilder.Append("; ");
-                    }
-                    
-                    var error = Errors[i];
-                    messageBuilder.Append($"{error.Code}: {error.Message}");
-                    
-                    // Add detail information if available
-                    if (error.Detail is { } detailValue && 
-                        detailValue.ValueKind != JsonValueKind.Null && 
-                        detailValue.ValueKind != JsonValueKind.Undefined)
-                    {
-                        try
-                        {
-                            var detailJson = JsonSerializer.Serialize(detailValue, new JsonSerializerOptions { WriteIndented = false });
-                            messageBuilder.Append($" (Detail: {detailJson})");
-                        }
-                        catch
-                        {
-                            // If serialization fails, continue without detail
-                        }
-                    }
+                    messageBuilder.Append(Errors[0].ToString());
+                }
+                else
+                {
+                    // For multiple errors, format as "Error1; Error2; Error3"
+                    messageBuilder.Append(string.Join("; ", Errors.Select(error => error.ToString())));
                 }
             }
 
