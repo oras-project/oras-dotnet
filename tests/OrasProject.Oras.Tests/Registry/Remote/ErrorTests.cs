@@ -95,9 +95,7 @@ public class ErrorTests
         var result = error.ToString();
 
         // Assert
-        Assert.Contains("DETAIL_ERROR: Error with detail", result);
-        Assert.Contains("(Detail:", result);
-        Assert.Contains("\"key\":\"value\"", result);
+        Assert.Equal("DETAIL_ERROR: Error with detail (Detail: {\"key\":\"value\"})", result);
     }
 
     [Fact]

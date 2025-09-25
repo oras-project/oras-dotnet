@@ -306,7 +306,7 @@ public class ResponseExceptionTests
     }
 
     [Fact]
-    public void ResponseException_Message_WithDefaultNetExceptionMessage_ShouldNotIncludeDefaultMessage()
+    public void ResponseException_Message_IncludesProvidedMessage()
     {
         // Arrange
         var response = new HttpResponseMessage(HttpStatusCode.BadGateway)
@@ -323,17 +323,16 @@ public class ResponseExceptionTests
             ]
         }";
 
-        // Act
+        // Act - Using what was previously considered a "default" message
         var exception = new ResponseException(response, responseBody, "Exception of type 'System.Net.Http.HttpRequestException' was thrown.");
 
-        // Assert
-        // Verify that the default exception message is excluded but registry errors are included
-        string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 502 BadGateway: SERVER_ERROR: internal server error";
+        // Assert - Verify that the message is now included
+        string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 502 BadGateway: Exception of type 'System.Net.Http.HttpRequestException' was thrown.; SERVER_ERROR: internal server error";
         Assert.Equal(expectedMessage, exception.Message);
     }
 
     [Fact]
-    public void ResponseException_Message_WithHttpClientDefaultMessage_ShouldNotIncludeDefaultMessage()
+    public void ResponseException_Message_WithAllMessageTypes_FormatsCorrectly()
     {
         // Arrange
         var response = new HttpResponseMessage(HttpStatusCode.BadGateway)
@@ -350,66 +349,24 @@ public class ResponseExceptionTests
             ]
         }";
 
-        // Act
-        var exception = new ResponseException(response, responseBody, "An error occurred while sending the request.");
-
-        // Assert
-        // Verify that the default exception message is excluded but registry errors are included
-        string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 502 BadGateway: SERVER_ERROR: internal server error";
-        Assert.Equal(expectedMessage, exception.Message);
-    }
-
-    [Fact]
-    public void ResponseException_Message_WithStatusCodeDefaultMessage_ShouldNotIncludeDefaultMessage()
-    {
-        // Arrange
-        var response = new HttpResponseMessage(HttpStatusCode.BadGateway)
+        // Create a list of different messages to test
+        var messagesToTest = new[]
         {
-            RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
+            "An error occurred while sending the request.",
+            "Response status code does not indicate success.",
+            "Error.",
+            "Custom error message"
         };
 
-        var responseBody = @"{
-            ""errors"": [
-                {
-                    ""code"": ""SERVER_ERROR"",
-                    ""message"": ""internal server error""
-                }
-            ]
-        }";
-
-        // Act
-        var exception = new ResponseException(response, responseBody, "Response status code does not indicate success.");
-
-        // Assert
-        // Verify that the default exception message is excluded but registry errors are included
-        string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 502 BadGateway: SERVER_ERROR: internal server error";
-        Assert.Equal(expectedMessage, exception.Message);
-    }
-
-    [Fact]
-    public void ResponseException_Message_WithGenericErrorMessage_ShouldNotIncludeDefaultMessage()
-    {
-        // Arrange
-        var response = new HttpResponseMessage(HttpStatusCode.BadGateway)
+        foreach (var message in messagesToTest)
         {
-            RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
-        };
+            // Act
+            var exception = new ResponseException(response, responseBody, message);
 
-        var responseBody = @"{
-            ""errors"": [
-                {
-                    ""code"": ""SERVER_ERROR"",
-                    ""message"": ""internal server error""
-                }
-            ]
-        }";
-
-        // Act
-        var exception = new ResponseException(response, responseBody, "Error.");
-
-        // Assert
-        // Verify that the default exception message is excluded but registry errors are included
-        string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 502 BadGateway: SERVER_ERROR: internal server error";
-        Assert.Equal(expectedMessage, exception.Message);
+            // Assert - Verify format consistency with all message types
+            Assert.Contains("GET https://example.com/v2/repo/manifests/tag returned 502 BadGateway", exception.Message);
+            Assert.Contains(message, exception.Message);
+            Assert.Contains("SERVER_ERROR: internal server error", exception.Message);
+        }
     }
 }

@@ -113,14 +113,14 @@ public class ResponseException : HttpRequestException
             messageBuilder.Append($"HTTP {(int)statusCode} {statusCode}");
         }
 
-        // Add custom message if provided (and it's not the default exception message)
-        if (!string.IsNullOrWhiteSpace(customMessage) && !IsDefaultExceptionMessage(customMessage))
+        // Add custom message if provided
+        if (!string.IsNullOrWhiteSpace(customMessage))
         {
             messageBuilder.Append($": {customMessage}");
         }
         else
         {
-            customMessage = null; // Treat default messages as null for delimiter logic
+            customMessage = null; // Treat empty messages as null for delimiter logic
         }
 
         // Add registry error details if available
@@ -141,24 +141,5 @@ public class ResponseException : HttpRequestException
         }
 
         return messageBuilder.ToString();
-    }
-
-    /// <summary>
-    /// Determines if a message is a default exception message that should be ignored in formatting.
-    /// </summary>
-    private static bool IsDefaultExceptionMessage(string message)
-    {
-        return string.IsNullOrWhiteSpace(message) ||
-            // Default .NET exception message when no custom message is provided
-            // Example: "Exception of type 'System.Net.Http.HttpRequestException' was thrown."
-            message.StartsWith("Exception of type") ||
-            // Default HttpClient message for network/connection errors
-            // From: System.Net.Http.HttpRequestException
-            message.Equals("An error occurred while sending the request.") ||
-            // Default HttpClient message for non-success status codes
-            // From: System.Net.Http.HttpRequestException
-            message.Equals("Response status code does not indicate success.") ||
-            // Generic error message that provides no specific information
-            message == "Error.";
     }
 }
