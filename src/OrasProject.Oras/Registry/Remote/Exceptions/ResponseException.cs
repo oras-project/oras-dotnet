@@ -154,16 +154,16 @@ public class ResponseException : HttpRequestException
     private static bool IsDefaultExceptionMessage(string message)
     {
         return string.IsNullOrWhiteSpace(message) ||
-               // Default .NET exception message when no custom message is provided
-               // Example: "Exception of type 'System.Net.Http.HttpRequestException' was thrown."
-               message.StartsWith("Exception of type") ||
-               // Default HttpClient message for network/connection errors
-               // From: System.Net.Http.HttpRequestException
-               message.Equals("An error occurred while sending the request.") ||
-               // Default HttpClient message for non-success status codes
-               // From: System.Net.Http.HttpRequestException
-               message.Equals("Response status code does not indicate success.") ||
-               // Generic error message that provides no specific information
-               message == "Error.";
+            // Default .NET exception message when no custom message is provided
+            // Example: "Exception of type 'System.Net.Http.HttpRequestException' was thrown."
+            message.StartsWith("Exception of type") ||
+            // Default HttpClient message for network/connection errors
+            // From: System.Net.Http.HttpRequestException
+            message.Equals("An error occurred while sending the request.") ||
+            // Default HttpClient message for non-success status codes
+            // From: System.Net.Http.HttpRequestException
+            message.Equals("Response status code does not indicate success.") ||
+            // Generic error message that provides no specific information
+            message == "Error.";
     }
 }
