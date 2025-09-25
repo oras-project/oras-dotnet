@@ -44,14 +44,16 @@ public class ResponseException : HttpRequestException
     public Uri? RequestUri { get; }
 
     /// <summary>
+    /// Gets the HTTP status code from the response.
+    /// </summary>
+    public HttpStatusCode ResponseStatusCode => StatusCode ?? HttpStatusCode.InternalServerError;
+
+    /// <summary>
     /// Gets the list of errors returned in the response.
     /// </summary>
     public IList<Error>? Errors { get; }
 
-    /// <summary>
-    /// Gets the HTTP status code from the response.
-    /// </summary>
-    public new HttpStatusCode StatusCode => base.StatusCode ?? HttpStatusCode.InternalServerError;
+    private readonly string _formattedMessage;
 
     /// <summary>
     /// Gets the error message including HTTP details and registry errors.
@@ -60,51 +62,7 @@ public class ResponseException : HttpRequestException
     /// Format: "{HTTP info}: {Custom message}; {Registry errors}"
     /// Where HTTP info is either "{Method} {URI} returned {StatusCode}" or "HTTP {StatusCode}"
     /// </remarks>
-    public override string Message
-    {
-        get
-        {
-            // Pre-allocate an initial buffer size
-            var messageBuilder = new StringBuilder(128);
-
-            // Add HTTP request and status information
-            if (Method != null && RequestUri != null)
-            {
-                messageBuilder.Append($"{Method} {RequestUri} returned {(int)StatusCode} {StatusCode}");
-            }
-            else
-            {
-                messageBuilder.Append($"HTTP {(int)StatusCode} {StatusCode}");
-            }
-
-            // Add custom message if provided (and it's not the default exception message)
-            string? customMessage = null;
-            if (!string.IsNullOrWhiteSpace(base.Message) && !base.Message.StartsWith("Exception of type"))
-            {
-                customMessage = base.Message;
-                messageBuilder.Append($": {customMessage}");
-            }
-
-            // Add registry error details if available
-            if (Errors != null && Errors.Count > 0)
-            {
-                // Add delimiter: use ":" after HTTP info or ";" after custom message
-                messageBuilder.Append(customMessage == null ? ": " : "; ");
-
-                if (Errors.Count == 1)
-                {
-                    messageBuilder.Append(Errors[0].ToString());
-                }
-                else
-                {
-                    // For multiple errors, format as "Error1; Error2; Error3"
-                    messageBuilder.Append(string.Join("; ", Errors.Select(error => error.ToString())));
-                }
-            }
-
-            return messageBuilder.ToString();
-        }
-    }
+    public override string Message => _formattedMessage;
 
     public ResponseException(HttpResponseMessage response, string? responseBody = null)
         : this(response, responseBody, null)
@@ -122,17 +80,90 @@ public class ResponseException : HttpRequestException
         var request = response.RequestMessage;
         Method = request?.Method;
         RequestUri = request?.RequestUri;
+        IList<Error>? errors = null;
+
         if (responseBody != null)
         {
             try
             {
                 var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(responseBody);
-                Errors = errorResponse?.Errors;
+                errors = errorResponse?.Errors;
             }
             catch
             {
                 // If deserialization fails, continue without setting Errors
             }
         }
+
+        Errors = errors;
+        _formattedMessage = FormatMessage(message);
+    }
+
+    /// <summary>
+    /// Formats the exception message including HTTP details and registry errors.
+    /// </summary>
+    private string FormatMessage(string? customMessage)
+    {
+        // Pre-allocate an initial buffer size
+        var messageBuilder = new StringBuilder(128);
+
+        // Add HTTP request and status information
+        var statusCode = ResponseStatusCode;
+        if (Method != null && RequestUri != null)
+        {
+            messageBuilder.Append($"{Method} {RequestUri} returned {(int)statusCode} {statusCode}");
+        }
+        else
+        {
+            messageBuilder.Append($"HTTP {(int)statusCode} {statusCode}");
+        }
+
+        // Add custom message if provided (and it's not the default exception message)
+        if (!string.IsNullOrWhiteSpace(customMessage) && !IsDefaultExceptionMessage(customMessage))
+        {
+            messageBuilder.Append($": {customMessage}");
+        }
+        else
+        {
+            customMessage = null; // Treat default messages as null for delimiter logic
+        }
+
+        // Add registry error details if available
+        if (Errors != null && Errors.Count > 0)
+        {
+            // Add delimiter: use ":" after HTTP info or ";" after custom message
+            messageBuilder.Append(customMessage == null ? ": " : "; ");
+
+            if (Errors.Count == 1)
+            {
+                messageBuilder.Append(Errors[0].ToString());
+            }
+            else
+            {
+                // For multiple errors, format as "Error1; Error2; Error3"
+                messageBuilder.Append(string.Join("; ", Errors.Select(error => error.ToString())));
+            }
+        }
+
+        return messageBuilder.ToString();
+    }
+
+    /// <summary>
+    /// Determines if a message is a default exception message that should be ignored in formatting.
+    /// </summary>
+    private static bool IsDefaultExceptionMessage(string message)
+    {
+        return string.IsNullOrWhiteSpace(message) || 
+               // Default .NET exception message when no custom message is provided
+               // Example: "Exception of type 'System.Net.Http.HttpRequestException' was thrown."
+               message.StartsWith("Exception of type") ||
+               // Default HttpClient message for network/connection errors
+               // From: System.Net.Http.HttpRequestException
+               message.Equals("An error occurred while sending the request.") ||
+               // Default HttpClient message for non-success status codes
+               // From: System.Net.Http.HttpRequestException
+               message.Equals("Response status code does not indicate success.") ||
+               // Generic error message that provides no specific information
+               message == "Error.";
     }
 }
