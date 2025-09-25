@@ -59,73 +59,64 @@ public class ResponseException : HttpRequestException
     {
         get
         {
-            var message = new StringBuilder();
+            var messageBuilder = new StringBuilder();
             
-            // Start with request details (Method and URI) if available
+            // Add HTTP request and status information
             if (Method != null && RequestUri != null)
             {
-                message.Append($"{Method} {RequestUri}");
-                message.Append($" returned {(int)StatusCode} {StatusCode}");
+                messageBuilder.Append($"{Method} {RequestUri}");
+                messageBuilder.Append($" returned {(int)StatusCode} {StatusCode}");
             }
             else
             {
-                // Fallback if request details aren't available
-                message.Append($"HTTP {(int)StatusCode} {StatusCode}");
+                messageBuilder.Append($"HTTP {(int)StatusCode} {StatusCode}");
             }
             
-            // Add custom message if provided (and it's not the default exception message)
+            // Add custom message if provided and it's not the default exception message
             string? customMessage = null;
             if (!string.IsNullOrWhiteSpace(base.Message) && 
                 !base.Message.StartsWith("Exception of type"))
             {
                 customMessage = base.Message;
-                message.Append($": {customMessage}");
+                messageBuilder.Append($": {customMessage}");
             }
             
-            // Add error details
+            // Add error details if available
             if (Errors != null && Errors.Count > 0)
             {
-                // If no custom message was added, add a colon before errors
-                if (customMessage == null)
-                {
-                    message.Append(": ");
-                }
-                else
-                {
-                    message.Append("; ");
-                }
+                // Add appropriate delimiter before errors
+                messageBuilder.Append(customMessage == null ? ": " : "; ");
                 
-                // Join multiple errors with semicolons
+                // Format and add all error information
                 for (int i = 0; i < Errors.Count; i++)
                 {
                     if (i > 0)
                     {
-                        message.Append("; ");
+                        messageBuilder.Append("; ");
                     }
-                    message.Append($"{Errors[i].Code}: {Errors[i].Message}");
                     
-                    // Include detail field if present
-                    var detail = Errors[i].Detail;
-                    if (detail != null && detail.HasValue)
+                    var error = Errors[i];
+                    messageBuilder.Append($"{error.Code}: {error.Message}");
+                    
+                    // Add detail information if available
+                    if (error.Detail is { } detailValue && 
+                        detailValue.ValueKind != JsonValueKind.Null && 
+                        detailValue.ValueKind != JsonValueKind.Undefined)
                     {
-                        JsonElement detailValue = detail.Value;
-                        if (detailValue.ValueKind != JsonValueKind.Null && detailValue.ValueKind != JsonValueKind.Undefined)
+                        try
                         {
-                            try
-                            {
-                                var detailJson = JsonSerializer.Serialize(detailValue, new JsonSerializerOptions { WriteIndented = false });
-                                message.Append($" (Detail: {detailJson})");
-                            }
-                            catch
-                            {
-                                // If serialization fails, continue without detail
-                            }
+                            var detailJson = JsonSerializer.Serialize(detailValue, new JsonSerializerOptions { WriteIndented = false });
+                            messageBuilder.Append($" (Detail: {detailJson})");
+                        }
+                        catch
+                        {
+                            // If serialization fails, continue without detail
                         }
                     }
                 }
             }
 
-            return message.ToString();
+            return messageBuilder.ToString();
         }
     }
 
