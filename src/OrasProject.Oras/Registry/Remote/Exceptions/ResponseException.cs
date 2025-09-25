@@ -99,8 +99,7 @@ public class ResponseException : HttpRequestException
     /// </summary>
     private string FormatMessage(string? customMessage)
     {
-        // Pre-allocate an initial capacity of 128 for HTTP method, URI (typically 30-100+ chars), and status code
-        var messageBuilder = new StringBuilder(128);
+        var messageBuilder = new StringBuilder();
 
         // Add HTTP request and status information
         var statusCode = StatusCode ?? HttpStatusCode.InternalServerError;
