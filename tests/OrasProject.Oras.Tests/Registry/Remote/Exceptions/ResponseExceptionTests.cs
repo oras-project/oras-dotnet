@@ -46,22 +46,8 @@ public class ResponseExceptionTests
         var exception = new ResponseException(response, responseBody);
         
         // Assert
-        var message = exception.Message;
-        
-        // Should contain HTTP status
-        Assert.Contains("404", message);
-        Assert.Contains("NotFound", message);
-        
-        // Should contain request method and URL
-        Assert.Contains("GET", message);
-        Assert.Contains("https://example.com/v2/repo/manifests/tag", message);
-        
-        // Should contain error details (more concise format now)
-        Assert.Contains("NAME_UNKNOWN:", message);
-        Assert.Contains("repository name not known to registry", message);
-        
-        // Expected format
-        Assert.Equal("GET https://example.com/v2/repo/manifests/tag returned 404 NotFound: NAME_UNKNOWN: repository name not known to registry", message);
+        string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 404 NotFound: NAME_UNKNOWN: repository name not known to registry";
+        Assert.Equal(expectedMessage, exception.Message);
     }
     
     [Fact]
@@ -250,7 +236,7 @@ public class ResponseExceptionTests
     }
     
     [Fact]
-    public void ResponseException_Message_WithDetailField_StillFormatsCorrectly()
+    public void ResponseException_Message_WithDetailField_IncludesDetailInMessage()
     {
         // Arrange
         var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
@@ -279,7 +265,48 @@ public class ResponseExceptionTests
         var exception = new ResponseException(response, responseBody);
         
         // Assert
-        string expectedMessage = "PUT https://registry.example/v2/library/alpine/blobs/uploads/ returned 400 BadRequest: MANIFEST_INVALID: manifest invalid";
+        string expectedMessage = "PUT https://registry.example/v2/library/alpine/blobs/uploads/ returned 400 BadRequest: MANIFEST_INVALID: manifest invalid (Detail: {\"validationErrors\":[{\"field\":\"layers.0.mediaType\",\"message\":\"invalid media type\"}]})";
+        Assert.Equal(expectedMessage, exception.Message);
+    }
+    
+    [Fact]
+    public void ResponseException_Message_WithMultipleErrorsAndDetails_FormatsCorrectly()
+    {
+        // Arrange
+        var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            RequestMessage = new HttpRequestMessage(HttpMethod.Put, "https://registry.example/v2/library/alpine/manifests/latest")
+        };
+        
+        var responseBody = @"{
+            ""errors"": [
+                {
+                    ""code"": ""MANIFEST_INVALID"",
+                    ""message"": ""manifest invalid"",
+                    ""detail"": {
+                        ""validationErrors"": [
+                            {
+                                ""field"": ""layers.0.mediaType"",
+                                ""message"": ""invalid media type""
+                            }
+                        ]
+                    }
+                },
+                {
+                    ""code"": ""TAG_INVALID"",
+                    ""message"": ""tag name invalid"",
+                    ""detail"": {
+                        ""reason"": ""tag contains invalid characters""
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var exception = new ResponseException(response, responseBody);
+        
+        // Assert
+        string expectedMessage = "PUT https://registry.example/v2/library/alpine/manifests/latest returned 400 BadRequest: MANIFEST_INVALID: manifest invalid (Detail: {\"validationErrors\":[{\"field\":\"layers.0.mediaType\",\"message\":\"invalid media type\"}]}); TAG_INVALID: tag name invalid (Detail: {\"reason\":\"tag contains invalid characters\"})";
         Assert.Equal(expectedMessage, exception.Message);
     }
 }

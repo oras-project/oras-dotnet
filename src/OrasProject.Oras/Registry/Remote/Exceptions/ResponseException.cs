@@ -103,6 +103,25 @@ public class ResponseException : HttpRequestException
                         message.Append("; ");
                     }
                     message.Append($"{Errors[i].Code}: {Errors[i].Message}");
+                    
+                    // Include detail field if present
+                    var detail = Errors[i].Detail;
+                    if (detail != null && detail.HasValue)
+                    {
+                        JsonElement detailValue = detail.Value;
+                        if (detailValue.ValueKind != JsonValueKind.Null && detailValue.ValueKind != JsonValueKind.Undefined)
+                        {
+                            try
+                            {
+                                var detailJson = JsonSerializer.Serialize(detailValue, new JsonSerializerOptions { WriteIndented = false });
+                                message.Append($" (Detail: {detailJson})");
+                            }
+                            catch
+                            {
+                                // If serialization fails, continue without detail
+                            }
+                        }
+                    }
                 }
             }
 
