@@ -57,16 +57,14 @@ public class ResponseException : HttpRequestException
     /// Gets the error message including HTTP details and registry errors.
     /// </summary>
     /// <remarks>
-    /// The message format follows this structure:
-    /// 1. HTTP request info: "{Method} {RequestUri} returned {StatusCode}"
-    /// 2. Custom message (if provided): ": {CustomMessage}"
-    /// 3. Registry errors (if available): ": {Error1}; {Error2}; ..."
+    /// Format: "{HTTP info}: {Custom message}; {Registry errors}"
+    /// Where HTTP info is either "{Method} {URI} returned {StatusCode}" or "HTTP {StatusCode}"
     /// </remarks>
     public override string Message
     {
         get
         {
-            // Pre-allocate a reasonable buffer size for better performance
+            // Pre-allocate an initial buffer size
             var messageBuilder = new StringBuilder(128);
 
             // Add HTTP request and status information
@@ -131,7 +129,10 @@ public class ResponseException : HttpRequestException
                 var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(responseBody);
                 Errors = errorResponse?.Errors;
             }
-            catch { }
+            catch
+            {
+                // If deserialization fails, continue without setting Errors
+            }
         }
     }
 }
