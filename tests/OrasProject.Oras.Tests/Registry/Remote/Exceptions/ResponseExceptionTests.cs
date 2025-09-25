@@ -27,7 +27,7 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
         };
-        
+
         var responseBody = @"{
             ""errors"": [
                 {
@@ -39,12 +39,12 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, responseBody);
-        
+
         // Assert
         string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 404 NotFound: NAME_UNKNOWN: repository name not known to registry";
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_WithCustomMessage_ShouldIncludeCustomMessage()
     {
@@ -53,17 +53,17 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Post, "https://example.com/v2/token")
         };
-        
+
         var customMessage = "Authentication failed";
-        
+
         // Act
         var exception = new ResponseException(response, null, customMessage);
-        
+
         // Assert
         string expectedMessage = "POST https://example.com/v2/token returned 401 Unauthorized: Authentication failed";
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_WithMultipleErrors_ShouldIncludeAllErrors()
     {
@@ -72,7 +72,7 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Put, "https://example.com/v2/repo/blobs/uploads/")
         };
-        
+
         var responseBody = @"{
             ""errors"": [
                 {
@@ -88,12 +88,12 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, responseBody);
-        
+
         // Assert
         string expectedMessage = "PUT https://example.com/v2/repo/blobs/uploads/ returned 400 BadRequest: BLOB_UPLOAD_INVALID: blob upload invalid; DIGEST_INVALID: provided digest did not match uploaded content";
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_WithCustomMessageAndMultipleErrors_ShouldFormatCorrectly()
     {
@@ -102,7 +102,7 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Put, "https://example.com/v2/repo/blobs/uploads/")
         };
-        
+
         var responseBody = @"{
             ""errors"": [
                 {
@@ -115,17 +115,17 @@ public class ResponseExceptionTests
                 }
             ]
         }";
-        
+
         var customMessage = "Failed to upload blob";
 
         // Act
         var exception = new ResponseException(response, responseBody, customMessage);
-        
+
         // Assert
         string expectedMessage = "PUT https://example.com/v2/repo/blobs/uploads/ returned 400 BadRequest: Failed to upload blob; BLOB_UPLOAD_INVALID: blob upload invalid; DIGEST_INVALID: provided digest did not match uploaded content";
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_Format_ShouldMatchExactExpectedFormat()
     {
@@ -134,7 +134,7 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
         };
-        
+
         var responseBody = @"{
             ""errors"": [
                 {
@@ -146,10 +146,10 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, responseBody);
-        
+
         // Expected format: HTTP status + request info + error details
         string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 404 NotFound: NAME_UNKNOWN: repository name not known to registry";
-            
+
         Assert.Equal(expectedMessage, exception.Message);
     }
 
@@ -169,13 +169,13 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, responseBody);
-        
+
         // Assert
         string expectedMessage = "HTTP 404 NotFound: NAME_UNKNOWN: repository name not known to registry";
-            
+
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_WithNoErrorsAtAll_OnlyShowsStatusCode()
     {
@@ -187,13 +187,13 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, null);
-        
+
         // Assert
         string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 500 InternalServerError";
-            
+
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_WithEmptyErrorsList_OnlyShowsStatusCode()
     {
@@ -202,18 +202,18 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
         };
-        
+
         var responseBody = @"{""errors"": []}";
 
         // Act
         var exception = new ResponseException(response, responseBody);
-        
+
         // Assert
         string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 500 InternalServerError";
-            
+
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_NoErrors_ShowsBasicInfo()
     {
@@ -229,7 +229,7 @@ public class ResponseExceptionTests
         // Assert
         Assert.Equal("HEAD https://registry.example/v2/library/alpine/blobs/sha256:deadbeef returned 500 InternalServerError", ex.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_WithDetailField_IncludesDetailInMessage()
     {
@@ -238,7 +238,7 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Put, "https://registry.example/v2/library/alpine/blobs/uploads/")
         };
-        
+
         var responseBody = @"{
             ""errors"": [
                 {
@@ -258,12 +258,12 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, responseBody);
-        
+
         // Assert
         string expectedMessage = "PUT https://registry.example/v2/library/alpine/blobs/uploads/ returned 400 BadRequest: MANIFEST_INVALID: manifest invalid (Detail: {\"validationErrors\":[{\"field\":\"layers.0.mediaType\",\"message\":\"invalid media type\"}]})";
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_WithMultipleErrorsAndDetails_FormatsCorrectly()
     {
@@ -272,7 +272,7 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Put, "https://registry.example/v2/library/alpine/manifests/latest")
         };
-        
+
         var responseBody = @"{
             ""errors"": [
                 {
@@ -299,7 +299,7 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, responseBody);
-        
+
         // Assert
         string expectedMessage = "PUT https://registry.example/v2/library/alpine/manifests/latest returned 400 BadRequest: MANIFEST_INVALID: manifest invalid (Detail: {\"validationErrors\":[{\"field\":\"layers.0.mediaType\",\"message\":\"invalid media type\"}]}); TAG_INVALID: tag name invalid (Detail: {\"reason\":\"tag contains invalid characters\"})";
         Assert.Equal(expectedMessage, exception.Message);
@@ -313,7 +313,7 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
         };
-        
+
         var responseBody = @"{
             ""errors"": [
                 {
@@ -325,13 +325,13 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, responseBody, "Exception of type 'System.Net.Http.HttpRequestException' was thrown.");
-        
+
         // Assert
         // Verify that the default exception message is excluded but registry errors are included
         string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 502 BadGateway: SERVER_ERROR: internal server error";
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_WithHttpClientDefaultMessage_ShouldNotIncludeDefaultMessage()
     {
@@ -340,7 +340,7 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
         };
-        
+
         var responseBody = @"{
             ""errors"": [
                 {
@@ -352,13 +352,13 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, responseBody, "An error occurred while sending the request.");
-        
+
         // Assert
         // Verify that the default exception message is excluded but registry errors are included
         string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 502 BadGateway: SERVER_ERROR: internal server error";
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_WithStatusCodeDefaultMessage_ShouldNotIncludeDefaultMessage()
     {
@@ -367,7 +367,7 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
         };
-        
+
         var responseBody = @"{
             ""errors"": [
                 {
@@ -379,13 +379,13 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, responseBody, "Response status code does not indicate success.");
-        
+
         // Assert
         // Verify that the default exception message is excluded but registry errors are included
         string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 502 BadGateway: SERVER_ERROR: internal server error";
         Assert.Equal(expectedMessage, exception.Message);
     }
-    
+
     [Fact]
     public void ResponseException_Message_WithGenericErrorMessage_ShouldNotIncludeDefaultMessage()
     {
@@ -394,7 +394,7 @@ public class ResponseExceptionTests
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://example.com/v2/repo/manifests/tag")
         };
-        
+
         var responseBody = @"{
             ""errors"": [
                 {
@@ -406,7 +406,7 @@ public class ResponseExceptionTests
 
         // Act
         var exception = new ResponseException(response, responseBody, "Error.");
-        
+
         // Assert
         // Verify that the default exception message is excluded but registry errors are included
         string expectedMessage = "GET https://example.com/v2/repo/manifests/tag returned 502 BadGateway: SERVER_ERROR: internal server error";

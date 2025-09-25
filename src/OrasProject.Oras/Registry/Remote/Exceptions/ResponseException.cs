@@ -153,7 +153,7 @@ public class ResponseException : HttpRequestException
     /// </summary>
     private static bool IsDefaultExceptionMessage(string message)
     {
-        return string.IsNullOrWhiteSpace(message) || 
+        return string.IsNullOrWhiteSpace(message) ||
                // Default .NET exception message when no custom message is provided
                // Example: "Exception of type 'System.Net.Http.HttpRequestException' was thrown."
                message.StartsWith("Exception of type") ||

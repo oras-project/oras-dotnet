@@ -40,8 +40,8 @@ public class Error
     public override string ToString()
     {
         // Ensure Code and Message are not null for robust formatting
-        string safeCode = Code ?? string.Empty;
-        string safeMessage = Message ?? string.Empty;
+        string safeCode = Code ?? "UNKNOWN";
+        string safeMessage = Message ?? "unknown message";
 
         // Start with the basic error information
         var result = $"{safeCode}: {safeMessage}";

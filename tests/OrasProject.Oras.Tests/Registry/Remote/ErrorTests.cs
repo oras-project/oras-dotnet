@@ -37,7 +37,7 @@ public class ErrorTests
     }
 
     [Fact]
-    public void ToString_WithNullCodeOrMessage_HandlesGracefully()
+    public void ToString_WithNullCodeOrMessage_UsesDefaultValues()
     {
         // Arrange
         var error = new Error
@@ -49,8 +49,8 @@ public class ErrorTests
         // Act
         var result = error.ToString();
 
-        // Assert
-        Assert.Equal(": Some message", result);
+        // Assert - Should use "UNKNOWN" for null code
+        Assert.Equal("UNKNOWN: Some message", result);
 
         // Arrange again
         error = new Error
@@ -62,8 +62,21 @@ public class ErrorTests
         // Act again
         result = error.ToString();
 
-        // Assert again
-        Assert.Equal("SOME_CODE: ", result);
+        // Assert again - Should use "unknown message" for null message
+        Assert.Equal("SOME_CODE: unknown message", result);
+        
+        // Arrange with both null
+        error = new Error
+        {
+            Code = null!,
+            Message = null!
+        };
+        
+        // Act with both null
+        result = error.ToString();
+        
+        // Assert with both null - Should use defaults for both
+        Assert.Equal("UNKNOWN: unknown message", result);
     }
 
     [Fact]
