@@ -44,11 +44,6 @@ public class ResponseException : HttpRequestException
     public Uri? RequestUri { get; }
 
     /// <summary>
-    /// Gets the HTTP status code from the response.
-    /// </summary>
-    public HttpStatusCode ResponseStatusCode => StatusCode ?? HttpStatusCode.InternalServerError;
-
-    /// <summary>
     /// Gets the list of errors returned in the response.
     /// </summary>
     public IList<Error>? Errors { get; }
@@ -108,7 +103,7 @@ public class ResponseException : HttpRequestException
         var messageBuilder = new StringBuilder(128);
 
         // Add HTTP request and status information
-        var statusCode = ResponseStatusCode;
+        var statusCode = StatusCode ?? HttpStatusCode.InternalServerError;
         if (Method != null && RequestUri != null)
         {
             messageBuilder.Append($"{Method} {RequestUri} returned {(int)statusCode} {statusCode}");
