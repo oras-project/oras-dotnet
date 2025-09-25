@@ -52,7 +52,7 @@ public class Error
         {
             try
             {
-                var detailJson = JsonSerializer.Serialize(detailValue, JsonSerializerOptions.Default);
+                var detailJson = JsonSerializer.Serialize(detailValue);
                 return $"{result} (Detail: {detailJson})";
             }
             catch
