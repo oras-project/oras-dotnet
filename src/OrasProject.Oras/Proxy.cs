@@ -24,28 +24,34 @@ namespace OrasProject.Oras;
 /// <summary>
 /// Proxy class is to cache the manifest for OCI image/index manifest to improve performance
 /// </summary>
-internal class Proxy : IReferenceFetchable, IFetchable
+internal class Proxy : IReferenceFetchable, IReadOnlyStorage
 {
     public required IStorage Cache { get; init; }
     public required ITarget Source { get; init; }
+
+    public bool StopCaching { get; set; } = false;
 
     /// <summary>
     /// FetchAsync is to fetch the content for the given target desc,
     /// if it is a cache hit, then return cached content
     /// otherwise, fetch the content, cache it if it is a manifest type, and return the content
     /// </summary>
-    /// <param name="target"></param>
+    /// <param name="node"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
+    public async Task<Stream> FetchAsync(Descriptor node, CancellationToken cancellationToken = default)
     {
-        if (await Cache.ExistsAsync(target, cancellationToken).ConfigureAwait(false))
+        if (await Cache.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
         {
-            return await Cache.FetchAsync(target, cancellationToken).ConfigureAwait(false);
+            return await Cache.FetchAsync(node, cancellationToken).ConfigureAwait(false);
         }
 
-        var dataStream = await Source.FetchAsync(target, cancellationToken).ConfigureAwait(false);
-        return await CacheContent(target, dataStream, cancellationToken).ConfigureAwait(false);
+        var dataStream = await Source.FetchAsync(node, cancellationToken).ConfigureAwait(false);
+        if (StopCaching)
+        {
+            return dataStream;
+        }
+        return await CacheContent(node, dataStream, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -62,14 +68,14 @@ internal class Proxy : IReferenceFetchable, IFetchable
         if (Source is IReferenceFetchable srcRefFetchable)
         {
             (node, contentStream) = await srcRefFetchable.FetchAsync(reference, cancellationToken).ConfigureAwait(false);
+            if (StopCaching)
+            {
+                return (node, contentStream);
+            }
+            return (node, await CacheContent(node, contentStream, cancellationToken).ConfigureAwait(false));
         }
-        else
-        {
-            node = await Source.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
-            contentStream = await Source.FetchAsync(node, cancellationToken).ConfigureAwait(false);
-        }
-
-        return (node, await CacheContent(node, contentStream, cancellationToken).ConfigureAwait(false));
+        node = await Source.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
+        return (node, await FetchAsync(node, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -99,5 +105,21 @@ internal class Proxy : IReferenceFetchable, IFetchable
         }
 
         return await Cache.FetchAsync(node, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// ExistsAsync checks if the content for the given descriptor exists in either the cache or the source.
+    /// This method first checks the cache for better performance, and if not found, checks the source.
+    /// </summary>
+    /// <param name="node">The descriptor identifying the content to check for existence</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation</param>
+    /// <returns></returns>
+    public async Task<bool> ExistsAsync(Descriptor node, CancellationToken cancellationToken = default)
+    {
+        if (await Cache.ExistsAsync(node, cancellationToken).ConfigureAwait(false))
+        {
+            return true;
+        }
+        return await Source.ExistsAsync(node, cancellationToken).ConfigureAwait(false);
     }
 }

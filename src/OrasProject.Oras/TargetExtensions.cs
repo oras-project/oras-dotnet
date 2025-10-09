@@ -75,6 +75,18 @@ public static class TargetExtensions
         };
 
         var (root, _) = await proxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
+        if (copyOptions.MapRoot != null)
+        {
+            proxy.StopCaching = true;
+            try
+            {
+                root = await copyOptions.MapRoot(proxy, root, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                proxy.StopCaching = false;
+            }
+        }
         await src.CopyGraphAsync(dst, root, proxy, copyOptions, cancellationToken).ConfigureAwait(false);
         await dst.TagAsync(root, dstRef, cancellationToken).ConfigureAwait(false);
         return root;
