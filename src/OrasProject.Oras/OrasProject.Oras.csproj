@@ -1,4 +1,4 @@
-<!--
+﻿<!--
 Copyright The ORAS Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,9 +37,9 @@ limitations under the License.
 		</AssemblyAttribute>
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.9" />
-		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.9" />
-		<PackageReference Include="System.Text.Json" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
+		<PackageReference Include="System.Text.Json" Version="8.0.6" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="README.md" Pack="true" PackagePath="/" />
