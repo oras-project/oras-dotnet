@@ -24,6 +24,6 @@ namespace OrasProject.Oras.Registry.Remote.Auth
         /// <param name="hostname">The registry hostname to retrieve credentials for.</param>
         /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains the resolved credentials.</returns>
-        Task<Credential> ResolveCredentialAsync(string hostname, CancellationToken cancellationToken);
+        Task<Credential> ResolveCredentialAsync(string hostname, CancellationToken cancellationToken = default);
     }
 }

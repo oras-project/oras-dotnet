@@ -150,7 +150,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
-        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var resp = new HttpResponseMessage
             {
@@ -232,7 +232,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var uuid = Guid.NewGuid().ToString();
         var gotBlob = new byte[blobDesc.Size];
         var gotIndex = new byte[indexDesc.Size];
-        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var resp = new HttpResponseMessage
             {
@@ -327,7 +327,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             MediaType = MediaType.ImageIndex,
             Size = index.Length
         };
-        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -398,7 +398,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = index.Length
         };
         var indexDeleted = false;
-        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -475,7 +475,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         };
         var reference = "foobar";
 
-        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -556,7 +556,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         byte[]? gotIndex = null;
         var reference = "foobar";
 
-        async Task<HttpResponseMessage> MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -636,7 +636,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         byte[]? gotIndex = null;
         var reference = "foobar";
 
-        async Task<HttpResponseMessage> MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -696,7 +696,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         };
         var reference = "foobar";
 
-        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -788,7 +788,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             new() {"jumps", "over", "the", "lazy"},
             new() {"dog"}
         };
-        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -871,7 +871,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     [Fact]
     public async Task Repository_TagsAsync_Empty()
     {
-        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage func(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -937,7 +937,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Digest = ComputeSha256(blob),
             Size = blob.Length
         };
-        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -989,7 +989,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = blob.Length
         };
         var seekable = false;
-        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1092,7 +1092,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Digest = ComputeSha256(blob),
             Size = blob.Length
         };
-        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1150,7 +1150,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var uuid = Guid.NewGuid().ToString();
         var existingQueryParameter = "existingParam=value";
 
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1223,7 +1223,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Digest = ComputeSha256(content),
             Size = content.Length
         };
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1274,7 +1274,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = blob.Length
         };
         var blobDeleted = false;
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1331,7 +1331,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Digest = ComputeSha256(blob),
             Size = blob.Length
         };
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1394,7 +1394,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Digest = ComputeSha256(blob),
             Size = blob.Length
         };
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1468,7 +1468,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = blob.Length
         };
         var seekable = false;
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1653,7 +1653,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = manifest.Length
         };
 
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1702,7 +1702,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     [Fact]
     public async Task ManifestStore_FetchAsync_ManifestUnknown()
     {
-        static HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage(HttpStatusCode.Unauthorized)
             {
@@ -1754,7 +1754,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         };
         byte[]? gotManifest = null;
 
-        async Task<HttpResponseMessage> MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1807,7 +1807,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Digest = ComputeSha256(manifest),
             Size = manifest.Length
         };
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1867,7 +1867,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = manifestBytes.Length
         };
         var manifestDeleted = false;
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -1932,7 +1932,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = manifest.Length
         };
         var reference = "foobar";
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -2003,7 +2003,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = manifest.Length
         };
         var reference = "foobar";
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -2095,7 +2095,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var gotIndex = new byte[index.Length];
         var reference = "foobar";
 
-        async Task<HttpResponseMessage> MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -2177,7 +2177,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var gotIndex = new byte[indexBytes.Length];
         var reference = "foobar";
 
-        async Task<HttpResponseMessage> MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -2234,7 +2234,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = exampleManifest.Length
         };
         var exampleUploadUUid = new Guid().ToString();
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -2385,7 +2385,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = (uint)blob.Length
         };
         var gotMount = 0;
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var resp = new HttpResponseMessage
             {
@@ -2442,7 +2442,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         string sequence = "";
         byte[] gotBlob = [];
         var uuid = "4fd53bc9-565d-4527-ab80-3e051ac4880c";
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var resp = new HttpResponseMessage
             {
@@ -2521,7 +2521,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             MediaType = "test",
             Size = (uint)blob.Length
         };
-        static HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var resp = new HttpResponseMessage
             {
@@ -2574,7 +2574,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         string sequence = "";
         byte[] gotBlob = [];
         var uuid = "4fd53bc9-565d-4527-ab80-3e051ac4880c";
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var resp = new HttpResponseMessage
             {
@@ -2642,7 +2642,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         };
         string sequence = "";
         var uuid = "4fd53bc9-565d-4527-ab80-3e051ac4880c";
-        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHandlerMockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var resp = new HttpResponseMessage
             {
@@ -2735,7 +2735,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
         var desc = RandomDescriptor();
         var referrersTag = Referrers.BuildReferrersTag(desc);
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -2798,7 +2798,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     public async Task Repository_ReferrersByTagSchema_ReferrersNotFound()
     {
         var desc = RandomDescriptor();
-        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -2838,7 +2838,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var expectedIndexBytes = JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
 
         var desc = RandomDescriptor();
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -2888,7 +2888,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         const string artifactType = "doc/example";
         var desc = RandomDescriptor();
 
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -2948,7 +2948,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         const string artifactType = "doc/example";
         var desc = RandomDescriptor();
 
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -2994,7 +2994,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     public async Task Repository_ReferrersByApi_ThrowsNotSupportedException_WhenReferrersApiNotSupported()
     {
         var desc = RandomDescriptor();
-        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3028,7 +3028,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     [Fact]
     public async Task PingReferrers_ShouldReturnTrueWhenReferrersAPISupported()
     {
-        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3059,7 +3059,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     [Fact]
     public async Task PingReferrers_WaitsForSemaphoreRelease()
     {
-        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3093,7 +3093,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     [Fact]
     public async Task PingReferrers_LimitsConcurrency()
     {
-        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3131,7 +3131,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     [Fact]
     public async Task PingReferrers_ShouldReturnFalseWhenReferrersAPINotSupportedNoContentTypeHeader()
     {
-        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3162,7 +3162,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     public async Task Repository_ReferrersByApi_ThrowsResponseException_WhenRepoNotFound()
     {
         var desc = RandomDescriptor();
-        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3206,7 +3206,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     public async Task Repository_ReferrersByApi_ThrowsResponseException_WhenServerErrors()
     {
         var desc = RandomDescriptor();
-        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3262,7 +3262,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         const string artifactType = "doc/example";
         var desc = RandomDescriptor();
 
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3319,7 +3319,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         const string artifactType = "doc/example";
         var desc = RandomDescriptor();
 
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3391,7 +3391,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
         var desc = RandomDescriptor();
 
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3472,7 +3472,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var desc = RandomDescriptor();
         var referrersTag = Referrers.BuildReferrersTag(desc);
 
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3547,7 +3547,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var desc = RandomDescriptor();
         var referrersTag = Referrers.BuildReferrersTag(desc);
 
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3601,7 +3601,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     [Fact]
     public async Task PingReferrers_ShouldFailWhenReturnNotFound()
     {
-        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -3657,7 +3657,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     [Fact]
     public async Task PingReferrers_ShouldFailWhenBadRequestReturns()
     {
-        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {

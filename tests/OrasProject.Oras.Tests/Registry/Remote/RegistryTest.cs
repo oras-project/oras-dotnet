@@ -51,7 +51,7 @@ public partial class RegistryTest
     {
         var V2Implemented = true;
 
-        HttpResponseMessage Func(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage Func(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -102,7 +102,7 @@ public partial class RegistryTest
             new() {"jumps", "over", "the", "lazy"},
             new() {"dog"}
         };
-        HttpResponseMessage Func(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage Func(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {

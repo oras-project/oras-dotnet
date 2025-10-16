@@ -51,7 +51,7 @@ public class ExtensionsTest
         };
 
         HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -108,7 +108,7 @@ public class ExtensionsTest
         };
 
         HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {

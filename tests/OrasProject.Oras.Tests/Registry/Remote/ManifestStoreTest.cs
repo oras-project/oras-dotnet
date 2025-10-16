@@ -42,7 +42,7 @@ public class ManifestStoreTest
             Size = expectedIndexBytes.Length
         };
 
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -93,7 +93,7 @@ public class ManifestStoreTest
             Size = expectedIndexBytes.Length
         };
 
-        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -133,7 +133,7 @@ public class ManifestStoreTest
     [Fact]
     public async Task ManifestStore_PullReferrersIndexListNotFound()
     {
-        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -181,7 +181,7 @@ public class ManifestStoreTest
 
         byte[]? receivedManifest = null;
 
-        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -272,7 +272,7 @@ public class ManifestStoreTest
         };
         byte[]? receivedManifest = null;
 
-        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -377,7 +377,7 @@ public class ManifestStoreTest
         var referrersTag = Referrers.BuildReferrersTag(firstExpectedManifest.Subject);
         var oldIndexDeleted = false;
         var firstIndexDeleted = false;
-        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var response = new HttpResponseMessage
             {
@@ -523,7 +523,7 @@ public class ManifestStoreTest
         byte[]? receivedIndexReferrersContent = null;
         var referrersTag = Referrers.BuildReferrersTag(expectedIndexManifest.Subject);
 
-        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var response = new HttpResponseMessage
             {
@@ -609,7 +609,7 @@ public class ManifestStoreTest
         byte[]? receivedManifestContent = null;
         var referrersTag = Referrers.BuildReferrersTag(expectedManifest.Subject);
 
-        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var response = new HttpResponseMessage
             {
@@ -670,7 +670,7 @@ public class ManifestStoreTest
             Size = manifestBytes.Length
         };
         var manifestDeleted = false;
-        HttpResponseMessage HttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage HttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -716,7 +716,7 @@ public class ManifestStoreTest
             Size = manifestBytes.Length
         };
         var manifestDeleted = false;
-        HttpResponseMessage HttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage HttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -771,7 +771,7 @@ public class ManifestStoreTest
             Size = manifestBytes.Length
         };
 
-        static HttpResponseMessage CustomHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        static HttpResponseMessage CustomHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var res = new HttpResponseMessage
             {
@@ -852,7 +852,7 @@ public class ManifestStoreTest
         Assert.NotNull(manifestToDelete.Subject);
         var referrersTag = Referrers.BuildReferrersTag(manifestToDelete.Subject);
         byte[]? receivedIndexContent = null;
-        async Task<HttpResponseMessage> HttpHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> HttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var response = new HttpResponseMessage
             {

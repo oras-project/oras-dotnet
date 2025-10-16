@@ -22,5 +22,5 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 /// </summary>
 public interface IClient
 {
-    Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken);
+    Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken = default);
 }
