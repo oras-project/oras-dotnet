@@ -264,7 +264,7 @@ internal static class HttpResponseMessageExtensions
     /// </summary>
     /// <param name="response"></param>
     /// <param name="maxBytes"></param>
-    private static async Task<string> CalculateDigestFromResponse(this HttpResponseMessage response, long maxBytes, CancellationToken cancellationToken = default)
+    private static async Task<string> CalculateDigestFromResponse(this HttpResponseMessage response, long maxBytes, CancellationToken cancellationToken)
     {
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         var limitedStreamContent = await stream.ReadStreamWithLimitAsync(maxBytes, cancellationToken).ConfigureAwait(false);
