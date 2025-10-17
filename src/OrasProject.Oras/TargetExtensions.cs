@@ -155,7 +155,7 @@ public static class TargetExtensions
     /// <param name="copyGraphOptions"></param>
     /// <param name="limiter"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken = default)
+    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken)
     {
         if (Descriptor.IsNullOrInvalid(node))
         {
