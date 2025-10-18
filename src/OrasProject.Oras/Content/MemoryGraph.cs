@@ -38,7 +38,7 @@ internal class MemoryGraph : IPredecessorFindable
         return Task.FromResult<IEnumerable<Descriptor>>([]);
     }
 
-    internal async Task IndexAsync(IFetchable fetcher, Descriptor node, CancellationToken cancellationToken)
+    internal async Task IndexAsync(IFetchable fetcher, Descriptor node, CancellationToken cancellationToken = default)
     {
         var successors = await fetcher.GetSuccessorsAsync(node, cancellationToken).ConfigureAwait(false);
         Index(node, successors);

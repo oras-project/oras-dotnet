@@ -26,7 +26,7 @@ public class PlainClient(HttpClient? httpClient = null) : IClient
 {
     private readonly HttpClient _client = httpClient ?? DefaultHttpClient.Instance;
 
-    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken)
+    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken = default)
     {
         originalRequest.AddDefaultUserAgent();
         return await _client.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);

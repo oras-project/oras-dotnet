@@ -74,7 +74,7 @@ public class Registry : IRegistry
     /// <param name="name"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public Task<IRepository> GetRepositoryAsync(string name, CancellationToken cancellationToken)
+    public Task<IRepository> GetRepositoryAsync(string name, CancellationToken cancellationToken = default)
     {
         var reference = new Reference(_opts.Reference.Registry, name);
         var options = _opts; // shallow copy
@@ -114,7 +114,7 @@ public class Registry : IRegistry
     /// <param name="url"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private async Task<(string[], Uri?)> FetchRepositoryPageAsync(string? last, Uri url, CancellationToken cancellationToken)
+    private async Task<(string[], Uri?)> FetchRepositoryPageAsync(string? last, Uri url, CancellationToken cancellationToken = default)
     {
         var uriBuilder = new UriBuilder(url);
         if (_opts.TagListPageSize > 0 || !string.IsNullOrEmpty(last))

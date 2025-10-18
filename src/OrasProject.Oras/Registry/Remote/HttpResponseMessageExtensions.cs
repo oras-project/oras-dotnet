@@ -33,7 +33,7 @@ internal static class HttpResponseMessageExtensions
     /// <param name="response"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public static async Task<ResponseException> ParseErrorResponseAsync(this HttpResponseMessage response, CancellationToken cancellationToken)
+    public static async Task<ResponseException> ParseErrorResponseAsync(this HttpResponseMessage response, CancellationToken cancellationToken = default)
     {
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return new ResponseException(response, body);
@@ -46,7 +46,7 @@ internal static class HttpResponseMessageExtensions
     /// <param name="message"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public static async Task<ResponseException> ParseErrorResponseAsync(this HttpResponseMessage response, string message, CancellationToken cancellationToken)
+    public static async Task<ResponseException> ParseErrorResponseAsync(this HttpResponseMessage response, string message, CancellationToken cancellationToken = default)
     {
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return new ResponseException(response, body, message);
@@ -180,7 +180,7 @@ internal static class HttpResponseMessageExtensions
     /// <param name="maxBytes"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public static async Task<Descriptor> GenerateDescriptorAsync(this HttpResponseMessage response, Reference reference, long maxBytes, CancellationToken cancellationToken)
+    public static async Task<Descriptor> GenerateDescriptorAsync(this HttpResponseMessage response, Reference reference, long maxBytes, CancellationToken cancellationToken = default)
     {
         // 1. Validate Content-Type
         var mediaType = response.Content.Headers.ContentType?.MediaType;

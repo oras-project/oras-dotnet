@@ -136,7 +136,7 @@ public class ClientTest
             RefreshToken = refreshToken
         };
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var response = new HttpResponseMessage();
             response.RequestMessage = req;
@@ -199,7 +199,7 @@ public class ClientTest
             Password = password
         };
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var response = new HttpResponseMessage();
             response.RequestMessage = req;
@@ -352,7 +352,7 @@ public class ClientTest
         var username = "test_user";
         var password = "test_password";
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
@@ -407,7 +407,7 @@ public class ClientTest
         var username = "test_user";
         var password = "test_password";
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
@@ -530,7 +530,7 @@ public class ClientTest
         string[] expectedScopes = ["repository:repo1:pull", "repository:repo2:push"];
         var expectedToken = "test_access_token";
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
@@ -676,7 +676,7 @@ public class ClientTest
         var service = "test_service";
         string[] expectedScopes = ["repository:repo1:pull", "repository:repo2:push"];
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
@@ -929,7 +929,7 @@ public class ClientTest
 
         string[] scopes = ["repository:repo1:pull,*,delete", "repository:repo2:delete"];
         string[] expectedScopes = ["repository:repo1:*", "repository:repo2:delete"];
-        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Post && req.RequestUri?.AbsoluteUri.TrimEnd('/') == realm.TrimEnd('/'))
             {
@@ -1060,7 +1060,7 @@ public class ClientTest
         var expectedToken = "access_token";
         string[] scopes = ["repository:repo1:pull"];
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Post && req.RequestUri?.AbsoluteUri.TrimEnd('/') == realm.TrimEnd('/'))
             {
@@ -1152,7 +1152,7 @@ public class ClientTest
         var service = "svc"; // Present but realm intentionally missing
         string[] scopes = ["repository:repo1:pull"];
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
             {
@@ -1198,7 +1198,7 @@ public class ClientTest
         var basicToken =
             Convert.ToBase64String(Encoding.UTF8.GetBytes(username + ":" + password));
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.Host.TrimEnd('/') == host.TrimEnd('/'))
@@ -1295,7 +1295,7 @@ public class ClientTest
         var realm = "https://auth.example.com";
         var service = "test_service";
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.Host.TrimEnd('/') == host.TrimEnd('/'))
@@ -1382,7 +1382,7 @@ public class ClientTest
         var token5000 = "token5000";
         var token443 = "token443";
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
             {
@@ -1473,7 +1473,7 @@ public class ClientTest
         var tok5000 = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{up5000.User}:{up5000.Pass}"));
         var tok443 = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{up443.User}:{up443.Pass}"));
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
             {

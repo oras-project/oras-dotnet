@@ -99,7 +99,7 @@ public static class TargetExtensions
     /// <param name="dst"></param>
     /// <param name="node"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken = default)
     {
         var proxy = new Proxy()
         {
@@ -119,7 +119,7 @@ public static class TargetExtensions
     /// <param name="node"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
         var proxy = new Proxy()
         {
@@ -139,7 +139,7 @@ public static class TargetExtensions
     /// <param name="proxy"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
+    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
         await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, new SemaphoreSlim(1, copyGraphOptions.MaxConcurrency), cancellationToken)
             .ConfigureAwait(false);
