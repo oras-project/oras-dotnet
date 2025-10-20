@@ -34,7 +34,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
       - name: Check license header
-        uses: apache/skywalking-eyes/header@v0.7.0
+        uses: apache/skywalking-eyes/header@v0.8.0
         with:
           mode: check
           config: .github/licenserc.yml
