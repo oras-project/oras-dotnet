@@ -32,7 +32,7 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
 
     public override bool CanRead => _inner.CanRead;
     public override bool CanSeek => _inner.CanSeek;
-    public override bool CanWrite => _inner.CanWrite;
+    public override bool CanWrite => false;
     public override long Length => Math.Min(_inner.Length, _limit);
     public override long Position
     {
@@ -63,10 +63,7 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
         _inner.SetLength(value);
     }
 
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        _inner.Write(buffer, offset, count);
-    }
+    public override void Write(byte[] buffer, int offset, int count) { }
 
     public override int Read(byte[] buffer, int offset, int count)
     {
