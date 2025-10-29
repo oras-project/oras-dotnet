@@ -75,6 +75,18 @@ public static class TargetExtensions
         };
 
         var (root, _) = await proxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
+        if (copyOptions.MapRoot != null)
+        {
+            proxy.StopCaching = true;
+            try
+            {
+                root = await copyOptions.MapRoot(proxy, root, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                proxy.StopCaching = false;
+            }
+        }
         await src.CopyGraphAsync(dst, root, proxy, copyOptions, cancellationToken).ConfigureAwait(false);
         await dst.TagAsync(root, dstRef, cancellationToken).ConfigureAwait(false);
         return root;
@@ -87,7 +99,7 @@ public static class TargetExtensions
     /// <param name="dst"></param>
     /// <param name="node"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken)
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken = default)
     {
         var copyGraphOptions = new CopyGraphOptions();
         var proxy = new Proxy()
@@ -107,7 +119,7 @@ public static class TargetExtensions
     /// <param name="node"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
+    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
         var proxy = new Proxy()
         {
@@ -127,7 +139,7 @@ public static class TargetExtensions
     /// <param name="proxy"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken)
+    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
         await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, new SemaphoreSlim(copyGraphOptions.Concurrency, copyGraphOptions.Concurrency), cancellationToken)
             .ConfigureAwait(false);

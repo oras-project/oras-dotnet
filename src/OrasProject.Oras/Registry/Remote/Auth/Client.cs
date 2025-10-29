@@ -155,7 +155,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// A task that represents the asynchronous operation. The task result contains the resolved credential.
     /// If <see cref="CredentialProvider"/> is null, an empty credential is returned.
     /// </returns>
-    public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken)
+    public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken = default)
         => CredentialProvider == null ? Task.FromResult(CredentialExtensions.EmptyCredential) :
             CredentialProvider.ResolveCredentialAsync(registry, cancellationToken);
 
@@ -174,10 +174,10 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown if the request URI is null.</exception>
     /// <exception cref="KeyNotFoundException">
-    /// Thrown if required parameters (e.g., "realm" or "service") are missing in the authentication challenge.
+    /// Thrown if required parameters (e.g., "realm") are missing in the authentication challenge.
     /// </exception>
     public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         foreach (var (headerName, headerValues) in CustomHeaders)
         {
@@ -284,12 +284,13 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
 
                     if (!parameters.TryGetValue("realm", out var realm))
                     {
-                        throw new KeyNotFoundException("Realm was not present in the request.");
+                        // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
+                        throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
                     }
-
                     if (!parameters.TryGetValue("service", out var service))
                     {
-                        throw new KeyNotFoundException("Service was not present in the request.");
+                        // some registries may omit the `service` parameter; use an empty string when absent.
+                        service = string.Empty;
                     }
 
                     // try to fetch bearer token based on the challenge header
@@ -322,7 +323,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// <exception cref="AuthenticationException">
     /// Thrown when credentials are missing or when the username or password is null or empty.
     /// </exception>
-    internal async Task<string> FetchBasicAuthAsync(string registry, CancellationToken cancellationToken)
+    internal async Task<string> FetchBasicAuthAsync(string registry, CancellationToken cancellationToken = default)
     {
         var credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(credential.Username) || string.IsNullOrWhiteSpace(credential.Password))
@@ -354,7 +355,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         string realm,
         string service,
         IList<string> scopes,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrEmpty(credential.AccessToken))
@@ -409,7 +410,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         IList<string> scopes,
         string? username,
         string? password,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken = default
     )
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, realm);
@@ -481,14 +482,18 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         string service,
         IList<string> scopes,
         Credential credential,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken = default
     )
     {
         var form = new Dictionary<string, string>
         {
-            ["service"] = service,
             ["client_id"] = string.IsNullOrEmpty(ClientId) ? _defaultClientId : ClientId
         };
+
+        if (!string.IsNullOrWhiteSpace(service))
+        {
+            form["service"] = service;
+        }
 
         if (!string.IsNullOrEmpty(credential.RefreshToken))
         {
@@ -542,6 +547,6 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// <returns>The HTTP response message.</returns>
     private async Task<HttpResponseMessage> SendRequestAsync(
         HttpRequestMessage request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
         => await BaseClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 }

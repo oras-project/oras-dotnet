@@ -212,7 +212,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <exception cref="HttpRequestException"></exception>
     /// <exception cref="Exception"></exception>
     public async Task MountAsync(Descriptor descriptor, string fromRepository,
-        Func<CancellationToken, Task<Stream>>? getContent, CancellationToken cancellationToken)
+        Func<CancellationToken, Task<Stream>>? getContent, CancellationToken cancellationToken = default)
     {
         // pushing usually requires both pull and push actions.
         // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
@@ -302,7 +302,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <param name="cancellationToken"></param>
     /// <exception cref="Exception"></exception>
     private async Task CompletePushAsync(Uri url, Descriptor descriptor, Stream content,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         // monolithic upload
         // add digest key to query string with descriptor digest value

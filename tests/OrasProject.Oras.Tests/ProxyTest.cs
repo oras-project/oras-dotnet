@@ -166,7 +166,10 @@ public class ProxyTest
         var sourceStream = new MemoryStream(data);
 
         var storageMock = new Mock<IStorage>(MockBehavior.Strict);
-        // No setup on PushAsync or FetchAsync => should not be called
+        storageMock
+            .Setup(s => s.ExistsAsync(descriptor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false)
+            .Verifiable();
 
         var sourceMock = new Mock<ITarget>();
         sourceMock
@@ -274,5 +277,82 @@ public class ProxyTest
         Assert.Same(cachedStream, resultStream);
         srcRefMock.Verify();
         storageMock.Verify();
+    }
+
+    [Fact]
+    public async Task FetchAsync_CanStopCaching()
+    {
+        var (_, manifestBytes) = RandomManifest();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = Digest.ComputeSha256(manifestBytes),
+            Size = manifestBytes.Length
+        };
+
+        var cache = new MemoryStorage();
+        var sourceMock = new Mock<ITarget>();
+        var ct = CancellationToken.None;
+        using var expectedStream = new MemoryStream(manifestBytes);
+
+        sourceMock.Setup(s => s.FetchAsync(manifestDesc, ct)).ReturnsAsync(expectedStream);
+
+        var proxy = new Proxy
+        {
+            Cache = cache,
+            Source = sourceMock.Object,
+            StopCaching = true
+        };
+
+        var result = await proxy.FetchAsync(manifestDesc, ct);
+
+        var actualBytes = new MemoryStream();
+        await result.CopyToAsync(actualBytes, ct);
+        Assert.Equal(manifestBytes, actualBytes.ToArray());
+        Assert.False(await cache.ExistsAsync(manifestDesc, ct));
+    }
+
+    [Fact]
+    public async Task ExistsAsync_CacheHit_ReturnsTrue()
+    {
+        var (_, manifestBytes) = RandomManifest();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = Digest.ComputeSha256(manifestBytes),
+            Size = manifestBytes.Length
+        };
+        var cache = new MemoryStorage();
+        var sourceMock = new Mock<ITarget>();
+        var cancellationToken = CancellationToken.None;
+        using var expectedStream = new MemoryStream(manifestBytes);
+
+        await cache.PushAsync(manifestDesc, expectedStream, cancellationToken);
+        var proxy = new Proxy { Cache = cache, Source = sourceMock.Object };
+
+        Assert.True(await proxy.ExistsAsync(manifestDesc, cancellationToken));
+    }
+
+    [Fact]
+    public async Task ExistsAsync_CacheMiss_ReturnsTrue()
+    {
+        var (_, manifestBytes) = RandomManifest();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = Digest.ComputeSha256(manifestBytes),
+            Size = manifestBytes.Length
+        };
+
+        var cache = new MemoryStorage();
+        var sourceMock = new Mock<ITarget>();
+        var ct = CancellationToken.None;
+        using var expectedStream = new MemoryStream(manifestBytes);
+
+        sourceMock.Setup(s => s.ExistsAsync(manifestDesc, ct)).ReturnsAsync(true);
+
+        var proxy = new Proxy { Cache = cache, Source = sourceMock.Object };
+
+        Assert.True(await proxy.ExistsAsync(manifestDesc, ct));
     }
 }

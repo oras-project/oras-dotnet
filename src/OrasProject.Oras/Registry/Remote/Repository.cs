@@ -260,7 +260,7 @@ public class Repository : IRepository
     /// <param name="url"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    private async Task<(string[], Uri?)> FetchTagsPageAsync(string? last, Uri url, CancellationToken cancellationToken)
+    private async Task<(string[], Uri?)> FetchTagsPageAsync(string? last, Uri url, CancellationToken cancellationToken = default)
     {
         var uriBuilder = new UriBuilder(url);
         if (_opts.TagListPageSize > 0 || !string.IsNullOrEmpty(last))
@@ -304,7 +304,7 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="NotFoundException"></exception>
-    internal async Task DeleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken)
+    internal async Task DeleteAsync(Descriptor target, bool isManifest, CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Options.Client, Options.Reference, Scope.Action.Delete);
         var remoteReference = ParseReferenceFromDigest(target.Digest);
