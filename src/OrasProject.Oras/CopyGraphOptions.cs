@@ -28,7 +28,7 @@ public class CopyGraphOptions
     private const int _defaultConcurrency = 3;
     private const long _defaultMaxMetadataBytes = 4 * 1024 * 1024; // 4 MiB
 
-    private int _maxConcurrency = _defaultConcurrency;
+    private int _concurrency = _defaultConcurrency;
     private long _maxMetadataBytes = _defaultMaxMetadataBytes;
 
     /// <summary>
@@ -37,16 +37,16 @@ public class CopyGraphOptions
     /// </summary>
     public int Concurrency
     {
-        get => _maxConcurrency;
+        get => _concurrency;
         set
         {
             if (value > 0)
             {
-                _maxConcurrency = value;
+                _concurrency = value;
             }
             else
             {
-                _maxConcurrency = _defaultConcurrency;
+                _concurrency = _defaultConcurrency;
             }
         }
     }

@@ -18,17 +18,32 @@ using System.Threading;
 using System.Threading.Tasks;
 namespace OrasProject.Oras.Content;
 
+/// <summary>
+/// Represents a stream wrapper that enforces a maximum number of bytes that can be read from the underlying stream.
+/// If the read limit is exceeded, a <see cref="SizeLimitExceededException"/> is thrown.
+/// </summary>
+/// <param name="inner">The underlying <see cref="Stream"/> to wrap and limit.</param>
+/// <param name="limit">The maximum number of bytes allowed to be read from the stream.</param>
 internal sealed class LimitedStream(Stream inner, long limit) : Stream
 {
-    private readonly Stream _inner = inner;
-    private readonly long _limit = limit;
+    private readonly Stream _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+    private readonly long _limit = limit >= 0 ? limit : throw new ArgumentOutOfRangeException(nameof(limit), "Limit must be non-negative.");
     private long _bytesRead = 0;
 
     public override bool CanRead => _inner.CanRead;
     public override bool CanSeek => _inner.CanSeek;
     public override bool CanWrite => _inner.CanWrite;
     public override long Length => Math.Min(_inner.Length, _limit);
-    public override long Position { get => _inner.Position; set => _inner.Position = value; }
+    public override long Position
+    {
+        get => _inner.Position;
+        set
+        {
+            _inner.Position = value;
+            // Update bytes read tracking based on new position
+            _bytesRead = Math.Min(value, _limit);
+        }
+    }
 
     public override void Flush()
     {
@@ -78,5 +93,14 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
         var read = await _inner.ReadAsync(limitedBuffer, cancellationToken).ConfigureAwait(false);
         _bytesRead += read;
         return read;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _inner.Dispose();
+        }
+        base.Dispose(disposing);
     }
 }

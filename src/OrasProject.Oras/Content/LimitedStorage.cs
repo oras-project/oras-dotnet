@@ -18,10 +18,19 @@ using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 
+/// <summary>
+/// Provides a storage wrapper that enforces a maximum size limit for pushed content.
+/// </summary>
+/// <remarks>
+/// This class wraps an <see cref="IStorage"/> instance and restricts the size of content that can be pushed to it.
+/// If the content size exceeds the specified limit, a <see cref="SizeLimitExceededException"/> is thrown.
+/// </remarks>
+/// <param name="storage">The underlying storage to wrap.</param>
+/// <param name="limit">The maximum allowed size (in bytes) for pushed content.</param>
 internal class LimitedStorage(IStorage storage, long limit) : IStorage
 {
-    private IStorage _storage = storage;
-    private long _pushLimit = limit;
+    private readonly IStorage _storage = storage;
+    private readonly long _pushLimit = limit;
 
     public Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
