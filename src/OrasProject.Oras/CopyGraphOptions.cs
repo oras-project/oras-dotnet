@@ -62,18 +62,18 @@ public class CopyGraphOptions
     /// return CopyNodeDecision.SkipNode to signal that desc should be skipped when it already
     /// exists in the target.
     /// </summary>
-    public Func<Descriptor, CancellationToken, Task<CopyNodeDecision>>? PreCopy { get; set; }
+    public Func<Descriptor, CancellationToken, Task<CopyNodeDecision>>? PreCopyAsync { get; set; }
 
     /// <summary>
     /// PostCopy handles the current descriptor after it is copied.
     /// </summary>
-    public Func<Descriptor, CancellationToken, Task>? PostCopy { get; set; }
+    public Func<Descriptor, CancellationToken, Task>? PostCopyAsync { get; set; }
 
     /// <summary>
     /// OnCopySkipped will be called when the sub-DAG rooted by the current node
     /// is skipped.
     /// </summary>
-    public Func<Descriptor, CancellationToken, Task>? OnCopySkipped { get; set; }
+    public Func<Descriptor, CancellationToken, Task>? OnCopySkippedAsync { get; set; }
 
     /// <summary>
     /// FindSuccessors finds the successors of the current node.
@@ -83,5 +83,5 @@ public class CopyGraphOptions
     /// source storage to fetch large blobs.
     /// If FindSuccessors is not set, FetchableExtensions.GetSuccessorsAsync will be used.
     /// </summary>
-    public Func<IFetchable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>> FindSuccessors { get; set; } = FetchableExtensions.GetSuccessorsAsync;
+    public Func<IFetchable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>> FindSuccessorsAsync { get; set; } = FetchableExtensions.GetSuccessorsAsync;
 }

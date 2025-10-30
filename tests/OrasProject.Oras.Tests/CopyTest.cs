@@ -261,17 +261,17 @@ public class CopyTest
         {
             Concurrency = 3,
             MaxMetadataBytes = 2 * 1024 * 1024,
-            PreCopy = (desc, ct) =>
+            PreCopyAsync = (desc, ct) =>
             {
                 preCopyCount++;
                 return Task.FromResult(CopyNodeDecision.Continue);
             },
-            PostCopy = (desc, ct) =>
+            PostCopyAsync = (desc, ct) =>
             {
                 postCopyCount++;
                 return Task.CompletedTask;
             },
-            OnCopySkipped = (desc, ct) =>
+            OnCopySkippedAsync = (desc, ct) =>
             {
                 copySkipCount++;
                 return Task.CompletedTask;
