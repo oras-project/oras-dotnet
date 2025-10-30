@@ -28,7 +28,7 @@ namespace OrasProject.Oras.Tests.Content
         {
             var data = Encoding.UTF8.GetBytes("foobar");
             using var inner = new MemoryStream(data);
-            using var limited = new LimitedStream(inner, 6);
+            using var limited = new LimitedReadStream(inner, 6);
 
             var buffer = new byte[6];
             int read = limited.Read(buffer, 0, buffer.Length);
@@ -42,7 +42,7 @@ namespace OrasProject.Oras.Tests.Content
         {
             var data = Encoding.UTF8.GetBytes("foobar");
             using var inner = new MemoryStream(data);
-            using var limited = new LimitedStream(inner, 6);
+            using var limited = new LimitedReadStream(inner, 6);
 
             var buffer = new byte[3];
             int read = limited.Read(buffer, 0, buffer.Length); // succeeds
@@ -64,7 +64,7 @@ namespace OrasProject.Oras.Tests.Content
         {
             var data = Encoding.UTF8.GetBytes("foobar");
             using var inner = new MemoryStream(data);
-            using var limited = new LimitedStream(inner, 6);
+            using var limited = new LimitedReadStream(inner, 6);
 
             var buffer = new byte[6];
             int read = await limited.ReadAsync(buffer);
@@ -78,7 +78,7 @@ namespace OrasProject.Oras.Tests.Content
         {
             var data = Encoding.UTF8.GetBytes("foobar");
             using var inner = new MemoryStream(data);
-            using var limited = new LimitedStream(inner, 6);
+            using var limited = new LimitedReadStream(inner, 6);
 
             var buffer = new byte[3];
             int read = await limited.ReadAsync(buffer); // succeeds
@@ -100,7 +100,7 @@ namespace OrasProject.Oras.Tests.Content
         {
             var data = Encoding.UTF8.GetBytes("abcdef");
             using var inner = new MemoryStream(data);
-            using var limited = new LimitedStream(inner, 4);
+            using var limited = new LimitedReadStream(inner, 4);
 
             limited.Seek(2, SeekOrigin.Begin);
             var buffer = new byte[2];
@@ -115,7 +115,7 @@ namespace OrasProject.Oras.Tests.Content
         {
             var data = Encoding.UTF8.GetBytes("abcdef");
             using var inner = new MemoryStream(data);
-            using var limited = new LimitedStream(inner, 4);
+            using var limited = new LimitedReadStream(inner, 4);
 
             Assert.Equal(inner.CanRead, limited.CanRead);
             Assert.Equal(inner.CanSeek, limited.CanSeek);

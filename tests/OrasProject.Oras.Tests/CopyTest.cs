@@ -80,8 +80,8 @@ public class CopyTest
         for (var i = 0; i < descs.Count; i++)
         {
             Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
-            var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
-            var memoryStream = new MemoryStream();
+            await using var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
+            using var memoryStream = new MemoryStream();
             await fetchContent.CopyToAsync(memoryStream);
             var bytes = memoryStream.ToArray();
             Assert.Equal(blobs[i], bytes);
@@ -146,8 +146,8 @@ public class CopyTest
         for (var i = 0; i < descs.Count; i++)
         {
             Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
-            var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
-            var memoryStream = new MemoryStream();
+            await using var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
+            using var memoryStream = new MemoryStream();
             await fetchContent.CopyToAsync(memoryStream);
             var bytes = memoryStream.ToArray();
             Assert.Equal(blobs[i], bytes);
@@ -194,7 +194,7 @@ public class CopyTest
         await sourceTarget.TagAsync(root, reference, cancellationToken);
 
         var destinationTarget = new MemoryStore();
-        CopyOptions copyOptions = new CopyOptions()
+        var copyOptions = new CopyOptions()
         {
             MapRoot = (_, _, _) => Task.FromResult(descs[1])
         };

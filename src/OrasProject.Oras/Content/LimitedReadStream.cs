@@ -20,12 +20,26 @@ using System.Threading.Tasks;
 namespace OrasProject.Oras.Content;
 
 /// <summary>
-/// Represents a stream wrapper that enforces a maximum number of bytes that can be read from the underlying stream.
-/// If the read limit is exceeded, a <see cref="SizeLimitExceededException"/> is thrown.
+/// Represents a read-only stream wrapper that enforces a maximum number of bytes that can be read from the underlying stream.
+/// This stream does not support write operations and will throw a <see cref="SizeLimitExceededException"/> if the read limit is exceeded.
 /// </summary>
-/// <param name="inner">The underlying <see cref="Stream"/> to wrap and limit.</param>
-/// <param name="limit">The maximum number of bytes allowed to be read from the stream.</param>
-internal sealed class LimitedStream(Stream inner, long limit) : Stream
+/// <param name="inner">The underlying <see cref="Stream"/> to wrap and limit. Must not be null.</param>
+/// <param name="limit">The maximum number of bytes allowed to be read from the stream. Must be non-negative.</param>
+/// <remarks>
+/// The <see cref="LimitedReadStream"/> provides a safe way to read from streams while enforcing size limits,
+/// which is particularly useful for preventing excessive memory usage or enforcing content size constraints
+/// in OCI artifact operations. The stream tracks the number of bytes read and will prevent reading beyond
+/// the specified limit.
+/// 
+/// <para>
+/// Write operations are explicitly not supported and will throw <see cref="NotSupportedException"/>.
+/// The stream properly handles position tracking through both direct position setting and seek operations.
+/// </para>
+/// </remarks>
+/// <exception cref="ArgumentNullException">Thrown when <paramref name="inner"/> is null.</exception>
+/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="limit"/> is negative.</exception>
+/// <exception cref="SizeLimitExceededException">Thrown during read operations when the limit is exceeded.</exception>
+internal sealed class LimitedReadStream(Stream inner, long limit) : Stream
 {
     private readonly Stream _inner = inner ?? throw new ArgumentNullException(nameof(inner));
     private readonly long _limit = limit >= 0 ? limit : throw new ArgumentOutOfRangeException(nameof(limit), "Limit must be non-negative.");
@@ -64,10 +78,9 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
         _inner.SetLength(value);
     }
 
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        throw new NotSupportedException("This stream does not support Write");
-    }
+    public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException("Write is not supported by LimitedReadStream");
+
+    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException("Write is not supported by LimitedReadStream");
 
     public override int Read(byte[] buffer, int offset, int count)
     {
@@ -103,5 +116,11 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
             _inner.Dispose();
         }
         base.Dispose(disposing);
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await _inner.DisposeAsync().ConfigureAwait(false);
+        await base.DisposeAsync().ConfigureAwait(false);
     }
 }
