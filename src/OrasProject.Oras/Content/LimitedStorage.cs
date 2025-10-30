@@ -18,6 +18,8 @@ using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 
+namespace OrasProject.Oras.Content;
+
 /// <summary>
 /// Provides a storage wrapper that enforces a maximum size limit for pushed content.
 /// </summary>

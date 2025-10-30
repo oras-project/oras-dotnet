@@ -16,6 +16,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+
 namespace OrasProject.Oras.Content;
 
 /// <summary>
@@ -63,7 +64,10 @@ internal sealed class LimitedStream(Stream inner, long limit) : Stream
         _inner.SetLength(value);
     }
 
-    public override void Write(byte[] buffer, int offset, int count) { }
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException("This stream does not support Write");
+    }
 
     public override int Read(byte[] buffer, int offset, int count)
     {

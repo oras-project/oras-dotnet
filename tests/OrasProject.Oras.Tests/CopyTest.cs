@@ -251,7 +251,8 @@ public class CopyTest
 
         for (var i = 0; i < blobs.Count; i++)
         {
-            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+            using var stream = new MemoryStream(blobs[i]);
+            await sourceTarget.PushAsync(descs[i], stream, cancellationToken);
         }
 
         var root = descs[3];
@@ -284,7 +285,7 @@ public class CopyTest
         {
             Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
             var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
-            var memoryStream = new MemoryStream();
+            using var memoryStream = new MemoryStream();
             await fetchContent.CopyToAsync(memoryStream);
             var bytes = memoryStream.ToArray();
             Assert.Equal(blobs[i], bytes);

@@ -55,7 +55,7 @@ namespace OrasProject.Oras.Tests.Content
 
             Assert.Throws<SizeLimitExceededException>(() =>
             {
-                int read = limited.Read(buffer, 0, 1);
+                limited.ReadExactly(buffer, 0, 1);
             });
         }
 
@@ -91,7 +91,7 @@ namespace OrasProject.Oras.Tests.Content
 
             await Assert.ThrowsAsync<SizeLimitExceededException>(async () =>
             {
-                int read = await limited.ReadAsync(buffer);
+                await limited.ReadExactlyAsync(buffer);
             });
         }
 
