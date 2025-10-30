@@ -109,5 +109,24 @@ namespace OrasProject.Oras.Tests.Content
             Assert.Equal(2, read);
             Assert.Equal("cd", Encoding.UTF8.GetString(buffer));
         }
+
+        [Fact]
+        public void Properties_ReflectInnerStreamAndLimit_WhenAccessed()
+        {
+            var data = Encoding.UTF8.GetBytes("abcdef");
+            using var inner = new MemoryStream(data);
+            using var limited = new LimitedStream(inner, 4);
+
+            Assert.Equal(inner.CanRead, limited.CanRead);
+            Assert.Equal(inner.CanSeek, limited.CanSeek);
+            Assert.False(limited.CanWrite);
+            Assert.Equal(4, limited.Length);
+            Assert.Equal(inner.Position, limited.Position);
+
+            Assert.Throws<NotSupportedException>(() =>
+            {
+                limited.Write(new byte[1]);
+            });
+        }
     }
 }
