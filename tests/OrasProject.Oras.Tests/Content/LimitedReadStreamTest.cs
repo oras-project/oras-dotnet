@@ -111,7 +111,7 @@ namespace OrasProject.Oras.Tests.Content
         }
 
         [Fact]
-        public void Properties_ReflectInnerStreamAndLimit_WhenAccessed()
+        public async Task Properties_ReflectInnerStreamAndLimit_WhenAccessed()
         {
             var data = Encoding.UTF8.GetBytes("abcdef");
             using var inner = new MemoryStream(data);
@@ -127,6 +127,30 @@ namespace OrasProject.Oras.Tests.Content
             {
                 limited.Write(new byte[1]);
             });
+
+            await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            {
+                await limited.WriteAsync(new byte[1]);
+            });
+        }
+
+        [Fact]
+        public async Task DisposeAsync_DisposesInnerStream_WhenCalled()
+        {
+            var data = Encoding.UTF8.GetBytes("test data");
+            var inner = new MemoryStream(data);
+            var limited = new LimitedReadStream(inner, 10);
+
+            // Verify the inner stream is initially usable
+            Assert.True(inner.CanRead);
+
+            // Dispose the limited stream asynchronously
+            await limited.DisposeAsync();
+
+            // Verify the inner stream is disposed
+            Assert.False(inner.CanRead);
+            Assert.False(inner.CanWrite);
+            Assert.False(inner.CanSeek);
         }
     }
 }
