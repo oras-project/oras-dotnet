@@ -284,7 +284,7 @@ public class CopyTest
         for (var i = 0; i < descs.Count; i++)
         {
             Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
-            var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
+            await using var fetchContent = await destinationTarget.FetchAsync(descs[i], cancellationToken);
             using var memoryStream = new MemoryStream();
             await fetchContent.CopyToAsync(memoryStream);
             var bytes = memoryStream.ToArray();
