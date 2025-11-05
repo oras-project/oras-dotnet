@@ -299,15 +299,39 @@ public class CopyTest
     }
 
     [Fact]
-    public void CanCreateCopyGraphOptionsWithDefaultValues()
+    public void CopyGraphOptions_ConcurrencyZero_ThrowsArgumentOutOfRangeException()
     {
-        var options = new CopyGraphOptions()
-        {
-            Concurrency = 0,
-            MaxMetadataBytes = 0
-        };
-        Assert.Equal(3, options.Concurrency);
-        Assert.Equal(4 * 1024 * 1024, options.MaxMetadataBytes);
+        var options = new CopyGraphOptions();
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => options.Concurrency = 0);
+        Assert.Equal("value", exception.ParamName);
+        Assert.Contains("Concurrency must be greater than 0", exception.Message);
+    }
+
+    [Fact]
+    public void CopyGraphOptions_ConcurrencyNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var options = new CopyGraphOptions();
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => options.Concurrency = -1);
+        Assert.Equal("value", exception.ParamName);
+        Assert.Contains("Concurrency must be greater than 0", exception.Message);
+    }
+
+    [Fact]
+    public void CopyGraphOptions_MaxMetadataBytesZero_ThrowsArgumentOutOfRangeException()
+    {
+        var options = new CopyGraphOptions();
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxMetadataBytes = 0);
+        Assert.Equal("value", exception.ParamName);
+        Assert.Contains("MaxMetadataBytes must be greater than 0", exception.Message);
+    }
+
+    [Fact]
+    public void CopyGraphOptions_MaxMetadataBytesNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var options = new CopyGraphOptions();
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxMetadataBytes = -1);
+        Assert.Equal("value", exception.ParamName);
+        Assert.Contains("MaxMetadataBytes must be greater than 0", exception.Message);
     }
 
     [Fact]

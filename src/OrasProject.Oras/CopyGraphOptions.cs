@@ -33,27 +33,35 @@ public class CopyGraphOptions
 
     /// <summary>
     /// MaxConcurrency limits the maximum number of concurrent copy tasks.
-    /// If less than or equal to 0, a default (currently 3) is used.
+    /// Must be greater than 0. Default: 3.
     /// </summary>
     public int Concurrency
     {
         get => _concurrency;
         set
         {
-            _concurrency = value > 0 ? value : _defaultConcurrency;
+            if (value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "Concurrency must be greater than 0.");
+            }
+            _concurrency = value;
         }
     }
 
     /// <summary>
     /// MaxMetadataBytes limits the maximum size of the metadata that can be
-    /// cached in the memory. If less than or equal to 0, a default (currently 4 MiB) is used.
+    /// cached in the memory. Must be greater than 0. Default: 4 MiB.
     /// </summary>
     public long MaxMetadataBytes
     {
         get => _maxMetadataBytes;
         set
         {
-            _maxMetadataBytes = value > 0 ? value : _defaultMaxMetadataBytes;
+            if (value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "MaxMetadataBytes must be greater than 0.");
+            }
+            _maxMetadataBytes = value;
         }
     }
 
