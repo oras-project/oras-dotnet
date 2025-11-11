@@ -32,7 +32,7 @@ namespace OrasProject.Oras.Content;
 /// the specified limit.
 /// 
 /// <para>
-/// Write operations are explicitly not supported and will throw <see cref="NotSupportedException"/>.
+/// Write operations and SetLength are explicitly not supported and will throw <see cref="NotSupportedException"/>.
 /// The stream properly handles position tracking through both direct position setting and seek operations.
 /// </para>
 /// </remarks>
@@ -73,10 +73,7 @@ internal sealed class LimitedReadStream(Stream inner, long limit) : Stream
         return newPosition;
     }
 
-    public override void SetLength(long value)
-    {
-        _inner.SetLength(value);
-    }
+    public override void SetLength(long value) => throw new NotSupportedException("SetLength is not supported by LimitedReadStream");
 
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException("Write is not supported by LimitedReadStream");
 

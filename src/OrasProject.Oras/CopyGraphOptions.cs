@@ -66,30 +66,30 @@ public class CopyGraphOptions
     }
 
     /// <summary>
-    /// PreCopy handles the current descriptor before it is copied. PreCopy can
+    /// PreCopyAsync handles the current descriptor before it is copied. PreCopy can
     /// return CopyNodeDecision.SkipNode to signal that desc should be skipped when it already
     /// exists in the target.
     /// </summary>
     public Func<Descriptor, CancellationToken, Task<CopyNodeDecision>>? PreCopyAsync { get; set; }
 
     /// <summary>
-    /// PostCopy handles the current descriptor after it is copied.
+    /// PostCopyAsync handles the current descriptor after it is copied.
     /// </summary>
     public Func<Descriptor, CancellationToken, Task>? PostCopyAsync { get; set; }
 
     /// <summary>
-    /// OnCopySkipped will be called when the sub-DAG rooted by the current node
+    /// OnCopySkippedAsync will be called when the sub-DAG rooted by the current node
     /// is skipped.
     /// </summary>
     public Func<Descriptor, CancellationToken, Task>? OnCopySkippedAsync { get; set; }
 
     /// <summary>
-    /// FindSuccessors finds the successors of the current node.
+    /// FindSuccessorsAsync finds the successors of the current node.
     /// IFetchable provides cached access to the source storage, and is suitable
     /// for fetching non-leaf nodes like manifests. Since anything fetched from
     /// fetcher will be cached in the memory, it is recommended to use original
     /// source storage to fetch large blobs.
-    /// If FindSuccessors is not set, FetchableExtensions.GetSuccessorsAsync will be used.
+    /// If FindSuccessorsAsync is not set, FetchableExtensions.GetSuccessorsAsync will be used.
     /// </summary>
     public Func<IFetchable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>> FindSuccessorsAsync { get; set; } = FetchableExtensions.GetSuccessorsAsync;
 }
