@@ -263,17 +263,17 @@ public class CopyTest
             MaxMetadataBytes = 2 * 1024 * 1024,
             PreCopyAsync = (desc, ct) =>
             {
-                preCopyCount++;
+                Interlocked.Increment(ref preCopyCount);
                 return Task.FromResult(CopyNodeDecision.Continue);
             },
             PostCopyAsync = (desc, ct) =>
             {
-                postCopyCount++;
+                Interlocked.Increment(ref postCopyCount);
                 return Task.CompletedTask;
             },
             OnCopySkippedAsync = (desc, ct) =>
             {
-                copySkipCount++;
+                Interlocked.Increment(ref copySkipCount);
                 return Task.CompletedTask;
             }
         };
