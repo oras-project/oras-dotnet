@@ -43,7 +43,7 @@ internal sealed class LimitedReadStream(Stream inner, long limit) : Stream
 {
     private readonly Stream _inner = inner ?? throw new ArgumentNullException(nameof(inner));
     private readonly long _limit = limit >= 0 ? limit : throw new ArgumentOutOfRangeException(nameof(limit), "Limit must be non-negative.");
-    private long _bytesRead = 0;
+    private long _totalBytesRead = 0;
 
     public override bool CanRead => _inner.CanRead;
     public override bool CanSeek => _inner.CanSeek;
@@ -77,28 +77,28 @@ internal sealed class LimitedReadStream(Stream inner, long limit) : Stream
 
     public override int Read(byte[] buffer, int offset, int count)
     {
-        if (_bytesRead >= _limit)
+        if (_totalBytesRead >= _limit)
         {
             throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
         }
         // Limit the read count to not exceed the remaining bytes
-        var readLimit = (int)Math.Min(count, Math.Min(_limit - _bytesRead, int.MaxValue));
+        var readLimit = (int)Math.Min(count, Math.Min(_limit - _totalBytesRead, int.MaxValue));
         var read = _inner.Read(buffer, offset, readLimit);
-        _bytesRead += read;
+        _totalBytesRead += read;
         return read;
     }
 
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
-        if (_bytesRead >= _limit)
+        if (_totalBytesRead >= _limit)
         {
             throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
         }
         // Limit the read count to not exceed the remaining bytes
-        var readLimit = (int)Math.Min(buffer.Length, Math.Min(_limit - _bytesRead, int.MaxValue));
+        var readLimit = (int)Math.Min(buffer.Length, Math.Min(_limit - _totalBytesRead, int.MaxValue));
         var limitedBuffer = buffer[..readLimit];
         var read = await _inner.ReadAsync(limitedBuffer, cancellationToken).ConfigureAwait(false);
-        _bytesRead += read;
+        _totalBytesRead += read;
         return read;
     }
 

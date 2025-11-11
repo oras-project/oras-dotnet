@@ -32,7 +32,7 @@ public class CopyGraphOptions
     private long _maxMetadataBytes = _defaultMaxMetadataBytes;
 
     /// <summary>
-    /// MaxConcurrency limits the maximum number of concurrent copy tasks.
+    /// Concurrency limits the maximum number of concurrent copy tasks.
     /// Must be greater than 0. Default: 3.
     /// </summary>
     public int Concurrency
