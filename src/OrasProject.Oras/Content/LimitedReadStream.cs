@@ -21,7 +21,7 @@ namespace OrasProject.Oras.Content;
 
 /// <summary>
 /// Represents a read-only stream wrapper that enforces a maximum number of bytes that can be read from the underlying stream.
-/// This stream does not support write operations and will throw a <see cref="SizeLimitExceededException"/> if the read limit is exceeded.
+/// This stream does not support write and SetLength operations, and will throw a <see cref="SizeLimitExceededException"/> if the read limit is exceeded.
 /// </summary>
 /// <param name="inner">The underlying <see cref="Stream"/> to wrap and limit. Must not be null.</param>
 /// <param name="limit">The maximum number of bytes allowed to be read from the stream. Must be non-negative.</param>
@@ -32,7 +32,7 @@ namespace OrasProject.Oras.Content;
 /// the specified limit.
 /// 
 /// <para>
-/// Write operations and SetLength are explicitly not supported and will throw <see cref="NotSupportedException"/>.
+/// Write and SetLength operations are explicitly not supported and will throw <see cref="NotSupportedException"/>.
 /// The stream properly handles position tracking through both direct position setting and seek operations.
 /// </para>
 /// </remarks>
@@ -55,8 +55,6 @@ internal sealed class LimitedReadStream(Stream inner, long limit) : Stream
         set
         {
             _inner.Position = value;
-            // Update bytes read tracking based on new position
-            _bytesRead = Math.Min(value, _limit);
         }
     }
 
@@ -68,8 +66,6 @@ internal sealed class LimitedReadStream(Stream inner, long limit) : Stream
     public override long Seek(long offset, SeekOrigin origin)
     {
         var newPosition = _inner.Seek(offset, origin);
-        // Update bytes read tracking based on new position
-        _bytesRead = Math.Min(newPosition, _limit);
         return newPosition;
     }
 
@@ -86,7 +82,7 @@ internal sealed class LimitedReadStream(Stream inner, long limit) : Stream
             throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
         }
         // Limit the read count to not exceed the remaining bytes
-        var readLimit = (int)Math.Min(count, _limit - _bytesRead);
+        var readLimit = (int)Math.Min(count, Math.Min(_limit - _bytesRead, int.MaxValue));
         var read = _inner.Read(buffer, offset, readLimit);
         _bytesRead += read;
         return read;
@@ -99,7 +95,7 @@ internal sealed class LimitedReadStream(Stream inner, long limit) : Stream
             throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
         }
         // Limit the read count to not exceed the remaining bytes
-        var readLimit = (int)Math.Min(buffer.Length, _limit - _bytesRead);
+        var readLimit = (int)Math.Min(buffer.Length, Math.Min(_limit - _bytesRead, int.MaxValue));
         var limitedBuffer = buffer[..readLimit];
         var read = await _inner.ReadAsync(limitedBuffer, cancellationToken).ConfigureAwait(false);
         _bytesRead += read;
