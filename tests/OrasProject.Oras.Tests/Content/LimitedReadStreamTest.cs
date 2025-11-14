@@ -111,6 +111,36 @@ namespace OrasProject.Oras.Tests.Content
         }
 
         [Fact]
+        public void SeekAndReadAgain_ValidatesReadBytesCorrectly()
+        {
+            var data = Encoding.UTF8.GetBytes("hello world");
+            using var inner = new MemoryStream(data);
+            using var limited = new LimitedReadStream(inner, 11);
+
+            // First read: read 5 bytes
+            var buffer = new byte[5];
+            int read = limited.Read(buffer, 0, 5);
+            Assert.Equal(5, read);
+            Assert.Equal("hello", Encoding.UTF8.GetString(buffer));
+
+            // Seek back to beginning
+            limited.Seek(0, SeekOrigin.Begin);
+
+            // Second read: can only read 6 more bytes (11 total limit - 5 already read = 6 remaining)
+            var buffer2 = new byte[11];
+            read = limited.Read(buffer2, 0, 11);
+            Assert.Equal(6, read); // Only 6 bytes remaining within the limit
+            Assert.Equal("hello ", Encoding.UTF8.GetString(buffer2, 0, read));
+
+            // Verify that attempting to read more throws immediately since limit is reached
+            Assert.Throws<SizeLimitExceededException>(() =>
+            {
+                var buffer3 = new byte[1];
+                limited.ReadExactly(buffer3, 0, 1);
+            });
+        }
+
+        [Fact]
         public async Task Properties_ReflectInnerStreamAndLimit_WhenAccessed()
         {
             var data = Encoding.UTF8.GetBytes("abcdef");
