@@ -32,4 +32,35 @@ public class Error
     [JsonPropertyName("detail")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public JsonElement? Detail { get; set; }
+
+    /// <summary>
+    /// Returns a formatted string representation of the error including code, message, and detail if available.
+    /// </summary>
+    /// <returns>A formatted error string.</returns>
+    public override string ToString()
+    {
+        // Ensure Code and Message are not null for robust formatting
+        string safeCode = Code ?? "UNKNOWN";
+        string safeMessage = Message ?? "unknown message";
+
+        // Start with the basic error information
+        var result = $"{safeCode}: {safeMessage}";
+
+        // Add detail information if available and valid
+        if (Detail is { } detailValue &&
+            detailValue.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+        {
+            try
+            {
+                var detailJson = JsonSerializer.Serialize(detailValue);
+                return $"{result} (Detail: {detailJson})";
+            }
+            catch
+            {
+                // If serialization fails, continue without detail
+            }
+        }
+
+        return result;
+    }
 }

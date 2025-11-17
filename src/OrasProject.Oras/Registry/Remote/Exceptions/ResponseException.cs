@@ -13,13 +13,18 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace OrasProject.Oras.Registry.Remote.Exceptions;
 
+/// <summary>
+/// Exception thrown for HTTP responses from registry operations.
+/// </summary>
 public class ResponseException : HttpRequestException
 {
     private class ErrorResponse
@@ -28,11 +33,31 @@ public class ResponseException : HttpRequestException
         public required IList<Error> Errors { get; set; }
     }
 
+    /// <summary>
+    /// Gets the HTTP method used in the request.
+    /// </summary>
     public HttpMethod? Method { get; }
 
+    /// <summary>
+    /// Gets the URI of the request.
+    /// </summary>
     public Uri? RequestUri { get; }
 
+    /// <summary>
+    /// Gets the list of errors returned in the response.
+    /// </summary>
     public IList<Error>? Errors { get; }
+
+    private readonly string _formattedMessage;
+
+    /// <summary>
+    /// Gets the error message including HTTP details and registry errors.
+    /// </summary>
+    /// <remarks>
+    /// Format: "{HTTP info}: {Custom message}; {Registry errors}"
+    /// Where HTTP info is either "{Method} {URI} returned {StatusCode}" or "HTTP {StatusCode}"
+    /// </remarks>
+    public override string Message => _formattedMessage;
 
     public ResponseException(HttpResponseMessage response, string? responseBody = null)
         : this(response, responseBody, null)
@@ -50,14 +75,70 @@ public class ResponseException : HttpRequestException
         var request = response.RequestMessage;
         Method = request?.Method;
         RequestUri = request?.RequestUri;
+        IList<Error>? errors = null;
+
         if (responseBody != null)
         {
             try
             {
                 var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(responseBody);
-                Errors = errorResponse?.Errors;
+                errors = errorResponse?.Errors;
             }
-            catch { }
+            catch
+            {
+                // If deserialization fails, continue without setting Errors
+            }
         }
+
+        Errors = errors;
+        _formattedMessage = FormatMessage(message);
+    }
+
+    /// <summary>
+    /// Formats the exception message including HTTP details and registry errors.
+    /// </summary>
+    private string FormatMessage(string? customMessage)
+    {
+        var messageBuilder = new StringBuilder();
+
+        // Add HTTP request and status information
+        var statusCode = StatusCode ?? HttpStatusCode.InternalServerError;
+        if (Method != null && RequestUri != null)
+        {
+            messageBuilder.Append($"{Method} {RequestUri} returned {(int)statusCode} {statusCode}");
+        }
+        else
+        {
+            messageBuilder.Append($"HTTP {(int)statusCode} {statusCode}");
+        }
+
+        // Add custom message if provided
+        if (!string.IsNullOrWhiteSpace(customMessage))
+        {
+            messageBuilder.Append($": {customMessage}");
+        }
+        else
+        {
+            customMessage = null; // Treat empty messages as null for delimiter logic
+        }
+
+        // Add registry error details if available
+        if (Errors != null && Errors.Count > 0)
+        {
+            // Add delimiter: use ":" after HTTP info or ";" after custom message
+            messageBuilder.Append(customMessage == null ? ": " : "; ");
+
+            if (Errors.Count == 1)
+            {
+                messageBuilder.Append(Errors[0].ToString());
+            }
+            else
+            {
+                // For multiple errors, format as "Error1; Error2; Error3"
+                messageBuilder.Append(string.Join("; ", Errors.Select(error => error.ToString())));
+            }
+        }
+
+        return messageBuilder.ToString();
     }
 }

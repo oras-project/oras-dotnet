@@ -136,7 +136,7 @@ public class ClientTest
             RefreshToken = refreshToken
         };
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var response = new HttpResponseMessage();
             response.RequestMessage = req;
@@ -199,7 +199,7 @@ public class ClientTest
             Password = password
         };
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             var response = new HttpResponseMessage();
             response.RequestMessage = req;
@@ -352,7 +352,7 @@ public class ClientTest
         var username = "test_user";
         var password = "test_password";
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
@@ -407,7 +407,7 @@ public class ClientTest
         var username = "test_user";
         var password = "test_password";
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
@@ -530,7 +530,7 @@ public class ClientTest
         string[] expectedScopes = ["repository:repo1:pull", "repository:repo2:push"];
         var expectedToken = "test_access_token";
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
@@ -676,7 +676,7 @@ public class ClientTest
         var service = "test_service";
         string[] expectedScopes = ["repository:repo1:pull", "repository:repo2:push"];
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
@@ -929,7 +929,7 @@ public class ClientTest
 
         string[] scopes = ["repository:repo1:pull,*,delete", "repository:repo2:delete"];
         string[] expectedScopes = ["repository:repo1:*", "repository:repo2:delete"];
-        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Post && req.RequestUri?.AbsoluteUri.TrimEnd('/') == realm.TrimEnd('/'))
             {
@@ -1051,6 +1051,142 @@ public class ClientTest
     }
 
     [Fact]
+    public async Task SendAsync_UnauthorizedResponse_BearerChallengeWithoutService_OmitsServiceInTokenRequest()
+    {
+        // Arrange
+        var host = "noservice.example.com";
+        var realm = "https://auth.noservice.example.com";
+        var refreshToken = "refresh_token";
+        var expectedToken = "access_token";
+        string[] scopes = ["repository:repo1:pull"];
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Post && req.RequestUri?.AbsoluteUri.TrimEnd('/') == realm.TrimEnd('/'))
+            {
+                if (req.Content?.Headers.ContentType?.MediaType != "application/x-www-form-urlencoded")
+                {
+                    return new HttpResponseMessage(HttpStatusCode.UnsupportedMediaType);
+                }
+
+                var formData = await req.Content.ReadAsStringAsync(cancellationToken);
+                var formValues = System.Web.HttpUtility.ParseQueryString(formData);
+
+                // service MUST be omitted (i.e., null) when absent in challenge
+                if (formValues["grant_type"] == "refresh_token"
+                    && formValues["refresh_token"] == refreshToken
+                    && formValues["client_id"] == _userAgent
+                    && formValues["scope"] == string.Join(" ", scopes)
+                    && formValues["service"] == null)
+                {
+                    return new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Content = new StringContent($"{{\"access_token\": \"{expectedToken}\"}}"),
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.BadRequest);
+            }
+
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host.TrimEnd('/') == host.TrimEnd('/'))
+            {
+                // First attempt will be unauthorized (no token yet)
+                if (req.Headers.Authorization == null || req.Headers.Authorization.Parameter != expectedToken)
+                {
+                    return new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        Headers =
+                        {
+                            WwwAuthenticate =
+                            {
+                                // Challenge deliberately omits service parameter
+                                new AuthenticationHeaderValue(
+                                    "Bearer",
+                                    $"realm=\"{realm}\",scope=\"{string.Join(" ", scopes)}\"")
+                            }
+                        },
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(p => p.ResolveCredentialAsync(host, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Credential { RefreshToken = refreshToken });
+
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object), mockCredentialProvider.Object);
+        // Populate scope manager to ensure scopes passed into token request
+        Assert.True(Scope.TryParse(scopes[0], out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+
+        // Act
+        var response = await client.SendAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        // Ensure subsequent cached call works and still no service param used
+        var second = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}"), CancellationToken.None);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+    }
+
+    [Fact]
+    public async Task SendAsync_BearerChallengeMissingRealm_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        var host = "missingrealm.example.com";
+        var service = "svc"; // Present but realm intentionally missing
+        string[] scopes = ["repository:repo1:pull"];
+
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.Unauthorized,
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            // Missing realm parameter (should trigger KeyNotFoundException in client)
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"service=\"{service}\",scope=\"{string.Join(" ", scopes)}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
+        Assert.True(Scope.TryParse(scopes[0], out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+
+        // Act + Assert
+        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(async () => await client.SendAsync(request, CancellationToken.None));
+        Assert.Equal("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.", ex.Message);
+    }
+
+    [Fact]
     public async Task SendAsync_UnauthorizedResponse_FetchesNewBasicTokenAndRetries()
     {
         // Arrange
@@ -1062,7 +1198,7 @@ public class ClientTest
         var basicToken =
             Convert.ToBase64String(Encoding.UTF8.GetBytes(username + ":" + password));
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.Host.TrimEnd('/') == host.TrimEnd('/'))
@@ -1159,7 +1295,7 @@ public class ClientTest
         var realm = "https://auth.example.com";
         var service = "test_service";
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get
                 && req.RequestUri?.Host.TrimEnd('/') == host.TrimEnd('/'))
@@ -1246,7 +1382,7 @@ public class ClientTest
         var token5000 = "token5000";
         var token443 = "token443";
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get && req.RequestUri?.GetLeftPart(UriPartial.Path).TrimEnd('/') == realm.TrimEnd('/'))
             {
@@ -1337,7 +1473,7 @@ public class ClientTest
         var tok5000 = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{up5000.User}:{up5000.Pass}"));
         var tok443 = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{up443.User}:{up443.Pass}"));
 
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken)
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
             if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
             {

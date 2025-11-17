@@ -319,7 +319,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="stream"></param>
     /// <param name="remoteReference"></param>
     /// <param name="cancellationToken"></param>
-    private async Task DoPushAsync(Descriptor expected, Stream stream, Reference remoteReference, CancellationToken cancellationToken)
+    private async Task DoPushAsync(Descriptor expected, Stream stream, Reference remoteReference, CancellationToken cancellationToken = default)
     {
         // pushing usually requires both pull and push actions.
         // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
