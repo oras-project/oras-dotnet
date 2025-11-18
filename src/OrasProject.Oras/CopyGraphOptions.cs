@@ -85,9 +85,9 @@ public class CopyGraphOptions
 
     /// <summary>
     /// FindSuccessorsAsync finds the successors of the current node.
-    /// IFetchable provides cached access to the source storage, and is suitable
+    /// <see cref="IFetchable"/> provides cached access to the source storage, and is suitable
     /// for fetching non-leaf nodes like manifests. Since anything fetched from
-    /// fetcher will be cached in the memory, it is recommended to use original
+    /// the IFetchable instance will be cached in the memory, it is recommended to use original
     /// source storage to fetch large blobs.
     /// If FindSuccessorsAsync is not set, FetchableExtensions.GetSuccessorsAsync will be used.
     /// </summary>

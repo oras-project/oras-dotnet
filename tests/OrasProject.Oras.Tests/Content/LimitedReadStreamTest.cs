@@ -21,7 +21,7 @@ using Xunit;
 
 namespace OrasProject.Oras.Tests.Content
 {
-    public class LimitedStreamTest
+    public class LimitedReadStreamTest
     {
         [Fact]
         public void Read_WithinLimit_Succeeds()
