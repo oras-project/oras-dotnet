@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Registry;
 
 namespace OrasProject.Oras;
 
@@ -74,7 +75,7 @@ public static class TargetExtensions
             Source = src
         };
 
-        var (root, _) = await proxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
+        var root = await ResolveRootAsync(src, srcRef, proxy, cancellationToken).ConfigureAwait(false);
         if (copyOptions.MapRoot != null)
         {
             proxy.StopCaching = true;
@@ -199,5 +200,27 @@ public static class TargetExtensions
         {
             limiter.Release();
         }
+    }
+
+    /// <summary>
+    /// ResolveRoot resolves the source reference to the root node.
+    /// </summary>
+    /// <param name="src">The source target</param>
+    /// <param name="srcRef">The source reference</param>
+    /// <param name="proxy">The CAS proxy for caching</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation</param>
+    /// <returns>The descriptor of the root node</returns>
+    private static async Task<Descriptor> ResolveRootAsync(ITarget src, string srcRef, Proxy proxy, CancellationToken cancellationToken)
+    {
+        // Check if src implements IReferenceFetchable
+        if (src is not IReferenceFetchable refFetcher)
+        {
+            // Fall back to Resolve if not a ReferenceFetcher
+            return await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
+        }
+        // Optimize performance for ReferenceFetcher targets
+        var refProxy = new ReferenceProxy(refFetcher, proxy);
+        var (root, _) = await refProxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
+        return root;
     }
 }
