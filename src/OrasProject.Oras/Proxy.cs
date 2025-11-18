@@ -17,17 +17,16 @@ using System.Threading.Tasks;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
-using OrasProject.Oras.Registry;
 
 namespace OrasProject.Oras;
 
 /// <summary>
 /// Proxy class is to cache the manifest for OCI image/index manifest to improve performance
 /// </summary>
-internal class Proxy : IReferenceFetchable, IReadOnlyStorage
+internal class Proxy : IReadOnlyStorage
 {
     public required IStorage Cache { get; init; }
-    public required ITarget Source { get; init; }
+    public required IReadOnlyStorage Source { get; init; }
 
     public bool StopCaching { get; set; } = false;
 
@@ -52,30 +51,6 @@ internal class Proxy : IReferenceFetchable, IReadOnlyStorage
             return dataStream;
         }
         return await CacheContent(node, dataStream, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// FetchAsync fetch the descriptor and content stream via reference, cache the content if it is a manifest type
-    /// </summary>
-    /// <param name="reference"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    public async Task<(Descriptor, Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-    {
-        Descriptor node;
-        Stream contentStream;
-
-        if (Source is IReferenceFetchable srcRefFetchable)
-        {
-            (node, contentStream) = await srcRefFetchable.FetchAsync(reference, cancellationToken).ConfigureAwait(false);
-            if (StopCaching)
-            {
-                return (node, contentStream);
-            }
-            return (node, await CacheContent(node, contentStream, cancellationToken).ConfigureAwait(false));
-        }
-        node = await Source.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
-        return (node, await FetchAsync(node, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>
