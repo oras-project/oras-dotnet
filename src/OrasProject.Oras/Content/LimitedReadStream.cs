@@ -77,28 +77,30 @@ internal sealed class LimitedReadStream(Stream inner, long limit) : Stream
 
     public override int Read(byte[] buffer, int offset, int count)
     {
-        if (_totalBytesRead >= _limit)
+        var currentBytesRead = Interlocked.Read(ref _totalBytesRead);
+        if (currentBytesRead >= _limit)
         {
             throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
         }
         // Limit the read count to not exceed the remaining bytes
-        var readLimit = (int)Math.Min(count, Math.Min(_limit - _totalBytesRead, int.MaxValue));
+        var readLimit = (int)Math.Min(count, Math.Min(_limit - currentBytesRead, int.MaxValue));
         var read = _inner.Read(buffer, offset, readLimit);
-        _totalBytesRead += read;
+        Interlocked.Add(ref _totalBytesRead, read);
         return read;
     }
 
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
-        if (_totalBytesRead >= _limit)
+        var currentBytesRead = Interlocked.Read(ref _totalBytesRead);
+        if (currentBytesRead >= _limit)
         {
             throw new SizeLimitExceededException($"Content size exceeds limit {_limit} bytes");
         }
         // Limit the read count to not exceed the remaining bytes
-        var readLimit = (int)Math.Min(buffer.Length, Math.Min(_limit - _totalBytesRead, int.MaxValue));
+        var readLimit = (int)Math.Min(buffer.Length, Math.Min(_limit - currentBytesRead, int.MaxValue));
         var limitedBuffer = buffer[..readLimit];
         var read = await _inner.ReadAsync(limitedBuffer, cancellationToken).ConfigureAwait(false);
-        _totalBytesRead += read;
+        Interlocked.Add(ref _totalBytesRead, read);
         return read;
     }
 
