@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Content;
 
-public static class TargetExtensions
+public static class ReadOnlyStorageExtensions
 {
     /// <summary>
     /// CopyGraphAsync concurrently copy node desc from src to dst 
@@ -41,7 +41,7 @@ public static class TargetExtensions
     }
 
     /// <summary>
-    /// CopyGraphAsync concurrently copy node from src to dst by using customized copyGraphOptions
+    /// CopyGraphAsync concurrently copies node from src to dst by using customized copyGraphOptions
     /// </summary>
     /// <param name="src"></param>
     /// <param name="dst"></param>
@@ -70,7 +70,8 @@ public static class TargetExtensions
     /// <param name="cancellationToken"></param>
     internal static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor root, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
-        await src.CopyGraphAsync(dst, root, proxy, copyGraphOptions, new SemaphoreSlim(1, copyGraphOptions.MaxConcurrency), cancellationToken)
+        using var limiter = new SemaphoreSlim(1, copyGraphOptions.MaxConcurrency);
+        await src.CopyGraphAsync(dst, root, proxy, copyGraphOptions, limiter, cancellationToken)
             .ConfigureAwait(false);
     }
 
