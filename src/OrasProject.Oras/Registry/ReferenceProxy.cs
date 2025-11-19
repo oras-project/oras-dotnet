@@ -13,17 +13,9 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using OrasProject.Oras.Content;
 using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Registry;
-
-/// <summary>
-/// Represents a CAS that supports <see cref="IReferenceFetchable"/>.
-/// </summary>
-internal interface IReferenceStorage : IReadOnlyStorage, IReferenceFetchable
-{
-}
 
 /// <summary>
 /// ReferenceProxy is a caching proxy dedicated for <see cref="IReferenceFetchable"/>.
@@ -32,7 +24,7 @@ internal interface IReferenceStorage : IReadOnlyStorage, IReferenceFetchable
 /// </summary>
 internal class ReferenceProxy : IReferenceFetchable
 {
-    private IReferenceFetchable ReferenceFetcher { get; }
+    private IReferenceFetchable ReferenceFetchable { get; }
 
     private Proxy Proxy { get; }
 
@@ -44,7 +36,7 @@ internal class ReferenceProxy : IReferenceFetchable
     /// <param name="proxy">The CAS proxy to use for caching</param>
     public ReferenceProxy(IReferenceFetchable referenceFetcher, Proxy proxy)
     {
-        ReferenceFetcher = referenceFetcher;
+        ReferenceFetchable = referenceFetcher;
         Proxy = proxy;
     }
 
@@ -56,10 +48,9 @@ internal class ReferenceProxy : IReferenceFetchable
     /// <returns>A tuple containing the descriptor and the content stream</returns>
     public async Task<(Descriptor, Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
     {
-        var (target, stream) = await ReferenceFetcher.FetchAsync(reference, cancellationToken).ConfigureAwait(false);
+        var (target, stream) = await ReferenceFetchable.FetchAsync(reference, cancellationToken).ConfigureAwait(false);
         if (await Proxy.Cache.ExistsAsync(target, cancellationToken).ConfigureAwait(false))
         {
-            await stream.DisposeAsync().ConfigureAwait(false);
             return (target, stream);
         }
         return (target, await Proxy.CacheContent(target, stream, cancellationToken).ConfigureAwait(false));

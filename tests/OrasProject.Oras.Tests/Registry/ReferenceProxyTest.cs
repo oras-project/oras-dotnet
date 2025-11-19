@@ -103,16 +103,20 @@ public class ReferenceProxyTest
         srcRefMock.Verify();
 
         // Assert that the returned stream contains the expected content
-        var actualBytes = new MemoryStream();
-        await resultStream.CopyToAsync(actualBytes, CancellationToken.None);
-        Assert.Equal(data, actualBytes.ToArray());
+        using (var actualBytes = new MemoryStream())
+        {
+            await resultStream.CopyToAsync(actualBytes, CancellationToken.None);
+            Assert.Equal(data, actualBytes.ToArray());
+        }
 
         // Fetch from the cache
         resultStream = await referenceProxy.FetchAsync(desc, CancellationToken.None);
 
         // Assert that the returned stream contains the expected content
-        actualBytes = new MemoryStream();
-        await resultStream.CopyToAsync(actualBytes, CancellationToken.None);
-        Assert.Equal(data, actualBytes.ToArray());
+        using (var actualBytes = new MemoryStream())
+        {
+            await resultStream.CopyToAsync(actualBytes, CancellationToken.None);
+            Assert.Equal(data, actualBytes.ToArray());
+        }
     }
 }
