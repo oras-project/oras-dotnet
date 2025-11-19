@@ -78,7 +78,17 @@ internal class ReferenceProxy : IReferenceFetchable
             await stream.DisposeAsync().ConfigureAwait(false);
             return (target, stream);
         }
-        await Proxy.CacheContent(target, stream, cancellationToken).ConfigureAwait(false);
-        return (target, stream);
+        return (target, await Proxy.CacheContent(target, stream, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// Fetches the content identified by the descriptor from the cache.
+    /// </summary>
+    /// <param name="desc">The descriptor identifying the content to fetch</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation</param>
+    /// <returns>A stream containing the content</returns>
+    public async Task<Stream> FetchAsync(Descriptor desc, CancellationToken cancellationToken)
+    {
+        return await Proxy.FetchAsync(desc, cancellationToken).ConfigureAwait(false);
     }
 }
