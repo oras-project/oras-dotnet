@@ -37,22 +37,6 @@ internal class ReferenceProxy : IReferenceFetchable
     private Proxy Proxy { get; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ReferenceProxy"/> class for the base <see cref="IReferenceStorage"/>,
-    /// using the cache storage as the cache.
-    /// </summary>
-    /// <param name="baseStorage">The base reference storage to proxy</param>
-    /// <param name="cache">The storage to use as cache</param>
-    public ReferenceProxy(IReferenceStorage baseStorage, IStorage cache)
-    {
-        ReferenceFetcher = baseStorage;
-        Proxy = new Proxy
-        {
-            Cache = cache,
-            Source = baseStorage
-        };
-    }
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="ReferenceProxy"/> class with an existing <see cref="Proxy"/>
     /// and <see cref="IReferenceFetchable"/>.
     /// </summary>
