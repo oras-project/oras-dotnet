@@ -18,6 +18,6 @@ namespace OrasProject.Oras;
 /// <summary>
 /// Target is a CAS with generic tags
 /// </summary>
-public interface ITarget : IStorage, ITagStore
+public interface ITarget : IStorage, ITagStore, IReadOnlyTarget
 {
 }
