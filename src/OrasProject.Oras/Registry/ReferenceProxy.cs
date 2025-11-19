@@ -62,7 +62,7 @@ internal class ReferenceProxy : IReferenceFetchable
     /// <param name="desc">The descriptor identifying the content to fetch</param>
     /// <param name="cancellationToken">A cancellation token to cancel the operation</param>
     /// <returns>A stream containing the content</returns>
-    public async Task<Stream> FetchAsync(Descriptor desc, CancellationToken cancellationToken)
+    public async Task<Stream> FetchAsync(Descriptor desc, CancellationToken cancellationToken = default)
     {
         return await Proxy.FetchAsync(desc, cancellationToken).ConfigureAwait(false);
     }

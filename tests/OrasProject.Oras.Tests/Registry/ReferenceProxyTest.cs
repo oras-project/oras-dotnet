@@ -77,7 +77,7 @@ public class ReferenceProxyTest
             Digest = Digest.ComputeSha256(data),
             Size = data.Length
         };
-        var stream = new MemoryStream(data);
+        using var stream = new MemoryStream(data);
 
         var sourceMock = new Mock<ITarget>();
         var srcRefMock = sourceMock.As<IReferenceFetchable>();
