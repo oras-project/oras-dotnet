@@ -44,39 +44,42 @@ internal class Proxy : IReadOnlyStorage
         {
             return await Cache.FetchAsync(node, cancellationToken).ConfigureAwait(false);
         }
-        var stream = await Source.FetchAsync(node, cancellationToken).ConfigureAwait(false);
+
+        var dataStream = await Source.FetchAsync(node, cancellationToken).ConfigureAwait(false);
         if (StopCaching)
         {
-            return stream;
+            return dataStream;
         }
-        await CacheContent(node, stream, cancellationToken).ConfigureAwait(false);
-        return stream;
+        return await CacheContent(node, dataStream, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// CacheContent caches the content if it is a manifest type
     /// </summary>
     /// <param name="node"></param>
-    /// <param name="stream"></param>
+    /// <param name="contentStream"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    internal async Task CacheContent(Descriptor node, Stream stream, CancellationToken cancellationToken = default)
+    public async Task<Stream> CacheContent(Descriptor node, Stream contentStream, CancellationToken cancellationToken = default)
     {
         if (!Descriptor.IsManifestType(node))
         {
-            return;
+            return contentStream;
         }
+
         try
         {
             // Caching index/image manifest is to reduce the number of requests
             // to retrieve image/index manifest by GetSuccessorsAsync and PushAsync in CopyGraphAsync
-            await Cache.PushAsync(node, stream, cancellationToken).ConfigureAwait(false);
+            await Cache.PushAsync(node, contentStream, cancellationToken).ConfigureAwait(false);
         }
         catch (AlreadyExistsException) { }
         finally
         {
-            await stream.DisposeAsync().ConfigureAwait(false);
+            await contentStream.DisposeAsync().ConfigureAwait(false);
         }
+
+        return await Cache.FetchAsync(node, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
