@@ -74,7 +74,7 @@ public static class ReadOnlyTargetExtensions
             Source = src
         };
 
-        var (root, _) = await proxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
+        var root = await ResolveRootAsync(src, srcRef, proxy, cancellationToken).ConfigureAwait(false);
         if (copyOptions.MapRoot != null)
         {
             proxy.StopCaching = true;
@@ -89,6 +89,28 @@ public static class ReadOnlyTargetExtensions
         }
         await src.CopyGraphAsync(dst, root, proxy, copyOptions, cancellationToken).ConfigureAwait(false);
         await dst.TagAsync(root, dstRef, cancellationToken).ConfigureAwait(false);
+        return root;
+    }
+
+    /// <summary>
+    /// ResolveRoot resolves the source reference to the root node.
+    /// </summary>
+    /// <param name="src">The source target</param>
+    /// <param name="srcRef">The source reference</param>
+    /// <param name="proxy">The CAS proxy for caching</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation</param>
+    /// <returns>The descriptor of the root node</returns>
+    private static async Task<Descriptor> ResolveRootAsync(IReadOnlyTarget src, string srcRef, Proxy proxy, CancellationToken cancellationToken)
+    {
+        // Check if src implements IReferenceFetchable
+        if (src is not IReferenceFetchable refFetcher)
+        {
+            // Fall back to Resolve if not an IReferenceFetchable
+            return await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
+        }
+        // Optimize performance for IReferenceFetchable targets
+        var refProxy = new ReferenceProxy(refFetcher, proxy);
+        var (root, _) = await refProxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
         return root;
     }
 }
