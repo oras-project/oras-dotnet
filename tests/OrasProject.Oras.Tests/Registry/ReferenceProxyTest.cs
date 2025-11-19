@@ -32,7 +32,7 @@ public class ReferenceProxyTest
             Digest = Digest.ComputeSha256(data),
             Size = data.Length
         };
-        var stream = new MemoryStream(data);
+        using var stream = new MemoryStream(data);
 
         var storageMock = new Mock<IStorage>();
         storageMock
