@@ -50,7 +50,7 @@ internal class Proxy : IReadOnlyStorage
         {
             return dataStream;
         }
-        return await CacheContent(node, dataStream, cancellationToken).ConfigureAwait(false);
+        return await CacheContentAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -60,7 +60,7 @@ internal class Proxy : IReadOnlyStorage
     /// <param name="contentStream"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task<Stream> CacheContent(Descriptor node, Stream contentStream, CancellationToken cancellationToken = default)
+    public async Task<Stream> CacheContentAsync(Descriptor node, Stream contentStream, CancellationToken cancellationToken = default)
     {
         if (!Descriptor.IsManifestType(node))
         {

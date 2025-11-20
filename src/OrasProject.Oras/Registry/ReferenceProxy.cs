@@ -53,7 +53,7 @@ internal class ReferenceProxy : IReferenceFetchable
         {
             return (target, stream);
         }
-        return (target, await Proxy.CacheContent(target, stream, cancellationToken).ConfigureAwait(false));
+        return (target, await Proxy.CacheContentAsync(target, stream, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>

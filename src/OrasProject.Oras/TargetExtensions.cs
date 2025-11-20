@@ -213,14 +213,14 @@ public static class TargetExtensions
     private static async Task<Descriptor> ResolveRootAsync(ITarget src, string srcRef, Proxy proxy, CancellationToken cancellationToken)
     {
         // Check if src implements IReferenceFetchable
-        if (src is not IReferenceFetchable refFetcher)
+        if (src is IReferenceFetchable refFetcher)
         {
-            // Fall back to Resolve if not an IReferenceFetchable
-            return await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
+            // Optimize performance for IReferenceFetchable targets
+            var refProxy = new ReferenceProxy(refFetcher, proxy);
+            var (root, _) = await refProxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
+            return root;
         }
-        // Optimize performance for IReferenceFetchable targets
-        var refProxy = new ReferenceProxy(refFetcher, proxy);
-        var (root, _) = await refProxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
-        return root;
+        // Fall back to Resolve if not an IReferenceFetchable
+        return await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
     }
 }
