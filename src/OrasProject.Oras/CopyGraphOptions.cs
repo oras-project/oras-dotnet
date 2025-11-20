@@ -11,6 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using OrasProject.Oras.Content;
+using OrasProject.Oras.Oci;
+
 namespace OrasProject.Oras;
 
 /// <summary>
@@ -18,5 +25,71 @@ namespace OrasProject.Oras;
 /// </summary>
 public class CopyGraphOptions
 {
-    public int MaxConcurrency { get; init; } = 10;
+    private const int _defaultConcurrency = 3;
+    private const long _defaultMaxMetadataBytes = 4 * 1024 * 1024; // 4 MiB
+
+    private int _concurrency = _defaultConcurrency;
+    private long _maxMetadataBytes = _defaultMaxMetadataBytes;
+
+    /// <summary>
+    /// Concurrency limits the maximum number of concurrent copy tasks.
+    /// Must be greater than 0. Default: 3.
+    /// </summary>
+    public int Concurrency
+    {
+        get => _concurrency;
+        set
+        {
+            if (value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "Concurrency must be greater than 0.");
+            }
+            _concurrency = value;
+        }
+    }
+
+    /// <summary>
+    /// MaxMetadataBytes limits the maximum size of the metadata that can be
+    /// cached in the memory. Must be greater than 0. Default: 4 MiB.
+    /// </summary>
+    public long MaxMetadataBytes
+    {
+        get => _maxMetadataBytes;
+        set
+        {
+            if (value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "MaxMetadataBytes must be greater than 0.");
+            }
+            _maxMetadataBytes = value;
+        }
+    }
+
+    /// <summary>
+    /// PreCopyAsync handles the current descriptor before it is copied. PreCopy can
+    /// return CopyNodeDecision.SkipNode to signal that desc should be skipped when it already
+    /// exists in the target.
+    /// </summary>
+    public Func<Descriptor, CancellationToken, Task<CopyNodeDecision>>? PreCopyAsync { get; set; }
+
+    /// <summary>
+    /// PostCopyAsync handles the current descriptor after it is copied.
+    /// </summary>
+    public Func<Descriptor, CancellationToken, Task>? PostCopyAsync { get; set; }
+
+    /// <summary>
+    /// OnCopySkippedAsync will be called when the sub-DAG rooted by the current node
+    /// is skipped.
+    /// </summary>
+    public Func<Descriptor, CancellationToken, Task>? OnCopySkippedAsync { get; set; }
+
+    /// <summary>
+    /// FindSuccessorsAsync finds the successors of the current node.
+    /// <see cref="IFetchable"/> provides cached access to the source storage, and is suitable
+    /// for fetching non-leaf nodes like manifests. Since anything fetched from
+    /// the IFetchable instance will be cached in the memory, it is recommended to use original
+    /// source storage to fetch large blobs.
+    /// If FindSuccessorsAsync is not set, FetchableExtensions.GetSuccessorsAsync will be used.
+    /// </summary>
+    public Func<IFetchable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>> FindSuccessorsAsync { get; set; } = FetchableExtensions.GetSuccessorsAsync;
 }
