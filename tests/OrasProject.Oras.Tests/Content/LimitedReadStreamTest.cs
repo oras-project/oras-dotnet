@@ -23,6 +23,30 @@ namespace OrasProject.Oras.Tests.Content
 {
     public class LimitedReadStreamTest
     {
+        [Theory]
+        [InlineData(null, 1, typeof(ArgumentNullException))]
+        [InlineData("valid", -1, typeof(ArgumentOutOfRangeException))]
+        [InlineData("abc", 0, typeof(SizeLimitExceededException))]
+        public void Constructor_AndZeroLimit_ThrowsOnInvalidArguments(string? data, long limit, Type expectedException)
+        {
+            MemoryStream? inner = data == null ? null : new MemoryStream(Encoding.UTF8.GetBytes(data));
+            
+            if (expectedException == typeof(SizeLimitExceededException))
+            {
+                // Zero limit test
+                using var limited = new LimitedReadStream(inner!, limit);
+                var buffer = new byte[1];
+                Assert.Throws<SizeLimitExceededException>(() => limited.Read(buffer, 0, 1));
+            }
+            else
+            {
+                // Constructor validation test
+                var ex = Record.Exception(() => new LimitedReadStream(inner!, limit));
+                Assert.NotNull(ex);
+                Assert.IsType(expectedException, ex);
+            }
+        }
+
         [Fact]
         public void Read_WithinLimit_Succeeds()
         {
@@ -102,12 +126,22 @@ namespace OrasProject.Oras.Tests.Content
             using var inner = new MemoryStream(data);
             using var limited = new LimitedReadStream(inner, 4);
 
+            // Test Seek
             limited.Seek(2, SeekOrigin.Begin);
             var buffer = new byte[2];
             int read = limited.Read(buffer, 0, 2);
 
             Assert.Equal(2, read);
             Assert.Equal("cd", Encoding.UTF8.GetString(buffer));
+
+            // Test Position setter
+            limited.Position = 1;
+            Assert.Equal(1, inner.Position);
+            Assert.Equal(1, limited.Position);
+            
+            read = limited.Read(buffer, 0, 1);
+            Assert.Equal(1, read);
+            Assert.Equal("b", Encoding.UTF8.GetString(buffer, 0, 1));
         }
 
         [Fact]
@@ -162,25 +196,39 @@ namespace OrasProject.Oras.Tests.Content
             {
                 await limited.WriteAsync(new byte[1]);
             });
+
+            // Test SetLength
+            Assert.Throws<NotSupportedException>(() => limited.SetLength(5));
         }
 
         [Fact]
-        public async Task DisposeAsync_DisposesInnerStream_WhenCalled()
+        public async Task DisposeAsyncOrFlush_DelegatesToInner()
         {
+            // Flush test
+            bool flushed = false;
+            using (var limitedFlush = new LimitedReadStream(new FlushDelegatingStream(() => flushed = true), 10))
+            {
+                limitedFlush.Flush();
+                Assert.True(flushed);
+            }
+
+            // DisposeAsync test
             var data = Encoding.UTF8.GetBytes("test data");
             var inner = new MemoryStream(data);
             var limited = new LimitedReadStream(inner, 10);
-
-            // Verify the inner stream is initially usable
             Assert.True(inner.CanRead);
-
-            // Dispose the limited stream asynchronously
             await limited.DisposeAsync();
-
-            // Verify the inner stream is disposed
             Assert.False(inner.CanRead);
             Assert.False(inner.CanWrite);
             Assert.False(inner.CanSeek);
+        }
+
+        // Helper for flush test
+        private class FlushDelegatingStream : MemoryStream
+        {
+            private readonly Action _onFlush;
+            public FlushDelegatingStream(Action onFlush) => _onFlush = onFlush;
+            public override void Flush() => _onFlush();
         }
     }
 }
