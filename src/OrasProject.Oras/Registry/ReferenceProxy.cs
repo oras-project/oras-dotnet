@@ -62,6 +62,12 @@ internal class ReferenceProxy(IReferenceFetchable referenceFetcher, Proxy proxy)
         return await Proxy.FetchAsync(desc, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Checks if the content identified by the descriptor exists in either the cache or the source.
+    /// </summary>
+    /// <param name="desc">The descriptor identifying the content to check for existence.</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+    /// <returns><c>true</c> if the content exists in the cache or source; otherwise, <c>false</c>.</returns>
     public async Task<bool> ExistsAsync(Descriptor desc, CancellationToken cancellationToken = default)
     {
         return await Proxy.ExistsAsync(desc, cancellationToken).ConfigureAwait(false);

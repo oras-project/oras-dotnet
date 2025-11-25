@@ -232,7 +232,8 @@ public static class TargetExtensions
         {
             // Optimize performance for IReferenceFetchable targets
             var refProxy = new ReferenceProxy(refFetcher, proxy);
-            var (root, _) = await refProxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
+            var (root, stream) = await refProxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
+            await using (stream.ConfigureAwait(false)) {}
             return root;
         }
         // Fall back to Resolve if not an IReferenceFetchable
