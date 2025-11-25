@@ -118,5 +118,9 @@ public class ReferenceProxyTest
             await resultStream.CopyToAsync(actualBytes, CancellationToken.None);
             Assert.Equal(data, actualBytes.ToArray());
         }
+
+        // Assert that the content exists in the reference proxy
+        exists = await referenceProxy.ExistsAsync(desc, CancellationToken.None);
+        Assert.True(exists);
     }
 }

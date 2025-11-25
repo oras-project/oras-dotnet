@@ -14,6 +14,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Content;
 
 namespace OrasProject.Oras.Registry;
 
@@ -22,23 +23,17 @@ namespace OrasProject.Oras.Registry;
 /// The first fetch call of a described content will read from the remote and cache the fetched content.
 /// The subsequent fetch call will read from the local cache.
 /// </summary>
-internal class ReferenceProxy : IReferenceFetchable
+/// <remarks>
+/// Initializes a new instance of the <see cref="ReferenceProxy"/> class with an existing <see cref="Proxy"/>
+/// and <see cref="IReferenceFetchable"/>.
+/// </remarks>
+/// <param name="referenceFetcher">The reference fetcher to use</param>
+/// <param name="proxy">The CAS proxy to use for caching</param>
+internal class ReferenceProxy(IReferenceFetchable referenceFetcher, Proxy proxy) : IReferenceFetchable, IReadOnlyStorage
 {
-    private IReferenceFetchable ReferenceFetchable { get; }
+    private IReferenceFetchable ReferenceFetchable { get; } = referenceFetcher;
 
-    private Proxy Proxy { get; }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ReferenceProxy"/> class with an existing <see cref="Proxy"/>
-    /// and <see cref="IReferenceFetchable"/>.
-    /// </summary>
-    /// <param name="referenceFetcher">The reference fetcher to use</param>
-    /// <param name="proxy">The CAS proxy to use for caching</param>
-    public ReferenceProxy(IReferenceFetchable referenceFetcher, Proxy proxy)
-    {
-        ReferenceFetchable = referenceFetcher;
-        Proxy = proxy;
-    }
+    private Proxy Proxy { get; } = proxy;
 
     /// <summary>
     /// Fetches the content identified by the reference from the remote and caches the fetched content.
@@ -65,5 +60,10 @@ internal class ReferenceProxy : IReferenceFetchable
     public async Task<Stream> FetchAsync(Descriptor desc, CancellationToken cancellationToken = default)
     {
         return await Proxy.FetchAsync(desc, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> ExistsAsync(Descriptor desc, CancellationToken cancellationToken = default)
+    {
+        return await Proxy.ExistsAsync(desc, cancellationToken).ConfigureAwait(false);
     }
 }
