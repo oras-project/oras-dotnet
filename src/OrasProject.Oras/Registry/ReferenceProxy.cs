@@ -27,11 +27,11 @@ namespace OrasProject.Oras.Registry;
 /// Initializes a new instance of the <see cref="ReferenceProxy"/> class with an existing <see cref="Proxy"/>
 /// and <see cref="IReferenceFetchable"/>.
 /// </remarks>
-/// <param name="referenceFetcher">The reference fetcher to use</param>
+/// <param name="referenceFetchable">The reference fetcher to use</param>
 /// <param name="proxy">The CAS proxy to use for caching</param>
-internal class ReferenceProxy(IReferenceFetchable referenceFetcher, Proxy proxy) : IReferenceFetchable, IReadOnlyStorage
+internal class ReferenceProxy(IReferenceFetchable referenceFetchable, Proxy proxy) : IReferenceFetchable, IReadOnlyStorage
 {
-    private IReferenceFetchable ReferenceFetchable { get; } = referenceFetcher;
+    private IReferenceFetchable ReferenceFetchable { get; } = referenceFetchable;
 
     private Proxy Proxy { get; } = proxy;
 
