@@ -41,4 +41,28 @@ public class ExceptionTest
         await Assert.ThrowsAsync<SizeLimitExceededException>(() => throw new SizeLimitExceededException("Size limit exceeded"));
         await Assert.ThrowsAsync<SizeLimitExceededException>(() => throw new SizeLimitExceededException("Size limit exceeded", null));
     }
+
+    [Fact]
+    public async Task MissingArtifactTypeException()
+    {
+        await Assert.ThrowsAsync<MissingArtifactTypeException>(() => throw new MissingArtifactTypeException());
+        await Assert.ThrowsAsync<MissingArtifactTypeException>(() => throw new MissingArtifactTypeException("Missing artifact type"));
+        await Assert.ThrowsAsync<MissingArtifactTypeException>(() => throw new MissingArtifactTypeException("Missing artifact type", null));
+    }
+
+    [Fact]
+    public async Task InvalidMediaTypeException()
+    {
+        await Assert.ThrowsAsync<InvalidMediaTypeException>(() => throw new InvalidMediaTypeException());
+        await Assert.ThrowsAsync<InvalidMediaTypeException>(() => throw new InvalidMediaTypeException("Invalid media type"));
+        await Assert.ThrowsAsync<InvalidMediaTypeException>(() => throw new InvalidMediaTypeException("Invalid media type", null));
+    }
+
+    [Fact]
+    public async Task InvalidDateTimeFormatException()
+    {
+        await Assert.ThrowsAsync<InvalidDateTimeFormatException>(() => throw new InvalidDateTimeFormatException());
+        await Assert.ThrowsAsync<InvalidDateTimeFormatException>(() => throw new InvalidDateTimeFormatException("Invalid date time format"));
+        await Assert.ThrowsAsync<InvalidDateTimeFormatException>(() => throw new InvalidDateTimeFormatException("Invalid date time format", null));
+    }
 }

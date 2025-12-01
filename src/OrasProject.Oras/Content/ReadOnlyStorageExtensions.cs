@@ -16,9 +16,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using OrasProject.Oras.Content;
 
-namespace OrasProject.Oras;
+namespace OrasProject.Oras.Content;
 
 public static class ReadOnlyStorageExtensions
 {
