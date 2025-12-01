@@ -16,83 +16,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using OrasProject.Oras.Content;
-using OrasProject.Oras.Registry;
 
-namespace OrasProject.Oras;
+namespace OrasProject.Oras.Content;
 
-public static class TargetExtensions
+public static class ReadOnlyStorageExtensions
 {
-    /// <summary>
-    /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
-    /// in the source Target to the destination Target.
-    /// The destination reference will be the same as the source reference if the
-    /// destination reference is left blank.
-    /// Returns the descriptor of the root node on successful copy.
-    /// </summary>
-    /// <param name="src"></param>
-    /// <param name="srcRef"></param>
-    /// <param name="dst"></param>
-    /// <param name="dstRef"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    /// <exception cref="Exception"></exception>
-    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CancellationToken cancellationToken = default)
-    {
-        return await src.CopyAsync(srcRef, dst, dstRef, new CopyOptions(), cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Copy copies a rooted directed acyclic graph (DAG) with the tagged root node
-    /// in the source Target to the destination Target.
-    /// The destination reference will be the same as the source reference if the
-    /// destination reference is left blank.
-    /// Returns the descriptor of the root node on successful copy.
-    /// </summary>
-    /// <param name="src"></param>
-    /// <param name="srcRef"></param>
-    /// <param name="dst"></param>
-    /// <param name="dstRef"></param>
-    /// <param name="cancellationToken"></param>
-    /// <param name="copyOptions"></param>
-    /// <returns></returns>
-    /// <exception cref="Exception"></exception>
-    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CopyOptions copyOptions, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(srcRef))
-        {
-            throw new ArgumentNullException(nameof(srcRef));
-        }
-
-        if (string.IsNullOrEmpty(dstRef))
-        {
-            dstRef = srcRef;
-        }
-
-        var proxy = new Proxy()
-        {
-            Cache = new LimitedStorage(new MemoryStorage(), copyOptions.MaxMetadataBytes),
-            Source = src
-        };
-
-        var root = await ResolveRootAsync(src, srcRef, proxy, cancellationToken).ConfigureAwait(false);
-        if (copyOptions.MapRoot != null)
-        {
-            proxy.StopCaching = true;
-            try
-            {
-                root = await copyOptions.MapRoot(proxy, root, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                proxy.StopCaching = false;
-            }
-        }
-        await src.CopyGraphAsync(dst, root, proxy, copyOptions, cancellationToken).ConfigureAwait(false);
-        await dst.TagAsync(root, dstRef, cancellationToken).ConfigureAwait(false);
-        return root;
-    }
-
     /// <summary>
     /// CopyGraphAsync concurrently copy node desc from src to dst 
     /// </summary>
@@ -100,7 +28,7 @@ public static class TargetExtensions
     /// <param name="dst"></param>
     /// <param name="node"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CancellationToken cancellationToken = default)
+    public static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, CancellationToken cancellationToken = default)
     {
         var copyGraphOptions = new CopyGraphOptions();
         var proxy = new Proxy()
@@ -120,7 +48,7 @@ public static class TargetExtensions
     /// <param name="node"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
+    public static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
         var proxy = new Proxy()
         {
@@ -140,7 +68,7 @@ public static class TargetExtensions
     /// <param name="proxy"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
+    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
         using var limiter = new SemaphoreSlim(copyGraphOptions.Concurrency, copyGraphOptions.Concurrency);
         await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, cancellationToken).ConfigureAwait(false);
@@ -156,7 +84,7 @@ public static class TargetExtensions
     /// <param name="copyGraphOptions"></param>
     /// <param name="limiter"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken)
+    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken)
     {
         if (Descriptor.IsNullOrInvalid(node))
         {
@@ -215,28 +143,5 @@ public static class TargetExtensions
         {
             limiter.Release();
         }
-    }
-
-    /// <summary>
-    /// ResolveRoot resolves the source reference to the root node.
-    /// </summary>
-    /// <param name="src">The source target</param>
-    /// <param name="srcRef">The source reference</param>
-    /// <param name="proxy">The CAS proxy for caching</param>
-    /// <param name="cancellationToken">A cancellation token to cancel the operation</param>
-    /// <returns>The descriptor of the root node</returns>
-    private static async Task<Descriptor> ResolveRootAsync(ITarget src, string srcRef, Proxy proxy, CancellationToken cancellationToken)
-    {
-        // Check if src implements IReferenceFetchable
-        if (src is IReferenceFetchable refFetcher)
-        {
-            // Optimize performance for IReferenceFetchable targets
-            var refProxy = new ReferenceProxy(refFetcher, proxy);
-            var (root, stream) = await refProxy.FetchAsync(srcRef, cancellationToken).ConfigureAwait(false);
-            await using var _ = stream.ConfigureAwait(false);
-            return root;
-        }
-        // Fall back to Resolve if not an IReferenceFetchable
-        return await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
     }
 }
