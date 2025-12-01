@@ -37,7 +37,7 @@ public static class ReadOnlyTargetExtensions
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CancellationToken cancellationToken = default)
+    public static async Task<Descriptor> CopyAsync(this IReadOnlyTarget src, string srcRef, ITarget dst, string dstRef, CancellationToken cancellationToken = default)
     {
         return await src.CopyAsync(srcRef, dst, dstRef, new CopyOptions(), cancellationToken).ConfigureAwait(false);
     }
@@ -57,7 +57,7 @@ public static class ReadOnlyTargetExtensions
     /// <param name="copyOptions"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public static async Task<Descriptor> CopyAsync(this ITarget src, string srcRef, ITarget dst, string dstRef, CopyOptions copyOptions, CancellationToken cancellationToken = default)
+    public static async Task<Descriptor> CopyAsync(this IReadOnlyTarget src, string srcRef, ITarget dst, string dstRef, CopyOptions copyOptions, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(srcRef))
         {
@@ -101,7 +101,7 @@ public static class ReadOnlyTargetExtensions
     /// <param name="proxy">The CAS proxy for caching</param>
     /// <param name="cancellationToken">A cancellation token to cancel the operation</param>
     /// <returns>The descriptor of the root node</returns>
-    private static async Task<Descriptor> ResolveRootAsync(ITarget src, string srcRef, Proxy proxy, CancellationToken cancellationToken)
+    private static async Task<Descriptor> ResolveRootAsync(IReadOnlyTarget src, string srcRef, Proxy proxy, CancellationToken cancellationToken)
     {
         // Check if src implements IReferenceFetchable
         if (src is IReferenceFetchable refFetcher)
