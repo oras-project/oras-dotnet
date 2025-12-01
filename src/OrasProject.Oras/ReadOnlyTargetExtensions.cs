@@ -1,4 +1,3 @@
-
 // Copyright The ORAS Authors.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Oci;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 
 namespace OrasProject.Oras;
