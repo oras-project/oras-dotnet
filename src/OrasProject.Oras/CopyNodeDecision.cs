@@ -11,13 +11,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Content;
-
 namespace OrasProject.Oras;
 
 /// <summary>
-/// Target is a CAS with generic tags
+/// Specifies the action to take during a copy operation.
 /// </summary>
-public interface ITarget : IStorage, ITagStore, IReadOnlyTarget
+public enum CopyNodeDecision
 {
+    /// <summary>
+    /// Continue with the copy operation.
+    /// </summary>
+    Continue = 0,
+
+    /// <summary>
+    /// Skip the current node and do not copy it.
+    /// </summary>
+    SkipNode = 1
 }
