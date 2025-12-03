@@ -13,10 +13,7 @@
 
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
-using System;
-using System.IO;
 using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace OrasProject.Oras.Tests.Content

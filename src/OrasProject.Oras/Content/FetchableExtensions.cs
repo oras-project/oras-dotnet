@@ -11,12 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
-using System.Buffers;
 using System.Collections.Generic;
-using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
