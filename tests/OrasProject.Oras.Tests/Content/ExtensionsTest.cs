@@ -15,7 +15,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using Moq;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Content.Exceptions;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
