@@ -93,164 +93,164 @@ public class ExtendedCopyTest
         }
     }
 
-//     /// <summary>
-//     /// Can copy a directed acyclic graph (DAG) with depth limit.
-//     /// Tests ExtendedCopyGraphAsync with the Depth option set.
-//     /// </summary>
-//     [Fact]
-//     public async Task CanExtendedCopyGraphWithDepthLimit()
-//     {
-//         var sourceTarget = new MemoryStore();
-//         var cancellationToken = new CancellationToken();
-//         var blobs = new List<byte[]>();
-//         var descs = new List<Descriptor>();
+    /// <summary>
+    /// Can copy a directed acyclic graph (DAG) with depth limit.
+    /// Tests ExtendedCopyGraphAsync with the Depth option set.
+    /// </summary>
+    [Fact]
+    public async Task CanExtendedCopyGraphWithDepthLimit()
+    {
+        var sourceTarget = new MemoryStore();
+        var cancellationToken = new CancellationToken();
+        var blobs = new List<byte[]>();
+        var descs = new List<Descriptor>();
 
-//         void AppendBlob(string mediaType, byte[] blob)
-//         {
-//             blobs.Add(blob);
-//             var desc = new Descriptor
-//             {
-//                 MediaType = mediaType,
-//                 Digest = Digest.ComputeSha256(blob),
-//                 Size = blob.Length
-//             };
-//             descs.Add(desc);
-//         }
+        void AppendBlob(string mediaType, byte[] blob)
+        {
+            blobs.Add(blob);
+            var desc = new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = Digest.ComputeSha256(blob),
+                Size = blob.Length
+            };
+            descs.Add(desc);
+        }
 
-//         void GenerateManifest(Descriptor config, List<Descriptor> layers, Descriptor? subject = null)
-//         {
-//             var manifest = new Manifest
-//             {
-//                 Config = config,
-//                 Layers = layers,
-//                 Subject = subject
-//             };
-//             var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-//             AppendBlob(MediaType.ImageManifest, manifestBytes);
-//         }
+        void GenerateManifest(Descriptor config, List<Descriptor> layers, Descriptor? subject = null)
+        {
+            var manifest = new Manifest
+            {
+                Config = config,
+                Layers = layers,
+                Subject = subject
+            };
+            var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+            AppendBlob(MediaType.ImageManifest, manifestBytes);
+        }
 
-//         byte[] GetBytes(string data) => Encoding.UTF8.GetBytes(data);
+        byte[] GetBytes(string data) => Encoding.UTF8.GetBytes(data);
 
-//         // Create base artifact (depth 0)
-//         AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
-//         AppendBlob(MediaType.ImageLayer, GetBytes("layer1")); // blob 1
-//         GenerateManifest(descs[0], descs.GetRange(1, 1)); // blob 2 (base manifest)
+        // Create base artifact (depth 0)
+        AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
+        AppendBlob(MediaType.ImageLayer, GetBytes("layer1")); // blob 1
+        GenerateManifest(descs[0], descs.GetRange(1, 1)); // blob 2 (base manifest)
 
-//         // Create first referrer (depth 1)
-//         AppendBlob(MediaType.ImageConfig, GetBytes("ref1-config")); // blob 3
-//         AppendBlob(MediaType.ImageLayer, GetBytes("ref1-layer")); // blob 4
-//         GenerateManifest(descs[3], descs.GetRange(4, 1), descs[2]); // blob 5
+        // Create first referrer (depth 1)
+        AppendBlob(MediaType.ImageConfig, GetBytes("ref1-config")); // blob 3
+        AppendBlob(MediaType.ImageLayer, GetBytes("ref1-layer")); // blob 4
+        GenerateManifest(descs[3], descs.GetRange(4, 1), descs[2]); // blob 5
 
-//         // Create second referrer (depth 2)
-//         AppendBlob(MediaType.ImageConfig, GetBytes("ref2-config")); // blob 6
-//         AppendBlob(MediaType.ImageLayer, GetBytes("ref2-layer")); // blob 7
-//         GenerateManifest(descs[6], descs.GetRange(7, 1), descs[5]); // blob 8
+        // Create second referrer (depth 2)
+        AppendBlob(MediaType.ImageConfig, GetBytes("ref2-config")); // blob 6
+        AppendBlob(MediaType.ImageLayer, GetBytes("ref2-layer")); // blob 7
+        GenerateManifest(descs[6], descs.GetRange(7, 1), descs[5]); // blob 8
 
-//         // Push all blobs to source
-//         for (var i = 0; i < blobs.Count; i++)
-//         {
-//             await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
-//         }
+        // Push all blobs to source
+        for (var i = 0; i < blobs.Count; i++)
+        {
+            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+        }
 
-//         var node = descs[2]; // base manifest
-//         var destinationTarget = new MemoryStore();
-//         var opts = new ExtendedCopyGraphOptions
-//         {
-//             Depth = 1 // Only copy up to depth 1
-//         };
+        var node = descs[2]; // base manifest
+        var destinationTarget = new MemoryStore();
+        var opts = new ExtendedCopyGraphOptions
+        {
+            Depth = 1 // Only copy up to depth 1
+        };
 
-//         await sourceTarget.ExtendedCopyGraphAsync(destinationTarget, node, opts, cancellationToken);
+        await sourceTarget.ExtendedCopyGraphAsync(destinationTarget, node, opts, cancellationToken);
 
-//         // Verify base artifact and first referrer were copied
-//         for (var i = 0; i <= 5; i++)
-//         {
-//             Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
-//         }
+        // Verify base artifact and first referrer were copied
+        for (var i = 0; i <= 5; i++)
+        {
+            Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
+        }
 
-//         // Verify second referrer was NOT copied (depth 2)
-//         for (var i = 6; i < descs.Count; i++)
-//         {
-//             Assert.False(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
-//         }
-//     }
+        // Verify second referrer was NOT copied (depth 2)
+        for (var i = 6; i < descs.Count; i++)
+        {
+            Assert.False(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
+        }
+    }
 
-//     /// <summary>
-//     /// Can copy a directed acyclic graph (DAG) with custom FindPredecessors function.
-//     /// Tests ExtendedCopyGraphAsync with a custom predecessor finder.
-//     /// </summary>
-//     [Fact]
-//     public async Task CanExtendedCopyGraphWithCustomFindPredecessors()
-//     {
-//         var sourceTarget = new MemoryStore();
-//         var cancellationToken = new CancellationToken();
-//         var blobs = new List<byte[]>();
-//         var descs = new List<Descriptor>();
-//         var findPredecessorsCalled = 0;
+    /// <summary>
+    /// Can copy a directed acyclic graph (DAG) with custom FindPredecessors function.
+    /// Tests ExtendedCopyGraphAsync with a custom predecessor finder.
+    /// </summary>
+    [Fact]
+    public async Task CanExtendedCopyGraphWithCustomFindPredecessors()
+    {
+        var sourceTarget = new MemoryStore();
+        var cancellationToken = new CancellationToken();
+        var blobs = new List<byte[]>();
+        var descs = new List<Descriptor>();
+        var findPredecessorsCalled = 0;
 
-//         void AppendBlob(string mediaType, byte[] blob)
-//         {
-//             blobs.Add(blob);
-//             var desc = new Descriptor
-//             {
-//                 MediaType = mediaType,
-//                 Digest = Digest.ComputeSha256(blob),
-//                 Size = blob.Length
-//             };
-//             descs.Add(desc);
-//         }
+        void AppendBlob(string mediaType, byte[] blob)
+        {
+            blobs.Add(blob);
+            var desc = new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = Digest.ComputeSha256(blob),
+                Size = blob.Length
+            };
+            descs.Add(desc);
+        }
 
-//         void GenerateManifest(Descriptor config, List<Descriptor> layers, Descriptor? subject = null)
-//         {
-//             var manifest = new Manifest
-//             {
-//                 Config = config,
-//                 Layers = layers,
-//                 Subject = subject
-//             };
-//             var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-//             AppendBlob(MediaType.ImageManifest, manifestBytes);
-//         }
+        void GenerateManifest(Descriptor config, List<Descriptor> layers, Descriptor? subject = null)
+        {
+            var manifest = new Manifest
+            {
+                Config = config,
+                Layers = layers,
+                Subject = subject
+            };
+            var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+            AppendBlob(MediaType.ImageManifest, manifestBytes);
+        }
 
-//         byte[] GetBytes(string data) => Encoding.UTF8.GetBytes(data);
+        byte[] GetBytes(string data) => Encoding.UTF8.GetBytes(data);
 
-//         // Create base artifact
-//         AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
-//         AppendBlob(MediaType.ImageLayer, GetBytes("layer1")); // blob 1
-//         GenerateManifest(descs[0], descs.GetRange(1, 1)); // blob 2 (base manifest)
+        // Create base artifact
+        AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
+        AppendBlob(MediaType.ImageLayer, GetBytes("layer1")); // blob 1
+        GenerateManifest(descs[0], descs.GetRange(1, 1)); // blob 2 (base manifest)
 
-//         // Create referrer
-//         AppendBlob(MediaType.ImageConfig, GetBytes("ref-config")); // blob 3
-//         AppendBlob(MediaType.ImageLayer, GetBytes("ref-layer")); // blob 4
-//         GenerateManifest(descs[3], descs.GetRange(4, 1), descs[2]); // blob 5
+        // Create referrer
+        AppendBlob(MediaType.ImageConfig, GetBytes("ref-config")); // blob 3
+        AppendBlob(MediaType.ImageLayer, GetBytes("ref-layer")); // blob 4
+        GenerateManifest(descs[3], descs.GetRange(4, 1), descs[2]); // blob 5
 
-//         // Push all blobs to source
-//         for (var i = 0; i < blobs.Count; i++)
-//         {
-//             await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
-//         }
+        // Push all blobs to source
+        for (var i = 0; i < blobs.Count; i++)
+        {
+            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+        }
 
-//         var node = descs[2]; // base manifest
-//         var destinationTarget = new MemoryStore();
-//         var opts = new ExtendedCopyGraphOptions
-//         {
-//             FindPredecessors = async (src, desc, ct) =>
-//             {
-//                 Interlocked.Increment(ref findPredecessorsCalled);
-//                 return await src.GetPredecessorsAsync(desc, ct);
-//             }
-//         };
+        var node = descs[2]; // base manifest
+        var destinationTarget = new MemoryStore();
+        var opts = new ExtendedCopyGraphOptions
+        {
+            FindPredecessors = async (src, desc, ct) =>
+            {
+                Interlocked.Increment(ref findPredecessorsCalled);
+                return await src.GetPredecessorsAsync(desc, ct);
+            }
+        };
 
-//         await sourceTarget.ExtendedCopyGraphAsync(destinationTarget, node, opts, cancellationToken);
+        await sourceTarget.ExtendedCopyGraphAsync(destinationTarget, node, opts, cancellationToken);
 
-//         // Verify custom FindPredecessors was called
-//         Assert.True(findPredecessorsCalled > 0);
+        // Verify custom FindPredecessors was called
+        Assert.True(findPredecessorsCalled > 0);
 
-//         // Verify all content was copied
-//         for (var i = 0; i < descs.Count; i++)
-//         {
-//             Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
-//         }
-//     }
+        // Verify all content was copied
+        for (var i = 0; i < descs.Count; i++)
+        {
+            Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
+        }
+    }
 
 //     /// <summary>
 //     /// Can copy a directed acyclic graph (DAG) with multiple referrers at the same level.
