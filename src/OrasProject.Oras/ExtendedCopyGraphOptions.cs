@@ -25,13 +25,19 @@ namespace OrasProject.Oras;
 /// </summary>
 public class ExtendedCopyGraphOptions : CopyGraphOptions
 {
+    private int _depth;
+
     /// <summary>
     /// Depth limits the maximum depth of the directed acyclic graph (DAG) that
 	/// will be extended-copied.
 	/// If Depth is no specified, or the specified value is less than or
 	/// equal to 0, the depth limit will be considered as infinity.
     /// </summary>
-    public int Depth { get; init; } = 0;
+    public int Depth
+    {
+        get => _depth;
+        set => _depth = Math.Max(0, value);
+    }
 
     /// <summary>
     /// FindPredecessors finds the predecessors of the current node.
