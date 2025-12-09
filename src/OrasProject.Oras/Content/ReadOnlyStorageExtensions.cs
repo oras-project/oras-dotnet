@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
@@ -131,12 +132,27 @@ public static class ReadOnlyStorageExtensions
                     return;
                 }
             }
-            // obtain datastream
-            using var dataStream = await proxy.FetchAsync(node, cancellationToken).ConfigureAwait(false);
-            await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
-            if (copyGraphOptions.PostCopyAsync != null)
+            
+            try
             {
-                await copyGraphOptions.PostCopyAsync(node, cancellationToken).ConfigureAwait(false);
+                // obtain datastream
+                using var dataStream = await proxy.FetchAsync(node, cancellationToken).ConfigureAwait(false);
+                await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
+                if (copyGraphOptions.PostCopyAsync != null)
+                {
+                    await copyGraphOptions.PostCopyAsync(node, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch (AlreadyExistsException)
+            {
+                // In a content-addressable storage system, if content with the same digest
+                // already exists, it's the exact same content. This can happen when multiple
+                // parallel copy operations (e.g., in ExtendedCopyGraphAsync) attempt to copy
+                // shared nodes. Treat this as a successful no-op.
+                if (copyGraphOptions.OnCopySkippedAsync != null)
+                {
+                    await copyGraphOptions.OnCopySkippedAsync(node, cancellationToken).ConfigureAwait(false);
+                }
             }
         }
         finally
