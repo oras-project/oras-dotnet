@@ -17,21 +17,76 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using OrasProject.Oras.Content;
 
-namespace OrasProject.Oras;
+namespace OrasProject.Oras.Content;
 
-public static class ReadOnlyGraphTargetExtensions
+public static class ReadOnlyGraphStorageExtensions
 {
+    /// <summary>
+    /// ExtendedCopyGraphAsync copies the directed acyclic graph (DAG) that are reachable
+    /// from the given node from the source GraphStorage to the destination Storage.
+    /// In other words, it copies an artifact along with its referrers or other
+    /// predecessor manifests referencing it.
+    /// The node (e.g. a manifest of the artifact) is identified by a descriptor.
+    /// </summary>
+    /// <param name="src">The source graph storage</param>
+    /// <param name="dst">The destination storage</param>
+    /// <param name="node">The descriptor identifying the node to copy</param>
+    /// <param name="opts">Options for the extended copy operation</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A task representing the asynchronous operation</returns>
+    /// <exception cref="ArgumentNullException">Thrown when src or dst is null</exception>
+    public static async Task ExtendedCopyGraphAsync(
+        this IReadOnlyGraphStorage src,
+        IStorage dst,
+        Descriptor node,
+        ExtendedCopyGraphOptions opts,
+        CancellationToken cancellationToken = default)
+    {
+        if (src == null)
+        {
+            throw new ArgumentNullException(nameof(src), "Source storage cannot be null");
+        }
+        if (dst == null)
+        {
+            throw new ArgumentNullException(nameof(dst), "Destination storage cannot be null");
+        }
+
+        var roots = await src.FindRootsAsync(node, opts, cancellationToken).ConfigureAwait(false);
+
+        var proxy = new Proxy
+        {
+            Cache = new LimitedStorage(new MemoryStorage(), opts.MaxMetadataBytes),
+            Source = src
+        };
+
+        // Use semaphore for concurrency control
+        using var limiter = new SemaphoreSlim(opts.Concurrency, opts.Concurrency);
+
+        // Copy the sub-DAGs rooted by the root nodes
+        var copyTasks = new List<Task>();
+        foreach (var root in roots)
+        {
+            copyTasks.Add(Task.Run(async () =>
+            {
+                // Copy the graph rooted at this root node
+                await src.CopyGraphAsync(dst, root, proxy, opts, limiter, cancellationToken).ConfigureAwait(false);
+            }, cancellationToken));
+        }
+
+        await Task.WhenAll(copyTasks).ConfigureAwait(false);
+    }
+
     internal class NodeInfo
     {
         public Descriptor Node { get; set; } = default!;
         public int Depth { get; set; }
     }
 
-    //  src should be IReadOnlyGraphStorage, use ITarget here for quick dev
+    // findRoots finds the root nodes reachable from the given node through a
+    // depth-first search.
     internal static async Task<List<Descriptor>> FindRootsAsync(
-        this ITarget src,
+        this IReadOnlyGraphStorage src,
         Descriptor node,
         ExtendedCopyGraphOptions opts,
         CancellationToken cancellationToken = default)
@@ -53,7 +108,8 @@ public static class ReadOnlyGraphTargetExtensions
         };
 
         var stack = new Stack<NodeInfo>();
-        
+
+        // push the initial node to the stack, set the depth to 0
         stack.Push(new NodeInfo { Node = node, Depth = 0 });
         while (stack.TryPop(out var current))
         {
@@ -101,26 +157,5 @@ public static class ReadOnlyGraphTargetExtensions
 
         var roots = new List<Descriptor>(rootMap.Values);
         return roots;
-    }
-
-    // TODO: generate summary
-    // TODO: src should be IReadOnlyGraphStorage, use ITarget here for quick dev
-    internal static async Task ExtendedCopyGraphAsync(this ITarget src, ITarget dst, Descriptor node, Proxy proxy, ExtendedCopyGraphOptions extendedCopyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken)
-    {
-        // check src, check dst
-        // findroots
-        // check concurrency, limiter, maxBytes
-        // create proxy & tracker
-        // copyGraph on roots
-
-        var roots = await FindRootsAsync(src, node, extendedCopyGraphOptions, cancellationToken).ConfigureAwait(false);
-
-        var rootCopies = new List<Task>();
-        foreach (var root in roots)
-        {
-            rootCopies.Add(Task.Run(async () =>
-                    await src.CopyGraphAsync(dst, root, proxy, extendedCopyGraphOptions, limiter, cancellationToken).ConfigureAwait(false), cancellationToken));
-        }
-        await Task.WhenAll(rootCopies).ConfigureAwait(false);
     }
 }

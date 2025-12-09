@@ -11,10 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Oci;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace OrasProject.Oras.Content;
 
 /// <summary>

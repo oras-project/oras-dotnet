@@ -28,7 +28,7 @@ public static class ReadOnlyStorageExtensions
     /// <param name="dst"></param>
     /// <param name="node"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, CancellationToken cancellationToken = default)
+    public static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, CancellationToken cancellationToken = default)
     {
         var copyGraphOptions = new CopyGraphOptions();
         var proxy = new Proxy()
@@ -48,7 +48,7 @@ public static class ReadOnlyStorageExtensions
     /// <param name="node"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
+    public static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
         var proxy = new Proxy()
         {
@@ -68,7 +68,7 @@ public static class ReadOnlyStorageExtensions
     /// <param name="proxy"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
+    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
         using var limiter = new SemaphoreSlim(copyGraphOptions.Concurrency, copyGraphOptions.Concurrency);
         await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, cancellationToken).ConfigureAwait(false);
@@ -84,7 +84,7 @@ public static class ReadOnlyStorageExtensions
     /// <param name="copyGraphOptions"></param>
     /// <param name="limiter"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken)
+    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken)
     {
         if (Descriptor.IsNullOrInvalid(node))
         {

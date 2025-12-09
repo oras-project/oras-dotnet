@@ -17,16 +17,19 @@ using System.Threading;
 using System.Threading.Tasks;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Oci;
+
 namespace OrasProject.Oras;
 
 /// <summary>
-/// ExtendedCopyGraphOptions contains additional parameters for extended copy graph operations.
+/// ExtendedCopyGraphOptions contains parameters for ExtendedCopyGraph.
 /// </summary>
 public class ExtendedCopyGraphOptions : CopyGraphOptions
 {
     /// <summary>
-    /// Depth limits the maximum depth for finding predecessors.
-    /// If Depth is 0, there is no depth limit.
+    /// Depth limits the maximum depth of the directed acyclic graph (DAG) that
+	/// will be extended-copied.
+	/// If Depth is no specified, or the specified value is less than or
+	/// equal to 0, the depth limit will be considered as infinity.
     /// </summary>
     public int Depth { get; init; } = 0;
 
