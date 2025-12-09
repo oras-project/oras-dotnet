@@ -95,7 +95,7 @@ public static class ReadOnlyStorageExtensions
         }
 
         var nodeKey = node.BasicDescriptor;
-        
+
         // Try to mark this node as being copied; skip if already claimed by another task
         if (!copied.TryAdd(nodeKey, true))
         {
@@ -147,7 +147,7 @@ public static class ReadOnlyStorageExtensions
                     return;
                 }
             }
-            
+
             // obtain datastream
             using var dataStream = await proxy.FetchAsync(node, cancellationToken).ConfigureAwait(false);
             await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
