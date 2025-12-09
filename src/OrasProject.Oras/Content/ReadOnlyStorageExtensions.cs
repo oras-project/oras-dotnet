@@ -11,9 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -72,7 +72,8 @@ public static class ReadOnlyStorageExtensions
     internal static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
     {
         using var limiter = new SemaphoreSlim(copyGraphOptions.Concurrency, copyGraphOptions.Concurrency);
-        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, cancellationToken).ConfigureAwait(false);
+        var copied = new ConcurrentDictionary<BasicDescriptor, bool>();
+        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, copied, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -84,12 +85,26 @@ public static class ReadOnlyStorageExtensions
     /// <param name="proxy"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="limiter"></param>
+    /// <param name="copied"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken)
+    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, ConcurrentDictionary<BasicDescriptor, bool> copied, CancellationToken cancellationToken)
     {
         if (Descriptor.IsNullOrInvalid(node))
         {
             throw new ArgumentNullException(nameof(node));
+        }
+
+        var nodeKey = node.BasicDescriptor;
+        
+        // Try to mark this node as being copied; skip if already claimed by another task
+        if (!copied.TryAdd(nodeKey, true))
+        {
+            // Another task is already copying this node, skip it
+            if (copyGraphOptions.OnCopySkippedAsync != null)
+            {
+                await copyGraphOptions.OnCopySkippedAsync(node, cancellationToken).ConfigureAwait(false);
+            }
+            return;
         }
 
         // acquire lock to find successors of the current node
@@ -116,7 +131,7 @@ public static class ReadOnlyStorageExtensions
         var childNodesCopies = new List<Task>();
         foreach (var childNode in successors)
         {
-            childNodesCopies.Add(Task.Run(() => src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, cancellationToken)));
+            childNodesCopies.Add(Task.Run(() => src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, copied, cancellationToken)));
         }
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
 
@@ -133,26 +148,12 @@ public static class ReadOnlyStorageExtensions
                 }
             }
             
-            try
+            // obtain datastream
+            using var dataStream = await proxy.FetchAsync(node, cancellationToken).ConfigureAwait(false);
+            await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
+            if (copyGraphOptions.PostCopyAsync != null)
             {
-                // obtain datastream
-                using var dataStream = await proxy.FetchAsync(node, cancellationToken).ConfigureAwait(false);
-                await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);
-                if (copyGraphOptions.PostCopyAsync != null)
-                {
-                    await copyGraphOptions.PostCopyAsync(node, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            catch (AlreadyExistsException)
-            {
-                // In a content-addressable storage system, if content with the same digest
-                // already exists, it's the exact same content. This can happen when multiple
-                // parallel copy operations (e.g., in ExtendedCopyGraphAsync) attempt to copy
-                // shared nodes. Treat this as a successful no-op.
-                if (copyGraphOptions.OnCopySkippedAsync != null)
-                {
-                    await copyGraphOptions.OnCopySkippedAsync(node, cancellationToken).ConfigureAwait(false);
-                }
+                await copyGraphOptions.PostCopyAsync(node, cancellationToken).ConfigureAwait(false);
             }
         }
         finally

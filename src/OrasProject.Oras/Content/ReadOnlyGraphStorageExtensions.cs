@@ -14,6 +14,7 @@
 using OrasProject.Oras.Oci;
 using System;
 using System.Linq;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -63,6 +64,9 @@ public static class ReadOnlyGraphStorageExtensions
         // Use semaphore for concurrency control
         using var limiter = new SemaphoreSlim(opts.Concurrency, opts.Concurrency);
 
+        // Track nodes being copied to avoid duplicate work across parallel root copies
+        var copied = new ConcurrentDictionary<BasicDescriptor, bool>();
+
         // Copy the sub-DAGs rooted by the root nodes
         var copyTasks = new List<Task>();
         foreach (var root in roots)
@@ -70,7 +74,7 @@ public static class ReadOnlyGraphStorageExtensions
             copyTasks.Add(Task.Run(async () =>
             {
                 // Copy the graph rooted at this root node
-                await src.CopyGraphAsync(dst, root, proxy, opts, limiter, cancellationToken).ConfigureAwait(false);
+                await src.CopyGraphAsync(dst, root, proxy, opts, limiter, copied, cancellationToken).ConfigureAwait(false);
             }, cancellationToken));
         }
 
