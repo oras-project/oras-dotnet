@@ -29,9 +29,9 @@ public class ExtendedCopyGraphOptions : CopyGraphOptions
 
     /// <summary>
     /// Depth limits the maximum depth of the directed acyclic graph (DAG) that
-	/// will be extended-copied.
-	/// If Depth is no specified, or the specified value is less than or
-	/// equal to 0, the depth limit will be considered as infinity.
+    /// will be extended-copied.
+    /// If Depth is no specified, or the specified value is less than or
+    /// equal to 0, the depth limit will be considered as infinity.
     /// </summary>
     public int Depth
     {
