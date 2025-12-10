@@ -24,7 +24,7 @@ namespace OrasProject.Oras.Content;
 public static class ReadOnlyGraphStorageExtensions
 {
     /// <summary>
-    /// ExtendedCopyGraphAsync copies the directed acyclic graph (DAG) that are reachable
+    /// ExtendedCopyGraphAsync copies the directed acyclic graph (DAG) that is reachable
     /// from the given node from the source GraphStorage to the destination Storage.
     /// In other words, it copies an artifact along with its referrers or other
     /// predecessor manifests referencing it.
@@ -87,8 +87,14 @@ public static class ReadOnlyGraphStorageExtensions
         public int Depth { get; set; }
     }
 
-    // findRoots finds the root nodes reachable from the given node through a
-    // depth-first search.
+    /// <summary>
+    /// Finds the root nodes reachable from the given node through a depth-first search.
+    /// </summary>
+    /// <param name="src">The source graph storage.</param>
+    /// <param name="node">The descriptor identifying the starting node.</param>
+    /// <param name="opts">Options for the extended copy operation.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A list of descriptors representing the root nodes.</returns>
     internal static async Task<List<Descriptor>> FindRootsAsync(
         this IReadOnlyGraphStorage src,
         Descriptor node,

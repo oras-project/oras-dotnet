@@ -72,7 +72,8 @@ public class ExtendedCopyTest
         // Push all blobs to source
         for (var i = 0; i < blobs.Count; i++)
         {
-            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+            using var stream = new MemoryStream(blobs[i]);  
+            await sourceTarget.PushAsync(descs[i], stream, cancellationToken);  
         }
 
         var node = descs[2]; // base manifest
@@ -149,7 +150,8 @@ public class ExtendedCopyTest
         // Push all blobs to source
         for (var i = 0; i < blobs.Count; i++)
         {
-            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+            using var ms = new MemoryStream(blobs[i]);
+            await sourceTarget.PushAsync(descs[i], ms, cancellationToken);
         }
 
         var node = descs[2]; // base manifest
@@ -226,7 +228,8 @@ public class ExtendedCopyTest
         // Push all blobs to source
         for (var i = 0; i < blobs.Count; i++)
         {
-            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+            using var stream = new MemoryStream(blobs[i]);
+            await sourceTarget.PushAsync(descs[i], stream, cancellationToken);
         }
 
         var node = descs[2]; // base manifest
@@ -313,7 +316,8 @@ public class ExtendedCopyTest
         // Push all blobs to source
         for (var i = 0; i < blobs.Count; i++)
         {
-            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+            using var ms = new MemoryStream(blobs[i]);
+            await sourceTarget.PushAsync(descs[i], ms, cancellationToken);
         }
 
         var node = descs[2]; // base manifest
@@ -388,7 +392,8 @@ public class ExtendedCopyTest
         // Push all blobs to source
         for (var i = 0; i < blobs.Count; i++)
         {
-            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+            await using var stream = new MemoryStream(blobs[i]);
+            await sourceTarget.PushAsync(descs[i], stream, cancellationToken);
         }
 
         var node = descs[2]; // base manifest
@@ -476,7 +481,8 @@ public class ExtendedCopyTest
         // Push all blobs to source
         for (var i = 0; i < blobs.Count; i++)
         {
-            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+            using var stream = new MemoryStream(blobs[i]);
+            await sourceTarget.PushAsync(descs[i], stream, cancellationToken);
         }
 
         var node = descs[2]; // manifest with no predecessors
