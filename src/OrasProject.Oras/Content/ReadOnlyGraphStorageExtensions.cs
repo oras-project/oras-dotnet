@@ -81,11 +81,11 @@ public static class ReadOnlyGraphStorageExtensions
         await Task.WhenAll(copyTasks).ConfigureAwait(false);
     }
 
-    internal class NodeInfo
-    {
-        public Descriptor Node { get; set; } = default!;
-        public int Depth { get; set; }
-    }
+    /// <summary>
+    /// Represents a node in the graph traversal with its depth information.
+    /// Used during the depth-first search to find root nodes.
+    /// </summary>
+    internal record NodeInfo(Descriptor Node, int Depth);
 
     /// <summary>
     /// Finds the root nodes reachable from the given node through a depth-first search.
@@ -120,7 +120,7 @@ public static class ReadOnlyGraphStorageExtensions
         var stack = new Stack<NodeInfo>();
 
         // push the initial node to the stack, set the depth to 0
-        stack.Push(new NodeInfo { Node = node, Depth = 0 });
+        stack.Push(new NodeInfo(node, 0));
         while (stack.TryPop(out var current))
         {
             var currentNode = current.Node;
@@ -160,7 +160,7 @@ public static class ReadOnlyGraphStorageExtensions
                 var predecessorKey = predecessor.BasicDescriptor;
                 if (!visited.Contains(predecessorKey))
                 {
-                    stack.Push(new NodeInfo { Node = predecessor, Depth = current.Depth + 1 });
+                    stack.Push(new NodeInfo(predecessor, current.Depth + 1));
                 }
             }
         }
