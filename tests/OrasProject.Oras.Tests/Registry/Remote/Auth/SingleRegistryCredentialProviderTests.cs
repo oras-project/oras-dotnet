@@ -11,9 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace OrasProject.Oras.Registry.Remote.Auth.Tests
