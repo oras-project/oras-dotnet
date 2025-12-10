@@ -11,13 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using OrasProject.Oras.Oci;
 using System;
-using System.Linq;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Content;
 
@@ -71,11 +71,7 @@ public static class ReadOnlyGraphStorageExtensions
         var copyTasks = new List<Task>();
         foreach (var root in roots)
         {
-            copyTasks.Add(Task.Run(async () =>
-            {
-                // Copy the graph rooted at this root node
-                await src.CopyGraphAsync(dst, root, proxy, opts, limiter, copied, cancellationToken).ConfigureAwait(false);
-            }, cancellationToken));
+            copyTasks.Add(Task.Run(() => src.CopyGraphAsync(dst, root, proxy, opts, limiter, copied, cancellationToken), cancellationToken));
         }
 
         await Task.WhenAll(copyTasks).ConfigureAwait(false);
