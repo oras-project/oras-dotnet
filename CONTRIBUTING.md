@@ -15,7 +15,7 @@ Below are specifics for the oras-dotnet project:
 - Patch coverage requirement: at least 80%.
 - Run tests: `dotnet test`
 
-## Format
+## Linting
 - It's recommended to run `dotnet format` before pushing the commit, to avoid linting errors.
 
 ## Commit Sign-off
