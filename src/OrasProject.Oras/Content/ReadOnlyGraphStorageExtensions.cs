@@ -125,8 +125,8 @@ public static class ReadOnlyGraphStorageExtensions
                 roots.Add(currentNode);
                 continue;
             }
-            IEnumerable<Descriptor> predecessors;
-            predecessors = await opts.FindPredecessors(src, currentNode, cancellationToken).ConfigureAwait(false);
+
+            var predecessors = await opts.FindPredecessors(src, currentNode, cancellationToken).ConfigureAwait(false);
             var predecessorList = predecessors.ToList();
             if (predecessorList.Count == 0)
             {
