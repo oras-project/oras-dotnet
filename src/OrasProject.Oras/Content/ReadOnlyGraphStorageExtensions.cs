@@ -98,16 +98,7 @@ public static class ReadOnlyGraphStorageExtensions
         CancellationToken cancellationToken = default)
     {
         var visited = new HashSet<BasicDescriptor>();
-        var rootMap = new Dictionary<BasicDescriptor, Descriptor>();
-
-        void AddRoot(BasicDescriptor key, Descriptor val)
-        {
-            if (!rootMap.ContainsKey(key))
-            {
-                rootMap[key] = val;
-            }
-        }
-
+        var roots = new List<Descriptor>();
         opts.FindPredecessors ??= async (src, descriptor, cancellationToken) =>
         {
             return await src.GetPredecessorsAsync(descriptor, cancellationToken).ConfigureAwait(false);
@@ -123,34 +114,25 @@ public static class ReadOnlyGraphStorageExtensions
             var currentKey = currentNode.BasicDescriptor;
             if (visited.Contains(currentKey))
             {
+                // skip the current node if it has been visited
                 continue;
             }
             visited.Add(currentKey);
 
+            // stop finding predecessors if the target depth is reached
             if (opts.Depth > 0 && current.Depth == opts.Depth)
             {
-                AddRoot(currentKey, currentNode);
+                roots.Add(currentNode);
                 continue;
             }
-
             IEnumerable<Descriptor> predecessors;
-            try
-            {
-                predecessors = await opts.FindPredecessors(src, currentNode, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("FindPredecessors operation failed", ex);
-            }
-
+            predecessors = await opts.FindPredecessors(src, currentNode, cancellationToken).ConfigureAwait(false);
             var predecessorList = predecessors.ToList();
-
             if (predecessorList.Count == 0)
             {
-                AddRoot(currentKey, currentNode);
+                roots.Add(currentNode);
                 continue;
             }
-
             foreach (var predecessor in predecessorList)
             {
                 var predecessorKey = predecessor.BasicDescriptor;
@@ -160,8 +142,6 @@ public static class ReadOnlyGraphStorageExtensions
                 }
             }
         }
-
-        var roots = new List<Descriptor>(rootMap.Values);
         return roots;
     }
 }
