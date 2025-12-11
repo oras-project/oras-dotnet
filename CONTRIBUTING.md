@@ -1,3 +1,20 @@
 # Contributing
 
-Please refer to the [ORAS Contributing guide](https://oras.land/docs/community/contributing_guide).
+Please start with the [ORAS contributing guide](https://oras.land/community/contributing_guide).
+
+Below are specifics for the oras-dotnet project:
+
+## Prerequisites
+- .NET 8 SDK is required.
+
+## Build
+- Run: `dotnet build`
+
+## Tests and Coverage
+- Changes in a pull request must include relevant tests.
+- Patch coverage requirement: at least 80%.
+- Run tests: `dotnet test`
+
+## Commit Sign-off
+- All commits must be signed off.
+- Use: `git commit -s`
