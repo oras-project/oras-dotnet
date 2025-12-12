@@ -14,7 +14,6 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 
