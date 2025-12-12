@@ -19,5 +19,5 @@ Below are specifics for the oras-dotnet project:
 - It's recommended to run `dotnet format` before pushing the commit, to avoid linting errors.
 
 ## Commit Sign-off
-- All commits must be signed off to satify the pull request DCO requirement.
+- All commits must be signed off to satisfy the pull request DCO requirement.
 - You can do this with: `git commit -s`
