@@ -27,6 +27,18 @@ public class ExtendedCopyGraphOptions : CopyGraphOptions
     private int _depth;
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="ExtendedCopyGraphOptions"/> class
+    /// with default values.
+    /// </summary>
+    public ExtendedCopyGraphOptions()
+    {
+        FindPredecessors = async (src, descriptor, cancellationToken) =>
+        {
+            return await src.GetPredecessorsAsync(descriptor, cancellationToken).ConfigureAwait(false);
+        };
+    }
+
+    /// <summary>
     /// Depth limits the maximum depth of the directed acyclic graph (DAG) that
     /// will be extended-copied.
     /// If Depth is not specified, or the specified value is less than or
@@ -40,7 +52,7 @@ public class ExtendedCopyGraphOptions : CopyGraphOptions
 
     /// <summary>
     /// FindPredecessors finds the predecessors of the current node.
-    /// If FindPredecessors is null, the default implementation will be used.
+    /// Defaults to calling <see cref="IPredecessorFindable.GetPredecessorsAsync"/>.
     /// </summary>
-    public Func<IPredecessorFindable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>>? FindPredecessors { get; set; }
+    public Func<IPredecessorFindable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>> FindPredecessors { get; set; }
 }

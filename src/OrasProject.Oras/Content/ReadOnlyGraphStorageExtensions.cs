@@ -99,10 +99,6 @@ public static class ReadOnlyGraphStorageExtensions
     {
         var visited = new HashSet<BasicDescriptor>();
         var roots = new List<Descriptor>();
-        opts.FindPredecessors ??= async (src, descriptor, cancellationToken) =>
-        {
-            return await src.GetPredecessorsAsync(descriptor, cancellationToken).ConfigureAwait(false);
-        };
 
         var stack = new Stack<NodeInfo>();
 
