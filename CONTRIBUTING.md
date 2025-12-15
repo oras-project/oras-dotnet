@@ -5,14 +5,14 @@ Please start with the [ORAS contributing guide](https://oras.land/community/cont
 Below are specifics for the oras-dotnet project:
 
 ## Prerequisites
-- .NET 8 SDK is required.
+- .NET 8 SDK or higher is required.
 
 ## Build
 - Run: `dotnet build`
 
 ## Tests and Coverage
 - Changes in a pull request should include relevant tests.
-- Patch coverage requirement: at least 80%.
+- Patch test coverage requirement: at least 80%.
 - Run tests: `dotnet test`
 
 ## Linting
