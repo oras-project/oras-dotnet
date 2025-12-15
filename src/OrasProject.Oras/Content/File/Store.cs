@@ -16,8 +16,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
-using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Content.File;
 
@@ -147,18 +145,12 @@ public class Store : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    // private static IStorage CreateLimitedStorage(long limit)
-    // {
-    //     var memory = new MemoryStorage();
-    //     return new LimitedStorage(memory, limit);
-    // }
-
     /// <summary>
     /// Returns true if the `closed` flag is set, otherwise returns false.
     /// </summary>
     private bool IsClosedSet()
     {
-        return Interlocked.CompareExchange(ref _closed, 0, 0) == 1;
+        return Volatile.Read(ref _closed) == 1;
     }
 
     /// <summary>
@@ -166,29 +158,6 @@ public class Store : IDisposable
     /// </summary>
     private void SetClosed()
     {
-        Interlocked.Exchange(ref _closed, 1);
-    }
-
-    /// <summary>
-    /// Resolves a reference to a descriptor.
-    /// </summary>
-    /// <param name="reference">The reference string to resolve.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>The descriptor for the reference.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when the store is closed.</exception>
-    /// <exception cref="ArgumentException">Thrown when the reference is null or empty.</exception>
-    public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
-    {
-        if (IsClosedSet())
-        {
-            throw new InvalidOperationException("Store is closed");
-        }
-
-        if (string.IsNullOrEmpty(reference))
-        {
-            throw new ArgumentException("missing reference", nameof(reference));
-        }
-
-        return await _resolver.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
+        Volatile.Write(ref _closed, 1);
     }
 }
