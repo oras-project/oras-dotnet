@@ -16,16 +16,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
+using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Content.File;
-
-/// <summary>
-/// Provides implementation of a content store based on file system.
-/// </summary>
-internal static class StoreConstants
-{
-    internal const long DefaultFallbackPushSizeLimit = 1 << 22; // 4 MiB
-}
 
 /// <summary>
 /// Store represents a file system based store, which implements <see cref="ITarget"/>.
@@ -49,9 +44,23 @@ internal static class StoreConstants
 /// </remarks>
 public class Store : IDisposable
 {
+    // _defaultFallbackPushSizeLimit specifies the default size limit for pushing no-name contents.
+    const long _defaultFallbackPushSizeLimit = 1 << 22; // 4 MiB
+
+    /// <summary>
+    /// NameStatus contains a flag indicating if a name exists, and a ReaderWriterLockSlim protecting it.
+    /// </summary>
+    private class NameStatus
+    {
+        public ReaderWriterLockSlim Lock { get; } = new();
+        public bool Exists { get; set; }
+    }
+
     private readonly string _workingDir; // the working directory of the file store
     private int _closed; // if the store is closed - 0: false, 1: true.
     private readonly ConcurrentDictionary<string, bool> _tmpFiles = new();
+    private readonly ConcurrentDictionary<string, string> _digestToPath = new();
+    private readonly ConcurrentDictionary<string, NameStatus> _nameToStatus = new();
 
     private readonly IStorage _fallbackStorage;
     private readonly ITagStore _resolver;
@@ -67,7 +76,7 @@ public class Store : IDisposable
     /// cannot exceed the default size limit: 4 MiB.
     /// </remarks>
     public Store(string workingDir)
-        : this(workingDir, StoreConstants.DefaultFallbackPushSizeLimit)
+        : this(workingDir, _defaultFallbackPushSizeLimit)
     {
     }
 
@@ -76,7 +85,7 @@ public class Store : IDisposable
     /// limited memory CAS as the fallback storage for contents without names.
     /// </summary>
     /// <param name="workingDir">The working directory of the file store.</param>
-    /// <param name="limit">The maximum size (in bytes) for pushed content without names.</param>
+    /// <param name="limit">The maximum size (in bytes) for pushed content.</param>
     /// <remarks>
     /// When pushing content without names, the size of content being pushed
     /// cannot exceed the size limit specified by the <paramref name="limit"/> parameter.
@@ -92,7 +101,6 @@ public class Store : IDisposable
     /// </summary>
     /// <param name="workingDir">The working directory of the file store.</param>
     /// <param name="fallbackStorage">The fallback storage for contents without names.</param>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="workingDir"/> cannot be resolved to an absolute path.</exception>
     public Store(string workingDir, IStorage fallbackStorage)
     {
         var workingDirAbs = Path.GetFullPath(workingDir);
@@ -159,5 +167,114 @@ public class Store : IDisposable
     private void SetClosed()
     {
         Volatile.Write(ref _closed, 1);
+    }
+
+    /// <summary>
+    /// Exists returns true if the described content exists.
+    /// </summary>
+    /// <param name="target">The descriptor of the content to check.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains true if the content exists; otherwise, false.</returns>
+    /// <exception cref="StoreClosedException">Thrown when the store has been closed.</exception>
+    public async Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
+    {
+        if (IsClosedSet())
+        {
+            throw new StoreClosedException();
+        }
+
+        // if the target has name, check if the name exists.
+        if (target.Annotations != null && target.Annotations.TryGetValue(Descriptor.AnnotationTitle, out var name))
+        {
+            if (!string.IsNullOrEmpty(name) && !NameExists(name))
+            {
+                return false;
+            }
+        }
+
+        // check if the content exists in the store
+        if (_digestToPath.ContainsKey(target.Digest))
+        {
+            return true;
+        }
+
+        // if the content does not exist in the store,
+        // then fall back to the fallback storage.
+        return await _fallbackStorage.ExistsAsync(target, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Resolves a reference to a descriptor.
+    /// </summary>
+    /// <param name="reference">The reference string to resolve.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains the resolved descriptor.</returns>
+    /// <exception cref="StoreClosedException">Thrown when the store has been closed.</exception>
+    /// <exception cref="MissingReferenceException">Thrown when the reference is empty or null.</exception>
+    public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
+    {
+        if (IsClosedSet())
+        {
+            throw new StoreClosedException();
+        }
+
+        if (string.IsNullOrEmpty(reference))
+        {
+            throw new MissingReferenceException();
+        }
+
+        return await _resolver.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Tags a descriptor with a reference string.
+    /// </summary>
+    /// <param name="descriptor">The descriptor of the manifest to tag.</param>
+    /// <param name="reference">The reference tag string.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    /// <exception cref="StoreClosedException">Thrown when the store has been closed.</exception>
+    /// <exception cref="MissingReferenceException">Thrown when the reference is empty or null.</exception>
+    /// <exception cref="NotFoundException">Thrown when the manifest does not exist in the store.</exception>
+    public async Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
+    {
+        if (IsClosedSet())
+        {
+            throw new StoreClosedException();
+        }
+
+        if (string.IsNullOrEmpty(reference))
+        {
+            throw new MissingReferenceException();
+        }
+
+        var exists = await ExistsAsync(descriptor, cancellationToken).ConfigureAwait(false);
+        if (!exists)
+        {
+            throw new NotFoundException($"{descriptor.Digest}: {descriptor.MediaType}");
+        }
+
+        await _resolver.TagAsync(descriptor, reference, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Returns true if the given name exists in the file store.
+    /// </summary>
+    private bool NameExists(string name)
+    {
+        if (!_nameToStatus.TryGetValue(name, out var status))
+        {
+            return false;
+        }
+
+        status.Lock.EnterReadLock();
+        try
+        {
+            return status.Exists;
+        }
+        finally
+        {
+            status.Lock.ExitReadLock();
+        }
     }
 }
