@@ -12,6 +12,8 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content.File;
+using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Oci;
 using Xunit;
 
 namespace OrasProject.Oras.Tests.Content.File;
@@ -78,6 +80,41 @@ public class StoreTest
 
             Assert.True(existsForOriginal);
             Assert.True(existsForResolved);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tests that after closing the store, AddAsync, TagAsync, ResolveAsync, and ExistsAsync all throw StoreClosedException.
+    /// </summary>
+    [Fact]
+    public async Task ClosedStore_ThrowException()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var tempFilePath = Path.Combine(tempDir, "closed.txt");
+            await System.IO.File.WriteAllTextAsync(tempFilePath, "content");
+
+            using var store = new Store(tempDir);
+            store.Close();
+
+            // calling Close on a closed store should not throw
+            store.Close();
+
+            // other operations should thrown StoreClosedException
+            await Assert.ThrowsAsync<StoreClosedException>(() => store.AddAsync("name", string.Empty, tempFilePath));
+            await Assert.ThrowsAsync<StoreClosedException>(() => store.TagAsync(Descriptor.Empty, "latest"));
+            await Assert.ThrowsAsync<StoreClosedException>(() => store.ResolveAsync("latest"));
+            await Assert.ThrowsAsync<StoreClosedException>(() => store.ExistsAsync(Descriptor.Empty));
         }
         finally
         {
