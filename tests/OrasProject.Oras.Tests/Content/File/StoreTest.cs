@@ -124,4 +124,264 @@ public class StoreTest
             }
         }
     }
+
+    /// <summary>
+    /// Tests that AddAsync throws MissingNameException when name is null or empty.
+    /// </summary>
+    [Fact]
+    public async Task AddAsync_MissingName_ThrowsException()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            using var store = new Store(tempDir);
+
+            await Assert.ThrowsAsync<MissingNameException>(() => store.AddAsync(null!, string.Empty, "path"));
+            await Assert.ThrowsAsync<MissingNameException>(() => store.AddAsync(string.Empty, string.Empty, "path"));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tests that AddAsync throws FileNotFoundException when the file path doesn't exist.
+    /// </summary>
+    [Fact]
+    public async Task AddAsync_FileNotFound_ThrowsException()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            using var store = new Store(tempDir);
+            var nonExistentPath = Path.Combine(tempDir, "nonexistent.txt");
+
+            await Assert.ThrowsAsync<FileNotFoundException>(() => store.AddAsync("test", string.Empty, nonExistentPath));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tests that AddAsync throws DuplicateNameException when adding the same name twice.
+    /// </summary>
+    [Fact]
+    public async Task AddAsync_DuplicateName_ThrowsException()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var tempFilePath = Path.Combine(tempDir, "file.txt");
+            await System.IO.File.WriteAllTextAsync(tempFilePath, "content");
+
+            using var store = new Store(tempDir);
+
+            await store.AddAsync("duplicate", string.Empty, tempFilePath);
+            await Assert.ThrowsAsync<DuplicateNameException>(() => store.AddAsync("duplicate", string.Empty, tempFilePath));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tests that AddAsync uses name as path when path parameter is empty.
+    /// </summary>
+    [Fact]
+    public async Task AddAsync_EmptyPath_UsesNameAsPath()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var fileName = "testfile.txt";
+            var filePath = Path.Combine(tempDir, fileName);
+            await System.IO.File.WriteAllTextAsync(filePath, "content");
+
+            using var store = new Store(tempDir);
+
+            var descriptor = await store.AddAsync(fileName, string.Empty, string.Empty);
+
+            Assert.NotNull(descriptor);
+            Assert.NotEmpty(descriptor.Digest);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tests that ResolveAsync throws MissingReferenceException when reference is null or empty.
+    /// </summary>
+    [Fact]
+    public async Task ResolveAsync_MissingReference_ThrowsException()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            using var store = new Store(tempDir);
+
+            await Assert.ThrowsAsync<MissingReferenceException>(() => store.ResolveAsync(null!));
+            await Assert.ThrowsAsync<MissingReferenceException>(() => store.ResolveAsync(string.Empty));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tests that TagAsync throws MissingReferenceException when reference is null or empty.
+    /// </summary>
+    [Fact]
+    public async Task TagAsync_MissingReference_ThrowsException()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            using var store = new Store(tempDir);
+
+            await Assert.ThrowsAsync<MissingReferenceException>(() => store.TagAsync(Descriptor.Empty, null!));
+            await Assert.ThrowsAsync<MissingReferenceException>(() => store.TagAsync(Descriptor.Empty, string.Empty));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tests that TagAsync throws NotFoundException when descriptor doesn't exist in store.
+    /// </summary>
+    [Fact]
+    public async Task TagAsync_NonExistentDescriptor_ThrowsException()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            using var store = new Store(tempDir);
+
+            var nonExistentDescriptor = new Descriptor
+            {
+                MediaType = "application/octet-stream",
+                Digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                Size = 0
+            };
+
+            await Assert.ThrowsAsync<NotFoundException>(() => store.TagAsync(nonExistentDescriptor, "tag"));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tests that ExistsAsync returns false for non-existent content.
+    /// </summary>
+    [Fact]
+    public async Task ExistsAsync_NonExistent_ReturnsFalse()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            using var store = new Store(tempDir);
+
+            var nonExistentDescriptor = new Descriptor
+            {
+                MediaType = "application/octet-stream",
+                Digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                Size = 0
+            };
+
+            var exists = await store.ExistsAsync(nonExistentDescriptor);
+
+            Assert.False(exists);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tests that ExistsAsync returns false when descriptor has a name annotation but the name doesn't exist.
+    /// </summary>
+    [Fact]
+    public async Task ExistsAsync_WithNonExistentName_ReturnsFalse()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            using var store = new Store(tempDir);
+
+            var descriptorWithName = new Descriptor
+            {
+                MediaType = "application/octet-stream",
+                Digest = "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                Size = 0,
+                Annotations = new Dictionary<string, string>
+                {
+                    [Descriptor.AnnotationTitle] = "nonexistent-name"
+                }
+            };
+
+            var exists = await store.ExistsAsync(descriptorWithName);
+
+            Assert.False(exists);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
 }
