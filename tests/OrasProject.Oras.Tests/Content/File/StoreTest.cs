@@ -37,7 +37,7 @@ public class StoreTest
             store.Close();
 
             // Test Dispose() via using statement
-            using (var store2 = new Store(tempDir))
+            using (new Store(tempDir))
             {
                 // Store will be disposed automatically
             }
