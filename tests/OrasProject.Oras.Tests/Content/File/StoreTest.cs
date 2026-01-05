@@ -48,4 +48,43 @@ public class StoreTest
             }
         }
     }
+
+    /// <summary>
+    /// Tests that a file can be added to the store, tagged, resolved, and checked for existence.
+    /// </summary>
+    [Fact]
+    public async Task AddTagResolveAndExists_Works()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var tempFilePath = Path.Combine(tempDir, "test.txt");
+            await System.IO.File.WriteAllTextAsync(tempFilePath, "test content");
+
+            using var store = new Store(tempDir);
+
+            var descriptor = await store.AddAsync("test-artifact", string.Empty, tempFilePath);
+
+            await store.TagAsync(descriptor, "latest");
+
+            var resolved = await store.ResolveAsync("latest");
+
+            Assert.Equal(descriptor.Digest, resolved.Digest);
+
+            var existsForOriginal = await store.ExistsAsync(descriptor);
+            var existsForResolved = await store.ExistsAsync(resolved);
+
+            Assert.True(existsForOriginal);
+            Assert.True(existsForResolved);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
 }

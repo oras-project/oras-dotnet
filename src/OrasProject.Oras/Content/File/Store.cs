@@ -195,6 +195,37 @@ public class Store : IDisposable
         // check the status of the name
         var status = _nameToStatus.GetOrAdd(name, _ => new NameStatus());
 
+        // First, ensure the name is not already taken.
+        status.Lock.EnterReadLock();
+        try
+        {
+            if (status.Exists)
+            {
+                throw new DuplicateNameException($"{name}: duplicate name");
+            }
+        }
+        finally
+        {
+            status.Lock.ExitReadLock();
+        }
+
+        if (string.IsNullOrEmpty(path))
+        {
+            path = name;
+        }
+
+        path = GetAbsolutePath(path);
+        // directory path is not yet supported.
+        var fileInfo = new FileInfo(path);
+        if (!fileInfo.Exists)
+        {
+            throw new FileNotFoundException($"failed to get the file: {path}", path);
+        }
+
+        // generate descriptor outside of the lock to avoid holding a write lock across awaits
+        var descriptor = await GenerateDescriptorFromFileAsync(fileInfo, mediaType, path, cancellationToken).ConfigureAwait(false);
+
+        // Commit the name and annotations under the write lock to prevent races.
         status.Lock.EnterWriteLock();
         try
         {
@@ -202,35 +233,18 @@ public class Store : IDisposable
             {
                 throw new DuplicateNameException($"{name}: duplicate name");
             }
-            if (string.IsNullOrEmpty(path))
-            {
-                path = name;
-            }
 
-            path = GetAbsolutePath(path);
-            // directory path is not yet supported.
-            var fileInfo = new FileInfo(path);
-            if (!fileInfo.Exists)
-            {
-                throw new FileNotFoundException($"failed to get the file: {path}", path);
-            }
-
-            // generate descriptor
-            Descriptor descriptor;
-            descriptor = await GenerateDescriptorFromFileAsync(fileInfo, mediaType, path, cancellationToken).ConfigureAwait(false);
-
-            // Add annotation
             descriptor.Annotations ??= new Dictionary<string, string>();
             descriptor.Annotations[Descriptor.AnnotationTitle] = name;
 
-            // update the name status as existed
             status.Exists = true;
-            return descriptor;
         }
         finally
         {
             status.Lock.ExitWriteLock();
         }
+
+        return descriptor;
     }
 
     /// <summary>
