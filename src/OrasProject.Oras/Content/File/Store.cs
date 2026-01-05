@@ -48,11 +48,11 @@ public class Store : IDisposable
     const long _defaultFallbackPushSizeLimit = 1 << 22; // 4 MiB
 
     /// <summary>
-    /// NameStatus contains a flag indicating if a name exists, and a ReaderWriterLockSlim protecting it.
+    /// NameStatus contains a flag indicating if a name exists, and a SemaphoreSlim to serialize access per name.
     /// </summary>
     private class NameStatus
     {
-        public ReaderWriterLockSlim Lock { get; } = new();
+        public SemaphoreSlim Semaphore { get; } = new(1, 1);
         public bool Exists { get; set; }
     }
 
@@ -195,56 +195,44 @@ public class Store : IDisposable
         // check the status of the name
         var status = _nameToStatus.GetOrAdd(name, _ => new NameStatus());
 
-        // First, ensure the name is not already taken.
-        status.Lock.EnterReadLock();
+        // Serialize access per name to prevent duplicate expensive I/O
+        await status.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (status.Exists)
-            {
-                throw new DuplicateNameException($"{name}: duplicate name");
-            }
-        }
-        finally
-        {
-            status.Lock.ExitReadLock();
-        }
-
-        if (string.IsNullOrEmpty(path))
-        {
-            path = name;
-        }
-
-        path = GetAbsolutePath(path);
-        // directory path is not yet supported.
-        var fileInfo = new FileInfo(path);
-        if (!fileInfo.Exists)
-        {
-            throw new FileNotFoundException($"failed to get the file: {path}", path);
-        }
-
-        // generate descriptor outside of the lock to avoid holding a write lock across awaits
-        var descriptor = await GenerateDescriptorFromFileAsync(fileInfo, mediaType, path, cancellationToken).ConfigureAwait(false);
-
-        // Commit the name and annotations under the write lock to prevent races.
-        status.Lock.EnterWriteLock();
-        try
-        {
+            // Check if name already exists
             if (status.Exists)
             {
                 throw new DuplicateNameException($"{name}: duplicate name");
             }
 
+            if (string.IsNullOrEmpty(path))
+            {
+                path = name;
+            }
+
+            path = GetAbsolutePath(path);
+            // directory path is not yet supported.
+            var fileInfo = new FileInfo(path);
+            if (!fileInfo.Exists)
+            {
+                throw new FileNotFoundException($"failed to get the file: {path}", path);
+            }
+
+            // Generate descriptor (file I/O happens here)
+            var descriptor = await GenerateDescriptorFromFileAsync(fileInfo, mediaType, path, cancellationToken).ConfigureAwait(false);
+
+            // Commit the name and annotations
             descriptor.Annotations ??= new Dictionary<string, string>();
             descriptor.Annotations[Descriptor.AnnotationTitle] = name;
 
             status.Exists = true;
+
+            return descriptor;
         }
         finally
         {
-            status.Lock.ExitWriteLock();
+            status.Semaphore.Release();
         }
-
-        return descriptor;
     }
 
     /// <summary>
@@ -345,15 +333,9 @@ public class Store : IDisposable
             return false;
         }
 
-        status.Lock.EnterReadLock();
-        try
-        {
-            return status.Exists;
-        }
-        finally
-        {
-            status.Lock.ExitReadLock();
-        }
+        // For read-only check, we can safely read the volatile bool without the semaphore
+        // since Exists is only ever set from false to true (never reset)
+        return status.Exists;
     }
 
     /// <summary>
