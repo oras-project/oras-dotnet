@@ -170,6 +170,70 @@ public class Store : IDisposable
     }
 
     /// <summary>
+    /// Adds a file into the file store. Directory is not yet supported.
+    /// </summary>
+    /// <param name="name">The name of the file to add to the store.</param>
+    /// <param name="mediaType">The media type for the content.</param>
+    /// <param name="path">The file system path to the file to add.</param>
+    /// <param name="cancellationToken">A cancellation.</param>
+    /// <returns>A task that represents the asynchronous operation and contains the descriptor for the added content.</returns>
+    /// <exception cref="StoreClosedException">Thrown when the store has been closed.</exception>
+    /// <exception cref="MissingNameException">Thrown when the name is empty or null.</exception>
+    /// <exception cref="DuplicateNameException">Thrown when the name already exists in the store.</exception>
+    /// <exception cref="FileNotFoundException">Thrown when the specified path does not exist.</exception>
+    public async Task<Descriptor> AddAsync(string name, string mediaType, string path, CancellationToken cancellationToken = default)
+    {
+        if (IsClosedSet())
+        {
+            throw new StoreClosedException();
+        }
+        if (string.IsNullOrEmpty(name))
+        {
+            throw new MissingNameException();
+        }
+
+        // check the status of the name
+        var status = _nameToStatus.GetOrAdd(name, _ => new NameStatus());
+
+        status.Lock.EnterWriteLock();
+        try
+        {
+            if (status.Exists)
+            {
+                throw new DuplicateNameException($"{name}: duplicate name");
+            }
+            if (string.IsNullOrEmpty(path))
+            {
+                path = name;
+            }
+
+            path = GetAbsolutePath(path);
+            // directory path is not yet supported.
+            var fileInfo = new FileInfo(path);
+            if (!fileInfo.Exists)
+            {
+                throw new FileNotFoundException($"failed to get the file: {path}", path);
+            }
+
+            // generate descriptor
+            Descriptor descriptor;
+            descriptor = await GenerateDescriptorFromFileAsync(fileInfo, mediaType, path, cancellationToken).ConfigureAwait(false);
+
+            // Add annotation
+            descriptor.Annotations ??= new Dictionary<string, string>();
+            descriptor.Annotations[Descriptor.AnnotationTitle] = name;
+
+            // update the name status as existed
+            status.Exists = true;
+            return descriptor;
+        }
+        finally
+        {
+            status.Lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
     /// Exists returns true if the described content exists.
     /// </summary>
     /// <param name="target">The descriptor of the content to check.</param>
@@ -276,5 +340,44 @@ public class Store : IDisposable
         {
             status.Lock.ExitReadLock();
         }
+    }
+
+    /// <summary>
+    /// Returns the absolute path for the given path.
+    /// </summary>
+    private string GetAbsolutePath(string path)
+    {
+        if (Path.IsPathRooted(path))
+        {
+            return path;
+        }
+        return Path.Combine(_workingDir, path);
+    }
+
+    /// <summary>
+    /// Generates a descriptor from the given file.
+    /// </summary>
+    private async Task<Descriptor> GenerateDescriptorFromFileAsync(FileInfo fileInfo, string mediaType, string path, CancellationToken cancellationToken)
+    {
+        using var stream = fileInfo.OpenRead();
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
+        var digest = $"sha256:{Convert.ToHexString(hashBytes).ToLowerInvariant()}";
+
+        // map digest to file path
+        _digestToPath.TryAdd(digest, path);
+
+        // generate descriptor
+        if (string.IsNullOrEmpty(mediaType))
+        {
+            mediaType = Oci.MediaType.ImageLayer;
+        }
+
+        return new Descriptor
+        {
+            MediaType = mediaType,
+            Digest = digest,
+            Size = fileInfo.Length
+        };
     }
 }
