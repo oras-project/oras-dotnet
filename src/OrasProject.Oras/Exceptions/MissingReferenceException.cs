@@ -24,11 +24,11 @@ public class MissingReferenceException : Exception
     {
     }
 
-    public MissingReferenceException(string message) : base(message)
+    public MissingReferenceException(string? message) : base(message)
     {
     }
 
-    public MissingReferenceException(string message, Exception innerException) : base(message, innerException)
+    public MissingReferenceException(string? message, Exception? innerException) : base(message, innerException)
     {
     }
 }

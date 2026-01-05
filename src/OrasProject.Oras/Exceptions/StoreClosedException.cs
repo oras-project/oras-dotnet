@@ -24,11 +24,11 @@ public class StoreClosedException : Exception
     {
     }
 
-    public StoreClosedException(string message) : base(message)
+    public StoreClosedException(string? message) : base(message)
     {
     }
 
-    public StoreClosedException(string message, Exception innerException) : base(message, innerException)
+    public StoreClosedException(string? message, Exception? innerException) : base(message, innerException)
     {
     }
 }
