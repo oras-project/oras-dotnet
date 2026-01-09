@@ -91,5 +91,6 @@ public class CopyGraphOptions
     /// source storage to fetch large blobs.
     /// If FindSuccessorsAsync is not set, FetchableExtensions.GetSuccessorsAsync will be used.
     /// </summary>
-    public Func<IFetchable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>> FindSuccessorsAsync { get; set; } = FetchableExtensions.GetSuccessorsAsync;
+    public Func<IFetchable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>> FindSuccessorsAsync { get; set; }
+        = FetchableExtensions.GetSuccessorsAsync;
 }
