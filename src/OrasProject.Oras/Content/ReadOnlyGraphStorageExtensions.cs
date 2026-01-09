@@ -71,7 +71,9 @@ public static class ReadOnlyGraphStorageExtensions
         var copyTasks = new List<Task>();
         foreach (var root in roots)
         {
-            copyTasks.Add(Task.Run(() => src.CopyGraphAsync(dst, root, proxy, opts, limiter, copied, cancellationToken), cancellationToken));
+            copyTasks.Add(Task.Run(
+                () => src.CopyGraphAsync(dst, root, proxy, opts, limiter, copied, cancellationToken),
+                cancellationToken));
         }
 
         await Task.WhenAll(copyTasks).ConfigureAwait(false);
@@ -122,7 +124,8 @@ public static class ReadOnlyGraphStorageExtensions
                 continue;
             }
 
-            var findPredecessors = opts.FindPredecessors ?? ((s, desc, ct) => s.GetPredecessorsAsync(desc, ct));
+            var findPredecessors = opts.FindPredecessors
+                ?? ((s, desc, ct) => s.GetPredecessorsAsync(desc, ct));
             var predecessors = await findPredecessors(src, currentNode, cancellationToken).ConfigureAwait(false);
             var predecessorList = predecessors.ToList();
             if (predecessorList.Count == 0)

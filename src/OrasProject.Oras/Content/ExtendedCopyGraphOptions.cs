@@ -26,8 +26,6 @@ public class ExtendedCopyGraphOptions : CopyGraphOptions
 {
     private int _depth;
 
-
-
     /// <summary>
     /// Depth limits the maximum depth of the directed acyclic graph (DAG) that
     /// will be extended-copied.
@@ -44,5 +42,9 @@ public class ExtendedCopyGraphOptions : CopyGraphOptions
     /// FindPredecessors finds the predecessors of the current node.
     /// Defaults to calling <see cref="IPredecessorFindable.GetPredecessorsAsync"/>.
     /// </summary>
-    public Func<IPredecessorFindable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>>? FindPredecessors { get; set; }
+    public Func<IPredecessorFindable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>>? FindPredecessors
+    {
+        get;
+        set;
+    }
 }
