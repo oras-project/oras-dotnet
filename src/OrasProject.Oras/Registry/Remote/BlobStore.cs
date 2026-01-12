@@ -194,6 +194,91 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     }
 
     /// <summary>
+    /// GetBlobLocationAsync retrieves the location URL for a blob without downloading its content.
+    /// Most OCI 1.0 compatible registries return a redirect with a blob location in the header
+    /// instead of returning the content directly on a /v2/blobs/sha256:<digest> request.
+    /// This method makes an authenticated request without following redirects to capture the location URL.
+    /// 
+    /// Returns null if the registry returns the content directly (HTTP 200) instead of a redirect.
+    /// </summary>
+    /// <param name="target">The descriptor identifying the blob</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The blob location URL if a redirect is returned, otherwise null</returns>
+    /// <exception cref="HttpIOException">Thrown when the response is invalid</exception>
+    /// <exception cref="NotFoundException">Thrown when the blob is not found</exception>
+    /// <exception cref="Exceptions.ResponseException">Thrown when the request fails</exception>
+    public async Task<Uri?> GetBlobLocationAsync(Descriptor target, CancellationToken cancellationToken = default)
+    {
+        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
+        var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
+        var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
+        
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        using var response = await Repository.Options.Client.SendAsync(originalRequest: request, allowAutoRedirect: false, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        switch (response.StatusCode)
+        {
+            // Handle all HTTP redirect status codes for maximum registry compatibility.
+            // The OCI Distribution Spec doesn't mandate specific redirect codes - it only requires
+            // the final response to be 200 OK. However, real-world registries use redirects to offload
+            // blob storage to cloud backends (Azure Blob Storage, S3, GCS, etc.):
+            // - 307 (TemporaryRedirect): Most common (ACR, ECR, GCR) - preserves GET method
+            // - 302 (Found): Older registry implementations (pre-2016 Docker Registry v2)
+            // - 303 (SeeOther): Some CDN-backed registries - explicit "see other" semantics
+            // - 301/308 (Permanent): Rare, but HTTP spec allows them
+            // Supporting all redirect codes ensures compatibility across registry implementations.
+            case HttpStatusCode.MovedPermanently:       // 301
+            case HttpStatusCode.Found:                  // 302
+            case HttpStatusCode.SeeOther:               // 303
+            case HttpStatusCode.TemporaryRedirect:      // 307
+            case HttpStatusCode.PermanentRedirect:      // 308
+                {
+                    // Verify the digest in the response headers to ensure redirect points to correct blob
+                    response.VerifyContentDigest(target.Digest);
+
+                    // Get and validate the Location header
+                    var location = response.Headers.Location;
+                    if (location == null)
+                    {
+                        throw new HttpIOException(HttpRequestError.InvalidResponse,
+                            $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: redirect response missing Location header");
+                    }
+
+                    // Resolve relative URIs against the request URI
+                    if (!location.IsAbsoluteUri)
+                    {
+                        if (response.RequestMessage?.RequestUri == null)
+                        {
+                            throw new HttpIOException(HttpRequestError.InvalidResponse,
+                                "Cannot resolve relative redirect location: request URI is null");
+                        }
+                        location = new Uri(response.RequestMessage.RequestUri, location);
+                    }
+
+                    // Validate HTTPS unless PlainHttp is explicitly allowed
+                    if (!Repository.Options.PlainHttp && location.Scheme != "https")
+                    {
+                        throw new HttpIOException(HttpRequestError.InvalidResponse,
+                            $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: redirect location must use HTTPS, got {location.Scheme}://{location.Host}");
+                    }
+
+                    return location;
+                }
+
+            case HttpStatusCode.OK:
+                // Registry returned content directly, no redirect
+                response.VerifyContentDigest(target.Digest);
+                return null;
+
+            case HttpStatusCode.NotFound:
+                throw new NotFoundException($"{target.Digest}: not found");
+
+            default:
+                throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
     /// DeleteAsync deletes the content identified by the given descriptor.
     /// </summary>
     /// <param name="target"></param>

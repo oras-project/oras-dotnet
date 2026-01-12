@@ -20,6 +20,33 @@ using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Tests.Remote.Util;
 
+/// <summary>
+/// Test-specific client that uses the same mocked HttpClient for both redirect and no-redirect scenarios.
+/// </summary>
+internal class TestClient : IClient
+{
+    private readonly HttpClient _mockClient;
+
+    public TestClient(HttpClient mockClient)
+    {
+        _mockClient = mockClient;
+    }
+
+    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken = default)
+    {
+        originalRequest.AddDefaultUserAgent();
+        return await _mockClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, bool allowAutoRedirect, CancellationToken cancellationToken = default)
+    {
+        originalRequest.AddDefaultUserAgent();
+        // For testing, we use the same mock client regardless of redirect setting
+        // The mock handler will return the appropriate response (redirect or direct)
+        return await _mockClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
+    }
+}
+
 public class Util
 {
     /// <summary>
@@ -47,13 +74,15 @@ public class Util
     public static IClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
     {
         var moqHandler = CustomHandler(func);
-        return new PlainClient(new HttpClient(moqHandler.Object));
+        var httpClient = new HttpClient(moqHandler.Object);
+        return new TestClient(httpClient);
     }
 
     public static IClient CustomClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
     {
         var moqHandler = CustomHandler(func);
-        return new PlainClient(new HttpClient(moqHandler.Object));
+        var httpClient = new HttpClient(moqHandler.Object);
+        return new TestClient(httpClient);
     }
 
     public static Mock<DelegatingHandler> CustomHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)

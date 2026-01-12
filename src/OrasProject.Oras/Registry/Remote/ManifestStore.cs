@@ -455,4 +455,17 @@ public class ManifestStore(Repository repository) : IManifestStore
         await UpdateReferrersIndex(subject, new Referrers.ReferrerChange(target, Referrers.ReferrerOperation.Delete), cancellationToken)
             .ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// GetBlobLocationAsync is not supported for manifests.
+    /// Use this method on <see cref="IBlobStore"/> for blob content instead.
+    /// </summary>
+    /// <param name="target">The descriptor identifying the manifest</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Never returns; always throws</returns>
+    /// <exception cref="NotSupportedException">Always thrown as this operation is not supported for manifests</exception>
+    public Task<Uri?> GetBlobLocationAsync(Descriptor target, CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException("GetBlobLocationAsync is not supported for manifests. Use this method on IBlobStore for blob content instead.");
+    }
 }

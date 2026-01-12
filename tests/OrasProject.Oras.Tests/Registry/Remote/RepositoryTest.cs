@@ -1133,6 +1133,109 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     }
 
     /// <summary>
+    /// BlobStore_GetBlobLocationAsync tests the GetBlobLocationAsync method of BlobStore.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task BlobStore_GetBlobLocationAsync()
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "test",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+        var redirectLocation = "https://myregistrystorage.blob.core.windows.net/test";
+        
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                // Return a redirect response with Location header and Docker-Content-Digest
+                res.StatusCode = HttpStatusCode.TemporaryRedirect; // 307
+                res.Headers.Location = new Uri(redirectLocation);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                return res;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new BlobStore(repo);
+        var uri = await store.GetBlobLocationAsync(blobDesc, cancellationToken);
+        Assert.NotNull(uri);
+        Assert.Equal(redirectLocation, uri.ToString());
+    }
+
+    /// <summary>
+    /// BlobStore_GetBlobLocationAsync_NoRedirect tests GetBlobLocationAsync when registry returns content directly (no redirect).
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task BlobStore_GetBlobLocationAsync_NoRedirect()
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "test",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+        
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                // Return content directly (HTTP 200) without redirect
+                res.StatusCode = HttpStatusCode.OK;
+                res.Content = new ByteArrayContent(blob);
+                res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                return res;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new BlobStore(repo);
+        var uri = await store.GetBlobLocationAsync(blobDesc, cancellationToken);
+        Assert.Null(uri); // Should return null when no redirect
+    }
+
+    /// <summary>
     /// BlobStore_PushAsync tests the PushAsync method of the BlobStore.
     /// </summary>
     /// <returns></returns>

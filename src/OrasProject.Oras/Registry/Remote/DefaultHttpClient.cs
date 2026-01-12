@@ -17,12 +17,24 @@ using System.Net.Http;
 namespace OrasProject.Oras.Registry.Remote;
 
 /// <summary>
-/// DefaultHttpClient is to provide a single lazy-loading HttpClient across the application context to reduce the creation of http client pools
+/// DefaultHttpClient provides singleton lazy-loaded HttpClient instances to reduce connection pool creation overhead.
 /// </summary>
 internal class DefaultHttpClient
 {
     private static readonly Lazy<HttpClient> _client =
         new(() => new HttpClient());
 
+    /// <summary>
+    /// Singleton HttpClient instance configured to not follow redirects.
+    /// Used for scenarios where redirect locations need to be captured (e.g., blob location URLs).
+    /// </summary>
+    private static readonly Lazy<HttpClient> _noRedirectClient =
+        new(() => new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }));
+
     internal static HttpClient Instance => _client.Value;
+
+    /// <summary>
+    /// Gets the HttpClient instance configured to not follow redirects.
+    /// </summary>
+    internal static HttpClient NoRedirectInstance => _noRedirectClient.Value;
 }

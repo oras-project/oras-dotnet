@@ -26,9 +26,26 @@ public class PlainClient(HttpClient? httpClient = null) : IClient
 {
     private readonly HttpClient _client = httpClient ?? DefaultHttpClient.Instance;
 
+    /// <summary>
+    /// HttpClient configured to not follow redirects.
+    /// Used for scenarios where we need to capture redirect locations (e.g., blob location URLs).
+    /// </summary>
+    private readonly HttpClient _noRedirectClient = DefaultHttpClient.NoRedirectInstance;
+
     public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken = default)
     {
         originalRequest.AddDefaultUserAgent();
         return await _client.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage originalRequest,
+        bool allowAutoRedirect,
+        CancellationToken cancellationToken = default
+    )
+    {
+        originalRequest.AddDefaultUserAgent();
+        var client = allowAutoRedirect ? _client : _noRedirectClient;
+        return await client.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
     }
 }
