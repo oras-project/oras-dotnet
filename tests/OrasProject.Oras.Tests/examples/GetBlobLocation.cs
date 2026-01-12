@@ -78,7 +78,7 @@ public static class GetBlobLocation
         {
             Console.WriteLine("Registry returns blob content directly (no redirect)");
             // In this case, you should use the regular FetchAsync method
-            var stream = await repo.Blobs.FetchAsync(descriptor);
+            await using var stream = await repo.Blobs.FetchAsync(descriptor);
         }
     }
 }

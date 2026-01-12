@@ -17,7 +17,9 @@ using System.Net.Http;
 namespace OrasProject.Oras.Registry.Remote;
 
 /// <summary>
-/// DefaultHttpClient provides singleton lazy-loaded HttpClient instances to reduce connection pool creation overhead.
+/// DefaultHttpClient is to provide singleton lazy-loading HttpClient instances across the application context
+/// to reduce the creation of HTTP client connection pools.
+/// Provides both a standard instance and a no-redirect instance for scenarios requiring redirect control.
 /// </summary>
 internal class DefaultHttpClient
 {

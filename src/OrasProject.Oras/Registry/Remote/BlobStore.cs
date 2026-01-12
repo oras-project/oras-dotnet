@@ -200,6 +200,8 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// This method makes an authenticated request without following redirects to capture the location URL.
     /// 
     /// Returns null if the registry returns the content directly (HTTP 200) instead of a redirect.
+    /// 
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#pulling-blobs
     /// </summary>
     /// <param name="target">The descriptor identifying the blob</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -214,7 +216,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        using var response = await Repository.Options.Client.SendAsync(originalRequest: request, allowAutoRedirect: false, cancellationToken: cancellationToken).ConfigureAwait(false);
+        using var response = await Repository.Options.Client.SendAsync(request, allowAutoRedirect: false, cancellationToken).ConfigureAwait(false);
 
         switch (response.StatusCode)
         {
@@ -244,15 +246,12 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
                             $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: redirect response missing Location header");
                     }
 
-                    // Resolve relative URIs against the request URI
+                    // Require absolute URI to avoid cross-domain ambiguity.
+                    // This constraint may be removed in the future if needed.
                     if (!location.IsAbsoluteUri)
                     {
-                        if (response.RequestMessage?.RequestUri == null)
-                        {
-                            throw new HttpIOException(HttpRequestError.InvalidResponse,
-                                "Cannot resolve relative redirect location: request URI is null");
-                        }
-                        location = new Uri(response.RequestMessage.RequestUri, location);
+                        throw new HttpIOException(HttpRequestError.InvalidResponse,
+                            $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: redirect Location header must be an absolute URI");
                     }
 
                     // Validate HTTPS unless PlainHttp is explicitly allowed

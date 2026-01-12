@@ -24,5 +24,5 @@ public interface IClient
 {
     Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken = default);
 
-    Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, bool allowAutoRedirect = true, CancellationToken cancellationToken = default);
+    Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, bool allowAutoRedirect, CancellationToken cancellationToken = default);
 }

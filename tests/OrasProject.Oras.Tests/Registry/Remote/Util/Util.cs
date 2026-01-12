@@ -23,6 +23,13 @@ namespace OrasProject.Oras.Tests.Remote.Util;
 /// <summary>
 /// Test-specific client that uses the same mocked HttpClient for both redirect and no-redirect scenarios.
 /// </summary>
+/// <remarks>
+/// <para>
+/// <strong>Important:</strong> This client does NOT actually test the difference in redirect behavior 
+/// between <c>allowAutoRedirect = true</c> and <c>allowAutoRedirect = false</c>. The mock HttpClient 
+/// behaves identically regardless of the <c>allowAutoRedirect</c> parameter value.
+/// </para>
+/// </remarks>
 internal class TestClient : IClient
 {
     private readonly HttpClient _mockClient;
@@ -41,8 +48,9 @@ internal class TestClient : IClient
     public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, bool allowAutoRedirect, CancellationToken cancellationToken = default)
     {
         originalRequest.AddDefaultUserAgent();
-        // For testing, we use the same mock client regardless of redirect setting
-        // The mock handler will return the appropriate response (redirect or direct)
+        // For testing, we use the same mock client regardless of redirect setting.
+        // The mock handler determines the response type (redirect or direct).
+        // This tests our code's handling of responses, not HttpClient's redirect behavior.
         return await _mockClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
     }
 }

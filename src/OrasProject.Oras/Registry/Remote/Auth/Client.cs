@@ -28,6 +28,25 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
+/// <summary>
+/// Client provides authenticated access to OCI registries with automatic token management.
+/// </summary>
+/// <param name="httpClient">
+/// Optional HttpClient to use for requests. If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
+/// <para>
+/// <strong>Important:</strong> This client is used for standard requests that follow redirects. 
+/// When redirect control is needed (e.g., for <c>GetBlobLocationAsync</c>), a separate singleton 
+/// HttpClient (<see cref="NoRedirectClient"/>) configured with <c>AllowAutoRedirect = false</c> 
+/// is always used. This no-redirect client is always <see cref="DefaultHttpClient.NoRedirectInstance"/>, 
+/// regardless of any custom <paramref name="httpClient"/> provided.
+/// </para>
+/// <para>
+/// This means custom HttpClient configurations (timeouts, proxy settings, custom headers, etc.) 
+/// will <strong>not</strong> apply to redirect-disabled requests.
+/// </para>
+/// </param>
+/// <param name="credentialProvider">Optional credential provider for registry authentication.</param>
+/// <param name="cache">Optional cache for storing authentication tokens.</param>
 public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null, ICache? cache = null)
     : IClient
 {
@@ -66,6 +85,12 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
 
     /// <summary>
     /// NoRedirectClient is an instance of HttpClient that is configured to not follow redirects.
+    /// Used for scenarios where we need to capture redirect locations (e.g., blob location URLs).
+    /// <para>
+    /// <strong>Note:</strong> This is always the singleton <see cref="DefaultHttpClient.NoRedirectInstance"/>, 
+    /// independent of any custom HttpClient provided to the constructor. Custom configurations 
+    /// (timeouts, proxy, headers) from a user-provided HttpClient will not apply to this client.
+    /// </para>
     /// </summary>
     internal HttpClient NoRedirectClient { get; } = DefaultHttpClient.NoRedirectInstance;
 
@@ -533,7 +558,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
                     }
 
                     // Attempt to send request when the scope changes and a token cache hits
-                    var newKey = string.Join(" ", newScopes.Select(newScope => newScope));
+                    var newKey = string.Join(" ", newScopes);
                     if (newKey != attemptedKey &&
                         Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
                     {
