@@ -71,7 +71,9 @@ public static class ReadOnlyGraphStorageExtensions
         var copyTasks = new List<Task>();
         foreach (var root in roots)
         {
-            copyTasks.Add(Task.Run(() => src.CopyGraphAsync(dst, root, proxy, opts, limiter, copied, cancellationToken), cancellationToken));
+            copyTasks.Add(Task.Run(
+                () => src.CopyGraphAsync(dst, root, proxy, opts, limiter, copied, cancellationToken),
+                cancellationToken));
         }
 
         await Task.WhenAll(copyTasks).ConfigureAwait(false);

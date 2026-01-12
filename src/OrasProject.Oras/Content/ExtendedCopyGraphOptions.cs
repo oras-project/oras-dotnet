@@ -40,7 +40,11 @@ public class ExtendedCopyGraphOptions : CopyGraphOptions
 
     /// <summary>
     /// FindPredecessors finds the predecessors of the current node.
-    /// If FindPredecessors is null, the default implementation will be used.
+    /// Defaults to calling <see cref="IPredecessorFindable.GetPredecessorsAsync"/>.
     /// </summary>
-    public Func<IPredecessorFindable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>>? FindPredecessors { get; set; }
+    public Func<IPredecessorFindable, Descriptor, CancellationToken, Task<IEnumerable<Descriptor>>>? FindPredecessors
+    {
+        get;
+        set;
+    }
 }

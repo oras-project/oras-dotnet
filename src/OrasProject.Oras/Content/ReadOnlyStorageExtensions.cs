@@ -29,7 +29,11 @@ public static class ReadOnlyStorageExtensions
     /// <param name="dst"></param>
     /// <param name="node"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, CancellationToken cancellationToken = default)
+    public static async Task CopyGraphAsync(
+        this IReadOnlyStorage src,
+        IStorage dst,
+        Descriptor node,
+        CancellationToken cancellationToken = default)
     {
         var copyGraphOptions = new CopyGraphOptions();
         var proxy = new Proxy()
@@ -49,7 +53,12 @@ public static class ReadOnlyStorageExtensions
     /// <param name="node"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
+    public static async Task CopyGraphAsync(
+        this IReadOnlyStorage src,
+        IStorage dst,
+        Descriptor node,
+        CopyGraphOptions copyGraphOptions,
+        CancellationToken cancellationToken = default)
     {
         var proxy = new Proxy()
         {
@@ -69,7 +78,13 @@ public static class ReadOnlyStorageExtensions
     /// <param name="proxy"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
+    internal static async Task CopyGraphAsync(
+        this IReadOnlyStorage src,
+        IStorage dst,
+        Descriptor node,
+        Proxy proxy,
+        CopyGraphOptions copyGraphOptions,
+        CancellationToken cancellationToken = default)
     {
         using var limiter = new SemaphoreSlim(copyGraphOptions.Concurrency, copyGraphOptions.Concurrency);
         var copied = new ConcurrentDictionary<BasicDescriptor, bool>();
@@ -87,7 +102,15 @@ public static class ReadOnlyStorageExtensions
     /// <param name="limiter"></param>
     /// <param name="copied"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, IStorage dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, ConcurrentDictionary<BasicDescriptor, bool> copied, CancellationToken cancellationToken)
+    internal static async Task CopyGraphAsync(
+        this IReadOnlyStorage src,
+        IStorage dst,
+        Descriptor node,
+        Proxy proxy,
+        CopyGraphOptions copyGraphOptions,
+        SemaphoreSlim limiter,
+        ConcurrentDictionary<BasicDescriptor, bool> copied,
+        CancellationToken cancellationToken)
     {
         if (Descriptor.IsNullOrInvalid(node))
         {
@@ -131,7 +154,9 @@ public static class ReadOnlyStorageExtensions
         var childNodesCopies = new List<Task>();
         foreach (var childNode in successors)
         {
-            childNodesCopies.Add(Task.Run(() => src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, copied, cancellationToken)));
+            childNodesCopies.Add(Task.Run(
+                () => src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, copied, cancellationToken),
+                cancellationToken));
         }
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
 

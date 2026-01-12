@@ -29,7 +29,7 @@ public class ExtendedCopyTest
     public async Task CanExtendedCopyGraphWithReferrers()
     {
         var sourceTarget = new MemoryStore();
-        var cancellationToken = new CancellationToken();
+        var cancellationToken = CancellationToken.None;
         var blobs = new List<byte[]>();
         var descs = new List<Descriptor>();
 
@@ -102,7 +102,7 @@ public class ExtendedCopyTest
     public async Task CanExtendedCopyGraphWithDepthLimit()
     {
         var sourceTarget = new MemoryStore();
-        var cancellationToken = new CancellationToken();
+        var cancellationToken = CancellationToken.None;
         var blobs = new List<byte[]>();
         var descs = new List<Descriptor>();
 
@@ -184,7 +184,7 @@ public class ExtendedCopyTest
     public async Task CanExtendedCopyGraphWithCustomFindPredecessors()
     {
         var sourceTarget = new MemoryStore();
-        var cancellationToken = new CancellationToken();
+        var cancellationToken = CancellationToken.None;
         var blobs = new List<byte[]>();
         var descs = new List<Descriptor>();
         var findPredecessorsCalled = 0;
@@ -263,7 +263,7 @@ public class ExtendedCopyTest
     public async Task CanExtendedCopyGraphWithMultipleReferrers()
     {
         var sourceTarget = new MemoryStore();
-        var cancellationToken = new CancellationToken();
+        var cancellationToken = CancellationToken.None;
         var blobs = new List<byte[]>();
         var descs = new List<Descriptor>();
 
@@ -346,7 +346,7 @@ public class ExtendedCopyTest
     public async Task CanExtendedCopyGraphWithCallbacks()
     {
         var sourceTarget = new MemoryStore();
-        var cancellationToken = new CancellationToken();
+        var cancellationToken = CancellationToken.None;
         var blobs = new List<byte[]>();
         var descs = new List<Descriptor>();
         var preCopyCount = 0;
@@ -444,7 +444,7 @@ public class ExtendedCopyTest
     public async Task CanExtendedCopyGraphWithNoPredecessors()
     {
         var sourceTarget = new MemoryStore();
-        var cancellationToken = new CancellationToken();
+        var cancellationToken = CancellationToken.None;
         var blobs = new List<byte[]>();
         var descs = new List<Descriptor>();
 
@@ -509,7 +509,7 @@ public class ExtendedCopyTest
     [Fact]
     public async Task ExtendedCopyGraphAsync_SrcIsNull_ThrowsError()
     {
-        var cancellationToken = new CancellationToken();
+        var cancellationToken = CancellationToken.None;
         IReadOnlyGraphStorage? sourceTarget = null;
         var destinationTarget = new MemoryStore();
         var node = new Descriptor
@@ -530,7 +530,7 @@ public class ExtendedCopyTest
     [Fact]
     public async Task ExtendedCopyGraphAsync_DstIsNull_ThrowsError()
     {
-        var cancellationToken = new CancellationToken();
+        var cancellationToken = CancellationToken.None;
         var sourceTarget = new MemoryStore();
         IStorage? destinationTarget = null;
         var node = new Descriptor
