@@ -589,7 +589,8 @@ public class ExtendedCopyTest
         // Push all blobs to source and tag the manifest
         for (var i = 0; i < blobs.Count; i++)
         {
-            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+            using var stream = new MemoryStream(blobs[i]);
+            await sourceTarget.PushAsync(descs[i], stream, cancellationToken);
         }
         var srcRef = "source:v1";
         await sourceTarget.TagAsync(descs[2], srcRef, cancellationToken);
@@ -682,7 +683,8 @@ public class ExtendedCopyTest
         // Push all blobs to source and tag the manifest
         for (var i = 0; i < blobs.Count; i++)
         {
-            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+            using var stream = new MemoryStream(blobs[i]);
+            await sourceTarget.PushAsync(descs[i], stream, cancellationToken);
         }
         var srcRef = "artifact:v1";
         await sourceTarget.TagAsync(descs[2], srcRef, cancellationToken);
