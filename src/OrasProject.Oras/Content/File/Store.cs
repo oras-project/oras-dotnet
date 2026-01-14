@@ -70,6 +70,9 @@ public class Store : IDisposable
     private readonly IStorage _fallbackStorage;
     private readonly ITagStore _resolver;
 
+    private readonly SemaphoreSlim _operationSemaphore = new(1, 1); // Protects against concurrent Close()
+    private int _operationCount; // Tracks active operations
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Store"/> class, using a default limited memory CAS
     /// as the fallback storage for contents without names.
@@ -117,46 +120,56 @@ public class Store : IDisposable
     /// <summary>
     /// Close closes the file store and cleans up all the temporary files used by it.
     /// The store cannot be used after being closed.
-    /// This function is not thread-safe.
     /// </summary>
     /// <exception cref="AggregateException">Thrown when one or more temporary files cannot be deleted.</exception>
     public void Close()
     {
-        if (IsClosedSet())
+        _operationSemaphore.Wait();
+        try
         {
-            return;
-        }
-        SetClosed();
+            if (IsClosedSet())
+            {
+                return;
+            }
+            SetClosed();
 
-        var errors = new List<Exception>();
-        foreach (var kvp in _tmpFiles)
-        {
-            try
+            // Wait for all active operations to complete
+            SpinWait.SpinUntil(() => Volatile.Read(ref _operationCount) == 0);
+
+            var errors = new List<Exception>();
+            foreach (var kvp in _tmpFiles)
             {
-                System.IO.File.Delete(kvp.Key);
+                try
+                {
+                    System.IO.File.Delete(kvp.Key);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(ex);
+                }
             }
-            catch (Exception ex)
+
+            // Dispose all semaphores
+            foreach (var kvp in _nameToStatus)
             {
-                errors.Add(ex);
+                try
+                {
+                    kvp.Value.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(ex);
+                }
+            }
+
+            if (errors.Count > 0)
+            {
+                throw new AggregateException(errors);
             }
         }
-
-        // Dispose all semaphores
-        foreach (var kvp in _nameToStatus)
+        finally
         {
-            try
-            {
-                kvp.Value.Dispose();
-            }
-            catch (Exception ex)
-            {
-                errors.Add(ex);
-            }
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new AggregateException(errors);
+            _operationSemaphore.Release();
         }
     }
 
@@ -166,6 +179,7 @@ public class Store : IDisposable
     public void Dispose()
     {
         Close();
+        _operationSemaphore.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -199,55 +213,66 @@ public class Store : IDisposable
     /// <exception cref="FileNotFoundException">Thrown when the specified path does not exist.</exception>
     public async Task<Descriptor> AddAsync(string name, string mediaType, string path, CancellationToken cancellationToken = default)
     {
-        if (IsClosedSet())
-        {
-            throw new StoreClosedException();
-        }
-        if (string.IsNullOrEmpty(name))
-        {
-            throw new MissingNameException();
-        }
+        await _operationSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        Interlocked.Increment(ref _operationCount);
+        _operationSemaphore.Release();
 
-        // check the status of the name
-        var status = _nameToStatus.GetOrAdd(name, _ => new NameStatus());
-
-        // Serialize access per name to prevent duplicate expensive I/O
-        await status.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // Check if name already exists
-            if (status.Exists)
+            if (IsClosedSet())
             {
-                throw new DuplicateNameException($"{name}: duplicate name");
+                throw new StoreClosedException();
+            }
+            if (string.IsNullOrEmpty(name))
+            {
+                throw new MissingNameException();
             }
 
-            if (string.IsNullOrEmpty(path))
+            // check the status of the name
+            var status = _nameToStatus.GetOrAdd(name, _ => new NameStatus());
+
+            // Serialize access per name to prevent duplicate expensive I/O
+            await status.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                path = name;
-            }
+                // Check if name already exists
+                if (status.Exists)
+                {
+                    throw new DuplicateNameException($"{name}: duplicate name");
+                }
 
-            path = GetAbsolutePath(path);
-            // directory path is not yet supported.
-            var fileInfo = new FileInfo(path);
-            if (!fileInfo.Exists)
+                if (string.IsNullOrEmpty(path))
+                {
+                    path = name;
+                }
+
+                path = GetAbsolutePath(path);
+                // directory path is not yet supported.
+                var fileInfo = new FileInfo(path);
+                if (!fileInfo.Exists)
+                {
+                    throw new FileNotFoundException($"failed to get the file: {path}", path);
+                }
+
+                // Generate descriptor (file I/O happens here)
+                var descriptor = await GenerateDescriptorFromFileAsync(fileInfo, mediaType, path, cancellationToken).ConfigureAwait(false);
+
+                // Commit the name and annotations
+                descriptor.Annotations ??= new Dictionary<string, string>();
+                descriptor.Annotations[Descriptor.AnnotationTitle] = name;
+
+                status.Exists = true;
+
+                return descriptor;
+            }
+            finally
             {
-                throw new FileNotFoundException($"failed to get the file: {path}", path);
+                status.Semaphore.Release();
             }
-
-            // Generate descriptor (file I/O happens here)
-            var descriptor = await GenerateDescriptorFromFileAsync(fileInfo, mediaType, path, cancellationToken).ConfigureAwait(false);
-
-            // Commit the name and annotations
-            descriptor.Annotations ??= new Dictionary<string, string>();
-            descriptor.Annotations[Descriptor.AnnotationTitle] = name;
-
-            status.Exists = true;
-
-            return descriptor;
         }
         finally
         {
-            status.Semaphore.Release();
+            Interlocked.Decrement(ref _operationCount);
         }
     }
 
@@ -260,29 +285,40 @@ public class Store : IDisposable
     /// <exception cref="StoreClosedException">Thrown when the store has been closed.</exception>
     public async Task<bool> ExistsAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        if (IsClosedSet())
-        {
-            throw new StoreClosedException();
-        }
+        await _operationSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        Interlocked.Increment(ref _operationCount);
+        _operationSemaphore.Release();
 
-        // if the target has name, check if the name exists.
-        if (target.Annotations != null && target.Annotations.TryGetValue(Descriptor.AnnotationTitle, out var name))
+        try
         {
-            if (!string.IsNullOrEmpty(name) && !NameExists(name))
+            if (IsClosedSet())
             {
-                return false;
+                throw new StoreClosedException();
             }
-        }
 
-        // check if the content exists in the store
-        if (_digestToPath.ContainsKey(target.Digest))
+            // if the target has name, check if the name exists.
+            if (target.Annotations != null && target.Annotations.TryGetValue(Descriptor.AnnotationTitle, out var name))
+            {
+                if (!string.IsNullOrEmpty(name) && !NameExists(name))
+                {
+                    return false;
+                }
+            }
+
+            // check if the content exists in the store
+            if (_digestToPath.ContainsKey(target.Digest))
+            {
+                return true;
+            }
+
+            // if the content does not exist in the store,
+            // then fall back to the fallback storage.
+            return await _fallbackStorage.ExistsAsync(target, cancellationToken).ConfigureAwait(false);
+        }
+        finally
         {
-            return true;
+            Interlocked.Decrement(ref _operationCount);
         }
-
-        // if the content does not exist in the store,
-        // then fall back to the fallback storage.
-        return await _fallbackStorage.ExistsAsync(target, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -295,17 +331,28 @@ public class Store : IDisposable
     /// <exception cref="MissingReferenceException">Thrown when the reference is empty or null.</exception>
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
     {
-        if (IsClosedSet())
-        {
-            throw new StoreClosedException();
-        }
+        await _operationSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        Interlocked.Increment(ref _operationCount);
+        _operationSemaphore.Release();
 
-        if (string.IsNullOrEmpty(reference))
+        try
         {
-            throw new MissingReferenceException();
-        }
+            if (IsClosedSet())
+            {
+                throw new StoreClosedException();
+            }
 
-        return await _resolver.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(reference))
+            {
+                throw new MissingReferenceException();
+            }
+
+            return await _resolver.ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _operationCount);
+        }
     }
 
     /// <summary>
@@ -320,23 +367,34 @@ public class Store : IDisposable
     /// <exception cref="NotFoundException">Thrown when the manifest does not exist in the store.</exception>
     public async Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
     {
-        if (IsClosedSet())
-        {
-            throw new StoreClosedException();
-        }
+        await _operationSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        Interlocked.Increment(ref _operationCount);
+        _operationSemaphore.Release();
 
-        if (string.IsNullOrEmpty(reference))
+        try
         {
-            throw new MissingReferenceException();
-        }
+            if (IsClosedSet())
+            {
+                throw new StoreClosedException();
+            }
 
-        var exists = await ExistsAsync(descriptor, cancellationToken).ConfigureAwait(false);
-        if (!exists)
+            if (string.IsNullOrEmpty(reference))
+            {
+                throw new MissingReferenceException();
+            }
+
+            var exists = await ExistsAsync(descriptor, cancellationToken).ConfigureAwait(false);
+            if (!exists)
+            {
+                throw new NotFoundException($"{descriptor.Digest}: {descriptor.MediaType}");
+            }
+
+            await _resolver.TagAsync(descriptor, reference, cancellationToken).ConfigureAwait(false);
+        }
+        finally
         {
-            throw new NotFoundException($"{descriptor.Digest}: {descriptor.MediaType}");
+            Interlocked.Decrement(ref _operationCount);
         }
-
-        await _resolver.TagAsync(descriptor, reference, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
