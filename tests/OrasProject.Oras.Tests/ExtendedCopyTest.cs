@@ -544,4 +544,74 @@ public class ExtendedCopyTest
         await Assert.ThrowsAsync<ArgumentNullException>(
             async () => await sourceTarget.ExtendedCopyGraphAsync(destinationTarget!, node, opts, cancellationToken));
     }
+
+    /// <summary>
+    /// Can copy to a different destination reference using ExtendedCopyAsync.
+    /// Tests that the destination reference parameter works correctly.
+    /// </summary>
+    [Fact]
+    public async Task CanExtendedCopyAsyncWithDifferentDstRef()
+    {
+        var sourceTarget = new MemoryStore();
+        var cancellationToken = CancellationToken.None;
+        var blobs = new List<byte[]>();
+        var descs = new List<Descriptor>();
+
+        void AppendBlob(string mediaType, byte[] blob)
+        {
+            blobs.Add(blob);
+            var desc = new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = Digest.ComputeSha256(blob),
+                Size = blob.Length
+            };
+            descs.Add(desc);
+        }
+
+        void GenerateManifest(Descriptor config, List<Descriptor> layers)
+        {
+            var manifest = new Manifest
+            {
+                Config = config,
+                Layers = layers
+            };
+            var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+            AppendBlob(MediaType.ImageManifest, manifestBytes);
+        }
+
+        byte[] GetBytes(string data) => Encoding.UTF8.GetBytes(data);
+
+        // Create artifact
+        AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
+        AppendBlob(MediaType.ImageLayer, GetBytes("layer1")); // blob 1
+        GenerateManifest(descs[0], descs.GetRange(1, 1)); // blob 2
+
+        // Push all blobs to source and tag the manifest
+        for (var i = 0; i < blobs.Count; i++)
+        {
+            await sourceTarget.PushAsync(descs[i], new MemoryStream(blobs[i]), cancellationToken);
+        }
+        var srcRef = "source:v1";
+        await sourceTarget.TagAsync(descs[2], srcRef, cancellationToken);
+
+        var destinationTarget = new MemoryStore();
+        var dstRef = "destination:v2";
+        var opts = new ExtendedCopyOptions();
+
+        var result = await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget, dstRef, opts, cancellationToken);
+
+        // Verify the result descriptor matches the manifest
+        Assert.Equal(descs[2].Digest, result.Digest);
+
+        // Verify all content was copied
+        for (var i = 0; i < descs.Count; i++)
+        {
+            Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
+        }
+
+        // Verify the destination tag exists with correct reference
+        var resolvedDesc = await destinationTarget.ResolveAsync(dstRef, cancellationToken);
+        Assert.Equal(descs[2].Digest, resolvedDesc.Digest);
+    }
 }

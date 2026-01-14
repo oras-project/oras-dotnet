@@ -64,7 +64,7 @@ public static class ReadOnlyGraphTargetExtensions
 
         var node = await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
 
-        await ((IReadOnlyGraphStorage)src).ExtendedCopyGraphAsync(dst, node, opts, cancellationToken).ConfigureAwait(false);
+        await src.ExtendedCopyGraphAsync(dst, node, opts, cancellationToken).ConfigureAwait(false);
 
         await dst.TagAsync(node, dstRef, cancellationToken).ConfigureAwait(false);
 
