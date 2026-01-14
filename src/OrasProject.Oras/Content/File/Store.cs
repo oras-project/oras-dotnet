@@ -50,10 +50,15 @@ public class Store : IDisposable
     /// <summary>
     /// NameStatus contains a flag indicating if a name exists, and a SemaphoreSlim to serialize access per name.
     /// </summary>
-    private class NameStatus
+    private class NameStatus : IDisposable
     {
         public SemaphoreSlim Semaphore { get; } = new(1, 1);
         public bool Exists { get; set; }
+
+        public void Dispose()
+        {
+            Semaphore.Dispose();
+        }
     }
 
     private readonly string _workingDir; // the working directory of the file store
@@ -64,7 +69,6 @@ public class Store : IDisposable
 
     private readonly IStorage _fallbackStorage;
     private readonly ITagStore _resolver;
-    private readonly MemoryGraph _graph;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Store"/> class, using a default limited memory CAS
@@ -108,7 +112,6 @@ public class Store : IDisposable
         _workingDir = workingDirAbs;
         _fallbackStorage = fallbackStorage;
         _resolver = new MemoryTagStore();
-        _graph = new MemoryGraph();
     }
 
     /// <summary>
@@ -131,6 +134,19 @@ public class Store : IDisposable
             try
             {
                 System.IO.File.Delete(kvp.Key);
+            }
+            catch (Exception ex)
+            {
+                errors.Add(ex);
+            }
+        }
+
+        // Dispose all semaphores
+        foreach (var kvp in _nameToStatus)
+        {
+            try
+            {
+                kvp.Value.Dispose();
             }
             catch (Exception ex)
             {
