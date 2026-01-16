@@ -12,8 +12,11 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Registry.Remote.Exceptions;
 using System;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,7 +38,9 @@ public interface IBlobStore : IStorage, IResolvable, IDeletable, IReferenceFetch
     /// <param name="target">The descriptor identifying the blob</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The blob location URL if a redirect is returned, otherwise null</returns>
-    /// <exception cref="Exceptions.NotFoundException">Thrown when the blob is not found</exception>
-    /// <exception cref="Exceptions.ResponseException">Thrown when the request fails</exception>
+    /// <exception cref="ArgumentException">Thrown when the provided HttpClient has AllowAutoRedirect enabled</exception>
+    /// <exception cref="HttpIOException">Thrown when the response is invalid</exception>
+    /// <exception cref="NotFoundException">Thrown when the blob is not found</exception>
+    /// <exception cref="ResponseException">Thrown when the request fails</exception>
     Task<Uri?> GetBlobLocationAsync(Descriptor target, CancellationToken cancellationToken = default);
 }

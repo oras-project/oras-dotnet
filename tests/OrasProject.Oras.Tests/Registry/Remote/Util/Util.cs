@@ -20,41 +20,6 @@ using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Tests.Remote.Util;
 
-/// <summary>
-/// Test-specific client that uses the same mocked HttpClient for both redirect and no-redirect scenarios.
-/// </summary>
-/// <remarks>
-/// <para>
-/// <strong>Important:</strong> This client does NOT actually test the difference in redirect behavior 
-/// between <c>allowAutoRedirect = true</c> and <c>allowAutoRedirect = false</c>. The mock HttpClient 
-/// behaves identically regardless of the <c>allowAutoRedirect</c> parameter value.
-/// </para>
-/// </remarks>
-internal class TestClient : IClient
-{
-    private readonly HttpClient _mockClient;
-
-    public TestClient(HttpClient mockClient)
-    {
-        _mockClient = mockClient;
-    }
-
-    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken = default)
-    {
-        originalRequest.AddDefaultUserAgent();
-        return await _mockClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
-    }
-
-    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, bool allowAutoRedirect, CancellationToken cancellationToken = default)
-    {
-        originalRequest.AddDefaultUserAgent();
-        // For testing, we use the same mock client regardless of redirect setting.
-        // The mock handler determines the response type (redirect or direct).
-        // This tests our code's handling of responses, not HttpClient's redirect behavior.
-        return await _mockClient.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
-    }
-}
-
 public class Util
 {
     /// <summary>
@@ -79,18 +44,27 @@ public class Util
         return false;
     }
 
+    /// <summary>
+    /// Creates a PlainClient with a custom mock handler for testing.
+    /// </summary>
+    /// <param name="func">Function to handle HTTP requests and return responses.</param>
+    /// <returns>A PlainClient configured with the mock handler.</returns>
+    /// <remarks>
+    /// The same HttpClient is used for both redirect and no-redirect scenarios in tests.
+    /// The mock handler controls whether responses are redirects or direct, allowing tests
+    /// to verify response handling logic without depending on actual HttpClient redirect behavior.
+    /// </remarks>
     public static IClient CustomClient(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)
     {
         var moqHandler = CustomHandler(func);
         var httpClient = new HttpClient(moqHandler.Object);
-        return new TestClient(httpClient);
+        return new PlainClient(httpClient, httpClient);
     }
 
     public static IClient CustomClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
     {
         var moqHandler = CustomHandler(func);
-        var httpClient = new HttpClient(moqHandler.Object);
-        return new TestClient(httpClient);
+        return new PlainClient(new HttpClient(moqHandler.Object));
     }
 
     public static Mock<DelegatingHandler> CustomHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)

@@ -1626,4 +1626,79 @@ public class ClientTest
             ItExpr.Is<HttpRequestMessage>(r => r.RequestUri != null && r.RequestUri.Host == host && r.Headers.Authorization != null && r.Headers.Authorization.Scheme == "Basic" && r.Headers.Authorization.Parameter == basicToken),
             ItExpr.IsAny<CancellationToken>());
     }
+
+    /// <summary>
+    /// Tests Client with two HttpClient parameters for consistent configuration across redirect modes.
+    /// </summary>
+    [Fact]
+    public async Task Client_WithTwoHttpClients_AppliesConfigurationToBoth()
+    {
+        var baseUrl = "https://example.com";
+        var expectedRedirectLocation = new Uri("https://storage.example.com/blob");
+
+        // Create mock handlers
+        var mockHandlerWithRedirect = new Mock<HttpMessageHandler>();
+        var mockHandlerNoRedirect = new Mock<HttpMessageHandler>();
+
+        mockHandlerWithRedirect.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = new HttpRequestMessage() });
+
+        mockHandlerNoRedirect.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync((HttpRequestMessage req, CancellationToken ct) =>
+            {
+                if (req.RequestUri?.AbsolutePath == "/redirect")
+                {
+                    var response = new HttpResponseMessage(HttpStatusCode.TemporaryRedirect)
+                    {
+                        RequestMessage = req
+                    };
+                    response.Headers.Location = expectedRedirectLocation;
+                    return response;
+                }
+                return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req };
+            });
+
+        // Create HttpClients with custom timeout configuration
+        var httpClientWithRedirect = new HttpClient(mockHandlerWithRedirect.Object)
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
+        var httpClientNoRedirect = new HttpClient(mockHandlerNoRedirect.Object)
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
+
+        // Create Client with both HttpClients
+        var client = new Client(
+            httpClient: httpClientWithRedirect,
+            noRedirectHttpClient: httpClientNoRedirect,
+            credentialProvider: null,
+            cache: null);
+
+        // Test standard request (follows redirects)
+        var standardResponse = await client.SendAsync(
+            new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/test"),
+            CancellationToken.None);
+        Assert.Equal(HttpStatusCode.OK, standardResponse.StatusCode);
+
+        // Test no-redirect request (captures redirect location)
+        var noRedirectResponse = await client.SendAsync(
+            new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/redirect"),
+            allowAutoRedirect: false,
+            CancellationToken.None);
+        Assert.Equal(HttpStatusCode.TemporaryRedirect, noRedirectResponse.StatusCode);
+        Assert.Equal(expectedRedirectLocation, noRedirectResponse.Headers.Location);
+
+        // Verify both clients were used with the custom timeout configuration
+        Assert.Equal(TimeSpan.FromSeconds(30), client.BaseClient.Timeout);
+        Assert.Equal(TimeSpan.FromSeconds(30), client.NoRedirectClient.Timeout);
+    }
 }

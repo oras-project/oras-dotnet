@@ -31,24 +31,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 /// <summary>
 /// Client provides authenticated access to OCI registries with automatic token management.
 /// </summary>
-/// <param name="httpClient">
-/// Optional HttpClient to use for requests. If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
-/// <para>
-/// <strong>Important:</strong> This client is used for standard requests that follow redirects. 
-/// When redirect control is needed (e.g., for <c>GetBlobLocationAsync</c>), a separate singleton 
-/// HttpClient (<see cref="NoRedirectClient"/>) configured with <c>AllowAutoRedirect = false</c> 
-/// is always used. This no-redirect client is always <see cref="DefaultHttpClient.NoRedirectInstance"/>, 
-/// regardless of any custom <paramref name="httpClient"/> provided.
-/// </para>
-/// <para>
-/// This means custom HttpClient configurations (timeouts, proxy settings, custom headers, etc.) 
-/// will <strong>not</strong> apply to redirect-disabled requests.
-/// </para>
-/// </param>
-/// <param name="credentialProvider">Optional credential provider for registry authentication.</param>
-/// <param name="cache">Optional cache for storing authentication tokens.</param>
-public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null, ICache? cache = null)
-    : IClient
+public class Client : IClient
 {
     #region private members
     /// <summary>
@@ -64,7 +47,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// Cache used for storing and retrieving authentication tokens
     /// to optimize remote registry operations.
     /// </summary>
-    private ICache? _cache = cache;
+    private ICache? _cache;
 
     /// <summary>
     /// Object used for locking during cache initialization.
@@ -73,26 +56,69 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     #endregion
 
     /// <summary>
+    /// Initializes a new instance of the Client class.
+    /// </summary>
+    /// <param name="httpClient">
+    /// Optional HttpClient to use for standard requests that follow redirects.
+    /// If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
+    /// </param>
+    /// <param name="credentialProvider">Optional credential provider for registry authentication.</param>
+    /// <param name="cache">Optional cache for storing authentication tokens.</param>
+    public Client(
+        HttpClient? httpClient = null,
+        ICredentialProvider? credentialProvider = null,
+        ICache? cache = null)
+        : this(httpClient, null, credentialProvider, cache)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the Client class with separate HttpClient instances for redirect control.
+    /// </summary>
+    /// <param name="httpClient">
+    /// Optional HttpClient to use for standard requests that follow redirects.
+    /// If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
+    /// </param>
+    /// <param name="noRedirectHttpClient">
+    /// Optional HttpClient configured with <c>AllowAutoRedirect = false</c> for capturing redirect locations.
+    /// If not provided, uses <see cref="DefaultHttpClient.NoRedirectInstance"/>.
+    /// <para>
+    /// <strong>Advanced Usage:</strong> To apply consistent HTTP configuration (timeouts, proxy, headers) 
+    /// across both redirect and no-redirect scenarios, provide both <paramref name="httpClient"/> and 
+    /// <paramref name="noRedirectHttpClient"/> with the same base configuration but different redirect settings.
+    /// This is useful with IHttpClientFactory or custom HttpClient management.
+    /// </para>
+    /// </param>
+    /// <param name="credentialProvider">Optional credential provider for registry authentication.</param>
+    /// <param name="cache">Optional cache for storing authentication tokens.</param>
+    public Client(
+        HttpClient? httpClient,
+        HttpClient? noRedirectHttpClient,
+        ICredentialProvider? credentialProvider,
+        ICache? cache)
+    {
+        CredentialProvider = credentialProvider;
+        _cache = cache;
+        BaseClient = httpClient ?? DefaultHttpClient.Instance;
+        NoRedirectClient = noRedirectHttpClient ?? DefaultHttpClient.NoRedirectInstance;
+    }
+
+    /// <summary>
     /// CredentialProvider provides the mechanism to retrieve
     /// credentials for accessing remote registries.
     /// </summary>
-    public ICredentialProvider? CredentialProvider { get; init; } = credentialProvider;
+    public ICredentialProvider? CredentialProvider { get; init; }
 
     /// <summary>
-    /// BaseClient is an instance of HttpClient to send http requests
+    /// BaseClient is an instance of HttpClient to send http requests that follow redirects.
     /// </summary>
-    public HttpClient BaseClient { get; } = httpClient ?? DefaultHttpClient.Instance;
+    public HttpClient BaseClient { get; }
 
     /// <summary>
-    /// NoRedirectClient is an instance of HttpClient that is configured to not follow redirects.
+    /// NoRedirectClient is an instance of HttpClient configured to not follow redirects.
     /// Used for scenarios where we need to capture redirect locations (e.g., blob location URLs).
-    /// <para>
-    /// <strong>Note:</strong> This is always the singleton <see cref="DefaultHttpClient.NoRedirectInstance"/>, 
-    /// independent of any custom HttpClient provided to the constructor. Custom configurations 
-    /// (timeouts, proxy, headers) from a user-provided HttpClient will not apply to this client.
-    /// </para>
     /// </summary>
-    internal HttpClient NoRedirectClient { get; } = DefaultHttpClient.NoRedirectInstance;
+    internal HttpClient NoRedirectClient { get; }
 
     /// <summary>
     /// Cache used for storing and retrieving authentication tokens.
@@ -209,7 +235,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     public Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage originalRequest,
         CancellationToken cancellationToken = default)
-        => SendAsyncCore(originalRequest, allowAutoRedirect: true, cancellationToken: cancellationToken);
+        => SendCoreAsync(originalRequest, allowAutoRedirect: true, cancellationToken: cancellationToken);
 
     /// <summary>
     /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
@@ -228,7 +254,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         HttpRequestMessage originalRequest,
         bool allowAutoRedirect = true,
         CancellationToken cancellationToken = default)
-        => SendAsyncCore(originalRequest, allowAutoRedirect, cancellationToken);
+        => SendCoreAsync(originalRequest, allowAutoRedirect, cancellationToken);
 
     /// <summary>
     /// Fetches the Basic Authentication token for the specified registry.
@@ -466,7 +492,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// <returns>
     /// A task that represents the asynchronous operation. The task result contains the HTTP response message.
     /// </returns>
-    private async Task<HttpResponseMessage> SendAsyncCore(
+    private async Task<HttpResponseMessage> SendCoreAsync(
         HttpRequestMessage originalRequest,
         bool allowAutoRedirect,
         CancellationToken cancellationToken)

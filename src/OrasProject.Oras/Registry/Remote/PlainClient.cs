@@ -19,33 +19,47 @@ using OrasProject.Oras.Registry.Remote.Auth;
 namespace OrasProject.Oras.Registry.Remote;
 
 /// <summary>
-/// PlainClient, which implements IClient, provides a way to access default HttpClient.
+/// PlainClient, which implements IClient, provides a way to access default HttpClients.
 /// </summary>
-/// <param name="httpClient">
-/// Optional HttpClient to use for requests. If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
-/// <para>
-/// <strong>Important:</strong> When using the <see cref="SendAsync(HttpRequestMessage, bool, CancellationToken)"/> 
-/// overload with <c>allowAutoRedirect = false</c>, a separate singleton HttpClient 
-/// (<see cref="DefaultHttpClient.NoRedirectInstance"/>) configured with <c>AllowAutoRedirect = false</c> 
-/// is always used, regardless of the <paramref name="httpClient"/> parameter. This ensures proper redirect 
-/// control behavior for operations like <c>GetBlobLocationAsync</c>.
-/// </para>
-/// <para>
-/// This means custom HttpClient configurations (timeouts, proxy settings, custom headers, etc.) 
-/// will <strong>not</strong> apply to redirect-disabled requests.
-/// </para>
-/// </param>
-public class PlainClient(HttpClient? httpClient = null) : IClient
+public class PlainClient : IClient
 {
-    private readonly HttpClient _client = httpClient ?? DefaultHttpClient.Instance;
+    private readonly HttpClient _client;
+    private readonly HttpClient _noRedirectClient;
 
     /// <summary>
-    /// HttpClient configured to not follow redirects.
-    /// Used for scenarios where we need to capture redirect locations (e.g., blob location URLs).
-    /// This is always the singleton <see cref="DefaultHttpClient.NoRedirectInstance"/>, 
-    /// independent of any custom HttpClient provided to the constructor.
+    /// Initializes a new instance of the PlainClient class.
     /// </summary>
-    private readonly HttpClient _noRedirectClient = DefaultHttpClient.NoRedirectInstance;
+    /// <param name="httpClient">
+    /// Optional HttpClient to use for standard requests that follow redirects.
+    /// If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
+    /// </param>
+    public PlainClient(HttpClient? httpClient = null)
+        : this(httpClient, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the PlainClient class with separate HttpClient instances for redirect control.
+    /// </summary>
+    /// <param name="httpClient">
+    /// Optional HttpClient to use for standard requests that follow redirects.
+    /// If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
+    /// </param>
+    /// <param name="noRedirectHttpClient">
+    /// Optional HttpClient configured with <c>AllowAutoRedirect = false</c> for capturing redirect locations.
+    /// If not provided, uses <see cref="DefaultHttpClient.NoRedirectInstance"/>.
+    /// <para>
+    /// <strong>Advanced Usage:</strong> To apply consistent HTTP configuration (timeouts, proxy, headers) 
+    /// across both redirect and no-redirect scenarios, provide both <paramref name="httpClient"/> and 
+    /// <paramref name="noRedirectHttpClient"/> with the same base configuration but different redirect settings.
+    /// This is useful with IHttpClientFactory or custom HttpClient management.
+    /// </para>
+    /// </param>
+    public PlainClient(HttpClient? httpClient, HttpClient? noRedirectHttpClient)
+    {
+        _client = httpClient ?? DefaultHttpClient.Instance;
+        _noRedirectClient = noRedirectHttpClient ?? DefaultHttpClient.NoRedirectInstance;
+    }
 
     public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken = default)
     {

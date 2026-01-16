@@ -206,6 +206,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <param name="target">The descriptor identifying the blob</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The blob location URL if a redirect is returned, otherwise null</returns>
+    /// <exception cref="ArgumentException">Thrown when the provided HttpClient has AllowAutoRedirect enabled</exception>
     /// <exception cref="HttpIOException">Thrown when the response is invalid</exception>
     /// <exception cref="NotFoundException">Thrown when the blob is not found</exception>
     /// <exception cref="Exceptions.ResponseException">Thrown when the request fails</exception>
@@ -217,6 +218,18 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var response = await Repository.Options.Client.SendAsync(request, allowAutoRedirect: false, cancellationToken).ConfigureAwait(false);
+
+        // Validate that the client didn't follow redirects automatically.
+        // If response.RequestMessage.RequestUri differs from the original request URI,
+        // it means the provided HttpClient had AllowAutoRedirect=true, which breaks this API.
+        if (response.RequestMessage?.RequestUri != null && 
+            !string.Equals(response.RequestMessage.RequestUri.ToString(), url.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"The provided HttpClient automatically followed a redirect, which is incompatible with GetBlobLocationAsync. " +
+                $"When providing a custom 'noRedirectHttpClient' parameter, it must be configured with a HttpClientHandler " +
+                $"that has AllowAutoRedirect = false.");
+        }
 
         switch (response.StatusCode)
         {

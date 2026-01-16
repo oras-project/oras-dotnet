@@ -1110,6 +1110,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                     return new HttpResponseMessage(HttpStatusCode.BadRequest);
                 }
 
+                res.Content = new ByteArrayContent(blob);
                 res.Content.Headers.Add("Content-Type", "application/octet-stream");
                 res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 return res;
@@ -1146,7 +1147,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Digest = ComputeSha256(blob),
             Size = blob.Length
         };
-        var redirectLocation = "https://myregistrystorage.blob.core.windows.net/test";
+        var redirectLocation = "https://storage.example.com/blob";
         
         // Test case 1: Redirect with absolute URI
         HttpResponseMessage MockHandlerRedirect(HttpRequestMessage req, CancellationToken cancellationToken = default)
@@ -1344,6 +1345,59 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("absolute URI", exception.Message);
+    }
+
+    /// <summary>
+    /// BlobStore_GetBlobLocationAsync_AutoRedirectDetection tests that GetBlobLocationAsync
+    /// detects when a custom HttpClient is incorrectly configured with AllowAutoRedirect=true.
+    /// </summary>
+    [Fact]
+    public async Task BlobStore_GetBlobLocationAsync_AutoRedirectDetection()
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "test",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+        var redirectLocation = "https://storage.example.com/blob";
+        var cancellationToken = new CancellationToken();
+
+        // Create a mock handler that simulates an HttpClient that followed a redirect
+        // (by returning a response with a different RequestUri)
+        HttpResponseMessage MockHandlerFollowedRedirect(HttpRequestMessage req, CancellationToken ct = default)
+        {
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                // Simulate what happens when HttpClient follows a redirect:
+                // The response.RequestMessage.RequestUri will be the redirect target, not the original URL
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    RequestMessage = new HttpRequestMessage(HttpMethod.Get, redirectLocation),
+                    Content = new ByteArrayContent(blob)
+                };
+                response.Content.Headers.Add("Content-Type", "application/octet-stream");
+                response.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                return response;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandlerFollowedRedirect),
+            PlainHttp = true,
+        });
+        var store = new BlobStore(repo);
+
+        // Should throw ArgumentException when it detects the client followed redirects
+        var exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await store.GetBlobLocationAsync(blobDesc, cancellationToken));
+
+        Assert.Contains("AllowAutoRedirect = false", exception.Message);
     }
 
     /// <summary>
