@@ -12,6 +12,9 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Oci;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace OrasProject.Oras.Registry;
 
@@ -38,4 +41,27 @@ public interface IRepository : ITarget, IReferenceFetchable, IReferencePushable,
     /// Manifests provides access to the manifest CAS only.
     /// </summary>
     IManifestStore Manifests { get; }
+
+    /// <summary>
+    /// FetchReferrersAsync retrieves referrers for the given descriptor
+    /// and return a streaming of descriptors asynchronously for consumption.
+    /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
+    /// If the referrers are supported via an API, the state is updated accordingly.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    IAsyncEnumerable<Descriptor> FetchReferrersAsync(Descriptor descriptor, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// FetchReferrersAsync retrieves referrers for the given descriptor and artifact type
+    /// and return a streaming of descriptors asynchronously for consumption.
+    /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
+    /// If the referrers are supported via an API, the state is updated accordingly.
+    /// </summary>
+    /// <param name="descriptor"></param>
+    /// <param name="artifactType"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    IAsyncEnumerable<Descriptor> FetchReferrersAsync(Descriptor descriptor, string? artifactType, CancellationToken cancellationToken = default);
 }
