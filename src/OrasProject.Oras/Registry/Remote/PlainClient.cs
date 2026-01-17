@@ -72,9 +72,9 @@ public class PlainClient : IClient
     /// </summary>
     /// <param name="originalRequest">The HTTP request message to send.</param>
     /// <param name="allowAutoRedirect">
-    /// Whether to follow redirects automatically. When <c>false</c>, uses the singleton 
-    /// <see cref="DefaultHttpClient.NoRedirectInstance"/> to capture redirect locations 
-    /// without following them (e.g., for <c>GetBlobLocationAsync</c>).
+    /// Whether to follow redirects automatically. When <c>false</c>, uses the configured no-redirect
+    /// <see cref="HttpClient"/> instance (see constructors) to capture redirect locations without following
+    /// them (e.g., for <c>GetBlobLocationAsync</c>). By default, this is <see cref="DefaultHttpClient.NoRedirectInstance"/>.
     /// </param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the HTTP response message.</returns>

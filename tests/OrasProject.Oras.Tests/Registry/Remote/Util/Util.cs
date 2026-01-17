@@ -61,10 +61,21 @@ public class Util
         return new PlainClient(httpClient, httpClient);
     }
 
+    /// <summary>
+    /// Creates a PlainClient with a custom mock handler for testing.
+    /// </summary>
+    /// <param name="func">Function to handle HTTP requests and return responses.</param>
+    /// <returns>A PlainClient configured with the mock handler.</returns>
+    /// <remarks>
+    /// The same HttpClient is used for both redirect and no-redirect scenarios in tests.
+    /// The mock handler controls whether responses are redirects or direct, allowing tests
+    /// to verify response handling logic without depending on actual HttpClient redirect behavior.
+    /// </remarks>
     public static IClient CustomClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> func)
     {
         var moqHandler = CustomHandler(func);
-        return new PlainClient(new HttpClient(moqHandler.Object));
+        var httpClient = new HttpClient(moqHandler.Object);
+        return new PlainClient(httpClient, httpClient);
     }
 
     public static Mock<DelegatingHandler> CustomHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> func)

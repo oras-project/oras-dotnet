@@ -1645,14 +1645,17 @@ public class ClientTest
                 "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = new HttpRequestMessage() });
+            .Returns<HttpRequestMessage, CancellationToken>((req, ct) =>
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = new HttpRequestMessage() });
+            });
 
         mockHandlerNoRedirect.Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync((HttpRequestMessage req, CancellationToken ct) =>
+            .Returns<HttpRequestMessage, CancellationToken>((req, ct) =>
             {
                 if (req.RequestUri?.AbsolutePath == "/redirect")
                 {
@@ -1661,9 +1664,9 @@ public class ClientTest
                         RequestMessage = req
                     };
                     response.Headers.Location = expectedRedirectLocation;
-                    return response;
+                    return Task.FromResult(response);
                 }
-                return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req };
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req });
             });
 
         // Create HttpClients with custom timeout configuration
@@ -1684,18 +1687,22 @@ public class ClientTest
             cache: null);
 
         // Test standard request (follows redirects)
-        var standardResponse = await client.SendAsync(
+        using (var standardResponse = await client.SendAsync(
             new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/test"),
-            CancellationToken.None);
-        Assert.Equal(HttpStatusCode.OK, standardResponse.StatusCode);
+            CancellationToken.None))
+        {
+            Assert.Equal(HttpStatusCode.OK, standardResponse.StatusCode);
+        }
 
         // Test no-redirect request (captures redirect location)
-        var noRedirectResponse = await client.SendAsync(
+        using (var noRedirectResponse = await client.SendAsync(
             new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/redirect"),
             allowAutoRedirect: false,
-            CancellationToken.None);
-        Assert.Equal(HttpStatusCode.TemporaryRedirect, noRedirectResponse.StatusCode);
-        Assert.Equal(expectedRedirectLocation, noRedirectResponse.Headers.Location);
+            CancellationToken.None))
+        {
+            Assert.Equal(HttpStatusCode.TemporaryRedirect, noRedirectResponse.StatusCode);
+            Assert.Equal(expectedRedirectLocation, noRedirectResponse.Headers.Location);
+        }
 
         // Verify both clients were used with the custom timeout configuration
         Assert.Equal(TimeSpan.FromSeconds(30), client.BaseClient.Timeout);
