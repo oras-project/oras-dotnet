@@ -47,6 +47,7 @@ public interface IRepository : ITarget, IReferenceFetchable, IReferencePushable,
     /// and return a streaming of descriptors asynchronously for consumption.
     /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
     /// If the referrers are supported via an API, the state is updated accordingly.
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     /// </summary>
     /// <param name="descriptor"></param>
     /// <param name="cancellationToken"></param>
@@ -58,10 +59,12 @@ public interface IRepository : ITarget, IReferenceFetchable, IReferencePushable,
     /// and return a streaming of descriptors asynchronously for consumption.
     /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
     /// If the referrers are supported via an API, the state is updated accordingly.
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     /// </summary>
     /// <param name="descriptor"></param>
     /// <param name="artifactType"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     IAsyncEnumerable<Descriptor> FetchReferrersAsync(Descriptor descriptor, string? artifactType, CancellationToken cancellationToken = default);
+
 }

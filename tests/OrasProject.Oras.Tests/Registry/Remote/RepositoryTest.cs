@@ -3682,7 +3682,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     public void IRepository_FetchReferrersAsync_WithoutArtifactType_IsAccessibleThroughInterface()
     {
         // Arrange - create a minimal mock that returns NotFound for any request
-        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken ct = default) 
+        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken ct = default)
             => new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
 
         // Create a Repository instance assigned to IRepository interface type
@@ -3698,7 +3698,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         // Act & Assert - verify method is callable through interface (compilation check)
         // If the method doesn't exist on IRepository, this won't compile
         var methodCall = repo.FetchReferrersAsync(descriptor, CancellationToken.None);
-        
+
         // Verify the method returns the expected type
         Assert.IsAssignableFrom<IAsyncEnumerable<Descriptor>>(methodCall);
     }
@@ -3707,7 +3707,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     public void IRepository_FetchReferrersAsync_WithArtifactType_IsAccessibleThroughInterface()
     {
         // Arrange - create a minimal mock that returns NotFound for any request
-        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken ct = default) 
+        static HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken ct = default)
             => new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
 
         // Create a Repository instance assigned to IRepository interface type
@@ -3724,7 +3724,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         // Act & Assert - verify method is callable through interface (compilation check)
         // If the method doesn't exist on IRepository, this won't compile
         var methodCall = repo.FetchReferrersAsync(descriptor, artifactType, CancellationToken.None);
-        
+
         // Verify the method returns the expected type
         Assert.IsAssignableFrom<IAsyncEnumerable<Descriptor>>(methodCall);
     }
