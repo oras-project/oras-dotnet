@@ -190,7 +190,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             resp.StatusCode = HttpStatusCode.NotFound;
             return resp;
         }
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandler),
@@ -293,7 +293,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
         }
 
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandler),
@@ -362,7 +362,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandler),
@@ -439,7 +439,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandler),
@@ -509,7 +509,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandler),
@@ -604,7 +604,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
         }
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandler),
@@ -661,7 +661,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
             return new HttpResponseMessage(HttpStatusCode.Forbidden);
         }
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandler),
@@ -729,7 +729,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
             return new HttpResponseMessage(HttpStatusCode.Found);
         }
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandler),
@@ -839,7 +839,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
         }
 
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandler),
@@ -904,7 +904,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
         }
 
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(func),
@@ -2413,7 +2413,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             return resp;
         }
 
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test2"),
             Client = CustomClient(MockHandlerMockHandler),
@@ -2486,7 +2486,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             return resp;
         }
 
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test2"),
             Client = CustomClient(MockHandlerMockHandler),
@@ -2537,7 +2537,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             return resp;
         }
 
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandlerMockHandler),
@@ -2609,7 +2609,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             return resp;
         }
 
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test2"),
             Client = CustomClient(MockHandlerMockHandler),
@@ -2659,7 +2659,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             return resp;
         }
 
-        var repo = new Repository(new RepositoryOptions()
+        IRepository repo = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test2"),
             Client = CustomClient(MockHandlerMockHandler),
