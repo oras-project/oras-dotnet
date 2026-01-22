@@ -44,27 +44,45 @@ public interface IRepository : ITarget, IReferenceFetchable, IReferencePushable,
 
     /// <summary>
     /// FetchReferrersAsync retrieves referrers for the given descriptor
-    /// and return a streaming of descriptors asynchronously for consumption.
-    /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
+    /// and returns a stream of descriptors asynchronously for consumption.
+    /// If referrers API is not supported, the function falls back to a tag
+    /// schema for retrieving referrers.
     /// If the referrers are supported via an API, the state is updated accordingly.
     /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     /// </summary>
-    /// <param name="descriptor"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    IAsyncEnumerable<Descriptor> FetchReferrersAsync(Descriptor descriptor, CancellationToken cancellationToken = default);
+    /// <param name="descriptor">
+    /// The target descriptor whose referrers are to be retrieved.
+    /// </param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// An asynchronous enumerable of Descriptor objects representing the referrers.
+    /// </returns>
+    IAsyncEnumerable<Descriptor> FetchReferrersAsync(
+        Descriptor descriptor,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// FetchReferrersAsync retrieves referrers for the given descriptor and artifact type
-    /// and return a streaming of descriptors asynchronously for consumption.
-    /// If referrers API is not supported, the function falls back to a tag schema for retrieving referrers.
+    /// and returns a stream of descriptors asynchronously for consumption.
+    /// If referrers API is not supported, the function falls back to a tag
+    /// schema for retrieving referrers.
     /// If the referrers are supported via an API, the state is updated accordingly.
     /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     /// </summary>
-    /// <param name="descriptor"></param>
-    /// <param name="artifactType"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    IAsyncEnumerable<Descriptor> FetchReferrersAsync(Descriptor descriptor, string? artifactType, CancellationToken cancellationToken = default);
+    /// <param name="descriptor">
+    /// The target descriptor whose referrers are to be retrieved.
+    /// </param>
+    /// <param name="artifactType">
+    /// Filters referrers by the specified artifact type.
+    /// </param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// An asynchronous enumerable of Descriptor objects representing the referrers
+    /// filtered by artifact type.
+    /// </returns>
+    IAsyncEnumerable<Descriptor> FetchReferrersAsync(
+        Descriptor descriptor,
+        string? artifactType,
+        CancellationToken cancellationToken = default);
 
 }
