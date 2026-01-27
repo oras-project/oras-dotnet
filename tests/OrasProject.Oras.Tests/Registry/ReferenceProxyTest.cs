@@ -43,7 +43,7 @@ public class ReferenceProxyTest
         var sourceMock = new Mock<ITarget>();
         var srcRefMock = sourceMock.As<IReferenceFetchable>();
         srcRefMock
-            .Setup(s => s.FetchAsync("ref", It.IsAny<CancellationToken>()))
+            .Setup(s => s.FetchAsync("ref", It.IsAny<FetchOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((descriptor, (Stream)stream))
             .Verifiable();
 
@@ -82,7 +82,7 @@ public class ReferenceProxyTest
         var sourceMock = new Mock<ITarget>();
         var srcRefMock = sourceMock.As<IReferenceFetchable>();
         srcRefMock
-            .Setup(s => s.FetchAsync("ref", It.IsAny<CancellationToken>()))
+            .Setup(s => s.FetchAsync("ref", It.IsAny<FetchOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((descriptor, (Stream)stream))
             .Verifiable();
 
@@ -122,5 +122,46 @@ public class ReferenceProxyTest
         // Assert that the content exists in the reference proxy
         exists = await referenceProxy.ExistsAsync(desc, CancellationToken.None);
         Assert.True(exists);
+    }
+
+    [Fact]
+    public async Task FetchAsync_FetchContentByReference_WithOptions()
+    {
+        // Arrange
+        var data = new byte[] { 10, 20, 30 };
+        var descriptor = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = Digest.ComputeSha256(data),
+            Size = data.Length
+        };
+        using var stream = new MemoryStream(data);
+
+        var options = new FetchOptions
+        {
+            Headers = new Dictionary<string, IEnumerable<string>>
+            {
+                { "X-Custom-Header", new[] { "custom-value" } }
+            }
+        };
+
+        var sourceMock = new Mock<ITarget>();
+        var srcRefMock = sourceMock.As<IReferenceFetchable>();
+        srcRefMock
+            .Setup(s => s.FetchAsync("ref", options, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((descriptor, (Stream)stream))
+            .Verifiable();
+
+        var proxy = new Proxy { Cache = new MemoryStorage(), Source = sourceMock.Object };
+        var referenceProxy = new ReferenceProxy(srcRefMock.Object, proxy);
+
+        // Fetch by reference with options
+        var (desc, resultStream) = await referenceProxy.FetchAsync("ref", options, CancellationToken.None);
+
+        // Assert
+        var exists = await proxy.Cache.ExistsAsync(descriptor);
+        Assert.True(exists);
+        Assert.Equal(descriptor, desc);
+        srcRefMock.Verify();
     }
 }

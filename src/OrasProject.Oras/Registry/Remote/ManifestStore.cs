@@ -85,12 +85,29 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
+        => await FetchAsync(reference, new FetchOptions(), cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// Fetches the manifest identified by the reference with additional options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the fetch operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, FetchOptions options, CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
+        if (options?.Headers != null)
+        {
+            foreach (var header in options.Headers)
+            {
+                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+        }
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         try

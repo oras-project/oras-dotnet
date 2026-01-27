@@ -197,7 +197,17 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-        => await Manifests.FetchAsync(reference, cancellationToken).ConfigureAwait(false);
+        => await FetchAsync(reference, new FetchOptions(), cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// FetchAsync fetches the content identified by the reference with additional options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the fetch operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, FetchOptions options, CancellationToken cancellationToken = default)
+        => await Manifests.FetchAsync(reference, options, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// PushReference pushes the manifest with a reference tag.

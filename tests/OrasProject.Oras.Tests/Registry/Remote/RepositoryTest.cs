@@ -1454,6 +1454,77 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     }
 
     /// <summary>
+    /// BlobStore_FetchReferenceAsync_WithOptions tests the FetchAsync method with FetchOptions.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task BlobStore_FetchReferenceAsync_WithOptions()
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "application/octet-stream",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+        var customHeaderKey = "X-Custom-Header";
+        var customHeaderValue = "custom-value";
+        var receivedCustomHeader = false;
+
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                // Check for custom header
+                if (req.Headers.TryGetValues(customHeaderKey, out var values) && values.Contains(customHeaderValue))
+                {
+                    receivedCustomHeader = true;
+                }
+                res.StatusCode = HttpStatusCode.OK;
+                res.Content = new ByteArrayContent(blob);
+                res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new BlobStore(repo);
+
+        var options = new FetchOptions
+        {
+            Headers = new Dictionary<string, IEnumerable<string>>
+            {
+                { customHeaderKey, new[] { customHeaderValue } }
+            }
+        };
+
+        var data = await store.FetchAsync(blobDesc.Digest, options, cancellationToken);
+        Assert.Equal(blobDesc.Digest, data.Descriptor.Digest);
+        Assert.Equal(blobDesc.Size, data.Descriptor.Size);
+        Assert.True(receivedCustomHeader, "Custom header was not received by the server");
+
+        var buf = new byte[data.Descriptor.Size];
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
+        Assert.Equal(blob, buf);
+    }
+
+    /// <summary>
     /// BlobStore_FetchAsyncReferenceAsync_Seek tests the FetchAsync method of BlobStore with seek.
     /// </summary>
     /// <returns></returns>
@@ -2067,6 +2138,76 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         data = await store.FetchAsync(fqdnRef, cancellationToken);
         Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
         buf = new byte[manifest.Length];
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
+        Assert.Equal(manifest, buf);
+    }
+
+    /// <summary>
+    /// ManifestStore_FetchReferenceAsync_WithOptions tests the FetchAsync method with FetchOptions.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task ManifestStore_FetchReferenceAsync_WithOptions()
+    {
+        var manifest = """{"layers":[]}"""u8.ToArray();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSha256(manifest),
+            Size = manifest.Length
+        };
+        var reference = "foobar";
+        var customHeaderKey = "X-Custom-Header";
+        var customHeaderValue = "custom-value";
+        var receivedCustomHeader = false;
+
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
+            {
+                // Check for custom header
+                if (req.Headers.TryGetValues(customHeaderKey, out var values) && values.Contains(customHeaderValue))
+                {
+                    receivedCustomHeader = true;
+                }
+                res.Content = new ByteArrayContent(manifest);
+                res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+
+        var options = new FetchOptions
+        {
+            Headers = new Dictionary<string, IEnumerable<string>>
+            {
+                { customHeaderKey, new[] { customHeaderValue } }
+            }
+        };
+
+        var data = await store.FetchAsync(reference, options, cancellationToken);
+        Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
+        Assert.True(receivedCustomHeader, "Custom header was not received by the server");
+
+        var buf = new byte[manifest.Length];
         await data.Stream.ReadExactlyAsync(buf, cancellationToken);
         Assert.Equal(manifest, buf);
     }

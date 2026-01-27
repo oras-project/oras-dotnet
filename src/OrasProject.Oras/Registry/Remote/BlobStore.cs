@@ -80,12 +80,30 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
+        => await FetchAsync(reference, new FetchOptions(), cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// FetchAsync fetches the blob identified by the reference with additional options.
+    /// The reference must be a digest.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the fetch operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, FetchOptions options, CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        if (options?.Headers != null)
+        {
+            foreach (var header in options.Headers)
+            {
+                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+        }
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         try
         {

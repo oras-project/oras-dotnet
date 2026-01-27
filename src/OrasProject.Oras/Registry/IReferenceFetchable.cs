@@ -30,4 +30,14 @@ public interface IReferenceFetchable
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetches the content identified by the reference with additional options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the fetch operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, FetchOptions options, CancellationToken cancellationToken = default)
+        => FetchAsync(reference, cancellationToken);
 }
