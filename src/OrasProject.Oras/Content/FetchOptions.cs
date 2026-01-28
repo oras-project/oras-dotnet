@@ -17,8 +17,7 @@ namespace OrasProject.Oras.Content;
 
 /// <summary>
 /// Options for fetching content.
-/// This class is designed for use across fetch APIs including
-/// <see cref="IFetchable"/> and <see cref="Registry.IReferenceFetchable"/>.
+/// This class is designed for use with <see cref="Registry.IReferenceFetchable"/>.
 /// </summary>
 /// <remarks>
 /// Not all options apply to all implementations. HTTP-based implementations

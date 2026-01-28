@@ -75,7 +75,7 @@ public interface IRepository : ITarget, IReferenceFetchable, IReferencePushable,
     /// <param name="artifactType">
     /// Filters referrers by the specified artifact type.
     /// </param>
-    /// <param name="cancellationToken">The cancellation token.</param>When the registry response has no Content-Length, this method falls back to ResolveAsync(...) (a HEAD request) to compute the descriptor. That fallback request currently does not apply FetchOptions headers, so callers may see their custom headers only on the initial GET but not on the follow-up HEAD. Consider threading FetchOptions through the fallback (e.g., add a ResolveAsync overload that accepts FetchOptions and applies headers to the HEAD request) and add a test that simulates a chunked/unknown-length response to validate header propagation across both requests.
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>
     /// An asynchronous enumerable of Descriptor objects representing the referrers
     /// filtered by artifact type.
