@@ -228,7 +228,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocation, IMoun
         {
             throw new ArgumentException(
                 $"The provided HttpClient automatically followed a redirect, which is incompatible with GetBlobLocationAsync. " +
-                $"The custom HttpClient must be configured with a HttpClientHandler that has AllowAutoRedirect = false.");
+                $"The custom HttpClient must be configured with an HttpClientHandler that has AllowAutoRedirect = false.");
         }
 
         switch (response.StatusCode)
