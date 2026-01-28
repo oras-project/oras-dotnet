@@ -12,13 +12,6 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
-using OrasProject.Oras.Exceptions;
-using OrasProject.Oras.Oci;
-using OrasProject.Oras.Registry.Remote.Exceptions;
-using System;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry;
 
@@ -27,20 +20,4 @@ namespace OrasProject.Oras.Registry;
 /// </summary>
 public interface IBlobStore : IStorage, IResolvable, IDeletable, IReferenceFetchable
 {
-    /// <summary>
-    /// GetBlobLocationAsync retrieves the location URL for a blob without downloading its content.
-    /// Most OCI 1.0 compatible registries return a redirect with a blob location in the header
-    /// instead of returning the content directly on a /v2/blobs/sha256:<digest> request.
-    /// This method captures that location URL.
-    /// 
-    /// Returns null if the registry returns the content directly (HTTP 200) instead of a redirect.
-    /// </summary>
-    /// <param name="target">The descriptor identifying the blob</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The blob location URL if a redirect is returned, otherwise null</returns>
-    /// <exception cref="ArgumentException">Thrown when the provided HttpClient has AllowAutoRedirect enabled</exception>
-    /// <exception cref="HttpIOException">Thrown when the response is invalid</exception>
-    /// <exception cref="NotFoundException">Thrown when the blob is not found</exception>
-    /// <exception cref="ResponseException">Thrown when the request fails</exception>
-    Task<Uri?> GetBlobLocationAsync(Descriptor target, CancellationToken cancellationToken = default);
 }

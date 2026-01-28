@@ -24,7 +24,7 @@ namespace OrasProject.Oras.Tests.Examples;
 public static class GetBlobLocation
 {
     // This example demonstrates how to retrieve a blob location URL from a remote registry.
-    // Most OCI 1.0 compatible registries return a redirect with a blob location in the header
+    // Most OCI Distribution Spec v1.1.1 registries return a redirect with a blob location in the header
     // instead of returning the content directly. This API captures that location URL.
     // For production use: Implement proper exception handling, cancellation, and dependency injection.
     public static async Task GetBlobLocationAsync()
@@ -64,7 +64,7 @@ public static class GetBlobLocation
         // Get the blob location URL
         // Returns null if the registry returns content directly (no redirect)
         // Returns the redirect location URL if the registry uses redirects
-        var locationUrl = await repo.Blobs.GetBlobLocationAsync(descriptor);
+        var locationUrl = await repo.BlobLocationProvider.GetBlobLocationAsync(descriptor);
 
         if (locationUrl != null)
         {

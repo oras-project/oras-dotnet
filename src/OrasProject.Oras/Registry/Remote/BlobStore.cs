@@ -26,7 +26,7 @@ using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-public class BlobStore(Repository repository) : IBlobStore, IMounter
+public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvider, IMounter
 {
     private Repository Repository { get; } = repository ?? throw new ArgumentNullException(nameof(repository));
 
@@ -195,7 +195,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
 
     /// <summary>
     /// GetBlobLocationAsync retrieves the location URL for a blob without downloading its content.
-    /// Most OCI 1.0 compatible registries return a redirect with a blob location in the header
+    /// Most OCI Distribution Spec v1.1.1 registries return a redirect with a blob location in the header
     /// instead of returning the content directly on a /v2/blobs/sha256:<digest> request.
     /// This method makes an authenticated request without following redirects to capture the location URL.
     /// 
@@ -222,13 +222,13 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         // Validate that the client didn't follow redirects automatically.
         // If response.RequestMessage.RequestUri differs from the original request URI,
         // it means the provided HttpClient had AllowAutoRedirect=true, which breaks this API.
-        if (response.RequestMessage?.RequestUri != null && 
-            !string.Equals(response.RequestMessage.RequestUri.ToString(), url.ToString(), StringComparison.OrdinalIgnoreCase))
+        var requestUri = response.RequestMessage?.RequestUri;
+        if (requestUri != null && 
+            !string.Equals(requestUri.ToString(), url.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException(
                 $"The provided HttpClient automatically followed a redirect, which is incompatible with GetBlobLocationAsync. " +
-                $"When providing a custom 'noRedirectHttpClient' parameter, it must be configured with a HttpClientHandler " +
-                $"that has AllowAutoRedirect = false.");
+                $"The custom HttpClient must be configured with a HttpClientHandler that has AllowAutoRedirect = false.");
         }
 
         switch (response.StatusCode)
@@ -256,7 +256,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
                     if (location == null)
                     {
                         throw new HttpIOException(HttpRequestError.InvalidResponse,
-                            $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: redirect response missing Location header");
+                            $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: redirect response missing Location header");
                     }
 
                     // Require absolute URI to avoid cross-domain ambiguity.
@@ -264,7 +264,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
                     if (!location.IsAbsoluteUri)
                     {
                         throw new HttpIOException(HttpRequestError.InvalidResponse,
-                            $"{response.RequestMessage!.Method} {response.RequestMessage.RequestUri}: redirect Location header must be an absolute URI");
+                            $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: redirect Location header must be an absolute URI");
                     }
 
                     // Validate HTTPS unless PlainHttp is explicitly allowed
