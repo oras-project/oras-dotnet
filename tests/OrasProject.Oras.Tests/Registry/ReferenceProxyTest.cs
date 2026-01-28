@@ -156,7 +156,7 @@ public class ReferenceProxyTest
         var referenceProxy = new ReferenceProxy(srcRefMock.Object, proxy);
 
         // Fetch by reference with options
-        var (desc, resultStream) = await referenceProxy.FetchAsync("ref", options, CancellationToken.None);
+        var (desc, _) = await referenceProxy.FetchAsync("ref", options, CancellationToken.None);
 
         // Assert
         var exists = await proxy.Cache.ExistsAsync(descriptor);

@@ -14,6 +14,7 @@
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -118,7 +119,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                     Descriptor desc;
                     if (response.Content.Headers.ContentLength == null)
                     {
-                        desc = await ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
+                        desc = await ResolveAsync(reference, options?.Headers, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
@@ -359,12 +360,42 @@ public class ManifestStore(Repository repository) : IManifestStore
     }
 
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
+        => await ResolveAsync(reference, headers: null, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// ResolveAsync resolves a reference to a descriptor with additional options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the resolve operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<Descriptor> ResolveAsync(string reference, ResolveOptions options, CancellationToken cancellationToken = default)
+        => await ResolveAsync(reference, options?.Headers, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// ResolveAsync resolves a reference to a descriptor with optional custom headers.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="headers">Optional custom HTTP headers to include in the request.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    private async Task<Descriptor> ResolveAsync(
+        string reference,
+        IDictionary<string, IEnumerable<string>>? headers,
+        CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Head, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
+        if (headers != null)
+        {
+            foreach (var header in headers)
+            {
+                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+        }
         using var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         return response.StatusCode switch
         {

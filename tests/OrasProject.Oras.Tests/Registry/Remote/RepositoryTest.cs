@@ -1381,6 +1381,74 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     }
 
     /// <summary>
+    /// BlobStore_ResolveAsync_WithOptions tests the ResolveAsync method with ResolveOptions.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task BlobStore_ResolveAsync_WithOptions()
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "application/octet-stream",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+        var customHeaderKey = "X-Custom-Header";
+        var customHeaderValue = "custom-value";
+        var receivedCustomHeader = false;
+
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Head)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                // Check for custom header
+                if (req.Headers.TryGetValues(customHeaderKey, out var values) && values.Contains(customHeaderValue))
+                {
+                    receivedCustomHeader = true;
+                }
+                res.StatusCode = HttpStatusCode.OK;
+                res.Content = new ByteArrayContent([]);
+                res.Content.Headers.ContentLength = blobDesc.Size;
+                res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new BlobStore(repo);
+
+        var options = new ResolveOptions
+        {
+            Headers = new Dictionary<string, IEnumerable<string>>
+            {
+                { customHeaderKey, new[] { customHeaderValue } }
+            }
+        };
+
+        var got = await store.ResolveAsync(blobDesc.Digest, options, cancellationToken);
+        Assert.Equal(blobDesc.Digest, got.Digest);
+        Assert.Equal(blobDesc.Size, got.Size);
+        Assert.True(receivedCustomHeader, "Custom header was not received by the server");
+    }
+
+    /// <summary>
     /// BlobStore_FetchReferenceAsync tests the FetchReferenceAsync method of BlobStore
     /// </summary>
     /// <returns></returns>
@@ -1518,6 +1586,92 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         Assert.Equal(blobDesc.Digest, data.Descriptor.Digest);
         Assert.Equal(blobDesc.Size, data.Descriptor.Size);
         Assert.True(receivedCustomHeader, "Custom header was not received by the server");
+
+        var buf = new byte[data.Descriptor.Size];
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
+        Assert.Equal(blob, buf);
+    }
+
+    /// <summary>
+    /// BlobStore_FetchReferenceAsync_WithOptions_ChunkedResponse tests that FetchOptions headers
+    /// are propagated to the fallback HEAD request when the GET response has no Content-Length.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task BlobStore_FetchReferenceAsync_WithOptions_ChunkedResponse()
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "application/octet-stream",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+        var customHeaderKey = "X-Custom-Header";
+        var customHeaderValue = "custom-value";
+        var receivedCustomHeaderOnGet = false;
+        var receivedCustomHeaderOnHead = false;
+
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                // Check for custom header on both GET and HEAD
+                var hasCustomHeader = req.Headers.TryGetValues(customHeaderKey, out var values)
+                    && values.Contains(customHeaderValue);
+
+                if (req.Method == HttpMethod.Get)
+                {
+                    receivedCustomHeaderOnGet = hasCustomHeader;
+                    res.StatusCode = HttpStatusCode.OK;
+                    // Return content WITHOUT Content-Length to trigger fallback to HEAD
+                    var content = new ByteArrayContent(blob);
+                    content.Headers.ContentLength = null;
+                    res.Content = content;
+                    res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                    res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                    return res;
+                }
+                if (req.Method == HttpMethod.Head)
+                {
+                    receivedCustomHeaderOnHead = hasCustomHeader;
+                    res.StatusCode = HttpStatusCode.OK;
+                    res.Content = new ByteArrayContent([]);
+                    res.Content.Headers.ContentLength = blobDesc.Size;
+                    res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                    res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                    return res;
+                }
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new BlobStore(repo);
+
+        var options = new FetchOptions
+        {
+            Headers = new Dictionary<string, IEnumerable<string>>
+            {
+                { customHeaderKey, new[] { customHeaderValue } }
+            }
+        };
+
+        var data = await store.FetchAsync(blobDesc.Digest, options, cancellationToken);
+        Assert.Equal(blobDesc.Digest, data.Descriptor.Digest);
+        Assert.Equal(blobDesc.Size, data.Descriptor.Size);
+        Assert.True(receivedCustomHeaderOnGet, "Custom header was not received on GET request");
+        Assert.True(receivedCustomHeaderOnHead, "Custom header was not received on HEAD fallback request");
 
         var buf = new byte[data.Descriptor.Size];
         await data.Stream.ReadExactlyAsync(buf, cancellationToken);
@@ -2060,6 +2214,74 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     }
 
     /// <summary>
+    /// ManifestStore_ResolveAsync_WithOptions tests the ResolveAsync method with ResolveOptions.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task ManifestStore_ResolveAsync_WithOptions()
+    {
+        var manifest = """{"layers":[]}"""u8.ToArray();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSha256(manifest),
+            Size = manifest.Length
+        };
+        var reference = "foobar";
+        var customHeaderKey = "X-Custom-Header";
+        var customHeaderValue = "custom-value";
+        var receivedCustomHeader = false;
+
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Head)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
+            {
+                // Check for custom header
+                if (req.Headers.TryGetValues(customHeaderKey, out var values) && values.Contains(customHeaderValue))
+                {
+                    receivedCustomHeader = true;
+                }
+                res.StatusCode = HttpStatusCode.OK;
+                res.Content = new ByteArrayContent([]);
+                res.Content.Headers.ContentLength = manifestDesc.Size;
+                res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+
+        var options = new ResolveOptions
+        {
+            Headers = new Dictionary<string, IEnumerable<string>>
+            {
+                { customHeaderKey, new[] { customHeaderValue } }
+            }
+        };
+
+        var got = await store.ResolveAsync(reference, options, cancellationToken);
+        Assert.True(AreDescriptorsEqual(manifestDesc, got));
+        Assert.True(receivedCustomHeader, "Custom header was not received by the server");
+    }
+
+    /// <summary>
     /// ManifestStore_FetchReferenceAsync tests the FetchReferenceAsync method of ManifestStore.
     /// </summary>
     /// <returns></returns>
@@ -2206,6 +2428,88 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var data = await store.FetchAsync(reference, options, cancellationToken);
         Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
         Assert.True(receivedCustomHeader, "Custom header was not received by the server");
+
+        var buf = new byte[manifest.Length];
+        await data.Stream.ReadExactlyAsync(buf, cancellationToken);
+        Assert.Equal(manifest, buf);
+    }
+
+    /// <summary>
+    /// ManifestStore_FetchReferenceAsync_WithOptions_ChunkedResponse tests that FetchOptions headers
+    /// are propagated to the fallback HEAD request when the GET response has no Content-Length.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task ManifestStore_FetchReferenceAsync_WithOptions_ChunkedResponse()
+    {
+        var manifest = """{"layers":[]}"""u8.ToArray();
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSha256(manifest),
+            Size = manifest.Length
+        };
+        var reference = "foobar";
+        var customHeaderKey = "X-Custom-Header";
+        var customHeaderValue = "custom-value";
+        var receivedCustomHeaderOnGet = false;
+        var receivedCustomHeaderOnHead = false;
+
+        HttpResponseMessage MockHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            // Check for custom header on both GET and HEAD
+            var hasCustomHeader = req.Headers.TryGetValues(customHeaderKey, out var values)
+                && values.Contains(customHeaderValue);
+
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
+            {
+                receivedCustomHeaderOnGet = hasCustomHeader;
+                // Return content WITHOUT Content-Length to trigger fallback to HEAD
+                var content = new ByteArrayContent(manifest);
+                content.Headers.ContentLength = null;
+                res.Content = content;
+                res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                return res;
+            }
+            if (req.Method == HttpMethod.Head && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
+            {
+                receivedCustomHeaderOnHead = hasCustomHeader;
+                res.StatusCode = HttpStatusCode.OK;
+                res.Content = new ByteArrayContent([]);
+                res.Content.Headers.ContentLength = manifestDesc.Size;
+                res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var store = new ManifestStore(repo);
+
+        var options = new FetchOptions
+        {
+            Headers = new Dictionary<string, IEnumerable<string>>
+            {
+                { customHeaderKey, new[] { customHeaderValue } }
+            }
+        };
+
+        var data = await store.FetchAsync(reference, options, cancellationToken);
+        Assert.True(AreDescriptorsEqual(manifestDesc, data.Descriptor));
+        Assert.True(receivedCustomHeaderOnGet, "Custom header was not received on GET request");
+        Assert.True(receivedCustomHeaderOnHead, "Custom header was not received on HEAD fallback request");
 
         var buf = new byte[manifest.Length];
         await data.Stream.ReadExactlyAsync(buf, cancellationToken);
