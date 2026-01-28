@@ -86,7 +86,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-        => await FetchAsync(reference, new FetchOptions(), cancellationToken).ConfigureAwait(false);
+        => await FetchAsync(reference, options: null!, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Fetches the manifest identified by the reference with additional options.
@@ -102,13 +102,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
-        if (options?.Headers != null)
-        {
-            foreach (var header in options.Headers)
-            {
-                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
-        }
+        request.ApplyHeaders(options?.Headers);
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         try
@@ -389,13 +383,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Head, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
-        if (headers != null)
-        {
-            foreach (var header in headers)
-            {
-                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
-        }
+        request.ApplyHeaders(headers);
         using var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         return response.StatusCode switch
         {

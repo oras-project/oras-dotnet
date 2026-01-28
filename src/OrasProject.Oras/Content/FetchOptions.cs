@@ -11,28 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Collections.Generic;
-
 namespace OrasProject.Oras.Content;
 
 /// <summary>
 /// Options for fetching content.
 /// This class is designed for use with <see cref="Registry.IReferenceFetchable"/>.
 /// </summary>
-/// <remarks>
-/// Not all options apply to all implementations. HTTP-based implementations
-/// (e.g., <see cref="Registry.Remote.BlobStore"/>, <see cref="Registry.Remote.ManifestStore"/>)
-/// support all options. Local or in-memory implementations may ignore
-/// options that are not applicable to their transport.
-/// </remarks>
-public class FetchOptions
+public class FetchOptions : RequestOptions
 {
-    /// <summary>
-    /// Custom HTTP headers to include in the fetch request.
-    /// </summary>
-    /// <remarks>
-    /// This property is only honored by HTTP-based registry implementations.
-    /// Non-HTTP implementations (e.g., local OCI layout stores) will ignore this property.
-    /// </remarks>
-    public IDictionary<string, IEnumerable<string>>? Headers { get; init; }
 }

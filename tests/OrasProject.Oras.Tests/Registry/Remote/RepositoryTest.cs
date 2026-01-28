@@ -49,6 +49,8 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
 
     private const string _dockerContentDigestHeader = "Docker-Content-Digest";
 
+    private const string _contentTypeHeader = "Content-Type";
+
     private const string _headerOciFiltersApplied = "OCI-Filters-Applied";
 
     // The following truth table aims to cover the expected GET/HEAD request outcome
@@ -1418,7 +1420,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 res.StatusCode = HttpStatusCode.OK;
                 res.Content = new ByteArrayContent([]);
                 res.Content.Headers.ContentLength = blobDesc.Size;
-                res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                res.Content.Headers.Add(_contentTypeHeader, "application/octet-stream");
                 res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 return res;
             }
@@ -1558,7 +1560,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 }
                 res.StatusCode = HttpStatusCode.OK;
                 res.Content = new ByteArrayContent(blob);
-                res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                res.Content.Headers.Add(_contentTypeHeader, "application/octet-stream");
                 res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                 return res;
             }
@@ -1632,7 +1634,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                     var content = new ByteArrayContent(blob);
                     content.Headers.ContentLength = null;
                     res.Content = content;
-                    res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                    res.Content.Headers.Add(_contentTypeHeader, "application/octet-stream");
                     res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                     return res;
                 }
@@ -1642,7 +1644,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                     res.StatusCode = HttpStatusCode.OK;
                     res.Content = new ByteArrayContent([]);
                     res.Content.Headers.ContentLength = blobDesc.Size;
-                    res.Content.Headers.Add("Content-Type", "application/octet-stream");
+                    res.Content.Headers.Add(_contentTypeHeader, "application/octet-stream");
                     res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
                     return res;
                 }
@@ -2253,7 +2255,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 res.Content = new ByteArrayContent([]);
                 res.Content.Headers.ContentLength = manifestDesc.Size;
                 res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
-                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                res.Content.Headers.Add(_contentTypeHeader, [MediaType.ImageManifest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -2402,7 +2404,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 }
                 res.Content = new ByteArrayContent(manifest);
                 res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
-                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                res.Content.Headers.Add(_contentTypeHeader, [MediaType.ImageManifest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -2473,7 +2475,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 content.Headers.ContentLength = null;
                 res.Content = content;
                 res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
-                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                res.Content.Headers.Add(_contentTypeHeader, [MediaType.ImageManifest]);
                 return res;
             }
             if (req.Method == HttpMethod.Head && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{reference}")
@@ -2483,7 +2485,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 res.Content = new ByteArrayContent([]);
                 res.Content.Headers.ContentLength = manifestDesc.Size;
                 res.Headers.Add(_dockerContentDigestHeader, [manifestDesc.Digest]);
-                res.Content.Headers.Add("Content-Type", [MediaType.ImageManifest]);
+                res.Content.Headers.Add(_contentTypeHeader, [MediaType.ImageManifest]);
                 return res;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);

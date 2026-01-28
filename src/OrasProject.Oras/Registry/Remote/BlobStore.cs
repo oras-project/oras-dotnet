@@ -82,7 +82,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-        => await FetchAsync(reference, new FetchOptions(), cancellationToken).ConfigureAwait(false);
+        => await FetchAsync(reference, options: null!, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// FetchAsync fetches the blob identified by the reference with additional options.
@@ -98,14 +98,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        if (options?.Headers != null)
-        {
-            foreach (var header in options.Headers)
-            {
-                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
-        }
+        using var request = new HttpRequestMessage(HttpMethod.Get, url).ApplyHeaders(options?.Headers);
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         try
         {
@@ -226,14 +219,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
-        using var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
-        if (headers != null)
-        {
-            foreach (var header in headers)
-            {
-                requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
-        }
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Head, url).ApplyHeaders(headers);
         using var resp = await Repository.Options.Client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
         return resp.StatusCode switch
         {

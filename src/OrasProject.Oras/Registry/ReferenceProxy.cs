@@ -42,7 +42,7 @@ internal class ReferenceProxy(IReferenceFetchable referenceFetchable, Proxy prox
     /// <param name="cancellationToken">A cancellation token to cancel the operation</param>
     /// <returns>A tuple containing the descriptor and the content stream</returns>
     public async Task<(Descriptor, Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-        => await FetchAsync(reference, new FetchOptions(), cancellationToken).ConfigureAwait(false);
+        => await FetchAsync(reference, options: null!, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Fetches the content identified by the reference from the remote with additional options and caches the fetched content.
