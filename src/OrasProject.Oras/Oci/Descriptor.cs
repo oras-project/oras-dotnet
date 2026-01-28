@@ -52,6 +52,12 @@ public class Descriptor
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? ArtifactType { get; set; }
 
+    /// <summary>
+    /// AnnotationTitle is the annotation key for the human-readable title of the image.
+    /// Specification: https://github.com/opencontainers/image-spec/blob/v1.1.0/annotations.md#pre-defined-annotation-keys
+    /// </summary>
+    public const string AnnotationTitle = "org.opencontainers.image.title";
+
     public static Descriptor Create(Span<byte> data, string mediaType)
     {
         byte[] byteData = data.ToArray();

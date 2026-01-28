@@ -65,4 +65,36 @@ public class ExceptionTest
         await Assert.ThrowsAsync<InvalidDateTimeFormatException>(() => throw new InvalidDateTimeFormatException("Invalid date time format"));
         await Assert.ThrowsAsync<InvalidDateTimeFormatException>(() => throw new InvalidDateTimeFormatException("Invalid date time format", null));
     }
+
+    [Fact]
+    public async Task DuplicateNameException()
+    {
+        await Assert.ThrowsAsync<DuplicateNameException>(() => throw new DuplicateNameException());
+        await Assert.ThrowsAsync<DuplicateNameException>(() => throw new DuplicateNameException("Duplicate name"));
+        await Assert.ThrowsAsync<DuplicateNameException>(() => throw new DuplicateNameException("Duplicate name", null));
+    }
+
+    [Fact]
+    public async Task MissingNameException()
+    {
+        await Assert.ThrowsAsync<MissingNameException>(() => throw new MissingNameException());
+        await Assert.ThrowsAsync<MissingNameException>(() => throw new MissingNameException("Missing name"));
+        await Assert.ThrowsAsync<MissingNameException>(() => throw new MissingNameException("Missing name", null));
+    }
+
+    [Fact]
+    public async Task MissingReferenceException()
+    {
+        await Assert.ThrowsAsync<MissingReferenceException>(() => throw new MissingReferenceException());
+        await Assert.ThrowsAsync<MissingReferenceException>(() => throw new MissingReferenceException("Missing reference"));
+        await Assert.ThrowsAsync<MissingReferenceException>(() => throw new MissingReferenceException("Missing reference", null));
+    }
+
+    [Fact]
+    public async Task StoreClosedException()
+    {
+        await Assert.ThrowsAsync<StoreClosedException>(() => throw new StoreClosedException());
+        await Assert.ThrowsAsync<StoreClosedException>(() => throw new StoreClosedException("Store closed"));
+        await Assert.ThrowsAsync<StoreClosedException>(() => throw new StoreClosedException("Store closed", null));
+    }
 }
