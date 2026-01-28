@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content;
 using OrasProject.Oras.Oci;
 using System.IO;
 using System.Threading;
@@ -30,4 +31,14 @@ public interface IReferenceFetchable
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetches the content identified by the reference with additional options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the fetch operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, FetchOptions options, CancellationToken cancellationToken = default)
+        => FetchAsync(reference, cancellationToken);
 }

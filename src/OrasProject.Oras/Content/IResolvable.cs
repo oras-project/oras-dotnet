@@ -29,4 +29,14 @@ public interface IResolvable
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// ResolveAsync resolves the reference to a descriptor with additional options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the resolve operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<Descriptor> ResolveAsync(string reference, ResolveOptions options, CancellationToken cancellationToken = default)
+        => ResolveAsync(reference, cancellationToken);
 }
