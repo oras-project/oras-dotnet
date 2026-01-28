@@ -197,7 +197,7 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-        => await FetchAsync(reference, options: null!, cancellationToken).ConfigureAwait(false);
+        => await FetchAsync(reference, options: new FetchOptions(), cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// FetchAsync fetches the content identified by the reference with additional options.

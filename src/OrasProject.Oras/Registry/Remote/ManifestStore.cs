@@ -86,7 +86,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-        => await FetchAsync(reference, options: null!, cancellationToken).ConfigureAwait(false);
+        => await FetchAsync(reference, options: new FetchOptions(), cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Fetches the manifest identified by the reference with additional options.
@@ -354,7 +354,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     }
 
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
-        => await ResolveAsync(reference, headers: null, cancellationToken).ConfigureAwait(false);
+        => await ResolveAsync(reference, new ResolveOptions(), cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// ResolveAsync resolves a reference to a descriptor with additional options.
@@ -364,7 +364,7 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<Descriptor> ResolveAsync(string reference, ResolveOptions options, CancellationToken cancellationToken = default)
-        => await ResolveAsync(reference, options?.Headers, cancellationToken).ConfigureAwait(false);
+        => await ResolveAsync(reference, options.Headers, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// ResolveAsync resolves a reference to a descriptor with optional custom headers.
