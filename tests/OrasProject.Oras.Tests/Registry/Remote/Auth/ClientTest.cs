@@ -1647,7 +1647,7 @@ public class ClientTest
                 ItExpr.IsAny<CancellationToken>())
             .Returns<HttpRequestMessage, CancellationToken>((req, ct) =>
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = new HttpRequestMessage() });
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req });
             });
 
         mockHandlerNoRedirect.Protected()
