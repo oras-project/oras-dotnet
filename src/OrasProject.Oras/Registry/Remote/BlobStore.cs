@@ -98,7 +98,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
-        using var request = new HttpRequestMessage(HttpMethod.Get, url).ApplyHeaders(options?.Headers);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url).ApplyHeaders(options.Headers);
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         try
         {
@@ -108,7 +108,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
                     Descriptor desc;
                     if (response.Content.Headers.ContentLength == null)
                     {
-                        desc = await ResolveAsync(refDigest, options?.Headers, cancellationToken).ConfigureAwait(false);
+                        desc = await ResolveAsync(refDigest, options.Headers, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
