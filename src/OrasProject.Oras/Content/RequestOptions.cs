@@ -20,7 +20,8 @@ namespace OrasProject.Oras.Content;
 /// </summary>
 /// <remarks>
 /// Not all options apply to all implementations. HTTP-based implementations
-/// (e.g., <see cref="Registry.Remote.BlobStore"/>, <see cref="Registry.Remote.ManifestStore"/>)
+/// (e.g., <see cref="global::OrasProject.Oras.Registry.Remote.BlobStore"/>,
+/// <see cref="global::OrasProject.Oras.Registry.Remote.ManifestStore"/>)
 /// support all options. Local or in-memory implementations may ignore
 /// options that are not applicable to their transport.
 /// </remarks>
