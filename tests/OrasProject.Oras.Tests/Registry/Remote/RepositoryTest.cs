@@ -1176,8 +1176,10 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = true,
         });
         var cancellationToken = new CancellationToken();
-        var store = new BlobStore(repo);
-        var uri = await store.GetBlobLocationAsync(blobDesc, cancellationToken);
+
+        // Use interface declaration to verify DI scenarios
+        IBlobLocationProvider blobLocationProvider = new BlobStore(repo);
+        var uri = await blobLocationProvider.GetBlobLocationAsync(blobDesc, cancellationToken);
         Assert.NotNull(uri);
         Assert.Equal(redirectLocation, uri.ToString());
 
@@ -1202,16 +1204,16 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
 
-        repo = new Repository(new RepositoryOptions()
+        // Use IRepository interface to verify polymorphic usage and DI scenarios
+        IRepository repo1 = new Repository(new RepositoryOptions()
         {
             Reference = Reference.Parse("localhost:5000/test"),
             Client = CustomClient(MockHandlerNoRedirect),
             PlainHttp = true,
         });
-        store = new BlobStore(repo);
-        uri = await store.GetBlobLocationAsync(blobDesc, cancellationToken);
-        Assert.Null(uri); // Should return null when no redirect
 
+        uri = await repo1.BlobLocationProvider.GetBlobLocationAsync(blobDesc, cancellationToken);
+        Assert.Null(uri); // Should return null when no redirect
     }
 
     /// <summary>

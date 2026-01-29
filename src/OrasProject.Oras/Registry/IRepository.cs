@@ -38,11 +38,11 @@ public interface IRepository : ITarget, IReferenceFetchable, IReferencePushable,
     IBlobStore Blobs { get; }
 
     /// <summary>
-    /// BlobLocation provides the ability to retrieve blob location URLs from the registry.
+    /// BlobLocationProvider provides the ability to retrieve blob location URLs from the registry.
     /// This is useful for scenarios where you want to obtain the redirect URL where a blob is stored
     /// (e.g., Azure Blob Storage, S3) without downloading the content.
     /// </summary>
-    IBlobLocation BlobLocation { get; }
+    IBlobLocationProvider BlobLocationProvider { get; }
 
     /// <summary>
     /// Manifests provides access to the manifest CAS only.

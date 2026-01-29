@@ -64,7 +64,7 @@ public static class GetBlobLocation
         // Get the blob location URL
         // Returns null if the registry returns content directly (no redirect)
         // Returns the redirect location URL if the registry uses redirects
-        var locationUrl = await repo.BlobLocation.GetBlobLocationAsync(descriptor);
+        var locationUrl = await repo.BlobLocationProvider.GetBlobLocationAsync(descriptor);
 
         if (locationUrl != null)
         {

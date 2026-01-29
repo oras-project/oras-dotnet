@@ -26,7 +26,7 @@ using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Registry.Remote;
 
-public class BlobStore(Repository repository) : IBlobStore, IBlobLocation, IMounter
+public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvider, IMounter
 {
     private Repository Repository { get; } = repository ?? throw new ArgumentNullException(nameof(repository));
 

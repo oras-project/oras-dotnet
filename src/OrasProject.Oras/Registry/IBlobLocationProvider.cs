@@ -22,11 +22,11 @@ using System.Threading.Tasks;
 namespace OrasProject.Oras.Registry;
 
 /// <summary>
-/// IBlobLocation provides the ability to retrieve blob location URLs from registries.
+/// IBlobLocationProvider provides the ability to retrieve blob location URLs from registries.
 /// This interface is separate from <see cref="IBlobStore"/> because not all storage backends
 /// support blob location retrieval (e.g., manifest stores).
 /// </summary>
-public interface IBlobLocation
+public interface IBlobLocationProvider
 {
     /// <summary>
     /// GetBlobLocationAsync retrieves the location URL for a blob without downloading its content.
