@@ -30,19 +30,12 @@ namespace OrasProject.Oras.Registry;
 /// Furthermore, this interface also provides the ability to enforce the
 /// separation of the blob and the manifests CASs.
 /// </summary>
-public interface IRepository : ITarget, IReferenceFetchable, IReferencePushable, IDeletable, ITagListable, IMounter
+public interface IRepository : ITarget, IBlobLocationProvider, IReferenceFetchable, IReferencePushable, IDeletable, ITagListable, IMounter
 {
     /// <summary>
     /// Blobs provides access to the blob CAS only, which contains config blobs, layers, and other generic blobs.
     /// </summary>
     IBlobStore Blobs { get; }
-
-    /// <summary>
-    /// BlobLocationProvider provides the ability to retrieve blob location URLs from the registry.
-    /// This is useful for scenarios where you want to obtain the redirect URL where a blob is stored
-    /// (e.g., Azure Blob Storage, S3) without downloading the content.
-    /// </summary>
-    IBlobLocationProvider BlobLocationProvider { get; }
 
     /// <summary>
     /// Manifests provides access to the manifest CAS only.

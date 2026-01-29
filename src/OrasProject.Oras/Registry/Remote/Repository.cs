@@ -46,15 +46,19 @@ public class Repository : IRepository
     public IBlobStore Blobs => new BlobStore(this);
 
     /// <summary>
-    /// BlobLocationProvider provides the ability to retrieve blob location URLs from the registry.
-    /// </summary>
-    public IBlobLocationProvider BlobLocationProvider => new BlobStore(this);
-
-    /// <summary>
     /// Manifests provides access to the manifest CAS only.
     /// </summary>
     /// <returns></returns>
     public IManifestStore Manifests => new ManifestStore(this);
+
+    /// <summary>
+    /// GetBlobLocationAsync retrieves the location URL for the specified blob.
+    /// </summary>
+    /// <param name="descriptor">The descriptor of the blob to locate</param>
+    /// <param name="cancellationToken">The cancellation token</param>
+    /// <returns>The location URL of the blob</returns>
+    public async Task<Uri?> GetBlobLocationAsync(Descriptor descriptor, CancellationToken cancellationToken = default)
+        => await ((IBlobLocationProvider)Blobs).GetBlobLocationAsync(descriptor, cancellationToken).ConfigureAwait(false);
 
     public RepositoryOptions Options => _opts;
 
