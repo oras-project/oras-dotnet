@@ -46,6 +46,11 @@ public class Repository : IRepository
     public IBlobStore Blobs => new BlobStore(this);
 
     /// <summary>
+    /// BlobLocationProvider provides the ability to retrieve blob location URLs from the registry.
+    /// </summary>
+    public IBlobLocationProvider BlobLocationProvider => new BlobStore(this);
+
+    /// <summary>
     /// Manifests provides access to the manifest CAS only.
     /// </summary>
     /// <returns></returns>
