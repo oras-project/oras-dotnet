@@ -15,7 +15,8 @@ namespace OrasProject.Oras.Content;
 
 /// <summary>
 /// Options for fetching content.
-/// This class is designed for use with <see cref="global::OrasProject.Oras.Registry.IReferenceFetchable"/>.
+/// This class is designed for use with
+/// <see cref="global::OrasProject.Oras.Registry.IReferenceFetchable"/>.
 /// </summary>
 public class FetchOptions : RequestOptions
 {

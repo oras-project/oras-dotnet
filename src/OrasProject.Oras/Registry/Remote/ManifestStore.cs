@@ -94,7 +94,10 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="options">Options for the fetch operation.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, FetchOptions options, CancellationToken cancellationToken = default)
+    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(
+        string reference,
+        FetchOptions options,
+        CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
@@ -112,7 +115,9 @@ public class ManifestStore(Repository repository) : IManifestStore
                     Descriptor desc;
                     if (response.Content.Headers.ContentLength == null)
                     {
-                        desc = await ResolveAsync(reference, new ResolveOptions { Headers = options.Headers }, cancellationToken).ConfigureAwait(false);
+                        var resolveOptions = new ResolveOptions { Headers = options.Headers };
+                        desc = await ResolveAsync(reference, resolveOptions, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                     else
                     {
@@ -362,7 +367,10 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="options">Options for the resolve operation.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task<Descriptor> ResolveAsync(string reference, ResolveOptions options, CancellationToken cancellationToken = default)
+    public async Task<Descriptor> ResolveAsync(
+        string reference,
+        ResolveOptions options,
+        CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
