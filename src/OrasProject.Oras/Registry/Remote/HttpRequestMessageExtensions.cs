@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
@@ -101,20 +102,28 @@ internal static class HttpRequestMessageExtensions
     }
 
     /// <summary>
-    /// Applies custom headers from the provided dictionary to the request.
+    /// Adds custom headers from the provided dictionary to the request.
     /// </summary>
     /// <param name="request">The <see cref="HttpRequestMessage"/> to add headers to.</param>
-    /// <param name="headers">The headers to apply. If null, no headers are added.</param>
-    /// <returns>The same <see cref="HttpRequestMessage"/> instance with the headers applied.</returns>
-    internal static HttpRequestMessage ApplyHeaders(
+    /// <param name="headers">The headers to add. If null, no headers are added.</param>
+    /// <returns>The same <see cref="HttpRequestMessage"/> instance.</returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when a header cannot be added (e.g., restricted header or invalid characters).
+    /// </exception>
+    internal static HttpRequestMessage AddHeaders(
         this HttpRequestMessage request,
         IDictionary<string, IEnumerable<string>>? headers)
     {
-        if (headers != null)
+        if (headers == null) return request;
+
+        foreach (var header in headers)
         {
-            foreach (var header in headers)
+            if (!request.Headers.TryAddWithoutValidation(header.Key, header.Value))
             {
-                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                throw new ArgumentException(
+                    $"Failed to add header '{header.Key}'. " +
+                    "The header may be restricted or contain invalid characters.",
+                    nameof(headers));
             }
         }
         return request;

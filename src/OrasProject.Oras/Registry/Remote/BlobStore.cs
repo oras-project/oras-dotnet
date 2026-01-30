@@ -91,6 +91,9 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <param name="options">Options for the fetch operation.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when a custom header cannot be added to the request.
+    /// </exception>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(
         string reference,
         FetchOptions options,
@@ -100,7 +103,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
-        using var request = new HttpRequestMessage(HttpMethod.Get, url).ApplyHeaders(options.Headers);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url).AddHeaders(options.Headers);
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         try
         {
@@ -204,6 +207,9 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <param name="options">Options for the resolve operation.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when a custom header cannot be added to the request.
+    /// </exception>
     public async Task<Descriptor> ResolveAsync(
         string reference,
         ResolveOptions options,
@@ -213,7 +219,7 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
-        using var requestMessage = new HttpRequestMessage(HttpMethod.Head, url).ApplyHeaders(options.Headers);
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Head, url).AddHeaders(options.Headers);
         using var resp = await Repository.Options.Client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
         return resp.StatusCode switch
         {

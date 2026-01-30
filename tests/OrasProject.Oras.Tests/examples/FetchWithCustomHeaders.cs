@@ -92,10 +92,16 @@ public static class FetchWithCustomHeaders
             foreach (var layer in imageManifest.Layers)
             {
                 // Fetch blob with custom headers
-                var (layerDescriptor, layerStream) = await repo.Blobs.FetchAsync(layer.Digest, fetchOptions);
-                using (layerStream)
+                var (layerDescriptor, layerStream) = await repo.Blobs.FetchAsync(
+                    layer.Digest,
+                    fetchOptions);
+
+                // Stream to file to avoid loading large blobs into memory
+                await using (layerStream)
                 {
-                    var layerData = await layerStream.ReadAllAsync(layerDescriptor);
+                    var fileName = $"layer-{layerDescriptor.Digest.Replace(":", "-")}.bin";
+                    await using var fileStream = File.Create(fileName);
+                    await layerStream.CopyToAsync(fileStream);
                 }
             }
         }

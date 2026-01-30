@@ -94,6 +94,9 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="options">Options for the fetch operation.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when a custom header cannot be added to the request.
+    /// </exception>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(
         string reference,
         FetchOptions options,
@@ -104,7 +107,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
-        request.ApplyHeaders(options.Headers);
+        request.AddHeaders(options.Headers);
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         try
@@ -367,6 +370,9 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="options">Options for the resolve operation.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when a custom header cannot be added to the request.
+    /// </exception>
     public async Task<Descriptor> ResolveAsync(
         string reference,
         ResolveOptions options,
@@ -377,7 +383,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Head, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
-        request.ApplyHeaders(options.Headers);
+        request.AddHeaders(options.Headers);
         using var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         return response.StatusCode switch
         {
