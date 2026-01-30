@@ -34,5 +34,5 @@ public abstract class RequestOptions
     /// This property is only honored by HTTP-based registry implementations.
     /// Non-HTTP implementations (e.g., local OCI layout stores) will ignore this property.
     /// </remarks>
-    public IDictionary<string, IEnumerable<string>>? Headers { get; init; }
+    public IDictionary<string, IEnumerable<string>>? Headers { get; set; }
 }
