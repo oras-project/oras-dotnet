@@ -70,6 +70,8 @@ Concise guidance for producing code and docs consistent with the ORAS .NET libra
 - Public API: minimal, purposeful. Internal helpers remain internal.
 - Use `required` properties when logically mandatory.
 - Avoid speculative abstractions & unnecessary dependencies.
+- Line length: keep code and comments under 120 columns; prefer ~100 for
+  readability.
 
 ## Models & Serialization
 - Use `System.Text.Json` with `[JsonPropertyName]` / conditional ignore attributes.
@@ -88,6 +90,8 @@ Concise guidance for producing code and docs consistent with the ORAS .NET libra
 - Mirror source folder structure under `tests/OrasProject.Oras.Tests/`.
 - Prefer real in-memory stores (e.g., `MemoryStore`) over mocks when feasible.
 - Each feature: happy path + invalid input + edge case + spec MUST assertion.
+- Interface changes: include at least one test using the interface type
+  (e.g., `IRepository repo = ...`) to verify polymorphic usage and DI scenarios.
 - Keep tests focused; parameterize when it aids clarity.
 
 ## Performance
