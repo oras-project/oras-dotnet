@@ -616,10 +616,10 @@ public class ExtendedCopyTest
     }
 
     /// <summary>
-    /// ExtendedCopyAsync throws when source target or destination target is null.
+    /// ExtendedCopyAsync throws when source target, destination target, source target reference or ExtendedCopyOption is null.
     /// </summary>
     [Fact]
-    public async Task ExtendedCopyAsync_SrcDstIsNull_ThrowsError()
+    public async Task ExtendedCopyAsync_NullArguments_ThrowsError()
     {
         var cancellationToken = CancellationToken.None;
         IReadOnlyGraphTarget? sourceTarget = null;
@@ -636,6 +636,13 @@ public class ExtendedCopyTest
 
         await Assert.ThrowsAsync<ArgumentNullException>(
             async () => await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget!, dstRef, opts, cancellationToken));
+
+        destinationTarget = new MemoryStore();
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            async () => await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget, dstRef, null!, cancellationToken));
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            async () => await sourceTarget.ExtendedCopyAsync("", destinationTarget, dstRef, null!, cancellationToken));
     }
 
     /// <summary>

@@ -56,10 +56,17 @@ public static class ReadOnlyGraphTargetExtensions
         {
             throw new ArgumentNullException(nameof(dst), "Destination target cannot be null");
         }
-
+        if (string.IsNullOrEmpty(srcRef))
+        {
+            throw new ArgumentNullException(nameof(srcRef), "Source target reference cannot be null or empty");
+        }
         if (string.IsNullOrEmpty(dstRef))
         {
             dstRef = srcRef;
+        }
+        if (opts == null)
+        {
+            throw new ArgumentNullException(nameof(opts), "ExtendedCopyOptions cannot be null");
         }
 
         var node = await src.ResolveAsync(srcRef, cancellationToken).ConfigureAwait(false);
