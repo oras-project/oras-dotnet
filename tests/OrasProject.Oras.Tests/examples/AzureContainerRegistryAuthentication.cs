@@ -22,6 +22,7 @@ public static class AzureContainerRegistryAuthentication
     // This example demonstrates how to use the ICredentialProvider interface to
     // authenticate with Azure Container Registry, and perform a copy operation
     // between two ACR repositories.
+    // For production use: Implement proper exception handling, cancellation, and dependency injection.
     public static async Task AuthenticateWithAzureContainerRegistry()
     {
         var httpClient = new HttpClient();
