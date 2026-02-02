@@ -13,6 +13,7 @@
 
 using OrasProject.Oras.Oci;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,7 +29,11 @@ public static class ReadOnlyStorageExtensions
     /// <param name="dst"></param>
     /// <param name="node"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, CancellationToken cancellationToken = default)
+    public static async Task CopyGraphAsync(
+        this IReadOnlyStorage src,
+        IStorage dst,
+        Descriptor node,
+        CancellationToken cancellationToken = default)
     {
         var copyGraphOptions = new CopyGraphOptions();
         var proxy = new Proxy()
@@ -48,7 +53,12 @@ public static class ReadOnlyStorageExtensions
     /// <param name="node"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    public static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
+    public static async Task CopyGraphAsync(
+        this IReadOnlyStorage src,
+        IStorage dst,
+        Descriptor node,
+        CopyGraphOptions copyGraphOptions,
+        CancellationToken cancellationToken = default)
     {
         var proxy = new Proxy()
         {
@@ -68,10 +78,17 @@ public static class ReadOnlyStorageExtensions
     /// <param name="proxy"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, CancellationToken cancellationToken = default)
+    internal static async Task CopyGraphAsync(
+        this IReadOnlyStorage src,
+        IStorage dst,
+        Descriptor node,
+        Proxy proxy,
+        CopyGraphOptions copyGraphOptions,
+        CancellationToken cancellationToken = default)
     {
         using var limiter = new SemaphoreSlim(copyGraphOptions.Concurrency, copyGraphOptions.Concurrency);
-        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, cancellationToken).ConfigureAwait(false);
+        var copied = new ConcurrentDictionary<BasicDescriptor, bool>();
+        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, copied, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -83,12 +100,34 @@ public static class ReadOnlyStorageExtensions
     /// <param name="proxy"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="limiter"></param>
+    /// <param name="copied"></param>
     /// <param name="cancellationToken"></param>
-    internal static async Task CopyGraphAsync(this IReadOnlyStorage src, ITarget dst, Descriptor node, Proxy proxy, CopyGraphOptions copyGraphOptions, SemaphoreSlim limiter, CancellationToken cancellationToken)
+    internal static async Task CopyGraphAsync(
+        this IReadOnlyStorage src,
+        IStorage dst,
+        Descriptor node,
+        Proxy proxy,
+        CopyGraphOptions copyGraphOptions,
+        SemaphoreSlim limiter,
+        ConcurrentDictionary<BasicDescriptor, bool> copied,
+        CancellationToken cancellationToken)
     {
         if (Descriptor.IsNullOrInvalid(node))
         {
             throw new ArgumentNullException(nameof(node));
+        }
+
+        var nodeKey = node.BasicDescriptor;
+
+        // Try to mark this node as being copied; skip if already claimed by another task
+        if (!copied.TryAdd(nodeKey, true))
+        {
+            // Another task is already copying this node, skip it
+            if (copyGraphOptions.OnCopySkippedAsync != null)
+            {
+                await copyGraphOptions.OnCopySkippedAsync(node, cancellationToken).ConfigureAwait(false);
+            }
+            return;
         }
 
         // acquire lock to find successors of the current node
@@ -115,7 +154,9 @@ public static class ReadOnlyStorageExtensions
         var childNodesCopies = new List<Task>();
         foreach (var childNode in successors)
         {
-            childNodesCopies.Add(Task.Run(() => src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, cancellationToken)));
+            childNodesCopies.Add(Task.Run(
+                () => src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, copied, cancellationToken),
+                cancellationToken));
         }
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
 
@@ -131,6 +172,7 @@ public static class ReadOnlyStorageExtensions
                     return;
                 }
             }
+
             // obtain datastream
             using var dataStream = await proxy.FetchAsync(node, cancellationToken).ConfigureAwait(false);
             await dst.PushAsync(node, dataStream, cancellationToken).ConfigureAwait(false);

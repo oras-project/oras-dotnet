@@ -12,6 +12,9 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Oci;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace OrasProject.Oras.Registry;
 
@@ -38,4 +41,48 @@ public interface IRepository : ITarget, IReferenceFetchable, IReferencePushable,
     /// Manifests provides access to the manifest CAS only.
     /// </summary>
     IManifestStore Manifests { get; }
+
+    /// <summary>
+    /// FetchReferrersAsync retrieves referrers for the given descriptor
+    /// and returns a stream of descriptors asynchronously for consumption.
+    /// If referrers API is not supported, the function falls back to a tag
+    /// schema for retrieving referrers.
+    /// If the referrers are supported via an API, the state is updated accordingly.
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
+    /// </summary>
+    /// <param name="descriptor">
+    /// The target descriptor whose referrers are to be retrieved.
+    /// </param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// An asynchronous enumerable of Descriptor objects representing the referrers.
+    /// </returns>
+    IAsyncEnumerable<Descriptor> FetchReferrersAsync(
+        Descriptor descriptor,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// FetchReferrersAsync retrieves referrers for the given descriptor and artifact type
+    /// and returns a stream of descriptors asynchronously for consumption.
+    /// If referrers API is not supported, the function falls back to a tag
+    /// schema for retrieving referrers.
+    /// If the referrers are supported via an API, the state is updated accordingly.
+    /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
+    /// </summary>
+    /// <param name="descriptor">
+    /// The target descriptor whose referrers are to be retrieved.
+    /// </param>
+    /// <param name="artifactType">
+    /// Filters referrers by the specified artifact type.
+    /// </param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// An asynchronous enumerable of Descriptor objects representing the referrers
+    /// filtered by artifact type.
+    /// </returns>
+    IAsyncEnumerable<Descriptor> FetchReferrersAsync(
+        Descriptor descriptor,
+        string? artifactType,
+        CancellationToken cancellationToken = default);
+
 }
