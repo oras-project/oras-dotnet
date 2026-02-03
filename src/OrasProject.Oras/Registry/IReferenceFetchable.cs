@@ -36,9 +36,18 @@ public interface IReferenceFetchable
     /// Fetches the content identified by the reference with additional options.
     /// </summary>
     /// <param name="reference"></param>
-    /// <param name="options">Options for the fetch operation.</param>
+    /// <param name="options">
+    /// Options for the fetch operation. The default interface implementation ignores this parameter
+    /// and forwards to <see cref="FetchAsync(string, CancellationToken)"/>; concrete implementations
+    /// may override this overload to honor the provided options (for example, to apply custom headers).
+    /// </param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
+    /// <remarks>
+    /// The default implementation of this overload does not apply <paramref name="options"/> and instead
+    /// delegates to <see cref="FetchAsync(string, CancellationToken)"/>. Callers should not assume that
+    /// options are respected unless the concrete implementation overrides this method.
+    /// </remarks>
     Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, FetchOptions options, CancellationToken cancellationToken = default)
         => FetchAsync(reference, cancellationToken);
 }
