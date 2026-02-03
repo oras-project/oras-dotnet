@@ -15,7 +15,7 @@ using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry;
 
-namespace OrasProject.Oras.Tests.Examples;
+namespace OrasProject.Oras.Examples.Azure;
 
 public static class AzureContainerRegistryAuthentication
 {

@@ -16,7 +16,7 @@ using Azure.Identity;
 using Azure.Core;
 using Azure.Containers.ContainerRegistry;
 
-namespace OrasProject.Oras.Tests.Examples;
+namespace OrasProject.Oras.Examples.Azure;
 
 // This is an example implementation of AzureCredentialProvider, which
 // can be used to authenticate with Azure Container Registry. It uses
