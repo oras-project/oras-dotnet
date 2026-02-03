@@ -65,6 +65,8 @@ public static class FetchWithCustomHeaders
         };
 
         // Fetch manifest content with custom headers
+        // Note: ReadAllAsync buffers the entire content in memory. This is appropriate for
+        // manifests which are typically small (< 1MB). For large blobs, use streaming instead.
         var (manifestDescriptor, manifestStream) = await repo.FetchAsync(reference, fetchOptions);
         byte[] manifestBytes;
         using (manifestStream)
