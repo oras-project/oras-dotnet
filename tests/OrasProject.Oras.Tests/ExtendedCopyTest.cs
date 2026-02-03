@@ -650,7 +650,7 @@ public class ExtendedCopyTest
     /// Tests that an empty destination reference defaults to the source reference.
     /// </summary>
     [Fact]
-    public async Task ExtendedCopyAsync_NullDstRef_UsesSrcRef()
+    public async Task ExtendedCopyAsync_EmptyDstRef_UsesSrcRef()
     {
         var sourceTarget = new MemoryStore();
         var cancellationToken = CancellationToken.None;
