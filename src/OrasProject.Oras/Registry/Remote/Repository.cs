@@ -206,6 +206,12 @@ public class Repository : IRepository
     /// <param name="options">Options for the fetch operation.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a custom header is a content header.
+    /// </exception>
+    /// <exception cref="FormatException">
+    /// Thrown when a custom header name or value has an invalid format.
+    /// </exception>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, FetchOptions options, CancellationToken cancellationToken = default)
         => await Manifests.FetchAsync(reference, options, cancellationToken).ConfigureAwait(false);
 

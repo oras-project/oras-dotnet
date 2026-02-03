@@ -91,8 +91,11 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <param name="options">Options for the fetch operation.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    /// <exception cref="ArgumentException">
-    /// Thrown when a custom header cannot be added to the request.
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a custom header is a content header.
+    /// </exception>
+    /// <exception cref="FormatException">
+    /// Thrown when a custom header name or value has an invalid format.
     /// </exception>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(
         string reference,
@@ -207,8 +210,11 @@ public class BlobStore(Repository repository) : IBlobStore, IMounter
     /// <param name="options">Options for the resolve operation.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    /// <exception cref="ArgumentException">
-    /// Thrown when a custom header cannot be added to the request.
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a custom header is a content header.
+    /// </exception>
+    /// <exception cref="FormatException">
+    /// Thrown when a custom header name or value has an invalid format.
     /// </exception>
     public async Task<Descriptor> ResolveAsync(
         string reference,

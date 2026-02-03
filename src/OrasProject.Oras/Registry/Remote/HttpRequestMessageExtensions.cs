@@ -107,8 +107,11 @@ internal static class HttpRequestMessageExtensions
     /// <param name="request">The <see cref="HttpRequestMessage"/> to add headers to.</param>
     /// <param name="headers">The headers to add. If null, no headers are added.</param>
     /// <returns>The same <see cref="HttpRequestMessage"/> instance.</returns>
-    /// <exception cref="ArgumentException">
-    /// Thrown when a header cannot be added (e.g., restricted header or invalid characters).
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a header is a content header (e.g., Content-Length, Content-Type).
+    /// </exception>
+    /// <exception cref="FormatException">
+    /// Thrown when the header name or value has an invalid format.
     /// </exception>
     internal static HttpRequestMessage AddHeaders(
         this HttpRequestMessage request,
@@ -118,13 +121,7 @@ internal static class HttpRequestMessageExtensions
 
         foreach (var header in headers)
         {
-            if (!request.Headers.TryAddWithoutValidation(header.Key, header.Value))
-            {
-                throw new ArgumentException(
-                    $"Failed to add header '{header.Key}'. " +
-                    "The header may be restricted or contain invalid characters.",
-                    nameof(headers));
-            }
+            request.Headers.Add(header.Key, header.Value);
         }
         return request;
     }
