@@ -509,10 +509,9 @@ public class Store : ITarget, IPredecessorFindable, IDisposable, IAsyncDisposabl
             using var gzDigester = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             using var tarDigester = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
 
-            var gzFileStream = tempFile;
-            await using (gzFileStream.ConfigureAwait(false))
+            await using (tempFile.ConfigureAwait(false))
             {
-                var gzHashingStream = new HashingStream(gzFileStream, gzDigester);
+                var gzHashingStream = new HashingStream(tempFile, gzDigester);
                 await using (gzHashingStream.ConfigureAwait(false))
                 {
                     var gzipStream = new GZipStream(gzHashingStream, CompressionLevel.Optimal, leaveOpen: true);
@@ -526,7 +525,7 @@ public class Store : ITarget, IPredecessorFindable, IDisposable, IAsyncDisposabl
                     }
                 }
                 // Flush before the using block ends and disposes the stream
-                await gzFileStream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                await tempFile.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
 
             // Get file size
@@ -558,8 +557,7 @@ public class Store : ITarget, IPredecessorFindable, IDisposable, IAsyncDisposabl
         }
         catch
         {
-            // Clean up on failure
-            await tempFile.DisposeAsync().ConfigureAwait(false);
+            // Clean up temp file on failure
             try { System.IO.File.Delete(tempPath); } catch { /* ignore */ }
             throw;
         }

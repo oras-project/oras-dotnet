@@ -97,21 +97,25 @@ internal static class TarUtilities
             }
             else
             {
-                var entry = new PaxTarEntry(TarEntryType.RegularFile, entryName)
+                var dataStream = System.IO.File.OpenRead(file);
+                await using (dataStream.ConfigureAwait(false))
                 {
-                    DataStream = System.IO.File.OpenRead(file),
-                    Uid = 0,
-                    Gid = 0,
-                    Mode = GetUnixFileMode(fileInfo)
-                };
+                    var entry = new PaxTarEntry(TarEntryType.RegularFile, entryName)
+                    {
+                        DataStream = dataStream,
+                        Uid = 0,
+                        Gid = 0,
+                        Mode = GetUnixFileMode(fileInfo)
+                    };
 
-                if (reproducible)
-                {
-                    // Use Unix epoch (1970-01-01) for reproducible tarballs
-                    entry.ModificationTime = DateTimeOffset.UnixEpoch;
+                    if (reproducible)
+                    {
+                        // Use Unix epoch (1970-01-01) for reproducible tarballs
+                        entry.ModificationTime = DateTimeOffset.UnixEpoch;
+                    }
+
+                    await tarWriter.WriteEntryAsync(entry, cancellationToken).ConfigureAwait(false);
                 }
-
-                await tarWriter.WriteEntryAsync(entry, cancellationToken).ConfigureAwait(false);
             }
         }
     }
@@ -177,18 +181,16 @@ internal static class TarUtilities
         await using var _2 = decompressedStream.ConfigureAwait(false);
 
         Stream sourceStream = decompressedStream;
-        IncrementalHash? hash = null;
-        MemoryStream? bufferedStream = null;
 
-        try
+        // If we have a checksum, we need to verify the content
+        if (!string.IsNullOrEmpty(checksum))
         {
-            // If we have a checksum, we need to verify the content
-            if (!string.IsNullOrEmpty(checksum))
-            {
-                hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
 
-                // Read the entire decompressed content for hashing
-                bufferedStream = new MemoryStream();
+            // Read the entire decompressed content for hashing
+            var bufferedStream = new MemoryStream();
+            await using (bufferedStream.ConfigureAwait(false))
+            {
                 var buffer = new byte[_bufferSize];
                 int bytesRead;
                 while ((bytesRead = await decompressedStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false)) > 0)
@@ -206,23 +208,22 @@ internal static class TarUtilities
                 }
 
                 bufferedStream.Position = 0;
-                sourceStream = bufferedStream;
+                await ExtractTarDirectoryAsync(
+                    targetDirectory,
+                    directoryName,
+                    bufferedStream,
+                    preservePermissions,
+                    cancellationToken).ConfigureAwait(false);
             }
-
+        }
+        else
+        {
             await ExtractTarDirectoryAsync(
                 targetDirectory,
                 directoryName,
                 sourceStream,
                 preservePermissions,
                 cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            hash?.Dispose();
-            if (bufferedStream != null)
-            {
-                await bufferedStream.DisposeAsync().ConfigureAwait(false);
-            }
         }
     }
 
