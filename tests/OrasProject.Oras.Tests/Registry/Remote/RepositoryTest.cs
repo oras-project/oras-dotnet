@@ -1148,7 +1148,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = blob.Length
         };
         var redirectLocation = "https://storage.example.com/blob";
-        
+
         // Test case 1: Redirect with absolute URI
         HttpResponseMessage MockHandlerRedirect(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
@@ -1246,7 +1246,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = true,
         });
         var store = new BlobStore(repo);
-        
+
         await Assert.ThrowsAsync<NotFoundException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
 
@@ -1277,7 +1277,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = true,
         });
         store = new BlobStore(repo);
-        
+
         var exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("Location header", exception.Message);
@@ -1310,7 +1310,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = false, // HTTPS is required
         });
         store = new BlobStore(repo);
-        
+
         exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("HTTPS", exception.Message);
@@ -1343,7 +1343,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = true,
         });
         store = new BlobStore(repo);
-        
+
         exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("absolute URI", exception.Message);
