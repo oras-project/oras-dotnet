@@ -28,8 +28,10 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public class Client(HttpClient? httpClient = null, ICredentialProvider? credentialProvider = null, ICache? cache = null)
-    : IClient
+/// <summary>
+/// Client provides authenticated access to OCI registries with automatic token management.
+/// </summary>
+public class Client : IClient
 {
     #region private members
     /// <summary>
@@ -45,7 +47,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// Cache used for storing and retrieving authentication tokens
     /// to optimize remote registry operations.
     /// </summary>
-    private ICache? _cache = cache;
+    private ICache? _cache;
 
     /// <summary>
     /// Object used for locking during cache initialization.
@@ -54,15 +56,69 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     #endregion
 
     /// <summary>
+    /// Initializes a new instance of the Client class.
+    /// </summary>
+    /// <param name="httpClient">
+    /// Optional HttpClient to use for standard requests that follow redirects.
+    /// If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
+    /// </param>
+    /// <param name="credentialProvider">Optional credential provider for registry authentication.</param>
+    /// <param name="cache">Optional cache for storing authentication tokens.</param>
+    public Client(
+        HttpClient? httpClient = null,
+        ICredentialProvider? credentialProvider = null,
+        ICache? cache = null)
+        : this(httpClient, null, credentialProvider, cache)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the Client class with separate HttpClient instances for redirect control.
+    /// </summary>
+    /// <param name="httpClient">
+    /// Optional HttpClient to use for standard requests that follow redirects.
+    /// If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
+    /// </param>
+    /// <param name="noRedirectHttpClient">
+    /// Optional HttpClient configured with <c>AllowAutoRedirect = false</c> for capturing redirect locations.
+    /// If not provided, uses <see cref="DefaultHttpClient.NoRedirectInstance"/>.
+    /// <para>
+    /// <strong>Advanced Usage:</strong> To apply consistent HTTP configuration (timeouts, proxy, headers) 
+    /// across both redirect and no-redirect scenarios, provide both <paramref name="httpClient"/> and 
+    /// <paramref name="noRedirectHttpClient"/> with the same base configuration but different redirect settings.
+    /// This is useful with IHttpClientFactory or custom HttpClient management.
+    /// </para>
+    /// </param>
+    /// <param name="credentialProvider">Optional credential provider for registry authentication.</param>
+    /// <param name="cache">Optional cache for storing authentication tokens.</param>
+    public Client(
+        HttpClient? httpClient,
+        HttpClient? noRedirectHttpClient,
+        ICredentialProvider? credentialProvider,
+        ICache? cache)
+    {
+        CredentialProvider = credentialProvider;
+        _cache = cache;
+        BaseClient = httpClient ?? DefaultHttpClient.Instance;
+        NoRedirectClient = noRedirectHttpClient ?? DefaultHttpClient.NoRedirectInstance;
+    }
+
+    /// <summary>
     /// CredentialProvider provides the mechanism to retrieve
     /// credentials for accessing remote registries.
     /// </summary>
-    public ICredentialProvider? CredentialProvider { get; init; } = credentialProvider;
+    public ICredentialProvider? CredentialProvider { get; init; }
 
     /// <summary>
-    /// BaseClient is an instance of HttpClient to send http requests
+    /// BaseClient is an instance of HttpClient to send http requests that follow redirects.
     /// </summary>
-    public HttpClient BaseClient { get; } = httpClient ?? DefaultHttpClient.Instance;
+    public HttpClient BaseClient { get; }
+
+    /// <summary>
+    /// NoRedirectClient is an instance of HttpClient configured to not follow redirects.
+    /// Used for scenarios where we need to capture redirect locations (e.g., blob location URLs).
+    /// </summary>
+    internal HttpClient NoRedirectClient { get; }
 
     /// <summary>
     /// Cache used for storing and retrieving authentication tokens.
@@ -176,141 +232,29 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     /// <exception cref="KeyNotFoundException">
     /// Thrown if required parameters (e.g., "realm") are missing in the authentication challenge.
     /// </exception>
-    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest,
+    public Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage originalRequest,
         CancellationToken cancellationToken = default)
-    {
-        foreach (var (headerName, headerValues) in CustomHeaders)
-        {
-            originalRequest.Headers.TryAddWithoutValidation(headerName, headerValues);
-        }
+        => SendCoreAsync(originalRequest, allowAutoRedirect: true, cancellationToken: cancellationToken);
 
-        originalRequest.AddDefaultUserAgent();
-        if (originalRequest.Headers.Authorization != null || BaseClient.DefaultRequestHeaders.Authorization != null)
-        {
-            return await SendRequestAsync(originalRequest, cancellationToken).ConfigureAwait(false);
-        }
-        var host = originalRequest.RequestUri?.Authority ??
-                    throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
-        var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
-        var attemptedKey = string.Empty;
-
-        // attempt to send request with cached auth token
-        if (Cache.TryGetScheme(host, out var schemeFromCache))
-        {
-            switch (schemeFromCache)
-            {
-                case Challenge.Scheme.Basic:
-                    {
-                        if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken))
-                        {
-                            requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
-                        }
-
-                        break;
-                    }
-                case Challenge.Scheme.Bearer:
-                    {
-                        var scopes = ScopeManager.GetScopesStringForHost(host);
-                        attemptedKey = string.Join(" ", scopes);
-                        if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken))
-                        {
-                            requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
-                        }
-
-                        break;
-                    }
-            }
-        }
-
-        var response1 = await SendRequestAsync(requestAttempt1, cancellationToken).ConfigureAwait(false);
-        if (response1.StatusCode != HttpStatusCode.Unauthorized)
-        {
-            return response1;
-        }
-
-        var (schemeFromChallenge, parameters) =
-            Challenge.ParseChallenge(response1.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
-
-        // attempt again with credentials for recognized schemes
-        switch (schemeFromChallenge)
-        {
-            case Challenge.Scheme.Basic:
-                {
-                    response1.Dispose();
-                    var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
-
-                    // Attempt again with basic token
-                    var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                    requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
-                    return await SendRequestAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
-                }
-            case Challenge.Scheme.Bearer:
-                {
-                    response1.Dispose();
-                    if (parameters == null)
-                    {
-                        throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
-                    }
-
-                    var existingScopes = ScopeManager.GetScopesForHost(host);
-                    var newScopes = new SortedSet<Scope>(existingScopes);
-                    if (parameters.TryGetValue("scope", out var scopesString))
-                    {
-                        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            if (Scope.TryParse(scopeStr, out var scope))
-                            {
-                                Scope.AddOrMergeScope(newScopes, scope);
-                            }
-                        }
-                    }
-
-                    // attempt to send request when the scope changes and a token cache hits
-                    var newKey = string.Join(" ", newScopes.Select(newScope => newScope));
-                    if (newKey != attemptedKey &&
-                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
-                    {
-                        var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                        requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                        var response2 = await SendRequestAsync(requestAttempt2, cancellationToken).ConfigureAwait(false);
-
-                        if (response2.StatusCode != HttpStatusCode.Unauthorized)
-                        {
-                            return response2;
-                        }
-                        response2.Dispose();
-                    }
-
-                    if (!parameters.TryGetValue("realm", out var realm))
-                    {
-                        // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
-                        throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
-                    }
-                    if (!parameters.TryGetValue("service", out var service))
-                    {
-                        // some registries may omit the `service` parameter; use an empty string when absent.
-                        service = string.Empty;
-                    }
-
-                    // try to fetch bearer token based on the challenge header
-                    var bearerAuthToken = await FetchBearerAuthAsync(
-                        host,
-                        realm,
-                        service,
-                        newScopes.Select(newScope => newScope.ToString()).ToList(),
-                        cancellationToken
-                    ).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
-
-                    var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                    requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
-                    return await SendRequestAsync(requestAttempt3, cancellationToken).ConfigureAwait(false);
-                }
-            default:
-                return response1;
-        }
-    }
+    /// <summary>
+    /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
+    /// </summary>
+    /// <param name="originalRequest">The original HTTP request message to send.</param>
+    /// <param name="allowAutoRedirect">Whether to follow redirects automatically. Set to false to capture redirect URLs (e.g., for blob locations).</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains the HTTP response message.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown if the request URI is null.</exception>
+    /// <exception cref="KeyNotFoundException">
+    /// Thrown if required parameters (e.g., "realm") are missing in the authentication challenge.
+    /// </exception>
+    public Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage originalRequest,
+        bool allowAutoRedirect = true,
+        CancellationToken cancellationToken = default)
+        => SendCoreAsync(originalRequest, allowAutoRedirect, cancellationToken);
 
     /// <summary>
     /// Fetches the Basic Authentication token for the specified registry.
@@ -438,7 +382,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         };
         request.RequestUri = uriBuilder.Uri;
 
-        using var response = await SendRequestAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await SendRequestAsync(request, allowAutoRedirect: true, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -520,7 +464,7 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
         request.Content = content;
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.FormUrlEncoded);
 
-        using var response = await SendRequestAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await SendRequestAsync(request, allowAutoRedirect: true, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -538,15 +482,168 @@ public class Client(HttpClient? httpClient = null, ICredentialProvider? credenti
     }
 
     /// <summary>
-    /// Sends an HTTP request using the configured HttpClient with response headers read optimization.
+    /// Core implementation for sending HTTP requests with authentication and optional redirect control.
+    /// This method handles the complete authentication flow including cached token retrieval,
+    /// challenge parsing, and credential fetching for both Basic and Bearer schemes.
+    /// </summary>
+    /// <param name="originalRequest">The original HTTP request message to send.</param>
+    /// <param name="allowAutoRedirect">Whether to allow automatic redirect following.</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains the HTTP response message.
+    /// </returns>
+    private async Task<HttpResponseMessage> SendCoreAsync(
+        HttpRequestMessage originalRequest,
+        bool allowAutoRedirect,
+        CancellationToken cancellationToken)
+    {
+        foreach (var (headerName, headerValues) in CustomHeaders)
+        {
+            originalRequest.Headers.TryAddWithoutValidation(headerName, headerValues);
+        }
+
+        originalRequest.AddDefaultUserAgent();
+        if (originalRequest.Headers.Authorization != null || BaseClient.DefaultRequestHeaders.Authorization != null)
+        {
+            return await SendRequestAsync(originalRequest, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+        }
+        var host = originalRequest.RequestUri?.Authority ??
+                    throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
+        var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
+        var attemptedKey = string.Empty;
+
+        // attempt to send request with cached auth token
+        if (Cache.TryGetScheme(host, out var schemeFromCache))
+        {
+            switch (schemeFromCache)
+            {
+                case Challenge.Scheme.Basic:
+                    {
+                        if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken))
+                        {
+                            requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
+                        }
+
+                        break;
+                    }
+                case Challenge.Scheme.Bearer:
+                    {
+                        var scopes = ScopeManager.GetScopesStringForHost(host);
+                        attemptedKey = string.Join(" ", scopes);
+                        if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken))
+                        {
+                            requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                        }
+                        break;
+                    }
+            }
+        }
+
+        var response1 = await SendRequestAsync(requestAttempt1, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+        if (response1.StatusCode != HttpStatusCode.Unauthorized)
+        {
+            return response1;
+        }
+
+        var (schemeFromChallenge, parameters) =
+            Challenge.ParseChallenge(response1.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
+
+        // Attempt again with credentials for recognized schemes
+        switch (schemeFromChallenge)
+        {
+            case Challenge.Scheme.Basic:
+                {
+                    response1.Dispose();
+                    var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
+                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
+
+                    // Attempt again with basic token
+                    var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+                    requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
+                    return await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                }
+            case Challenge.Scheme.Bearer:
+                {
+                    response1.Dispose();
+                    if (parameters == null)
+                    {
+                        throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
+                    }
+
+                    var existingScopes = ScopeManager.GetScopesForHost(host);
+                    var newScopes = new SortedSet<Scope>(existingScopes);
+                    if (parameters.TryGetValue("scope", out var scopesString))
+                    {
+                        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            if (Scope.TryParse(scopeStr, out var scope))
+                            {
+                                Scope.AddOrMergeScope(newScopes, scope);
+                            }
+                        }
+                    }
+
+                    // Attempt to send request when the scope changes and a token cache hits
+                    var newKey = string.Join(" ", newScopes);
+                    if (newKey != attemptedKey &&
+                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
+                    {
+                        var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+                        requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
+                        var response2 = await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+
+                        if (response2.StatusCode != HttpStatusCode.Unauthorized)
+                        {
+                            return response2;
+                        }
+                        response2.Dispose();
+                    }
+
+                    if (!parameters.TryGetValue("realm", out var realm))
+                    {
+                        // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
+                        throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
+                    }
+                    if (!parameters.TryGetValue("service", out var service))
+                    {
+                        // some registries may omit the `service` parameter; use an empty string when absent.
+                        service = string.Empty;
+                    }
+
+                    // Try to fetch bearer token based on the challenge header
+                    var bearerAuthToken = await FetchBearerAuthAsync(
+                        host,
+                        realm,
+                        service,
+                        newScopes.Select(newScope => newScope.ToString()).ToList(),
+                        cancellationToken
+                    ).ConfigureAwait(false);
+                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
+
+                    var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+                    requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
+                    return await SendRequestAsync(requestAttempt3, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                }
+            default:
+                return response1;
+        }
+    }
+
+    /// <summary>
+    /// Sends an HTTP request using the configured HttpClient with optional redirect control.
     /// HttpCompletionOption.ResponseHeadersRead is used here to enable content streaming and to 
     /// avoid buffering the entire response body in memory.
     /// </summary>
     /// <param name="request">The HTTP request message to send.</param>
+    /// <param name="allowAutoRedirect">Whether to allow automatic redirect following. Default is true.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The HTTP response message.</returns>
     private async Task<HttpResponseMessage> SendRequestAsync(
         HttpRequestMessage request,
+        bool allowAutoRedirect = true,
         CancellationToken cancellationToken = default)
-        => await BaseClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+    {
+        var client = allowAutoRedirect ? BaseClient : NoRedirectClient;
+        return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+    }
 }
