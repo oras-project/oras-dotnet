@@ -22,7 +22,7 @@ namespace OrasProject.Oras;
 public static class ReadOnlyGraphTargetExtensions
 {
     /// <summary>
-    /// ExtendedCopyAsync copies the directed acyclic graph (DAG) that are reachable from
+    /// ExtendedCopyAsync copies the directed acyclic graph (DAG) that is reachable from
     /// the given tagged node from the source GraphTarget to the destination Target.
     /// In other words, it copies a tagged artifact along with its referrers or
     /// other predecessor manifests referencing it.
@@ -32,14 +32,31 @@ public static class ReadOnlyGraphTargetExtensions
     /// destination reference is left blank.
     /// Returns the descriptor of the tagged node on successful copy.
     /// </summary>
-    /// <param name="src">The source read-only graph target</param>
-    /// <param name="srcRef">The source reference</param>
-    /// <param name="dst">The destination target</param>
-    /// <param name="dstRef">The destination reference (defaults to srcRef if null or empty)</param>
-    /// <param name="opts">Options for the extended copy operation</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The descriptor of the tagged node</returns>
-    /// <exception cref="ArgumentNullException">Thrown when src or dst is null</exception>
+    /// <param name="src">
+    /// The source read-only graph target from which the tagged node and its reachable DAG
+    /// (including referrers and predecessor manifests) are copied.
+    /// </param>
+    /// <param name="srcRef">
+    /// Source reference that identifies the tagged node in <paramref name="src"/>, typically a
+    /// tag or digest (for example, <c>my-artifact:1.0</c> or <c>sha256:&lt;hex&gt;</c>).
+    /// </param>
+    /// <param name="dst">
+    /// The destination target that will receive the copied content and tag for the tagged node.
+    /// </param>
+    /// <param name="dstRef">
+    /// Destination reference to associate with the copied tagged node in <paramref name="dst"/>.
+    /// If null or empty, the value of <paramref name="srcRef"/> is used.
+    /// </param>
+    /// <param name="opts">
+    /// Options that control how the extended copy operation traverses and copies the graph,
+    /// including behavior for referrers and predecessor manifests.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Token to observe for cancellation while resolving the source, copying the graph, or
+    /// tagging the destination.
+    /// </param>
+    /// <returns>The descriptor of the tagged node after it has been copied to the destination.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when src, srcRef, dst, or opts is null.</exception>
     public static async Task<Descriptor> ExtendedCopyAsync(
         this IReadOnlyGraphTarget src,
         string srcRef,
@@ -56,11 +73,11 @@ public static class ReadOnlyGraphTargetExtensions
         {
             throw new ArgumentNullException(nameof(dst), "Destination target cannot be null");
         }
-        if (string.IsNullOrEmpty(srcRef))
+        if (string.IsNullOrWhiteSpace(srcRef))
         {
             throw new ArgumentNullException(nameof(srcRef), "Source target reference cannot be null or empty");
         }
-        if (string.IsNullOrEmpty(dstRef))
+        if (string.IsNullOrWhiteSpace(dstRef))
         {
             dstRef = srcRef;
         }

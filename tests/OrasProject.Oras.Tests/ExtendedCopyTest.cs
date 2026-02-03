@@ -642,12 +642,12 @@ public class ExtendedCopyTest
             async () => await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget, dstRef, null!, cancellationToken));
 
         await Assert.ThrowsAsync<ArgumentNullException>(
-            async () => await sourceTarget.ExtendedCopyAsync("", destinationTarget, dstRef, null!, cancellationToken));
+            async () => await sourceTarget.ExtendedCopyAsync("", destinationTarget, dstRef, opts, cancellationToken));
     }
 
     /// <summary>
-    /// ExtendedCopyAsync uses source reference as destination when dstRef is null.
-    /// Tests that a null destination reference defaults to the source reference.
+    /// ExtendedCopyAsync uses source reference as destination when dstRef is empty.
+    /// Tests that an empty destination reference defaults to the source reference.
     /// </summary>
     [Fact]
     public async Task ExtendedCopyAsync_NullDstRef_UsesSrcRef()
@@ -699,7 +699,7 @@ public class ExtendedCopyTest
         var destinationTarget = new MemoryStore();
         var opts = new ExtendedCopyOptions();
 
-        // Call with null dstRef
+        // Call with empty dstRef
         var result = await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget, "", opts, cancellationToken);
 
         // Verify the result descriptor matches the manifest
