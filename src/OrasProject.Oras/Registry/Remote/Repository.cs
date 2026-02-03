@@ -51,6 +51,15 @@ public class Repository : IRepository
     /// <returns></returns>
     public IManifestStore Manifests => new ManifestStore(this);
 
+    /// <summary>
+    /// GetBlobLocationAsync retrieves the location URL for the specified blob.
+    /// </summary>
+    /// <param name="descriptor">The descriptor of the blob to locate</param>
+    /// <param name="cancellationToken">The cancellation token</param>
+    /// <returns>The location URL of the blob</returns>
+    public async Task<Uri?> GetBlobLocationAsync(Descriptor descriptor, CancellationToken cancellationToken = default)
+        => await ((IBlobLocationProvider)Blobs).GetBlobLocationAsync(descriptor, cancellationToken).ConfigureAwait(false);
+
     public RepositoryOptions Options => _opts;
 
     private int _referrersState = (int)Referrers.ReferrersState.Unknown;
