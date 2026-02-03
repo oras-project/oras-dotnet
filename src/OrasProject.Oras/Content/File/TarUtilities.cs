@@ -269,19 +269,10 @@ internal static class TarUtilities
                         await using var _fs = fileStream.ConfigureAwait(false);
                         await entry.DataStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
                     }
-
-                    if (preservePermissions && entry.Mode != default)
-                    {
-                        System.IO.File.SetUnixFileMode(fullPath, entry.Mode);
-                    }
                     break;
 
                 case TarEntryType.Directory:
                     Directory.CreateDirectory(fullPath);
-                    if (preservePermissions && entry.Mode != default)
-                    {
-                        System.IO.File.SetUnixFileMode(fullPath, entry.Mode);
-                    }
                     break;
 
                 case TarEntryType.SymbolicLink:
