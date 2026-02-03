@@ -14,10 +14,14 @@
 namespace OrasProject.Oras.Content;
 
 /// <summary>
-/// Options for fetching content.
-/// This class is designed for use with
-/// <see cref="global::OrasProject.Oras.Registry.IReferenceFetchable"/>.
+/// Options for fetching content by reference.
 /// </summary>
+/// <remarks>
+/// These options apply only to reference-based fetch operations
+/// (e.g., <c>FetchAsync(string reference, FetchOptions options, ...)</c>).
+/// Descriptor-based fetch operations used by graph operations like
+/// <c>CopyAsync</c> do not currently support per-operation options.
+/// </remarks>
 public class FetchOptions : RequestOptions
 {
 }

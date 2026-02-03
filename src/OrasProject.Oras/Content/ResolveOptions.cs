@@ -14,9 +14,12 @@
 namespace OrasProject.Oras.Content;
 
 /// <summary>
-/// Options for resolving references.
-/// This class is designed for use with <see cref="IResolvable"/>.
+/// Options for resolving references to descriptors.
 /// </summary>
+/// <remarks>
+/// These options apply only to reference-based resolve operations
+/// (e.g., <c>ResolveAsync(string reference, ResolveOptions options, ...)</c>).
+/// </remarks>
 public class ResolveOptions : RequestOptions
 {
 }
