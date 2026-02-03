@@ -99,4 +99,29 @@ internal static class HttpRequestMessageExtensions
         }
         return requestMessage;
     }
+
+    /// <summary>
+    /// Adds custom headers from the provided dictionary to the request.
+    /// </summary>
+    /// <param name="request">The <see cref="HttpRequestMessage"/> to add headers to.</param>
+    /// <param name="headers">The headers to add. If null, no headers are added.</param>
+    /// <returns>The same <see cref="HttpRequestMessage"/> instance.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a header is a content header (e.g., Content-Length, Content-Type).
+    /// </exception>
+    /// <exception cref="FormatException">
+    /// Thrown when the header name or value has an invalid format.
+    /// </exception>
+    internal static HttpRequestMessage AddHeaders(
+        this HttpRequestMessage request,
+        IDictionary<string, IEnumerable<string>>? headers)
+    {
+        if (headers == null) return request;
+
+        foreach (var header in headers)
+        {
+            request.Headers.Add(header.Key, header.Value);
+        }
+        return request;
+    }
 }

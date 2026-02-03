@@ -70,8 +70,8 @@ Concise guidance for producing code and docs consistent with the ORAS .NET libra
 - Public API: minimal, purposeful. Internal helpers remain internal.
 - Use `required` properties when logically mandatory.
 - Avoid speculative abstractions & unnecessary dependencies.
-- Line length: keep code and comments under 120 columns; prefer ~100 for
-  readability.
+- **Line length: hard limit 120 columns; target ~100 for readability.**
+  Break long method signatures, chained calls, or expressions across lines.
 
 ## Models & Serialization
 - Use `System.Text.Json` with `[JsonPropertyName]` / conditional ignore attributes.
@@ -100,7 +100,7 @@ Concise guidance for producing code and docs consistent with the ORAS .NET libra
 - Defer expensive computation until needed.
 
 ## Public API Change Gate
-Before merging a public change confirm: naming OK, XML docs + spec link, tests updated, non-breaking (or documented), nullability accurate.
+Before merging a public change confirm: naming OK, XML docs + spec link, tests updated, non-breaking (or documented), nullability accurate, **line lengths ≤100 columns (hard limit 120)**.
 
 ## Security Considerations
 - Treat digest mismatch as tamper -> throw.
@@ -114,6 +114,8 @@ Before merging a public change confirm: naming OK, XML docs + spec link, tests u
 ## PR Guidance
 - One logical change per PR, with summary + rationale + breaking change note (if any).
 - All tests must pass; add coverage for new logic.
+- **Verify line lengths:** new/modified lines should be ≤100 columns (hard limit 120).
+  Run a length check before finalizing review.
 
 ## Copilot Prompt Hints
 Clarify intent in comments, e.g.:

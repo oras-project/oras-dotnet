@@ -85,12 +85,32 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
+        => await FetchAsync(reference, options: new FetchOptions(), cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// Fetches the manifest identified by the reference with additional options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the fetch operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a custom header is a content header.
+    /// </exception>
+    /// <exception cref="FormatException">
+    /// Thrown when a custom header name or value has an invalid format.
+    /// </exception>
+    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(
+        string reference,
+        FetchOptions options,
+        CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
+        request.AddHeaders(options.Headers);
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         try
@@ -101,7 +121,9 @@ public class ManifestStore(Repository repository) : IManifestStore
                     Descriptor desc;
                     if (response.Content.Headers.ContentLength == null)
                     {
-                        desc = await ResolveAsync(reference, cancellationToken).ConfigureAwait(false);
+                        var resolveOptions = new ResolveOptions { Headers = options.Headers };
+                        desc = await ResolveAsync(reference, resolveOptions, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                     else
                     {
@@ -342,12 +364,32 @@ public class ManifestStore(Repository repository) : IManifestStore
     }
 
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
+        => await ResolveAsync(reference, new ResolveOptions(), cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// ResolveAsync resolves a reference to a descriptor with additional options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the resolve operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a custom header is a content header.
+    /// </exception>
+    /// <exception cref="FormatException">
+    /// Thrown when a custom header name or value has an invalid format.
+    /// </exception>
+    public async Task<Descriptor> ResolveAsync(
+        string reference,
+        ResolveOptions options,
+        CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Head, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
+        request.AddHeaders(options.Headers);
         using var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         return response.StatusCode switch
         {
