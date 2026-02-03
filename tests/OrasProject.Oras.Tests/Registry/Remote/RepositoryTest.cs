@@ -71,16 +71,16 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     // when checks are performed, and with that assumption, we have the luxury for
     // the second point, which is b) performance.
     //
-    //     _______________________________________________________________________________________________________________
-    //    | ID | CLIENT          | SERVER           | Manifest.GET          | Blob.GET  | Manifest.HEAD       | Blob.HEAD |
-    //    |----+-----------------+------------------+-----------------------+-----------+---------------------+-----------+
-    //    | 1  | tag             | missing          | CALCULATE,PASS        | n/a       | FAIL                | n/a       |
-    //    | 2  | tag             | presentCorrect   | TRUST,PASS            | n/a       | TRUST,PASS          | n/a       |
-    //    | 3  | tag             | presentIncorrect | TRUST,*PASS           | n/a       | TRUST,*PASS         | n/a       |
-    //    | 4  | correctDigest   | missing          | TRUST,PASS            | PASS      | TRUST,PASS          | PASS      |
-    //    | 5  | correctDigest   | presentCorrect   | TRUST,COMPARE,PASS    | PASS      | TRUST,COMPARE,PASS  | PASS      |
-    //    | 6  | correctDigest   | presentIncorrect | TRUST,COMPARE,FAIL    | FAIL      | TRUST,COMPARE,FAIL  | FAIL      |
-    //     ---------------------------------------------------------------------------------------------------------------
+    //	 _______________________________________________________________________________________________________________
+    //	| ID | CLIENT          | SERVER           | Manifest.GET          | Blob.GET  | Manifest.HEAD       | Blob.HEAD |
+    //	|----+-----------------+------------------+-----------------------+-----------+---------------------+-----------+
+    //	| 1  | tag             | missing          | CALCULATE,PASS        | n/a       | FAIL                | n/a       |
+    //	| 2  | tag             | presentCorrect   | TRUST,PASS            | n/a       | TRUST,PASS          | n/a       |
+    //	| 3  | tag             | presentIncorrect | TRUST,*PASS           | n/a       | TRUST,*PASS         | n/a       |
+    //	| 4  | correctDigest   | missing          | TRUST,PASS            | PASS      | TRUST,PASS          | PASS      |
+    //	| 5  | correctDigest   | presentCorrect   | TRUST,COMPARE,PASS    | PASS      | TRUST,COMPARE,PASS  | PASS      |
+    //	| 6  | correctDigest   | presentIncorrect | TRUST,COMPARE,FAIL    | FAIL      | TRUST,COMPARE,FAIL  | FAIL      |
+    //	 ---------------------------------------------------------------------------------------------------------------
 
     /// <summary>
     /// GetTestIOStructMapForGetDescriptorClass returns a map of test cases for different
@@ -1148,7 +1148,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = blob.Length
         };
         var redirectLocation = "https://storage.example.com/blob";
-        
+
         // Test case 1: Redirect with absolute URI
         HttpResponseMessage MockHandlerRedirect(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
@@ -1246,7 +1246,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = true,
         });
         var store = new BlobStore(repo);
-        
+
         await Assert.ThrowsAsync<NotFoundException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
 
@@ -1277,7 +1277,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = true,
         });
         store = new BlobStore(repo);
-        
+
         var exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("Location header", exception.Message);
@@ -1310,7 +1310,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = false, // HTTPS is required
         });
         store = new BlobStore(repo);
-        
+
         exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("HTTPS", exception.Message);
@@ -1343,7 +1343,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = true,
         });
         store = new BlobStore(repo);
-        
+
         exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("absolute URI", exception.Message);

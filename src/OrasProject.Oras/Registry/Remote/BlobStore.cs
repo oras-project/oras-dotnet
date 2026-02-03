@@ -215,7 +215,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
-        
+
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var response = await Repository.Options.Client.SendAsync(request, allowAutoRedirect: false, cancellationToken).ConfigureAwait(false);
 
@@ -223,7 +223,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         // If response.RequestMessage.RequestUri differs from the original request URI,
         // it means the provided HttpClient had AllowAutoRedirect=true, which breaks this API.
         var requestUri = response.RequestMessage?.RequestUri;
-        if (requestUri != null && 
+        if (requestUri != null &&
             !string.Equals(requestUri.ToString(), url.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException(
