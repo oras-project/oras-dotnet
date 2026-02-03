@@ -19,7 +19,8 @@ using Azure.Containers.ContainerRegistry;
 namespace OrasProject.Oras.Tests.Examples;
 
 // This is an example implementation of AzureCredentialProvider, which
-// can be used to authenticate with Azure Container Registry. It implements
+// can be used to authenticate with Azure Container Registry. It uses
+// DefaultAzureCredential with the fully qualified type name. It implements 
 // the ICredentialProvider interface.
 public class AzureCredentialProvider(string host) : ICredentialProvider
 {
@@ -27,7 +28,7 @@ public class AzureCredentialProvider(string host) : ICredentialProvider
     private string _aadToken { get; set; } = string.Empty;
     private Credential _credential { get; set; } = new Credential();
     private DateTimeOffset _tokenExpiry { get; set; } = DateTimeOffset.MinValue;
-    private ContainerRegistryClient _crClient { get; set; } = new ContainerRegistryClient(new Uri($"https://{host}"));
+    private ContainerRegistryClient _acrClient { get; set; } = new ContainerRegistryClient(new Uri($"https://{host}"));
 
     private async Task<string> GetAadTokenAsync(CancellationToken cancellationToken)
     {
@@ -61,7 +62,7 @@ public class AzureCredentialProvider(string host) : ICredentialProvider
         }
 
         var aadToken = await GetAadTokenAsync(cancellationToken).ConfigureAwait(false);
-        var response = await _crClient.ExchangeAadAccessTokenForAcrRefreshTokenAsync(hostname, null, null, aadToken, cancellationToken);
+        var response = await _acrClient.ExchangeAadAccessTokenForAcrRefreshTokenAsync(hostname, null, null, aadToken, cancellationToken);
         _credential = new Credential(RefreshToken: response.Value.RefreshToken);
         return _credential;
     }
