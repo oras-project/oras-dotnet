@@ -90,7 +90,8 @@ internal static class TarUtilities
 
                 if (reproducible)
                 {
-                    entry.ModificationTime = default;
+                    // Use Unix epoch (1970-01-01) for reproducible tarballs
+                    entry.ModificationTime = DateTimeOffset.UnixEpoch;
                 }
 
                 await tarWriter.WriteEntryAsync(entry, cancellationToken).ConfigureAwait(false);
@@ -107,7 +108,8 @@ internal static class TarUtilities
 
                 if (reproducible)
                 {
-                    entry.ModificationTime = default;
+                    // Use Unix epoch (1970-01-01) for reproducible tarballs
+                    entry.ModificationTime = DateTimeOffset.UnixEpoch;
                 }
 
                 await tarWriter.WriteEntryAsync(entry, cancellationToken).ConfigureAwait(false);
@@ -132,7 +134,8 @@ internal static class TarUtilities
 
         if (reproducible)
         {
-            entry.ModificationTime = default;
+            // Use Unix epoch (1970-01-01) for reproducible tarballs
+            entry.ModificationTime = DateTimeOffset.UnixEpoch;
         }
 
         return entry;

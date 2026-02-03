@@ -525,9 +525,9 @@ public class Store : ITarget, IPredecessorFindable, IDisposable, IAsyncDisposabl
                         }
                     }
                 }
+                // Flush before the using block ends and disposes the stream
+                await gzFileStream.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
-
-            await gzFileStream.FlushAsync(cancellationToken).ConfigureAwait(false);
 
             // Get file size
             var fileInfo = new FileInfo(tempPath);
