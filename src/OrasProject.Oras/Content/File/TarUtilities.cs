@@ -43,8 +43,7 @@ internal static class TarUtilities
         bool reproducible,
         CancellationToken cancellationToken = default)
     {
-        var tarWriter = new TarWriter(outputStream, leaveOpen: true);
-        await using var _ = tarWriter.ConfigureAwait(false);
+        using var tarWriter = new TarWriter(outputStream, leaveOpen: true);
 
         // Get all entries: directories and files
         var allFiles = Directory.GetFiles(sourceDirectory, "*", SearchOption.AllDirectories);

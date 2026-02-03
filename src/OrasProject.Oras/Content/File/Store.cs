@@ -289,8 +289,8 @@ public class Store : ITarget, IPredecessorFindable, IDisposable, IAsyncDisposabl
             }
             catch (DuplicateNameException)
             {
-                // In case multiple goroutines are pushing or restoring the same
-                // named content, the error is ignored
+                // In case multiple tasks are pushing or restoring the same
+                // named content concurrently, the error is ignored
             }
         }
     }
@@ -621,12 +621,9 @@ public class Store : ITarget, IPredecessorFindable, IDisposable, IAsyncDisposabl
             }
         }
 
-        if (DisableOverwrite)
+        if (DisableOverwrite && System.IO.File.Exists(path))
         {
-            if (System.IO.File.Exists(path))
-            {
-                throw new OverwriteDisallowedException();
-            }
+            throw new OverwriteDisallowedException();
         }
 
         return path;

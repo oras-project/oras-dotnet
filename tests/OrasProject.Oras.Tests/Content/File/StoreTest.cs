@@ -1437,10 +1437,11 @@ public class FileStoreTest : IDisposable
 
         // Create two stores with reproducible tar
         using var store1 = new Store(_tempDir) { TarReproducible = true };
-        using var store2 = new Store(CreateTempDir()) { TarReproducible = true };
+        var tempDir2 = CreateTempDir();
+        using var store2 = new Store(tempDir2) { TarReproducible = true };
 
         // Copy the directory to the second store's temp dir
-        var dirPath2 = Path.Combine(store2.ToString()!, dirName);
+        var dirPath2 = Path.Combine(tempDir2, dirName);
         if (!Directory.Exists(dirPath2))
         {
             Directory.CreateDirectory(dirPath2);
@@ -1477,11 +1478,9 @@ public class FileStoreTest : IDisposable
 
         // Verify the descriptor has the AnnotationDigest for the uncompressed content
         Assert.NotNull(desc.Annotations);
-        Assert.True(desc.Annotations.ContainsKey(FileStoreAnnotations.AnnotationDigest));
+        Assert.True(desc.Annotations.TryGetValue(FileStoreAnnotations.AnnotationDigest, out var tarDigest));
 
-        var tarDigest = desc.Annotations[FileStoreAnnotations.AnnotationDigest];
         Assert.StartsWith("sha256:", tarDigest);
-
         // Fetch and push to another store
         using var gzStream = await srcStore.FetchAsync(desc);
         using var gzMs = new MemoryStream();
@@ -1577,7 +1576,7 @@ public class FileStoreTest : IDisposable
         var path2 = Path.Combine(_tempDir, name2);
         await System.IO.File.WriteAllBytesAsync(path2, content2);
 
-        var ex = await Assert.ThrowsAsync<DuplicateNameException>(() =>
+        await Assert.ThrowsAsync<DuplicateNameException>(() =>
             store.AddAsync(name1, mediaType2, path2));
     }
 
@@ -1810,8 +1809,11 @@ public class FileStoreTest : IDisposable
             using var store = new Store(_tempDir);
 
             // Push should fail with invalid digest
-            await Assert.ThrowsAnyAsync<Exception>(() =>
-                store.PushAsync(desc, new MemoryStream(data)));
+            await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                using var stream = new MemoryStream(data);
+                await store.PushAsync(desc, stream);
+            });
 
             // Tag should fail since content doesn't exist
             await Assert.ThrowsAsync<NotFoundException>(() =>
