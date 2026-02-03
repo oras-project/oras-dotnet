@@ -216,6 +216,16 @@ public class Repository : IRepository
         => await Manifests.FetchAsync(reference, options, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
+    /// ResolveAsync resolves a reference to a descriptor using the provided options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the resolve operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>The resolved descriptor.</returns>
+    public async Task<Descriptor> ResolveAsync(string reference, ResolveOptions options, CancellationToken cancellationToken = default)
+        => await Manifests.ResolveAsync(reference, options, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
     /// PushReference pushes the manifest with a reference tag.
     /// </summary>
     /// <param name="descriptor"></param>
