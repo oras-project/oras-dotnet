@@ -313,7 +313,10 @@ public class Repository : IRepository
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.ToString());
-        using var response = await _opts.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await _opts.Client.SendAsync(
+            request,
+            tenantId: _opts.TenantId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -347,7 +350,10 @@ public class Repository : IRepository
         var url = isManifest ? uriFactory.BuildRepositoryManifest() : uriFactory.BuildRepositoryBlob();
 
         using var request = new HttpRequestMessage(HttpMethod.Delete, url);
-        using var response = await _opts.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await _opts.Client.SendAsync(
+            request,
+            tenantId: _opts.TenantId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         switch (response.StatusCode)
         {
             case HttpStatusCode.Accepted:
@@ -556,7 +562,10 @@ public class Repository : IRepository
             }
 
             using var request = new HttpRequestMessage(HttpMethod.Get, nextPageUrl);
-            using var response = await _opts.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using var response = await _opts.Client.SendAsync(
+                request,
+                tenantId: _opts.TenantId,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
             switch (response.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -727,7 +736,10 @@ public class Repository : IRepository
             };
             var url = new UriFactory(reference, Options.PlainHttp).BuildReferrersUrl();
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            using var response = await Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using var response = await Options.Client.SendAsync(
+                request,
+                tenantId: Options.TenantId,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
 
             switch (response.StatusCode)
             {

@@ -733,7 +733,7 @@ public class ClientTest
         var cancellationToken = new CancellationToken();
 
         // Act
-        var result = await client.SendAsync(request, cancellationToken);
+        var result = await client.SendAsync(request, cancellationToken: cancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, result.StatusCode);
@@ -782,7 +782,7 @@ public class ClientTest
         var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
-        var response = await client.SendAsync(request, CancellationToken.None);
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -816,7 +816,7 @@ public class ClientTest
         var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
-        var response = await client.SendAsync(request, CancellationToken.None);
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -856,7 +856,7 @@ public class ClientTest
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        var response = await client.SendAsync(request, CancellationToken.None);
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -902,7 +902,7 @@ public class ClientTest
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        var response = await client.SendAsync(request, CancellationToken.None);
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -1011,7 +1011,7 @@ public class ClientTest
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        var response = await client.SendAsync(request, CancellationToken.None);
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -1033,7 +1033,7 @@ public class ClientTest
         request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        response = await client.SendAsync(request, CancellationToken.None);
+        response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         mockHandler.Protected().Verify(
             "SendAsync",
@@ -1135,12 +1135,12 @@ public class ClientTest
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        var response = await client.SendAsync(request, CancellationToken.None);
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         // Ensure subsequent cached call works and still no service param used
-        var second = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}"), CancellationToken.None);
+        var second = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}"), cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
     }
 
@@ -1182,7 +1182,7 @@ public class ClientTest
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act + Assert
-        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(async () => await client.SendAsync(request, CancellationToken.None));
+        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(async () => await client.SendAsync(request, cancellationToken: CancellationToken.None));
         Assert.Equal("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.", ex.Message);
     }
 
@@ -1252,7 +1252,7 @@ public class ClientTest
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        var response = await client.SendAsync(request, CancellationToken.None);
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -1276,7 +1276,7 @@ public class ClientTest
         Assert.True(client.Cache.TryGetToken(host, Challenge.Scheme.Basic, "", out var token));
         Assert.Equal(basicToken, token);
         // Act
-        response = await client.SendAsync(request, CancellationToken.None);
+        response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         mockHandler.Protected().Verify(
             "SendAsync",
@@ -1324,7 +1324,7 @@ public class ClientTest
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        var exception = await Assert.ThrowsAsync<AuthenticationException>(async () => await client.SendAsync(request, CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<AuthenticationException>(async () => await client.SendAsync(request, cancellationToken: CancellationToken.None));
 
         // Assert
         Assert.Equal("Missing username or password for basic authentication.", exception.Message);
@@ -1438,11 +1438,11 @@ public class ClientTest
         var client = new Client(new HttpClient(mockHandler.Object));
 
         // Act: call port 5000
-        var r1 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000"), CancellationToken.None);
+        var r1 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000"), cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, r1.StatusCode);
 
         // Act: call port 443 (explicit)
-        var r2 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:443"), CancellationToken.None);
+        var r2 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:443"), cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, r2.StatusCode);
 
         // Assert: ensure an authorized call happened with token per port
@@ -1503,11 +1503,11 @@ public class ClientTest
         var client = new Client(new HttpClient(mockHandler.Object), mockCredentialProvider.Object);
 
         // Act: call port 5000
-        var r1 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000"), CancellationToken.None);
+        var r1 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000"), cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, r1.StatusCode);
 
         // Act: call port 443 (explicit)
-        var r2 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:443"), CancellationToken.None);
+        var r2 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:443"), cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, r2.StatusCode);
 
         // Assert: ensure proper basic auth token per port was used
@@ -1560,20 +1560,20 @@ public class ClientTest
         // Inject mocked ICache to supply pre-cached token
         var cacheMock = new Mock<ICache>(MockBehavior.Strict);
         var schemeOut = Challenge.Scheme.Bearer;
-        cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut)).Returns(true);
+        cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut, null)).Returns(true);
         var tokenOut = expectedToken;
-        cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut)).Returns(true);
+        cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut, null)).Returns(true);
         client.Cache = cacheMock.Object;
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{authority}");
 
         // Act
-        var resp = await client.SendAsync(request, CancellationToken.None);
+        var resp = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-        cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut), Times.AtLeastOnce());
-        cacheMock.Verify(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut), Times.AtLeastOnce());
+        cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut, null), Times.AtLeastOnce());
+        cacheMock.Verify(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut, null), Times.AtLeastOnce());
         handler.Protected().Verify(
             "SendAsync",
             Times.Once(),
@@ -1606,20 +1606,20 @@ public class ClientTest
         var client = new Client(new HttpClient(handler.Object));
         var cacheMock = new Mock<ICache>(MockBehavior.Strict);
         var schemeOut = Challenge.Scheme.Basic;
-        cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut)).Returns(true);
+        cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut, null)).Returns(true);
         var tokenOut = basicToken;
-        cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut)).Returns(true);
+        cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut, null)).Returns(true);
         client.Cache = cacheMock.Object;
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        var resp = await client.SendAsync(request, CancellationToken.None);
+        var resp = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-        cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut), Times.AtLeastOnce());
-        cacheMock.Verify(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut), Times.AtLeastOnce());
+        cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut, null), Times.AtLeastOnce());
+        cacheMock.Verify(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut, null), Times.AtLeastOnce());
         handler.Protected().Verify(
             "SendAsync",
             Times.Once(),
@@ -1689,7 +1689,7 @@ public class ClientTest
         // Test standard request (follows redirects)
         using (var standardResponse = await client.SendAsync(
             new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/test"),
-            CancellationToken.None))
+            cancellationToken: CancellationToken.None))
         {
             Assert.Equal(HttpStatusCode.OK, standardResponse.StatusCode);
         }
@@ -1698,7 +1698,7 @@ public class ClientTest
         using (var noRedirectResponse = await client.SendAsync(
             new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/redirect"),
             allowAutoRedirect: false,
-            CancellationToken.None))
+            cancellationToken: CancellationToken.None))
         {
             Assert.Equal(HttpStatusCode.TemporaryRedirect, noRedirectResponse.StatusCode);
             Assert.Equal(expectedRedirectLocation, noRedirectResponse.Headers.Location);
