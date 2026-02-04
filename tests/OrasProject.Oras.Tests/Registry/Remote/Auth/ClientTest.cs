@@ -729,7 +729,7 @@ public class ClientTest
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
         var cancellationToken = new CancellationToken();
 
         // Act
@@ -779,7 +779,7 @@ public class ClientTest
 
         var client = new Client(new HttpClient(mockHandler.Object));
         client.BaseClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "test_token");
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
@@ -813,7 +813,7 @@ public class ClientTest
         client.CustomHeaders["Authorization"] = [$"Bearer {expectedToken}"];
         client.CustomHeaders["foo"] = ["bar", "bar1"];
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
@@ -853,7 +853,7 @@ public class ClientTest
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"] = ["newBar"];
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
@@ -899,7 +899,7 @@ public class ClientTest
         client.CustomHeaders["foo"] = ["newBar"];
         client.CustomHeaders["key1"] = ["value1"];
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
@@ -1008,7 +1008,7 @@ public class ClientTest
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"].Add("abc");
         client.CustomHeaders["key1"] = ["value1"];
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
@@ -1030,10 +1030,10 @@ public class ClientTest
 
         mockHandler.Invocations.Clear(); // Clear invocations to ensure no residual state between tests
 
-        request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+        response = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         mockHandler.Protected().Verify(
             "SendAsync",
@@ -1132,7 +1132,7 @@ public class ClientTest
         Assert.True(Scope.TryParse(scopes[0], out var scope));
         client.ScopeManager.SetScopeForRegistry(host, scope);
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
@@ -1140,7 +1140,8 @@ public class ClientTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         // Ensure subsequent cached call works and still no service param used
-        var second = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}"), cancellationToken: CancellationToken.None);
+        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        var second = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
     }
 
@@ -1179,7 +1180,7 @@ public class ClientTest
         Assert.True(Scope.TryParse(scopes[0], out var scope));
         client.ScopeManager.SetScopeForRegistry(host, scope);
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act + Assert
         var ex = await Assert.ThrowsAsync<KeyNotFoundException>(async () => await client.SendAsync(request, cancellationToken: CancellationToken.None));
@@ -1249,7 +1250,7 @@ public class ClientTest
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"].Add("abc");
         client.CustomHeaders["key1"] = ["value1"];
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
@@ -1272,11 +1273,11 @@ public class ClientTest
 
         mockHandler.Invocations.Clear(); // Clear invocations to ensure no residual state between tests
 
-        request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
         Assert.True(client.Cache.TryGetToken(host, Challenge.Scheme.Basic, "", out var token));
         Assert.Equal(basicToken, token);
         // Act
-        response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+        response = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         mockHandler.Protected().Verify(
             "SendAsync",
@@ -1321,7 +1322,7 @@ public class ClientTest
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
         var exception = await Assert.ThrowsAsync<AuthenticationException>(async () => await client.SendAsync(request, cancellationToken: CancellationToken.None));
@@ -1438,11 +1439,13 @@ public class ClientTest
         var client = new Client(new HttpClient(mockHandler.Object));
 
         // Act: call port 5000
-        var r1 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000"), cancellationToken: CancellationToken.None);
+        using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000");
+        var r1 = await client.SendAsync(request1, cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, r1.StatusCode);
 
         // Act: call port 443 (explicit)
-        var r2 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:443"), cancellationToken: CancellationToken.None);
+        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}:443");
+        var r2 = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, r2.StatusCode);
 
         // Assert: ensure an authorized call happened with token per port
@@ -1503,11 +1506,13 @@ public class ClientTest
         var client = new Client(new HttpClient(mockHandler.Object), mockCredentialProvider.Object);
 
         // Act: call port 5000
-        var r1 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000"), cancellationToken: CancellationToken.None);
+        using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000");
+        var r1 = await client.SendAsync(request1, cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, r1.StatusCode);
 
         // Act: call port 443 (explicit)
-        var r2 = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, $"https://{host}:443"), cancellationToken: CancellationToken.None);
+        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}:443");
+        var r2 = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
         Assert.Equal(HttpStatusCode.OK, r2.StatusCode);
 
         // Assert: ensure proper basic auth token per port was used
@@ -1565,7 +1570,7 @@ public class ClientTest
         cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut, null)).Returns(true);
         client.Cache = cacheMock.Object;
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{authority}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{authority}");
 
         // Act
         var resp = await client.SendAsync(request, cancellationToken: CancellationToken.None);
@@ -1611,7 +1616,7 @@ public class ClientTest
         cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut, null)).Returns(true);
         client.Cache = cacheMock.Object;
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
         var resp = await client.SendAsync(request, cancellationToken: CancellationToken.None);
@@ -1687,16 +1692,18 @@ public class ClientTest
             cache: null);
 
         // Test standard request (follows redirects)
+        using var standardRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/test");
         using (var standardResponse = await client.SendAsync(
-            new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/test"),
+            standardRequest,
             cancellationToken: CancellationToken.None))
         {
             Assert.Equal(HttpStatusCode.OK, standardResponse.StatusCode);
         }
 
         // Test no-redirect request (captures redirect location)
+        using var noRedirectRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/redirect");
         using (var noRedirectResponse = await client.SendAsync(
-            new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/redirect"),
+            noRedirectRequest,
             allowAutoRedirect: false,
             cancellationToken: CancellationToken.None))
         {

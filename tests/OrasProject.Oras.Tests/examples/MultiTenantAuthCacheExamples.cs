@@ -159,12 +159,16 @@ public class MultiTenantAuthCacheExamples
         var scopeKey = "repository:library/nginx:pull";
 
         // Set tokens for different customers
-        cache.SetCache(registry, Challenge.Scheme.Bearer, scopeKey, "token-for-customer-A", "customer-A");
-        cache.SetCache(registry, Challenge.Scheme.Bearer, scopeKey, "token-for-customer-B", "customer-B");
+        cache.SetCache(
+            registry, Challenge.Scheme.Bearer, scopeKey, "token-for-customer-A", "customer-A");
+        cache.SetCache(
+            registry, Challenge.Scheme.Bearer, scopeKey, "token-for-customer-B", "customer-B");
 
         // Each customer has isolated token cache
-        cache.TryGetToken(registry, Challenge.Scheme.Bearer, scopeKey, out var tokenA, "customer-A");
-        cache.TryGetToken(registry, Challenge.Scheme.Bearer, scopeKey, out var tokenB, "customer-B");
+        cache.TryGetToken(
+            registry, Challenge.Scheme.Bearer, scopeKey, out var tokenA, "customer-A");
+        cache.TryGetToken(
+            registry, Challenge.Scheme.Bearer, scopeKey, out var tokenB, "customer-B");
 
         // tokenA == "token-for-customer-A"
         // tokenB == "token-for-customer-B"

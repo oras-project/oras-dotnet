@@ -72,7 +72,9 @@ public struct RepositoryOptions
     /// Use cases include:
     /// <list type="bullet">
     /// <item>Multi-tenant services where each customer has different upstream credentials</item>
-    /// <item>Sync scenarios where the same upstream registry is accessed with different tokens</item>
+    /// <item>
+    /// Sync scenarios where the same upstream registry is accessed with different tokens
+    /// </item>
     /// </list>
     /// </para>
     /// <para>

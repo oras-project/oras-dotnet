@@ -211,7 +211,6 @@ public class Client : IClient
     /// <summary>
     /// Asynchronously resolves the credential for the specified registry host.
     /// </summary>
-    /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="registry">The registry hostname to retrieve credentials for.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>

@@ -188,7 +188,9 @@ public sealed class Cache : ICache
     /// </summary>
     /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="scheme">The authentication scheme associated with the token.</param>
-    /// <param name="scopeKey">The OAuth2 scope key used to identify the token within the cache.</param>
+    /// <param name="scopeKey">
+    /// The OAuth2 scope key used to identify the token within the cache.
+    /// </param>
     /// <param name="token">
     /// When this method returns, contains the token associated with the specified registry,
     /// scheme, and scope key, if found; otherwise, an empty string.

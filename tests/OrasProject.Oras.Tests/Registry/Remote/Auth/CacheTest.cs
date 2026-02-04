@@ -424,7 +424,7 @@ public class CacheTest
     }
 
     [Fact]
-    public void SetCache_WithNulltenantId_ShouldUseDefaultPartition()
+    public void SetCache_WithNullTenantId_ShouldUseDefaultPartition()
     {
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
