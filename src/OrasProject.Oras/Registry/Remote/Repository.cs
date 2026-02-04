@@ -206,7 +206,33 @@ public class Repository : IRepository
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
-        => await Manifests.FetchAsync(reference, cancellationToken).ConfigureAwait(false);
+        => await FetchAsync(reference, options: new FetchOptions(), cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// FetchAsync fetches the content identified by the reference with additional options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the fetch operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a custom header is a content header.
+    /// </exception>
+    /// <exception cref="FormatException">
+    /// Thrown when a custom header name or value has an invalid format.
+    /// </exception>
+    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, FetchOptions options, CancellationToken cancellationToken = default)
+        => await Manifests.FetchAsync(reference, options, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// ResolveAsync resolves a reference to a descriptor using the provided options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the resolve operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>The resolved descriptor.</returns>
+    public async Task<Descriptor> ResolveAsync(string reference, ResolveOptions options, CancellationToken cancellationToken = default)
+        => await Manifests.ResolveAsync(reference, options, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// PushReference pushes the manifest with a reference tag.
