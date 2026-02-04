@@ -106,7 +106,7 @@ public class MultiTenantAuthCacheExamples
             TenantId = destinationRef
         };
         var sourceRepo = new Repository(options);
-        // Cache key: "ORAS_AUTH_customerA.myregistry.example/nginx:latest:docker.io"
+        // Cache key: "ORAS_AUTH_customerA.myregistry.example/nginx:latest|docker.io"
 
         // Syncing same upstream to different customer
         var destinationRef2 = "customerB.myregistry.example/nginx:latest";
@@ -117,7 +117,7 @@ public class MultiTenantAuthCacheExamples
             TenantId = destinationRef2
         };
         var sourceRepo2 = new Repository(options2);
-        // Cache key: "ORAS_AUTH_customerB.myregistry.example/nginx:latest:docker.io"
+        // Cache key: "ORAS_AUTH_customerB.myregistry.example/nginx:latest|docker.io"
         // Different cache entry, potentially different upstream credentials
     }
 
@@ -142,7 +142,7 @@ public class MultiTenantAuthCacheExamples
         };
 
         var repo = new Repository(options);
-        // Cache key: "ORAS_AUTH_development:customer-123:docker.io"
+        // Cache key: "ORAS_AUTH_development:customer-123|docker.io"
     }
 
     /// <summary>

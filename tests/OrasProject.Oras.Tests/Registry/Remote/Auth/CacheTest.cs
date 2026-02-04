@@ -400,7 +400,7 @@ public class CacheTest
     }
 
     [Fact]
-    public void SetCache_WithtenantId_ShouldIsolateCacheEntries()
+    public void SetCache_WithTenantId_ShouldIsolateCacheEntries()
     {
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
