@@ -28,15 +28,15 @@ public class AzureCredentialProvider(string host) : ICredentialProvider
     private string _aadToken { get; set; } = string.Empty;
     private Credential _credential { get; set; } = new Credential();
     private DateTimeOffset _tokenExpiry { get; set; } = DateTimeOffset.MinValue;
+    private readonly TokenCredential _aadCredential = new DefaultAzureCredential();
     private ContainerRegistryClient _acrClient { get; set; } = new ContainerRegistryClient(new Uri($"https://{host}"));
 
     private async Task<string> GetAadTokenAsync(CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(_aadToken) || DateTimeOffset.UtcNow >= _tokenExpiry)
         {
-            var credential = new DefaultAzureCredential();
             string[] scopes = ["https://management.azure.com/.default"];
-            var token = await credential.GetTokenAsync(new TokenRequestContext(scopes), cancellationToken).ConfigureAwait(false);
+            var token = await _aadCredential.GetTokenAsync(new TokenRequestContext(scopes), cancellationToken).ConfigureAwait(false);
             _aadToken = token.Token;
             _tokenExpiry = token.ExpiresOn;
         }
