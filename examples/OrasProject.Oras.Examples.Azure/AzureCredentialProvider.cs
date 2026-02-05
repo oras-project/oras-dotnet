@@ -24,7 +24,7 @@ namespace OrasProject.Oras.Examples.Azure;
 // the ICredentialProvider interface.
 public class AzureCredentialProvider(string host) : ICredentialProvider
 {
-    public string Host { get; init; } = host;
+    public string Host { get; } = host;
     private string _aadToken { get; set; } = string.Empty;
     private Credential _credential { get; set; } = new Credential();
     private DateTimeOffset _tokenExpiry { get; set; } = DateTimeOffset.MinValue;
@@ -35,7 +35,7 @@ public class AzureCredentialProvider(string host) : ICredentialProvider
     {
         if (string.IsNullOrEmpty(_aadToken) || DateTimeOffset.UtcNow >= _tokenExpiry)
         {
-            string[] scopes = ["https://management.azure.com/.default"];
+            string[] scopes = ["https://containerregistry.azure.net"];
             var token = await _aadCredential.GetTokenAsync(new TokenRequestContext(scopes), cancellationToken).ConfigureAwait(false);
             _aadToken = token.Token;
             _tokenExpiry = token.ExpiresOn;

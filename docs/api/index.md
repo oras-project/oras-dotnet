@@ -14,4 +14,6 @@ Welcome to the oras-dotnet API documentation page. Here, you will find a compreh
 
 [Push an artifact to a remote repository](./push_artifact.md)
 
+## Cloud-specific examples
+
 [Authenticate with Azure Container Registry](./authenticate_with_ACR.md)
