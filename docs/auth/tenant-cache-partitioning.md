@@ -140,7 +140,7 @@ Proposed: ORAS_AUTH_{tenantId}|{registry}  (if tenantId provided)
 #### 3.3.1 RepositoryOptions (New Property)
 
 ```csharp
-public class RepositoryOptions
+public struct RepositoryOptions
 {
     // ... existing properties ...
 
