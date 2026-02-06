@@ -36,7 +36,7 @@ public class MultiTenantAuthCacheExamples
     {
         // Create repository with default settings (no tenantId)
         var reference = OrasProject.Oras.Registry.Reference.Parse(
-            "myregistry.myregistry.example/library/nginx:latest");
+            "myregistry.example/library/nginx:latest");
 
         var options = new RepositoryOptions
         {
@@ -48,7 +48,7 @@ public class MultiTenantAuthCacheExamples
         var repository = new Repository(options);
 
         // All requests to this registry share the same cached tokens
-        // Cache key: "ORAS_AUTH_myregistry.myregistry.example"
+        // Cache key: "ORAS_AUTH_myregistry.example"
     }
 
     /// <summary>
