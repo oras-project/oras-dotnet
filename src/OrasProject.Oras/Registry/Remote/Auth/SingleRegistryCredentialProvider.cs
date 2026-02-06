@@ -44,12 +44,12 @@ public sealed class SingleRegistryCredentialProvider : ICredentialProvider
     {
         if (string.IsNullOrWhiteSpace(registry))
         {
-            throw new ArgumentNullException(
+            throw new ArgumentException(
                 nameof(registry), "The registry name cannot be null or empty.");
         }
         if (credential.IsEmpty())
         {
-            throw new ArgumentNullException(nameof(credential), "The credential cannot be empty.");
+            throw new ArgumentException(nameof(credential), "The credential cannot be empty.");
         }
         if (string.Equals(registry, "docker.io", StringComparison.OrdinalIgnoreCase))
         {
