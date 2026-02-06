@@ -15,7 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry.Remote.Auth;
 
-namespace OrasProject.Oras.Tests.examples;
+namespace OrasProject.Oras.Tests.Examples;
 
 /// <summary>
 /// Examples demonstrating multi-tenant auth cache partitioning.
