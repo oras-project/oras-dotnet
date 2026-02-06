@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
@@ -80,12 +81,32 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(string reference, CancellationToken cancellationToken = default)
+        => await FetchAsync(reference, options: new FetchOptions(), cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// FetchAsync fetches the blob identified by the reference with additional options.
+    /// The reference must be a digest.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the fetch operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a custom header is a content header.
+    /// </exception>
+    /// <exception cref="FormatException">
+    /// Thrown when a custom header name or value has an invalid format.
+    /// </exception>
+    public async Task<(Descriptor Descriptor, Stream Stream)> FetchAsync(
+        string reference,
+        FetchOptions options,
+        CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url).AddHeaders(options.Headers);
         var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         try
         {
@@ -95,7 +116,9 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
                     Descriptor desc;
                     if (response.Content.Headers.ContentLength == null)
                     {
-                        desc = await ResolveAsync(refDigest, cancellationToken).ConfigureAwait(false);
+                        var resolveOptions = new ResolveOptions { Headers = options.Headers };
+                        desc = await ResolveAsync(refDigest, resolveOptions, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                     else
                     {
@@ -178,12 +201,31 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
+        => await ResolveAsync(reference, new ResolveOptions(), cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// ResolveAsync resolves a reference to a descriptor with additional options.
+    /// </summary>
+    /// <param name="reference"></param>
+    /// <param name="options">Options for the resolve operation.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a custom header is a content header.
+    /// </exception>
+    /// <exception cref="FormatException">
+    /// Thrown when a custom header name or value has an invalid format.
+    /// </exception>
+    public async Task<Descriptor> ResolveAsync(
+        string reference,
+        ResolveOptions options,
+        CancellationToken cancellationToken = default)
     {
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
-        using var requestMessage = new HttpRequestMessage(HttpMethod.Head, url);
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Head, url).AddHeaders(options.Headers);
         using var resp = await Repository.Options.Client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
         return resp.StatusCode switch
         {
