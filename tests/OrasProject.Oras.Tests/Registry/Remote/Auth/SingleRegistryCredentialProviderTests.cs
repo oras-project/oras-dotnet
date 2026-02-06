@@ -29,7 +29,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             };
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry!, credential));
+            Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry!, credential));
         }
 
         [Fact]
@@ -44,7 +44,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             };
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
+            Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
         }
 
         [Fact]
@@ -55,7 +55,7 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             var credential = CredentialExtensions.EmptyCredential;
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
+            Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
         }
 
         [Fact]
