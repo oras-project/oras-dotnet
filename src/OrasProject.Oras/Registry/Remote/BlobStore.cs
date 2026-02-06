@@ -46,7 +46,10 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var response = await Repository.Options.Client.SendAsync(
+            request,
+            tenantId: Repository.Options.TenantId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         try
         {
             switch (response.StatusCode)
@@ -107,7 +110,10 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         using var request = new HttpRequestMessage(HttpMethod.Get, url).AddHeaders(options.Headers);
-        var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var response = await Repository.Options.Client.SendAsync(
+            request,
+            tenantId: Repository.Options.TenantId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         try
         {
             switch (response.StatusCode)
@@ -180,7 +186,10 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
         var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
         using var requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
-        using (var response = await Repository.Options.Client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false))
+        using (var response = await Repository.Options.Client.SendAsync(
+            requestMessage,
+            tenantId: Repository.Options.TenantId,
+            cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             if (response.StatusCode != HttpStatusCode.Accepted)
             {
@@ -226,7 +235,10 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         using var requestMessage = new HttpRequestMessage(HttpMethod.Head, url).AddHeaders(options.Headers);
-        using var resp = await Repository.Options.Client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
+        using var resp = await Repository.Options.Client.SendAsync(
+            requestMessage,
+            tenantId: Repository.Options.TenantId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         return resp.StatusCode switch
         {
             HttpStatusCode.OK => resp.GenerateBlobDescriptor(refDigest),
@@ -259,7 +271,11 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        using var response = await Repository.Options.Client.SendAsync(request, allowAutoRedirect: false, cancellationToken).ConfigureAwait(false);
+        using var response = await Repository.Options.Client.SendAsync(
+            request,
+            tenantId: Repository.Options.TenantId,
+            allowAutoRedirect: false,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
 
         // Validate that the client didn't follow redirects automatically.
         // If response.RequestMessage.RequestUri differs from the original request URI,
@@ -370,8 +386,10 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
                 $"{url.Query}&mount={HttpUtility.UrlEncode(descriptor.Digest)}&from={HttpUtility.UrlEncode(fromRepository)}"
         }.Uri);
 
-        using (var response = await Repository.Options.Client.SendAsync(mountReq, cancellationToken)
-                    .ConfigureAwait(false))
+        using (var response = await Repository.Options.Client.SendAsync(
+            mountReq,
+            tenantId: Repository.Options.TenantId,
+            cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             switch (response.StatusCode)
             {
@@ -455,7 +473,10 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         // the descriptor media type is ignored as in the API doc.
         req.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
 
-        using var response = await Repository.Options.Client.SendAsync(req, cancellationToken).ConfigureAwait(false);
+        using var response = await Repository.Options.Client.SendAsync(
+            req,
+            tenantId: Repository.Options.TenantId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.Created)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
