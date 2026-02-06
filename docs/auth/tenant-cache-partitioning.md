@@ -170,20 +170,16 @@ public interface ICache
 }
 ```
 
-#### 3.3.3 Client (New Overload)
+#### 3.3.3 Client (Updated Signature)
 
 ```csharp
 public class Client
 {
-    // Existing - preserved for backwards compatibility
+    // Updated signature with optional tenantId parameter
     public Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
-        CancellationToken cancellationToken = default);
-
-    // New overload with tenantId
-    public Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request,
-        string tenantId,
+        string? tenantId = null,
+        bool allowAutoRedirect = true,
         CancellationToken cancellationToken = default);
 }
 ```
@@ -215,14 +211,14 @@ User Code
     │
     │  var repo = new Repository(new RepositoryOptions {
     │      Reference = Reference.Parse("docker.io/library/nginx"),
-    │      tenantId = "customer-123"
+    │      TenantId = "customer-123"
     │  });
     │
     ▼
 Repository / BlobStore / ManifestStore
     │
-    │  // Read tenantId from options, pass to Client
-    │  await Client.SendAsync(request, Options.tenantId, ct);
+    │  // Read TenantId from options, pass to Client
+    │  await Client.SendAsync(request, tenantId: Options.TenantId, ct);
     │
     ▼
 Client.SendAsync(request, tenantId, ct)
@@ -272,13 +268,13 @@ With `tenantId = "customer-123"`:
 
 | File | Changes |
 |------|---------|
-| `RepositoryOptions.cs` | Add `tenantId` property |
+| `RepositoryOptions.cs` | Add `TenantId` property |
 | `ICache.cs` | Add optional `tenantId` parameter to all methods |
 | `Cache.cs` | Update `GetCacheKey` to include `tenantId`; update method signatures |
-| `Client.cs` | Add `SendAsync` overload with `tenantId`; pass to cache calls |
-| `BlobStore.cs` | Pass `Options.tenantId` to `Client.SendAsync` |
-| `ManifestStore.cs` | Pass `Options.tenantId` to `Client.SendAsync` |
-| `Repository.cs` | Pass `Options.tenantId` to `Client.SendAsync` |
+| `Client.cs` | Update `SendAsync` signature with optional `tenantId`; pass to cache calls |
+| `BlobStore.cs` | Pass `Options.TenantId` to `Client.SendAsync` |
+| `ManifestStore.cs` | Pass `Options.TenantId` to `Client.SendAsync` |
+| `Repository.cs` | Pass `Options.TenantId` to `Client.SendAsync` |
 | `Registry.cs` | Pass `tenantId` if applicable |
 
 ### 4.2 Files to Remove (from previous implementation)
@@ -323,7 +319,7 @@ With `tenantId = "customer-123"`:
   - [x] Update XML docs
   - [x] Update this plan document
 
-**All 382 tests pass.**
+**All 393 tests pass.**
 
 ---
 
@@ -349,7 +345,7 @@ await repo.Blobs.FetchAsync(descriptor, ct);
 var repoA = new Repository(new RepositoryOptions
 {
     Reference = Reference.Parse("docker.io/library/nginx:latest"),
-    tenantId = "customer-A"
+    TenantId = "customer-A"
 });
 await repoA.Blobs.FetchAsync(descriptor, ct);
 // Cache key: "ORAS_AUTH_customer-A|docker.io"
@@ -358,7 +354,7 @@ await repoA.Blobs.FetchAsync(descriptor, ct);
 var repoB = new Repository(new RepositoryOptions
 {
     Reference = Reference.Parse("docker.io/library/nginx:latest"),
-    tenantId = "customer-B"
+    TenantId = "customer-B"
 });
 await repoB.Blobs.FetchAsync(descriptor, ct);
 // Cache key: "ORAS_AUTH_customer-B|docker.io"
@@ -368,7 +364,7 @@ await repoB.Blobs.FetchAsync(descriptor, ct);
 
 ```csharp
 var reference = Reference.Parse("docker.io/library/nginx:latest");
-var TenantId = ComputeHash($"{reference.Registry}/{reference.Repository}:{reference.ContentReference}");
+var tenantId = ComputeHash($"{reference.Registry}/{reference.Repository}:{reference.ContentReference}");
 
 var repo = new Repository(new RepositoryOptions
 {
@@ -387,9 +383,9 @@ var destinationRef = "customerA.myregistry.example/nginx:latest";
 var repo = new Repository(new RepositoryOptions
 {
     Reference = Reference.Parse("docker.io/library/nginx:latest"),
-    tenantId = destinationRef  // Use destination as partition key
+    TenantId = destinationRef  // Use destination as partition key
 });
-// Cache key: "ORAS_AUTH_customerA.myregistry.example/nginx:latest:docker.io"
+// Cache key: "ORAS_AUTH_customerA.myregistry.example/nginx:latest|docker.io"
 ```
 
 ---
