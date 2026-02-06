@@ -404,10 +404,13 @@ var repo = new Repository(new RepositoryOptions
 
 ## 7. Backwards Compatibility
 
-- All existing code continues to work without changes
-- `tenantId = null` (default) produces same cache keys as before
-- No breaking changes to public APIs (new overloads, not signature changes)
-- Tests for existing behavior should pass without modification
+- When `tenantId` is not used (`tenantId = null`), cache key behavior matches the previous version.
+- Public interfaces such as `ICache`, `IClient`, and `Client.SendAsync` have been updated to
+  accept an optional `tenantId`, which is a source-breaking change for consumers that implement
+  or mock these interfaces.
+- Call sites that use the default client implementations may require minimal or no changes,
+  but interface implementers and tests must be updated to account for the new parameter.
+- Runtime behavior for existing scenarios remains compatible when `tenantId` is left unset.
 
 ---
 
