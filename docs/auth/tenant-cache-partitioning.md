@@ -287,39 +287,37 @@ With `tenantId = "customer-123"`:
 | `ScopedCacheKeyGenerator.cs` | Not needed with simple string approach |
 | `DelegateCacheKeyGenerator.cs` | Not needed with simple string approach |
 
-### 4.3 Task Checklist
+### 4.3 Implementation Phases
 
-- [x] **Phase 1: Core Changes** ✅
-  - [x] Add `tenantId` property to `RepositoryOptions`
-  - [x] Update `ICache` interface with optional `tenantId` parameter
-  - [x] Update `Cache` implementation
-  - [x] Add `Client.SendAsync` overload with `tenantId`
+- **Phase 1: Core Changes**
+  - Add `tenantId` property to `RepositoryOptions`
+  - Update `ICache` interface with optional `tenantId` parameter
+  - Update `Cache` implementation
+  - Add `Client.SendAsync` overload with `tenantId`
 
-- [x] **Phase 2: Propagation** ✅
-  - [x] Update `BlobStore` to pass `tenantId` to client
-  - [x] Update `ManifestStore` to pass `tenantId` to client
-  - [x] Update `Repository` to pass `tenantId` to client
-  - [x] Update `PlainClient` to implement new `IClient` interface
+- **Phase 2: Propagation**
+  - Update `BlobStore` to pass `tenantId` to client
+  - Update `ManifestStore` to pass `tenantId` to client
+  - Update `Repository` to pass `tenantId` to client
+  - Update `PlainClient` to implement new `IClient` interface
 
-- [x] **Phase 3: Cleanup** ✅
-  - [x] Remove `AuthContext.cs`
-  - [x] Remove `CacheKeyGranularity.cs`
-  - [x] Remove `ICacheKeyGenerator.cs`
-  - [x] Remove `ScopedCacheKeyGenerator.cs`
-  - [x] Remove `DelegateCacheKeyGenerator.cs`
-  - [x] Update tests for removed types
+- **Phase 3: Cleanup**
+  - Remove `AuthContext.cs`
+  - Remove `CacheKeyGranularity.cs`
+  - Remove `ICacheKeyGenerator.cs`
+  - Remove `ScopedCacheKeyGenerator.cs`
+  - Remove `DelegateCacheKeyGenerator.cs`
+  - Update tests for removed types
 
-- [x] **Phase 4: Testing** ✅
-  - [x] Update existing cache tests
-  - [x] Add multi-tenant partitioning tests (in CacheTest.cs)
-  - [x] Add backwards compatibility tests (null tenantId)
-  - [x] Update examples
+- **Phase 4: Testing**
+  - Update existing cache tests
+  - Add multi-tenant partitioning tests (in CacheTest.cs)
+  - Add backwards compatibility tests (null tenantId)
+  - Update examples
 
-- [x] **Phase 5: Documentation** ✅
-  - [x] Update XML docs
-  - [x] Update this plan document
-
-**All 393 tests pass.**
+- **Phase 5: Documentation**
+  - Update XML docs
+  - Update this plan document
 
 ---
 
@@ -327,6 +325,7 @@ With `tenantId = "customer-123"`:
 
 ### 5.1 Default (Current Behavior - No Partitioning)
 
+### 5.1 Default (Current Behavior - No Partitioning)
 ```csharp
 var repo = new Repository(new RepositoryOptions
 {
