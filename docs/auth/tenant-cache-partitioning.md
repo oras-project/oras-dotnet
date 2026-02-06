@@ -319,13 +319,14 @@ With `tenantId = "customer-123"`:
   - Update XML docs
   - Update this plan document
 
+**Run `dotnet test` to verify all tests pass.**
+
 ---
 
 ## 5. Usage Examples
 
 ### 5.1 Default (Current Behavior - No Partitioning)
 
-### 5.1 Default (Current Behavior - No Partitioning)
 ```csharp
 var repo = new Repository(new RepositoryOptions
 {
