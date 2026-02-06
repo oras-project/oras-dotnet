@@ -21,13 +21,13 @@ public interface ICredentialProvider
     /// <summary>
     /// Resolves credentials for the specified registry hostname.
     /// </summary>
-    /// <param name="registry">The registry hostname to retrieve credentials for.</param>
+    /// <param name="hostname">The registry hostname to retrieve credentials for.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>
     /// A task that represents the asynchronous operation. The task result contains the
     /// resolved credentials.
     /// </returns>
     Task<Credential> ResolveCredentialAsync(
-        string registry,
+        string hostname,
         CancellationToken cancellationToken = default);
 }
