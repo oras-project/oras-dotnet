@@ -315,7 +315,7 @@ public class Repository : IRepository
         using var request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.ToString());
         using var response = await _opts.Client.SendAsync(
             request,
-            tenantId: _opts.TenantId,
+            partitionId: _opts.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
@@ -352,7 +352,7 @@ public class Repository : IRepository
         using var request = new HttpRequestMessage(HttpMethod.Delete, url);
         using var response = await _opts.Client.SendAsync(
             request,
-            tenantId: _opts.TenantId,
+            partitionId: _opts.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         switch (response.StatusCode)
         {
@@ -564,7 +564,7 @@ public class Repository : IRepository
             using var request = new HttpRequestMessage(HttpMethod.Get, nextPageUrl);
             using var response = await _opts.Client.SendAsync(
                 request,
-                tenantId: _opts.TenantId,
+                partitionId: _opts.PartitionId,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             switch (response.StatusCode)
             {
@@ -738,7 +738,7 @@ public class Repository : IRepository
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             using var response = await Options.Client.SendAsync(
                 request,
-                tenantId: Options.TenantId,
+                partitionId: Options.PartitionId,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             switch (response.StatusCode)

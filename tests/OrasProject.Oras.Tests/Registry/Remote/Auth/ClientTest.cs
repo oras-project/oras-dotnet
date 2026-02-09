@@ -1183,7 +1183,9 @@ public class ClientTest
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act + Assert
-        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(async () => await client.SendAsync(request, cancellationToken: CancellationToken.None));
+        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(
+            async () => await client.SendAsync(
+                request, cancellationToken: CancellationToken.None));
         Assert.Equal("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.", ex.Message);
     }
 
@@ -1325,7 +1327,9 @@ public class ClientTest
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
-        var exception = await Assert.ThrowsAsync<AuthenticationException>(async () => await client.SendAsync(request, cancellationToken: CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<AuthenticationException>(
+            async () => await client.SendAsync(
+                request, cancellationToken: CancellationToken.None));
 
         // Assert
         Assert.Equal("Missing username or password for basic authentication.", exception.Message);
@@ -1567,7 +1571,8 @@ public class ClientTest
         var schemeOut = Challenge.Scheme.Bearer;
         cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut, null)).Returns(true);
         var tokenOut = expectedToken;
-        cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut, null)).Returns(true);
+        cacheMock.Setup(m => m.TryGetToken(
+            authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut, null)).Returns(true);
         client.Cache = cacheMock.Object;
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{authority}");
@@ -1578,7 +1583,10 @@ public class ClientTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut, null), Times.AtLeastOnce());
-        cacheMock.Verify(m => m.TryGetToken(authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut, null), Times.AtLeastOnce());
+        cacheMock.Verify(
+            m => m.TryGetToken(
+                authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut, null),
+            Times.AtLeastOnce());
         handler.Protected().Verify(
             "SendAsync",
             Times.Once(),
@@ -1613,7 +1621,8 @@ public class ClientTest
         var schemeOut = Challenge.Scheme.Basic;
         cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut, null)).Returns(true);
         var tokenOut = basicToken;
-        cacheMock.Setup(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut, null)).Returns(true);
+        cacheMock.Setup(m => m.TryGetToken(
+            authority, Challenge.Scheme.Basic, string.Empty, out tokenOut, null)).Returns(true);
         client.Cache = cacheMock.Object;
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
@@ -1624,7 +1633,10 @@ public class ClientTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut, null), Times.AtLeastOnce());
-        cacheMock.Verify(m => m.TryGetToken(authority, Challenge.Scheme.Basic, string.Empty, out tokenOut, null), Times.AtLeastOnce());
+        cacheMock.Verify(
+            m => m.TryGetToken(
+                authority, Challenge.Scheme.Basic, string.Empty, out tokenOut, null),
+            Times.AtLeastOnce());
         handler.Protected().Verify(
             "SendAsync",
             Times.Once(),

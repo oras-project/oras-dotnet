@@ -1,10 +1,10 @@
-# Auth Cache Enhancement Plan: Simple Cache Partitioning with `tenantId`
+# Auth Cache Enhancement Plan: Simple Cache Partitioning with `PartitionId`
 
 ## Executive Summary
 
 This document proposes a simple enhancement to the ORAS .NET authentication cache to support flexible cache key partitioning. The current implementation partitions tokens by registry host only, which is insufficient for multi-tenant scenarios where different credentials may be required for the same upstream registry based on downstream context (e.g., customer ID, destination reference, or sync job).
 
-**Key Design Principle:** The SDK accepts a simple `tenantId` string from the consumer. The consumer is responsible for deciding what this ID should be (hash of reference, customer ID, etc.). The SDK simply uses it as a prefix to partition the cache.
+**Key Design Principle:** The SDK accepts a simple `PartitionId` string from the consumer. The consumer is responsible for deciding what this ID should be (hash of reference, customer ID, etc.). The SDK simply uses it as a prefix to partition the cache.
 
 ---
 
@@ -125,14 +125,14 @@ Each customer may have:
 
 ### 3.1 Design Principle
 
-**Consumer-driven partitioning**: The SDK accepts a simple `tenantId` string. The consumer decides what this ID should be (hash of reference, customer ID, sync job ID, etc.). The SDK uses it as a prefix to partition the auth cache.
+**Consumer-driven partitioning**: The SDK accepts a simple `PartitionId` string. The consumer decides what this ID should be (hash of reference, customer ID, sync job ID, etc.). The SDK uses it as a prefix to partition the auth cache.
 
 ### 3.2 Cache Key Generation
 
 ```
 Current:  ORAS_AUTH_{registry}
-Proposed: ORAS_AUTH_{tenantId}|{registry}  (if tenantId provided)
-          ORAS_AUTH_{registry}                 (if tenantId is null/empty)
+Proposed: ORAS_AUTH_{PartitionId}|{registry}  (if PartitionId provided)
+          ORAS_AUTH_{registry}                 (if PartitionId is null/empty)
 ```
 
 ### 3.3 API Changes
@@ -146,12 +146,12 @@ public struct RepositoryOptions
 
     /// <summary>
     /// Optional identifier for auth cache partitioning.
-    /// When set, the auth cache key becomes "{tenantId}|{registry}".
+    /// When set, the auth cache key becomes "{PartitionId}|{registry}".
     /// Use this to isolate cached tokens per customer, sync job, or any other
     /// partitioning strategy. The consumer is responsible for determining
     /// what value to use.
     /// </summary>
-    public string? TenantId { get; set; }
+    public string? PartitionId { get; set; }
 }
 ```
 
@@ -160,13 +160,13 @@ public struct RepositoryOptions
 ```csharp
 public interface ICache
 {
-    bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? tenantId = null);
+    bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? PartitionId = null);
 
     void SetCache(string registry, Challenge.Scheme scheme, string scopeKey, string token,
-        string? tenantId = null);
+        string? PartitionId = null);
 
     bool TryGetToken(string registry, Challenge.Scheme scheme, string scopeKey, out string token,
-        string? tenantId = null);
+        string? PartitionId = null);
 }
 ```
 
@@ -175,10 +175,10 @@ public interface ICache
 ```csharp
 public class Client
 {
-    // Updated signature with optional tenantId parameter
+    // Updated signature with optional PartitionId parameter
     public Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
-        string? tenantId = null,
+        string? PartitionId = null,
         bool allowAutoRedirect = true,
         CancellationToken cancellationToken = default);
 }
@@ -189,14 +189,14 @@ public class Client
 ```csharp
 public sealed class Cache : ICache
 {
-    private string GetCacheKey(string registry, string? tenantId) =>
-        string.IsNullOrEmpty(tenantId)
+    private string GetCacheKey(string registry, string? PartitionId) =>
+        string.IsNullOrEmpty(PartitionId)
             ? $"{_cacheKeyPrefix}{registry}"
-            : $"{_cacheKeyPrefix}{tenantId}|{registry}";
+            : $"{_cacheKeyPrefix}{PartitionId}|{registry}";
 
-    public bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? tenantId = null)
+    public bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? PartitionId = null)
     {
-        var cacheKey = GetCacheKey(registry, tenantId);
+        var cacheKey = GetCacheKey(registry, PartitionId);
         // ... rest unchanged
     }
 
@@ -211,21 +211,21 @@ User Code
     │
     │  var repo = new Repository(new RepositoryOptions {
     │      Reference = Reference.Parse("docker.io/library/nginx"),
-    │      TenantId = "customer-123"
+    │      PartitionId = "customer-123"
     │  });
     │
     ▼
 Repository / BlobStore / ManifestStore
     │
-    │  // Read TenantId from options, pass to Client
-    │  await Client.SendAsync(request, tenantId: Options.TenantId, ct);
+    │  // Read PartitionId from options, pass to Client
+    │  await Client.SendAsync(request, PartitionId: Options.PartitionId, ct);
     │
     ▼
-Client.SendAsync(request, tenantId, ct)
+Client.SendAsync(request, PartitionId, ct)
     │
-    │  // Pass tenantId to cache operations
-    │  Cache.TryGetScheme(host, out scheme, tenantId);
-    │  Cache.SetCache(host, scheme, scopeKey, token, tenantId);
+    │  // Pass PartitionId to cache operations
+    │  Cache.TryGetScheme(host, out scheme, PartitionId);
+    │  Cache.SetCache(host, scheme, scopeKey, token, PartitionId);
     │
     ▼
 Cache
@@ -239,7 +239,7 @@ IMemoryCache
 
 ### 3.5 Updated Cache Structure
 
-With `tenantId = "customer-123"`:
+With `PartitionId = "customer-123"`:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -268,14 +268,14 @@ With `tenantId = "customer-123"`:
 
 | File | Changes |
 |------|---------|
-| `RepositoryOptions.cs` | Add `TenantId` property |
-| `ICache.cs` | Add optional `tenantId` parameter to all methods |
-| `Cache.cs` | Update `GetCacheKey` to include `tenantId`; update method signatures |
-| `Client.cs` | Update `SendAsync` signature with optional `tenantId`; pass to cache calls |
-| `BlobStore.cs` | Pass `Options.TenantId` to `Client.SendAsync` |
-| `ManifestStore.cs` | Pass `Options.TenantId` to `Client.SendAsync` |
-| `Repository.cs` | Pass `Options.TenantId` to `Client.SendAsync` |
-| `Registry.cs` | Pass `tenantId` if applicable |
+| `RepositoryOptions.cs` | Add `PartitionId` property |
+| `ICache.cs` | Add optional `PartitionId` parameter to all methods |
+| `Cache.cs` | Update `GetCacheKey` to include `PartitionId`; update method signatures |
+| `Client.cs` | Update `SendAsync` signature with optional `PartitionId`; pass to cache calls |
+| `BlobStore.cs` | Pass `Options.PartitionId` to `Client.SendAsync` |
+| `ManifestStore.cs` | Pass `Options.PartitionId` to `Client.SendAsync` |
+| `Repository.cs` | Pass `Options.PartitionId` to `Client.SendAsync` |
+| `Registry.cs` | Pass `PartitionId` if applicable |
 
 ### 4.2 Files to Remove (from previous implementation)
 
@@ -290,15 +290,15 @@ With `tenantId = "customer-123"`:
 ### 4.3 Implementation Phases
 
 - **Phase 1: Core Changes**
-  - Add `tenantId` property to `RepositoryOptions`
-  - Update `ICache` interface with optional `tenantId` parameter
+  - Add `PartitionId` property to `RepositoryOptions`
+  - Update `ICache` interface with optional `PartitionId` parameter
   - Update `Cache` implementation
-  - Add `Client.SendAsync` overload with `tenantId`
+  - Add `Client.SendAsync` overload with `PartitionId`
 
 - **Phase 2: Propagation**
-  - Update `BlobStore` to pass `tenantId` to client
-  - Update `ManifestStore` to pass `tenantId` to client
-  - Update `Repository` to pass `tenantId` to client
+  - Update `BlobStore` to pass `PartitionId` to client
+  - Update `ManifestStore` to pass `PartitionId` to client
+  - Update `Repository` to pass `PartitionId` to client
   - Update `PlainClient` to implement new `IClient` interface
 
 - **Phase 3: Cleanup**
@@ -312,7 +312,7 @@ With `tenantId = "customer-123"`:
 - **Phase 4: Testing**
   - Update existing cache tests
   - Add multi-tenant partitioning tests (in CacheTest.cs)
-  - Add backwards compatibility tests (null tenantId)
+  - Add backwards compatibility tests (null PartitionId)
   - Update examples
 
 - **Phase 5: Documentation**
@@ -331,7 +331,7 @@ With `tenantId = "customer-123"`:
 var repo = new Repository(new RepositoryOptions
 {
     Reference = Reference.Parse("docker.io/library/nginx:latest")
-    // tenantId not set - uses registry-only cache key
+    // PartitionId not set - uses registry-only cache key
 });
 
 await repo.Blobs.FetchAsync(descriptor, ct);
@@ -345,7 +345,7 @@ await repo.Blobs.FetchAsync(descriptor, ct);
 var repoA = new Repository(new RepositoryOptions
 {
     Reference = Reference.Parse("docker.io/library/nginx:latest"),
-    TenantId = "customer-A"
+    PartitionId = "customer-A"
 });
 await repoA.Blobs.FetchAsync(descriptor, ct);
 // Cache key: "ORAS_AUTH_customer-A|docker.io"
@@ -354,7 +354,7 @@ await repoA.Blobs.FetchAsync(descriptor, ct);
 var repoB = new Repository(new RepositoryOptions
 {
     Reference = Reference.Parse("docker.io/library/nginx:latest"),
-    TenantId = "customer-B"
+    PartitionId = "customer-B"
 });
 await repoB.Blobs.FetchAsync(descriptor, ct);
 // Cache key: "ORAS_AUTH_customer-B|docker.io"
@@ -364,12 +364,12 @@ await repoB.Blobs.FetchAsync(descriptor, ct);
 
 ```csharp
 var reference = Reference.Parse("docker.io/library/nginx:latest");
-var tenantId = ComputeHash($"{reference.Registry}/{reference.Repository}:{reference.ContentReference}");
+var PartitionId = ComputeHash($"{reference.Registry}/{reference.Repository}:{reference.ContentReference}");
 
 var repo = new Repository(new RepositoryOptions
 {
     Reference = reference,
-    TenantId = tenantId
+    PartitionId = PartitionId
 });
 // Cache key: "ORAS_AUTH_{hash}|docker.io"
 ```
@@ -383,7 +383,7 @@ var destinationRef = "customerA.myregistry.example/nginx:latest";
 var repo = new Repository(new RepositoryOptions
 {
     Reference = Reference.Parse("docker.io/library/nginx:latest"),
-    TenantId = destinationRef  // Use destination as partition key
+    PartitionId = destinationRef  // Use destination as partition key
 });
 // Cache key: "ORAS_AUTH_customerA.myregistry.example/nginx:latest|docker.io"
 ```
@@ -397,30 +397,30 @@ var repo = new Repository(new RepositoryOptions
 | **Simple string over complex types** | Consumer knows their partitioning needs; SDK shouldn't prescribe |
 | **Property on RepositoryOptions** | Set once per Repository instance; avoids per-method parameters |
 | **Optional parameter with null default** | Backwards compatible; existing code works unchanged |
-| **Prefix before registry** | `{tenantId}|{registry}` keeps related entries grouped |
+| **Prefix before registry** | `{PartitionId}|{registry}` keeps related entries grouped |
 | **Inner cache structure unchanged** | OAuth2 scope-based token lookup still works |
 
 ---
 
 ## 7. Backwards Compatibility
 
-- When `tenantId` is not used (`tenantId = null`), cache key behavior matches the previous version.
+- When `PartitionId` is not used (`PartitionId = null`), cache key behavior matches the previous version.
 - Public interfaces such as `ICache`, `IClient`, and `Client.SendAsync` have been updated to
-  accept an optional `tenantId`, which is a source-breaking change for consumers that implement
+  accept an optional `PartitionId`, which is a source-breaking change for consumers that implement
   or mock these interfaces.
 - Call sites that use the default client implementations may require minimal or no changes,
   but interface implementers and tests must be updated to account for the new parameter.
-- Runtime behavior for existing scenarios remains compatible when `tenantId` is left unset.
+- Runtime behavior for existing scenarios remains compatible when `PartitionId` is left unset.
 
 ---
 
 ## 8. Open Questions (Resolved)
 
-1. ~~Should `ICredentialProvider` also receive `tenantId` for context-aware credential resolution?~~
+1. ~~Should `ICredentialProvider` also receive `PartitionId` for context-aware credential resolution?~~
    **No.** Credential selection is a separate concern from token cache partitioning. Consumers can use different provider instances or implement tenant-aware logic internally.
 
-2. ~~Should there be validation on `tenantId` (e.g., no colons allowed)?~~
+2. ~~Should there be validation on `PartitionId` (e.g., no colons allowed)?~~
    **No.** No validation required. The consumer is responsible for providing sensible values.
 
-3. ~~Should `ScopeManager` also be partitioned by `tenantId`?~~
+3. ~~Should `ScopeManager` also be partitioned by `PartitionId`?~~
    **No.** ScopeManager will not be touched. It manages OAuth2 permission scopes, which is orthogonal to cache partitioning.

@@ -27,9 +27,9 @@ public interface IClient
     /// control.
     /// </summary>
     /// <param name="originalRequest">The HTTP request message to send.</param>
-    /// <param name="tenantId">
+    /// <param name="partitionId">
     /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
-    /// enabling multi-tenant scenarios where different credentials are used for the same
+    /// enabling multi-partition scenarios where different credentials are used for the same
     /// registry.
     /// </param>
     /// <param name="allowAutoRedirect">
@@ -43,7 +43,7 @@ public interface IClient
     /// </returns>
     Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage originalRequest,
-        string? tenantId = null,
+        string? partitionId = null,
         bool allowAutoRedirect = true,
         CancellationToken cancellationToken = default);
 }

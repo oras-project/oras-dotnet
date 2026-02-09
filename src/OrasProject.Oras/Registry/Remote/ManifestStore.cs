@@ -48,7 +48,7 @@ public class ManifestStore(Repository repository) : IManifestStore
 
         var response = await Repository.Options.Client.SendAsync(
             request,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         try
         {
@@ -116,7 +116,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         request.AddHeaders(options.Headers);
         var response = await Repository.Options.Client.SendAsync(
             request,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
 
         try
@@ -362,7 +362,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         var client = Repository.Options.Client;
         using var response = await client.SendAsync(
             request,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.Created)
         {
@@ -401,7 +401,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         request.AddHeaders(options.Headers);
         using var response = await Repository.Options.Client.SendAsync(
             request,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         return response.StatusCode switch
         {

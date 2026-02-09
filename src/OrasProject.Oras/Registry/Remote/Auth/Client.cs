@@ -235,9 +235,9 @@ public class Client : IClient
     /// updating the cache accordingly.
     /// </summary>
     /// <param name="originalRequest">The original HTTP request message to send.</param>
-    /// <param name="tenantId">
+    /// <param name="partitionId">
     /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
-    /// enabling multi-tenant scenarios where different credentials are used for the same
+    /// enabling multi-partition scenarios where different credentials are used for the same
     /// registry.
     /// </param>
     /// <param name="allowAutoRedirect">
@@ -255,10 +255,10 @@ public class Client : IClient
     /// </exception>
     public Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage originalRequest,
-        string? tenantId = null,
+        string? partitionId = null,
         bool allowAutoRedirect = true,
         CancellationToken cancellationToken = default)
-        => SendCoreAsync(originalRequest, tenantId, allowAutoRedirect, cancellationToken);
+        => SendCoreAsync(originalRequest, partitionId, allowAutoRedirect, cancellationToken);
 
     /// <summary>
     /// Fetches the Basic Authentication token for the specified registry host.
@@ -502,7 +502,7 @@ public class Client : IClient
     /// challenge parsing, and credential fetching for both Basic and Bearer schemes.
     /// </summary>
     /// <param name="originalRequest">The original HTTP request message to send.</param>
-    /// <param name="tenantId">Optional cache partition identifier for multi-tenant isolation.</param>
+    /// <param name="partitionId">Optional cache partition identifier for multi-partition isolation.</param>
     /// <param name="allowAutoRedirect">Whether to allow automatic redirect following.</param>
     /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
     /// <returns>
@@ -510,7 +510,7 @@ public class Client : IClient
     /// </returns>
     private async Task<HttpResponseMessage> SendCoreAsync(
         HttpRequestMessage originalRequest,
-        string? tenantId,
+        string? partitionId,
         bool allowAutoRedirect,
         CancellationToken cancellationToken)
     {
@@ -530,13 +530,13 @@ public class Client : IClient
         var attemptedKey = string.Empty;
 
         // attempt to send request with cached auth token
-        if (Cache.TryGetScheme(host, out var schemeFromCache, tenantId))
+        if (Cache.TryGetScheme(host, out var schemeFromCache, partitionId))
         {
             switch (schemeFromCache)
             {
                 case Challenge.Scheme.Basic:
                     {
-                        if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken, tenantId))
+                        if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken, partitionId))
                         {
                             requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
                         }
@@ -547,7 +547,7 @@ public class Client : IClient
                     {
                         var scopes = ScopeManager.GetScopesStringForHost(host);
                         attemptedKey = string.Join(" ", scopes);
-                        if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken, tenantId))
+                        if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken, partitionId))
                         {
                             requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
                         }
@@ -572,7 +572,7 @@ public class Client : IClient
                 {
                     response1.Dispose();
                     var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken, tenantId);
+                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken, partitionId);
 
                     // Attempt again with basic token
                     var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
@@ -603,7 +603,7 @@ public class Client : IClient
                     // Attempt to send request when the scope changes and a token cache hits
                     var newKey = string.Join(" ", newScopes);
                     if (newKey != attemptedKey &&
-                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken, tenantId))
+                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken, partitionId))
                     {
                         var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                         requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
@@ -635,7 +635,7 @@ public class Client : IClient
                         newScopes.Select(newScope => newScope.ToString()).ToList(),
                         cancellationToken
                     ).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, tenantId);
+                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
 
                     var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);

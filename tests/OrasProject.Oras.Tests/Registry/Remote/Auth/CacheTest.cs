@@ -400,7 +400,7 @@ public class CacheTest
     }
 
     [Fact]
-    public void SetCache_WithTenantId_ShouldIsolateCacheEntries()
+    public void SetCache_WithPartitionId_ShouldIsolateCacheEntries()
     {
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
@@ -419,12 +419,12 @@ public class CacheTest
         Assert.True(cache.TryGetToken(registry, scheme, key, out var token2, "customer2"));
         Assert.Equal("customer2-token", token2);
 
-        // Without tenantId, should not find the tokens
+        // Without partitionId, should not find the tokens
         Assert.False(cache.TryGetToken(registry, scheme, key, out _));
     }
 
     [Fact]
-    public void SetCache_WithNullTenantId_ShouldUseDefaultPartition()
+    public void SetCache_WithNullPartitionId_ShouldUseDefaultPartition()
     {
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
@@ -433,14 +433,14 @@ public class CacheTest
         var key = "repository:library/nginx:pull";
         var token = "default-token";
 
-        // Act - Set token without tenantId
+        // Act - Set token without partitionId
         cache.SetCache(registry, scheme, key, token);
 
-        // Assert - Should be retrievable without tenantId
+        // Assert - Should be retrievable without partitionId
         Assert.True(cache.TryGetToken(registry, scheme, key, out var retrievedToken));
         Assert.Equal(token, retrievedToken);
 
-        // With different tenantId, should not find the token
+        // With different partitionId, should not find the token
         Assert.False(cache.TryGetToken(registry, scheme, key, out _, "customer1"));
     }
 }

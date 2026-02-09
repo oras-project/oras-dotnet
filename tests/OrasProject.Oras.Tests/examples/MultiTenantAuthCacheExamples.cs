@@ -34,7 +34,7 @@ public class MultiTenantAuthCacheExamples
     /// </summary>
     public void DefaultRegistryPartitioning()
     {
-        // Create repository with default settings (no tenantId)
+        // Create repository with default settings (no partitionId)
         var reference = OrasProject.Oras.Registry.Reference.Parse(
             "myregistry.example/library/nginx:latest");
 
@@ -42,7 +42,7 @@ public class MultiTenantAuthCacheExamples
         {
             Reference = reference,
             Client = new Client()
-            // tenantId is null by default
+            // partitionId is null by default
         };
 
         var repository = new Repository(options);
@@ -52,9 +52,9 @@ public class MultiTenantAuthCacheExamples
     }
 
     /// <summary>
-    /// Example: Multi-tenant with customer-specific tenantId.
+    /// Example: Multi-tenant with customer-specific partitionId.
     /// 
-    /// Each customer gets isolated cache entries by setting tenantId on RepositoryOptions.
+    /// Each customer gets isolated cache entries by setting partitionId on RepositoryOptions.
     /// This is ideal for services that sync content for multiple customers.
     /// </summary>
     public void MultiTenantWithCustomerId()
@@ -67,7 +67,7 @@ public class MultiTenantAuthCacheExamples
         {
             Reference = reference,
             Client = new Client(),
-            TenantId = "customer-A"
+            PartitionId = "customer-A"
         };
         var customerARepo = new Repository(customerAOptions);
         // Cache key: "ORAS_AUTH_customer-A|docker.io"
@@ -77,7 +77,7 @@ public class MultiTenantAuthCacheExamples
         {
             Reference = reference,
             Client = new Client(),
-            TenantId = "customer-B"
+            PartitionId = "customer-B"
         };
         var customerBRepo = new Repository(customerBOptions);
         // Cache key: "ORAS_AUTH_customer-B|docker.io"
@@ -89,7 +89,7 @@ public class MultiTenantAuthCacheExamples
     /// Example: Sync service scenario using destination reference as partition key.
     /// 
     /// A service syncing images from upstream registries to per-customer ACRs.
-    /// Each sync operation uses the destination reference as the tenantId.
+    /// Each sync operation uses the destination reference as the partitionId.
     /// </summary>
     public void SyncServiceScenario()
     {
@@ -103,7 +103,7 @@ public class MultiTenantAuthCacheExamples
             Reference = sourceRef,
             Client = new Client(),
             // Use destination reference as partition key
-            TenantId = destinationRef
+            PartitionId = destinationRef
         };
         var sourceRepo = new Repository(options);
         // Cache key: "ORAS_AUTH_customerA.myregistry.example/nginx:latest|docker.io"
@@ -114,7 +114,7 @@ public class MultiTenantAuthCacheExamples
         {
             Reference = sourceRef,
             Client = new Client(),
-            TenantId = destinationRef2
+            PartitionId = destinationRef2
         };
         var sourceRepo2 = new Repository(options2);
         // Cache key: "ORAS_AUTH_customerB.myregistry.example/nginx:latest|docker.io"
@@ -138,7 +138,7 @@ public class MultiTenantAuthCacheExamples
         {
             Reference = reference,
             Client = new Client(),
-            TenantId = $"{environment}:{customerId}"
+            PartitionId = $"{environment}:{customerId}"
         };
 
         var repo = new Repository(options);
@@ -146,9 +146,9 @@ public class MultiTenantAuthCacheExamples
     }
 
     /// <summary>
-    /// Example: Direct cache API usage with tenantId.
+    /// Example: Direct cache API usage with partitionId.
     /// 
-    /// Shows how tenantId is used directly at the cache level.
+    /// Shows how partitionId is used directly at the cache level.
     /// </summary>
     public void DirectCacheUsage()
     {

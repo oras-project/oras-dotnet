@@ -58,7 +58,7 @@ public class Registry : IRegistry
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var resp = await _opts.Client.SendAsync(
             request,
-            tenantId: _opts.TenantId,
+            partitionId: _opts.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         switch (resp.StatusCode)
         {
@@ -137,7 +137,7 @@ public class Registry : IRegistry
         using var request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.ToString());
         using var response = await _opts.Client.SendAsync(
             request,
-            tenantId: _opts.TenantId,
+            partitionId: _opts.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {

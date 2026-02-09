@@ -64,11 +64,11 @@ public class PlainClient : IClient
     /// <inheritdoc/>
     public async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage originalRequest,
-        string? tenantId = null,
+        string? partitionId = null,
         bool allowAutoRedirect = true,
         CancellationToken cancellationToken = default)
     {
-        // tenantId is ignored since PlainClient doesn't do authentication caching
+        // partitionId is ignored since PlainClient doesn't do authentication caching
         originalRequest.AddDefaultUserAgent();
         var client = allowAutoRedirect ? _client : _noRedirectClient;
         return await client.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);

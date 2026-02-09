@@ -24,14 +24,14 @@ public interface ICache
     /// When this method returns, contains the <see cref="Challenge.Scheme"/> associated with the
     /// registry if found in the cache; otherwise, <see cref="Challenge.Scheme.Unknown"/>.
     /// </param>
-    /// <param name="tenantId">
+    /// <param name="partitionId">
     /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
-    /// enabling multi-tenant scenarios where different credentials are used for the same registry.
+    /// enabling multi-partition scenarios where different credentials are used for the same registry.
     /// </param>
     /// <returns>
     /// <c>true</c> if the authentication scheme was found in the cache; otherwise, <c>false</c>.
     /// </returns>
-    bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? tenantId = null);
+    bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? partitionId = null);
 
     /// <summary>
     /// SetCache sets or updates the cache for a specific registry and authentication scheme.
@@ -42,16 +42,16 @@ public interface ICache
     /// The OAuth2 scope key used to identify the token within the cache entry.
     /// </param>
     /// <param name="token">The token to be stored in the cache.</param>
-    /// <param name="tenantId">
+    /// <param name="partitionId">
     /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
-    /// enabling multi-tenant scenarios where different credentials are used for the same registry.
+    /// enabling multi-partition scenarios where different credentials are used for the same registry.
     /// </param>
     void SetCache(
         string registry,
         Challenge.Scheme scheme,
         string scopeKey,
         string token,
-        string? tenantId = null);
+        string? partitionId = null);
 
     /// <summary>
     /// TryGetToken attempts to retrieve a token from the cache for the specified registry,
@@ -66,9 +66,9 @@ public interface ICache
     /// When this method returns, contains the token associated with the specified registry,
     /// scheme, and scope key, if found; otherwise, an empty string.
     /// </param>
-    /// <param name="tenantId">
+    /// <param name="partitionId">
     /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
-    /// enabling multi-tenant scenarios where different credentials are used for the same registry.
+    /// enabling multi-partition scenarios where different credentials are used for the same registry.
     /// </param>
     /// <returns>
     /// <c>true</c> if a token matching the specified registry, scheme, and scope key is found;
@@ -79,5 +79,5 @@ public interface ICache
         Challenge.Scheme scheme,
         string scopeKey,
         out string token,
-        string? tenantId = null);
+        string? partitionId = null);
 }

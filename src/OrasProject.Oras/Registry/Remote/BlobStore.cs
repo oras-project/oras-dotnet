@@ -48,7 +48,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         var response = await Repository.Options.Client.SendAsync(
             request,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         try
         {
@@ -112,7 +112,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         using var request = new HttpRequestMessage(HttpMethod.Get, url).AddHeaders(options.Headers);
         var response = await Repository.Options.Client.SendAsync(
             request,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         try
         {
@@ -188,7 +188,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         using var requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
         using (var response = await Repository.Options.Client.SendAsync(
             requestMessage,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             if (response.StatusCode != HttpStatusCode.Accepted)
@@ -237,7 +237,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         using var requestMessage = new HttpRequestMessage(HttpMethod.Head, url).AddHeaders(options.Headers);
         using var resp = await Repository.Options.Client.SendAsync(
             requestMessage,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         return resp.StatusCode switch
         {
@@ -273,7 +273,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var response = await Repository.Options.Client.SendAsync(
             request,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             allowAutoRedirect: false,
             cancellationToken: cancellationToken).ConfigureAwait(false);
 
@@ -388,7 +388,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
 
         using (var response = await Repository.Options.Client.SendAsync(
             mountReq,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             switch (response.StatusCode)
@@ -475,7 +475,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
 
         using var response = await Repository.Options.Client.SendAsync(
             req,
-            tenantId: Repository.Options.TenantId,
+            partitionId: Repository.Options.PartitionId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.Created)
         {
