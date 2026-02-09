@@ -131,8 +131,8 @@ Each customer may have:
 
 ```
 Current:  ORAS_AUTH_{registry}
-Proposed: ORAS_AUTH_{PartitionId}|{registry}  (if PartitionId provided)
-          ORAS_AUTH_{registry}                 (if PartitionId is null/empty)
+Proposed: ORAS_AUTH_{partitionId}|{registry}  (if partitionId provided)
+          ORAS_AUTH_{registry}                 (if partitionId is null/empty)
 ```
 
 ### 3.3 API Changes
@@ -160,13 +160,13 @@ public struct RepositoryOptions
 ```csharp
 public interface ICache
 {
-    bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? PartitionId = null);
+    bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? partitionId = null);
 
     void SetCache(string registry, Challenge.Scheme scheme, string scopeKey, string token,
-        string? PartitionId = null);
+        string? partitionId = null);
 
     bool TryGetToken(string registry, Challenge.Scheme scheme, string scopeKey, out string token,
-        string? PartitionId = null);
+        string? partitionId = null);
 }
 ```
 
@@ -175,10 +175,10 @@ public interface ICache
 ```csharp
 public class Client
 {
-    // Updated signature with optional PartitionId parameter
+    // Updated signature with optional partitionId parameter
     public Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
-        string? PartitionId = null,
+        string? partitionId = null,
         bool allowAutoRedirect = true,
         CancellationToken cancellationToken = default);
 }
@@ -189,14 +189,14 @@ public class Client
 ```csharp
 public sealed class Cache : ICache
 {
-    private string GetCacheKey(string registry, string? PartitionId) =>
-        string.IsNullOrEmpty(PartitionId)
+    private string GetCacheKey(string registry, string? partitionId) =>
+        string.IsNullOrEmpty(partitionId)
             ? $"{_cacheKeyPrefix}{registry}"
-            : $"{_cacheKeyPrefix}{PartitionId}|{registry}";
+            : $"{_cacheKeyPrefix}{partitionId}|{registry}";
 
-    public bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? PartitionId = null)
+    public bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? partitionId = null)
     {
-        var cacheKey = GetCacheKey(registry, PartitionId);
+        var cacheKey = GetCacheKey(registry, partitionId);
         // ... rest unchanged
     }
 
@@ -218,14 +218,14 @@ User Code
 Repository / BlobStore / ManifestStore
     │
     │  // Read PartitionId from options, pass to Client
-    │  await Client.SendAsync(request, PartitionId: Options.PartitionId, ct);
+    │  await Client.SendAsync(request, partitionId: Options.PartitionId, ct);
     │
     ▼
-Client.SendAsync(request, PartitionId, ct)
+Client.SendAsync(request, partitionId, ct)
     │
-    │  // Pass PartitionId to cache operations
-    │  Cache.TryGetScheme(host, out scheme, PartitionId);
-    │  Cache.SetCache(host, scheme, scopeKey, token, PartitionId);
+    │  // Pass partitionId to cache operations
+    │  Cache.TryGetScheme(host, out scheme, partitionId);
+    │  Cache.SetCache(host, scheme, scopeKey, token, partitionId);
     │
     ▼
 Cache
@@ -269,13 +269,13 @@ With `PartitionId = "customer-123"`:
 | File | Changes |
 |------|---------|
 | `RepositoryOptions.cs` | Add `PartitionId` property |
-| `ICache.cs` | Add optional `PartitionId` parameter to all methods |
-| `Cache.cs` | Update `GetCacheKey` to include `PartitionId`; update method signatures |
-| `Client.cs` | Update `SendAsync` signature with optional `PartitionId`; pass to cache calls |
+| `ICache.cs` | Add optional `partitionId` parameter to all methods |
+| `Cache.cs` | Update `GetCacheKey` to include `partitionId`; update method signatures |
+| `Client.cs` | Update `SendAsync` signature with optional `partitionId`; pass to cache calls |
 | `BlobStore.cs` | Pass `Options.PartitionId` to `Client.SendAsync` |
 | `ManifestStore.cs` | Pass `Options.PartitionId` to `Client.SendAsync` |
 | `Repository.cs` | Pass `Options.PartitionId` to `Client.SendAsync` |
-| `Registry.cs` | Pass `PartitionId` if applicable |
+| `Registry.cs` | Pass `partitionId` if applicable |
 
 ### 4.2 Files to Remove (from previous implementation)
 
@@ -291,14 +291,14 @@ With `PartitionId = "customer-123"`:
 
 - **Phase 1: Core Changes**
   - Add `PartitionId` property to `RepositoryOptions`
-  - Update `ICache` interface with optional `PartitionId` parameter
+  - Update `ICache` interface with optional `partitionId` parameter
   - Update `Cache` implementation
-  - Add `Client.SendAsync` overload with `PartitionId`
+  - Add `Client.SendAsync` overload with `partitionId`
 
 - **Phase 2: Propagation**
-  - Update `BlobStore` to pass `PartitionId` to client
-  - Update `ManifestStore` to pass `PartitionId` to client
-  - Update `Repository` to pass `PartitionId` to client
+  - Update `BlobStore` to pass `partitionId` to client
+  - Update `ManifestStore` to pass `partitionId` to client
+  - Update `Repository` to pass `partitionId` to client
   - Update `PlainClient` to implement new `IClient` interface
 
 - **Phase 3: Cleanup**
@@ -312,7 +312,7 @@ With `PartitionId = "customer-123"`:
 - **Phase 4: Testing**
   - Update existing cache tests
   - Add multi-tenant partitioning tests (in CacheTest.cs)
-  - Add backwards compatibility tests (null PartitionId)
+  - Add backwards compatibility tests (null partitionId)
   - Update examples
 
 - **Phase 5: Documentation**
@@ -364,12 +364,12 @@ await repoB.Blobs.FetchAsync(descriptor, ct);
 
 ```csharp
 var reference = Reference.Parse("docker.io/library/nginx:latest");
-var PartitionId = ComputeHash($"{reference.Registry}/{reference.Repository}:{reference.ContentReference}");
+var partitionId = ComputeHash($"{reference.Registry}/{reference.Repository}:{reference.ContentReference}");
 
 var repo = new Repository(new RepositoryOptions
 {
     Reference = reference,
-    PartitionId = PartitionId
+    PartitionId = partitionId
 });
 // Cache key: "ORAS_AUTH_{hash}|docker.io"
 ```
@@ -397,7 +397,7 @@ var repo = new Repository(new RepositoryOptions
 | **Simple string over complex types** | Consumer knows their partitioning needs; SDK shouldn't prescribe |
 | **Property on RepositoryOptions** | Set once per Repository instance; avoids per-method parameters |
 | **Optional parameter with null default** | Backwards compatible; existing code works unchanged |
-| **Prefix before registry** | `{PartitionId}|{registry}` keeps related entries grouped |
+| **Prefix before registry** | `{partitionId}|{registry}` keeps related entries grouped |
 | **Inner cache structure unchanged** | OAuth2 scope-based token lookup still works |
 
 ---
@@ -406,7 +406,7 @@ var repo = new Repository(new RepositoryOptions
 
 - When `PartitionId` is not used (`PartitionId = null`), cache key behavior matches the previous version.
 - Public interfaces such as `ICache`, `IClient`, and `Client.SendAsync` have been updated to
-  accept an optional `PartitionId`, which is a source-breaking change for consumers that implement
+  accept an optional `partitionId`, which is a source-breaking change for consumers that implement
   or mock these interfaces.
 - Call sites that use the default client implementations may require minimal or no changes,
   but interface implementers and tests must be updated to account for the new parameter.
@@ -416,11 +416,11 @@ var repo = new Repository(new RepositoryOptions
 
 ## 8. Open Questions (Resolved)
 
-1. ~~Should `ICredentialProvider` also receive `PartitionId` for context-aware credential resolution?~~
+1. ~~Should `ICredentialProvider` also receive `partitionId` for context-aware credential resolution?~~
    **No.** Credential selection is a separate concern from token cache partitioning. Consumers can use different provider instances or implement tenant-aware logic internally.
 
-2. ~~Should there be validation on `PartitionId` (e.g., no colons allowed)?~~
+2. ~~Should there be validation on `partitionId` (e.g., no colons allowed)?~~
    **No.** No validation required. The consumer is responsible for providing sensible values.
 
-3. ~~Should `ScopeManager` also be partitioned by `PartitionId`?~~
+3. ~~Should `ScopeManager` also be partitioned by `partitionId`?~~
    **No.** ScopeManager will not be touched. It manages OAuth2 permission scopes, which is orthogonal to cache partitioning.
