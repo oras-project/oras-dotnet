@@ -74,9 +74,12 @@ public sealed class Cache : ICache
     /// Creates a new Cache instance with the specified memory cache.
     /// </summary>
     /// <param name="memoryCache">The underlying memory cache to use for storage.</param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="memoryCache"/> is null.
+    /// </exception>
     public Cache(IMemoryCache memoryCache)
     {
-        _memoryCache = memoryCache;
+        _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
     }
 
     /// <summary>
