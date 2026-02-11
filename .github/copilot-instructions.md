@@ -84,7 +84,7 @@ Concise guidance for producing code and docs consistent with the ORAS .NET libra
 
 ## Async & I/O
 - Async-first. No blocking `.Result` / `.Wait()`.
-- All async methods (public, internal, and private) **must** use the `Async` suffix (e.g., `FetchAsync`, `ResolveAsync`, `CalculateDigestFromResponseAsync`).
+- New or modified async methods (especially public APIs) **must** use the `Async` suffix (e.g., `FetchAsync`, `ResolveAsync`, `CalculateDigestFromResponseAsync`). Update existing methods to match when you touch them, but do not refactor solely for renaming.
 - `CancellationToken` always last with default.
 
 ## Testing
