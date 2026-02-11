@@ -3106,7 +3106,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             ContentReference = "latest"
         };
 
-        var resp = new HttpResponseMessage
+        using var resp = new HttpResponseMessage
         {
             Content = new ByteArrayContent(content),
             RequestMessage = new HttpRequestMessage { Method = HttpMethod.Get }
