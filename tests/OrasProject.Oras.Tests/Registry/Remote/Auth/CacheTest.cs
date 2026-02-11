@@ -301,7 +301,8 @@ public class CacheTest
         for (int i = 0; i < 3; i++)
         {
             Thread.Sleep(200); // Wait less than the sliding expiration
-            Assert.True(cache.TryGetToken(registry, scheme, key, out var retrievedToken),
+            Assert.True(
+                cache.TryGetToken(registry, scheme, key, out var retrievedToken),
                 $"Token should still be in cache after {(i + 1) * 200}ms with access");
             Assert.Equal(token, retrievedToken);
         }
@@ -343,18 +344,18 @@ public class CacheTest
         // Add a third entry that should trigger compaction
         cache.SetCache("registry3", Challenge.Scheme.Bearer, "key", "token3");
 
-        // Since eviction is not deterministic, we can only verify that at least one entry is still in cache
-        // This test is less strict than before but more reliable
+        // Since eviction is not deterministic, we can only verify that at least one entry
+        // is still in cache. This test is less strict than before but more reliable
         int entriesFound = 0;
         if (cache.TryGetToken("registry1", Challenge.Scheme.Bearer, "key", out _)) entriesFound++;
         if (cache.TryGetToken("registry2", Challenge.Scheme.Bearer, "key", out _)) entriesFound++;
         if (cache.TryGetToken("registry3", Challenge.Scheme.Bearer, "key", out _)) entriesFound++;
 
         // At least one entry should remain in cache (likely the most recently added one)
-        Assert.True(entriesFound > 0, $"Expected at least one cache entry to remain, but found {entriesFound}");
+        Assert.True(entriesFound > 0, $"Expected at least one cache entry, found {entriesFound}");
 
         // The size limit and compaction should ensure we don't have all three entries
-        Assert.True(entriesFound < 3, $"Expected fewer than 3 cache entries due to size limit, but found {entriesFound}");
+        Assert.True(entriesFound < 3, $"Expected fewer than 3 cache entries, found {entriesFound}");
     }
 
     [Fact]
@@ -396,5 +397,50 @@ public class CacheTest
         // Assert
         Assert.True(callbackInvoked, "Eviction callback should have been invoked");
         Assert.Equal(EvictionReason.Expired, capturedReason);
+    }
+
+    [Fact]
+    public void SetCache_WithPartitionId_ShouldIsolateCacheEntries()
+    {
+        // Arrange
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
+        var registry = "docker.io";
+        var scheme = Challenge.Scheme.Bearer;
+        var key = "repository:library/nginx:pull";
+
+        // Act - Set tokens for two different cache partitions
+        cache.SetCache(registry, scheme, key, "customer1-token", "customer1");
+        cache.SetCache(registry, scheme, key, "customer2-token", "customer2");
+
+        // Assert - Each partition should have its own token
+        Assert.True(cache.TryGetToken(registry, scheme, key, out var token1, "customer1"));
+        Assert.Equal("customer1-token", token1);
+
+        Assert.True(cache.TryGetToken(registry, scheme, key, out var token2, "customer2"));
+        Assert.Equal("customer2-token", token2);
+
+        // Without partitionId, should not find the tokens
+        Assert.False(cache.TryGetToken(registry, scheme, key, out _));
+    }
+
+    [Fact]
+    public void SetCache_WithNullPartitionId_ShouldUseDefaultPartition()
+    {
+        // Arrange
+        var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
+        var registry = "docker.io";
+        var scheme = Challenge.Scheme.Bearer;
+        var key = "repository:library/nginx:pull";
+        var token = "default-token";
+
+        // Act - Set token without partitionId
+        cache.SetCache(registry, scheme, key, token);
+
+        // Assert - Should be retrievable without partitionId
+        Assert.True(cache.TryGetToken(registry, scheme, key, out var retrievedToken));
+        Assert.Equal(token, retrievedToken);
+
+        // With different partitionId, should not find the token
+        Assert.False(cache.TryGetToken(registry, scheme, key, out _, "customer1"));
     }
 }

@@ -15,41 +15,69 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 
 public interface ICache
 {
-
     /// <summary>
-    /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified registry.
+    /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified
+    /// registry host.
     /// </summary>
-    /// <param name="registry">The registry for which to retrieve the authentication scheme.</param>
+    /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="scheme">
-    /// When this method returns, contains the <see cref="Challenge.Scheme"/> associated with the specified registry
-    /// if the registry exists in the cache; otherwise, <see cref="Challenge.Scheme.Unknown"/>.
+    /// When this method returns, contains the <see cref="Challenge.Scheme"/> associated with the
+    /// registry if found in the cache; otherwise, <see cref="Challenge.Scheme.Unknown"/>.
+    /// </param>
+    /// <param name="partitionId">
+    /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
+    /// enabling multi-partition scenarios where different credentials are used for the same registry.
     /// </param>
     /// <returns>
-    /// <c>true</c> if the authentication scheme for the specified registry was found in the cache; otherwise, <c>false</c>.
+    /// <c>true</c> if the authentication scheme was found in the cache; otherwise, <c>false</c>.
     /// </returns>
-    bool TryGetScheme(string registry, out Challenge.Scheme scheme);
+    bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? partitionId = null);
 
     /// <summary>
     /// SetCache sets or updates the cache for a specific registry and authentication scheme.
     /// </summary>
-    /// <param name="registry">The registry for which the cache is being set or updated.</param>
+    /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="scheme">The authentication scheme associated with the cache entry.</param>
-    /// <param name="key">The key used to identify the token within the cache entry.</param>
+    /// <param name="scopeKey">
+    /// The OAuth2 scope key used to identify the token within the cache entry.
+    /// </param>
     /// <param name="token">The token to be stored in the cache.</param>
-    void SetCache(string registry, Challenge.Scheme scheme, string key, string token);
+    /// <param name="partitionId">
+    /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
+    /// enabling multi-partition scenarios where different credentials are used for the same registry.
+    /// </param>
+    void SetCache(
+        string registry,
+        Challenge.Scheme scheme,
+        string scopeKey,
+        string token,
+        string? partitionId = null);
 
     /// <summary>
-    /// TryGetToken attempts to retrieve a token from the cache for the specified registry, authentication scheme, and key.
+    /// TryGetToken attempts to retrieve a token from the cache for the specified registry,
+    /// scheme, and scope key.
     /// </summary>
-    /// <param name="registry">The registry for which the token is being requested.</param>
+    /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="scheme">The authentication scheme associated with the token.</param>
-    /// <param name="key">The key used to identify the token within the cache.</param>
+    /// <param name="scopeKey">
+    /// The OAuth2 scope key used to identify the token within the cache.
+    /// </param>
     /// <param name="token">
-    /// When this method returns, contains the token associated with the specified registry, scheme, and key,
-    /// if the token is found; otherwise, an empty string.
+    /// When this method returns, contains the token associated with the specified registry,
+    /// scheme, and scope key, if found; otherwise, an empty string.
+    /// </param>
+    /// <param name="partitionId">
+    /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
+    /// enabling multi-partition scenarios where different credentials are used for the same registry.
     /// </param>
     /// <returns>
-    /// <c>true</c> if a token matching the specified registry, scheme, and key is found in the cache; otherwise, <c>false</c>.
+    /// <c>true</c> if a token matching the specified registry, scheme, and scope key is found;
+    /// otherwise, <c>false</c>.
     /// </returns>
-    bool TryGetToken(string registry, Challenge.Scheme scheme, string key, out string token);
+    bool TryGetToken(
+        string registry,
+        Challenge.Scheme scheme,
+        string scopeKey,
+        out string token,
+        string? partitionId = null);
 }

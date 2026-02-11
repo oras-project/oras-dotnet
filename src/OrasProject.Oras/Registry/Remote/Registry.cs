@@ -56,7 +56,10 @@ public class Registry : IRegistry
     {
         var url = new UriFactory(_opts).BuildRegistryBase();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        using var resp = await _opts.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var resp = await _opts.Client.SendAsync(
+            request,
+            partitionId: _opts.PartitionId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         switch (resp.StatusCode)
         {
             case HttpStatusCode.OK:
@@ -132,7 +135,10 @@ public class Registry : IRegistry
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.ToString());
-        using var response = await _opts.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await _opts.Client.SendAsync(
+            request,
+            partitionId: _opts.PartitionId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);

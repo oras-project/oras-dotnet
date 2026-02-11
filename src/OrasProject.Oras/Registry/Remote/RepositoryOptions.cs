@@ -65,6 +65,26 @@ public struct RepositoryOptions
     public bool SkipReferrersGc { get; set; }
 
     /// <summary>
+    /// PartitionId is an optional cache partition identifier for multi-partition scenarios.
+    /// When set, authentication tokens are isolated by this ID, allowing different credentials
+    /// to be cached separately for the same upstream registry.
+    /// <para>
+    /// Use cases include:
+    /// <list type="bullet">
+    /// <item>Multi-partition services where each customer has different upstream credentials</item>
+    /// <item>
+    /// Sync scenarios where the same upstream registry is accessed with different tokens
+    /// </item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The consumer is responsible for determining what value to use (e.g., customer ID,
+    /// hash of full image reference, or other business logic).
+    /// </para>
+    /// </summary>
+    public string? PartitionId { get; set; }
+
+    /// <summary>
     /// MaxMetadataBytes specifies a limit on how many response bytes are allowed
     /// in the server's response to the metadata APIs, such as catalog list, tag
     /// list, and referrers list.

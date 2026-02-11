@@ -18,11 +18,32 @@ using System.Threading.Tasks;
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 /// <summary>
-/// IClient is an interface that provide abstraction for the method SendAsync
+/// IClient is an interface that provides abstraction for the method SendAsync.
 /// </summary>
 public interface IClient
 {
-    Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken = default);
-
-    Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, bool allowAutoRedirect, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Sends an HTTP request asynchronously with optional auth cache partitioning and redirect
+    /// control.
+    /// </summary>
+    /// <param name="originalRequest">The HTTP request message to send.</param>
+    /// <param name="partitionId">
+    /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
+    /// enabling multi-partition scenarios where different credentials are used for the same
+    /// registry.
+    /// </param>
+    /// <param name="allowAutoRedirect">
+    /// Whether to follow redirects automatically. When <c>false</c>, captures redirect locations
+    /// without following them (e.g., for blob location retrieval).
+    /// </param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains the HTTP
+    /// response message.
+    /// </returns>
+    Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage originalRequest,
+        string? partitionId = null,
+        bool allowAutoRedirect = true,
+        CancellationToken cancellationToken = default);
 }

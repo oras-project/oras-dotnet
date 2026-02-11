@@ -3088,6 +3088,63 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     }
 
     /// <summary>
+    /// Verifies that after GenerateDescriptorAsync computes the digest
+    /// from the response body (when Docker-Content-Digest header is
+    /// absent), the response content remains readable. This is a
+    /// regression test for the stream consumption bug where
+    /// CalculateDigestFromResponseAsync consumed the stream without
+    /// replacing response.Content.
+    /// </summary>
+    [Fact]
+    public async Task GenerateDescriptorAsync_GetWithoutDigestHeader_ContentRemainsReadable()
+    {
+        // Arrange: simulate a GET response without Docker-Content-Digest
+        var content = _theAmazingBanClan;
+        var expectedDigest = $"sha256:{_theAmazingBanDigest}";
+        var reference = new Reference("eastern.haan.com", "from25to220ce")
+        {
+            ContentReference = "latest"
+        };
+
+        using var requestMessage = new HttpRequestMessage
+        {
+            Method = HttpMethod.Get
+        };
+        using var resp = new HttpResponseMessage
+        {
+            Content = new ByteArrayContent(content),
+            RequestMessage = requestMessage
+        };
+        resp.Content.Headers.Add(
+            "Content-Type",
+            "application/vnd.oci.image.index.v1+json");
+        // Deliberately omit Docker-Content-Digest to force
+        // CalculateDigestFromResponseAsync path
+
+        var repo = new Repository(
+            "eastern.haan.com/from25to220ce",
+            new PlainClient(new HttpClient()));
+
+        // Act: GenerateDescriptorAsync should read body for digest
+        var desc = await resp.GenerateDescriptorAsync(
+            reference,
+            repo.Options.MaxMetadataBytes,
+            CancellationToken.None);
+
+        // Assert: descriptor is correct
+        Assert.Equal(expectedDigest, desc.Digest);
+        Assert.Equal(content.Length, desc.Size);
+
+        // Assert: response content is still readable after digest
+        // calculation (this is the regression check)
+        using var stream = await resp.Content
+            .ReadAsStreamAsync(CancellationToken.None);
+        var buffer = new byte[content.Length];
+        await stream.ReadExactlyAsync(buffer, CancellationToken.None);
+        Assert.Equal(content, buffer);
+    }
+
+    /// <summary>
     /// Repository_MountAsync tests the MountAsync method of the Repository
     /// </summary>
     /// <returns></returns>
