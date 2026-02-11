@@ -83,7 +83,8 @@ Concise guidance for producing code and docs consistent with the ORAS .NET libra
 - Validate early: digests, media types, sizes, artifactType (non-empty if set).
 
 ## Async & I/O
-- Async-first (`Async` suffix). No blocking `.Result` / `.Wait()`.
+- Async-first. No blocking `.Result` / `.Wait()`.
+- All async methods (public, internal, and private) **must** use the `Async` suffix (e.g., `FetchAsync`, `ResolveAsync`, `CalculateDigestFromResponseAsync`).
 - `CancellationToken` always last with default.
 
 ## Testing

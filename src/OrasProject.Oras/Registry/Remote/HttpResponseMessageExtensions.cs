@@ -232,7 +232,7 @@ internal static class HttpResponseMessageExtensions
                 // expensive calculation
                 try
                 {
-                    contentDigest = await response.CalculateDigestFromResponse(maxBytes, cancellationToken).ConfigureAwait(false);
+                    contentDigest = await response.CalculateDigestFromResponseAsync(maxBytes, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -259,15 +259,37 @@ internal static class HttpResponseMessageExtensions
     }
 
     /// <summary>
-    /// CalculateDigestFromResponse calculates the actual digest of the response body
-    /// taking care not to destroy it in the process
+    /// CalculateDigestFromResponseAsync calculates the actual digest of the response
+    /// body and replaces response.Content with a buffered copy so the body
+    /// remains readable for subsequent callers.
     /// </summary>
-    /// <param name="response"></param>
-    /// <param name="maxBytes"></param>
-    private static async Task<string> CalculateDigestFromResponse(this HttpResponseMessage response, long maxBytes, CancellationToken cancellationToken)
+    /// <param name="response">The HTTP response whose body will be read.</param>
+    /// <param name="maxBytes">Maximum bytes to read (capped by MaxMetadataBytes).</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The computed SHA-256 digest string.</returns>
+    private static async Task<string> CalculateDigestFromResponseAsync(
+        this HttpResponseMessage response,
+        long maxBytes,
+        CancellationToken cancellationToken)
     {
-        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        var limitedStreamContent = await stream.ReadStreamWithLimitAsync(maxBytes, cancellationToken).ConfigureAwait(false);
-        return Digest.ComputeSha256(limitedStreamContent);
+        using var stream = await response.Content
+            .ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        var contentBytes = await stream
+            .ReadStreamWithLimitAsync(maxBytes, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Replace response content with buffered bytes so the caller
+        // can still read the body (mirrors oras-go's resp.Body replacement).
+        var newContent = new ByteArrayContent(contentBytes);
+        var oldContent = response.Content;
+        foreach (var header in oldContent.Headers)
+        {
+            newContent.Headers.TryAddWithoutValidation(
+                header.Key, header.Value);
+        }
+        response.Content = newContent;
+        oldContent.Dispose();
+
+        return Digest.ComputeSha256(contentBytes);
     }
 }
