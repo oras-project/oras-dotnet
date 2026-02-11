@@ -232,11 +232,17 @@ internal static class HttpResponseMessageExtensions
                 // expensive calculation
                 try
                 {
-                    contentDigest = await response.CalculateDigestFromResponseAsync(maxBytes, cancellationToken).ConfigureAwait(false);
+                    contentDigest = await response
+                        .CalculateDigestFromResponseAsync(
+                            maxBytes, cancellationToken)
+                        .ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
-                    throw new HttpIOException(HttpRequestError.InvalidResponse, $"failed to calculate digest on response body; {e.Message}");
+                    throw new HttpIOException(
+                        HttpRequestError.InvalidResponse,
+                        "failed to calculate digest on " +
+                        $"response body; {e.Message}");
                 }
             }
         }

@@ -3106,10 +3106,14 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             ContentReference = "latest"
         };
 
+        using var requestMessage = new HttpRequestMessage
+        {
+            Method = HttpMethod.Get
+        };
         using var resp = new HttpResponseMessage
         {
             Content = new ByteArrayContent(content),
-            RequestMessage = new HttpRequestMessage { Method = HttpMethod.Get }
+            RequestMessage = requestMessage
         };
         resp.Content.Headers.Add(
             "Content-Type",
