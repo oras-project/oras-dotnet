@@ -1150,7 +1150,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             Size = blob.Length
         };
         var redirectLocation = "https://storage.example.com/blob";
-        
+
         // Test case 1: Redirect with absolute URI
         HttpResponseMessage MockHandlerRedirect(HttpRequestMessage req, CancellationToken cancellationToken = default)
         {
@@ -1248,7 +1248,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = true,
         });
         var store = new BlobStore(repo);
-        
+
         await Assert.ThrowsAsync<NotFoundException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
 
@@ -1279,7 +1279,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = true,
         });
         store = new BlobStore(repo);
-        
+
         var exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("Location header", exception.Message);
@@ -1312,7 +1312,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = false, // HTTPS is required
         });
         store = new BlobStore(repo);
-        
+
         exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("HTTPS", exception.Message);
@@ -1345,7 +1345,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
             PlainHttp = true,
         });
         store = new BlobStore(repo);
-        
+
         exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("absolute URI", exception.Message);
@@ -3085,6 +3085,63 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Verifies that after GenerateDescriptorAsync computes the digest
+    /// from the response body (when Docker-Content-Digest header is
+    /// absent), the response content remains readable. This is a
+    /// regression test for the stream consumption bug where
+    /// CalculateDigestFromResponseAsync consumed the stream without
+    /// replacing response.Content.
+    /// </summary>
+    [Fact]
+    public async Task GenerateDescriptorAsync_GetWithoutDigestHeader_ContentRemainsReadable()
+    {
+        // Arrange: simulate a GET response without Docker-Content-Digest
+        var content = _theAmazingBanClan;
+        var expectedDigest = $"sha256:{_theAmazingBanDigest}";
+        var reference = new Reference("eastern.haan.com", "from25to220ce")
+        {
+            ContentReference = "latest"
+        };
+
+        using var requestMessage = new HttpRequestMessage
+        {
+            Method = HttpMethod.Get
+        };
+        using var resp = new HttpResponseMessage
+        {
+            Content = new ByteArrayContent(content),
+            RequestMessage = requestMessage
+        };
+        resp.Content.Headers.Add(
+            "Content-Type",
+            "application/vnd.oci.image.index.v1+json");
+        // Deliberately omit Docker-Content-Digest to force
+        // CalculateDigestFromResponseAsync path
+
+        var repo = new Repository(
+            "eastern.haan.com/from25to220ce",
+            new PlainClient(new HttpClient()));
+
+        // Act: GenerateDescriptorAsync should read body for digest
+        var desc = await resp.GenerateDescriptorAsync(
+            reference,
+            repo.Options.MaxMetadataBytes,
+            CancellationToken.None);
+
+        // Assert: descriptor is correct
+        Assert.Equal(expectedDigest, desc.Digest);
+        Assert.Equal(content.Length, desc.Size);
+
+        // Assert: response content is still readable after digest
+        // calculation (this is the regression check)
+        using var stream = await resp.Content
+            .ReadAsStreamAsync(CancellationToken.None);
+        var buffer = new byte[content.Length];
+        await stream.ReadExactlyAsync(buffer, CancellationToken.None);
+        Assert.Equal(content, buffer);
     }
 
     /// <summary>

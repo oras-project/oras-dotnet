@@ -137,8 +137,13 @@ public class Client : IClient
     /// <para>
     /// To customize caching behavior, you can either:
     /// <list type="bullet">
-    /// <item><description>Provide your own <see cref="ICache"/> implementation in the constructor</description></item>
-    /// <item><description>Configure <see cref="Cache.CacheEntryOptions"/> on the default implementation</description></item>
+    /// <item>
+    /// <description>Provide your own <see cref="ICache"/> implementation in the constructor</description>
+    /// </item>
+    /// <item>
+    /// <description>Configure <see cref="Cache.CacheEntryOptions"/> on the default implementation
+    /// </description>
+    /// </item>
     /// </list>
     /// </para>
     /// </remarks>
@@ -184,7 +189,8 @@ public class Client : IClient
     /// <summary>
     /// CustomHeaders is for users to customize headers
     /// </summary>
-    public ConcurrentDictionary<string, List<string>> CustomHeaders { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public ConcurrentDictionary<string, List<string>> CustomHeaders { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// SetUserAgent is to set customized user agent per user requests.
@@ -203,48 +209,45 @@ public class Client : IClient
     }
 
     /// <summary>
-    /// Asynchronously resolves the credential for the specified registry.
+    /// Asynchronously resolves the credential for the specified registry host.
     /// </summary>
-    /// <param name="registry">Registry name or host:port to authenticate with.</param>
+    /// <param name="registry">The registry hostname to retrieve credentials for.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains the resolved credential.
-    /// If <see cref="CredentialProvider"/> is null, an empty credential is returned.
+    /// A task that represents the asynchronous operation. The task result contains the resolved
+    /// credential. If <see cref="CredentialProvider"/> is null, an empty credential is returned.
     /// </returns>
-    public Task<Credential> ResolveCredentialAsync(string registry, CancellationToken cancellationToken = default)
-        => CredentialProvider == null ? Task.FromResult(CredentialExtensions.EmptyCredential) :
-            CredentialProvider.ResolveCredentialAsync(registry, cancellationToken);
-
-    /// <summary>
-    /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
-    /// 
-    /// This method intercepts the HTTP request to handle authentication challenges, including Basic and Bearer schemes.
-    /// It attempts to retrieve cached tokens for the request's host and applies them to the request headers.
-    /// If the server responds with an unauthorized status, it parses the authentication challenge and fetches
-    /// new tokens as needed, updating the cache accordingly.
-    /// </summary>
-    /// <param name="originalRequest">The original HTTP request message to send.</param>
-    /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
-    /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains the HTTP response message.
-    /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown if the request URI is null.</exception>
-    /// <exception cref="KeyNotFoundException">
-    /// Thrown if required parameters (e.g., "realm") are missing in the authentication challenge.
-    /// </exception>
-    public Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage originalRequest,
+    public Task<Credential> ResolveCredentialAsync(
+        string registry,
         CancellationToken cancellationToken = default)
-        => SendCoreAsync(originalRequest, allowAutoRedirect: true, cancellationToken: cancellationToken);
+        => CredentialProvider == null
+            ? Task.FromResult(CredentialExtensions.EmptyCredential)
+            : CredentialProvider.ResolveCredentialAsync(registry, cancellationToken);
 
     /// <summary>
-    /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if 'Authorization' header is not set.
+    /// SendAsync sends an HTTP request asynchronously, attempting to resolve authentication if
+    /// 'Authorization' header is not set.
+    /// 
+    /// This method intercepts the HTTP request to handle authentication challenges, including
+    /// Basic and Bearer schemes. It attempts to retrieve cached tokens for the request's host
+    /// and applies them to the request headers. If the server responds with an unauthorized
+    /// status, it parses the authentication challenge and fetches new tokens as needed,
+    /// updating the cache accordingly.
     /// </summary>
     /// <param name="originalRequest">The original HTTP request message to send.</param>
-    /// <param name="allowAutoRedirect">Whether to follow redirects automatically. Set to false to capture redirect URLs (e.g., for blob locations).</param>
+    /// <param name="partitionId">
+    /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
+    /// enabling multi-partition scenarios where different credentials are used for the same
+    /// registry.
+    /// </param>
+    /// <param name="allowAutoRedirect">
+    /// Whether to follow redirects automatically. Set to false to capture redirect URLs
+    /// (e.g., for blob locations).
+    /// </param>
     /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
     /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains the HTTP response message.
+    /// A task that represents the asynchronous operation. The task result contains the HTTP
+    /// response message.
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown if the request URI is null.</exception>
     /// <exception cref="KeyNotFoundException">
@@ -252,30 +255,38 @@ public class Client : IClient
     /// </exception>
     public Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage originalRequest,
+        string? partitionId = null,
         bool allowAutoRedirect = true,
         CancellationToken cancellationToken = default)
-        => SendCoreAsync(originalRequest, allowAutoRedirect, cancellationToken);
+        => SendCoreAsync(originalRequest, partitionId, allowAutoRedirect, cancellationToken);
 
     /// <summary>
-    /// Fetches the Basic Authentication token for the specified registry.
+    /// Fetches the Basic Authentication token for the specified registry host.
     /// </summary>
-    /// <param name="registry">The registry for which the credentials are being fetched.</param>
+    /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
-    /// A Base64-encoded string representing the Basic Authentication token in the format "username:password".
+    /// A Base64-encoded string representing the Basic Authentication token in the format
+    /// "username:password".
     /// </returns>
     /// <exception cref="AuthenticationException">
     /// Thrown when credentials are missing or when the username or password is null or empty.
     /// </exception>
-    internal async Task<string> FetchBasicAuthAsync(string registry, CancellationToken cancellationToken = default)
+    internal async Task<string> FetchBasicAuthAsync(
+        string registry,
+        CancellationToken cancellationToken = default)
     {
-        var credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(credential.Username) || string.IsNullOrWhiteSpace(credential.Password))
+        var credential = await ResolveCredentialAsync(registry, cancellationToken)
+            .ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(credential.Username) ||
+            string.IsNullOrWhiteSpace(credential.Password))
         {
-            throw new AuthenticationException("Missing username or password for basic authentication.");
+            throw new AuthenticationException(
+                "Missing username or password for basic authentication.");
         }
 
-        return Convert.ToBase64String(Encoding.UTF8.GetBytes($"{credential.Username}:{credential.Password}"));
+        return Convert.ToBase64String(
+            Encoding.UTF8.GetBytes($"{credential.Username}:{credential.Password}"));
     }
 
     /// <summary>
@@ -285,15 +296,18 @@ public class Client : IClient
     /// the method would fetch anonymous token with a Http Get request
     /// otherwise, it would fetch OAuth2 token with a Http Post request.
     /// </summary>
-    /// <param name="registry">The registry URL or identifier.</param>
+    /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="realm">The authentication realm to use.</param>
     /// <param name="service">The service name for which the token is requested.</param>
     /// <param name="scopes">The scopes of access requested for the token.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains the bearer authentication token as a string.
+    /// A task that represents the asynchronous operation. The task result contains the bearer
+    /// authentication token as a string.
     /// </returns>
-    /// <exception cref="AuthenticationException">Thrown when credentials are missing or invalid.</exception>
+    /// <exception cref="AuthenticationException">
+    /// Thrown when credentials are missing or invalid.
+    /// </exception>
     internal async Task<string> FetchBearerAuthAsync(
         string registry,
         string realm,
@@ -301,7 +315,8 @@ public class Client : IClient
         IList<string> scopes,
         CancellationToken cancellationToken = default)
     {
-        var credential = await ResolveCredentialAsync(registry, cancellationToken).ConfigureAwait(false);
+        var credential = await ResolveCredentialAsync(registry, cancellationToken)
+            .ConfigureAwait(false);
         if (!string.IsNullOrEmpty(credential.AccessToken))
         {
             return credential.AccessToken;
@@ -487,6 +502,7 @@ public class Client : IClient
     /// challenge parsing, and credential fetching for both Basic and Bearer schemes.
     /// </summary>
     /// <param name="originalRequest">The original HTTP request message to send.</param>
+    /// <param name="partitionId">Optional cache partition identifier for multi-partition isolation.</param>
     /// <param name="allowAutoRedirect">Whether to allow automatic redirect following.</param>
     /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
     /// <returns>
@@ -494,6 +510,7 @@ public class Client : IClient
     /// </returns>
     private async Task<HttpResponseMessage> SendCoreAsync(
         HttpRequestMessage originalRequest,
+        string? partitionId,
         bool allowAutoRedirect,
         CancellationToken cancellationToken)
     {
@@ -513,13 +530,13 @@ public class Client : IClient
         var attemptedKey = string.Empty;
 
         // attempt to send request with cached auth token
-        if (Cache.TryGetScheme(host, out var schemeFromCache))
+        if (Cache.TryGetScheme(host, out var schemeFromCache, partitionId))
         {
             switch (schemeFromCache)
             {
                 case Challenge.Scheme.Basic:
                     {
-                        if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken))
+                        if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken, partitionId))
                         {
                             requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
                         }
@@ -530,7 +547,7 @@ public class Client : IClient
                     {
                         var scopes = ScopeManager.GetScopesStringForHost(host);
                         attemptedKey = string.Join(" ", scopes);
-                        if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken))
+                        if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken, partitionId))
                         {
                             requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
                         }
@@ -555,7 +572,7 @@ public class Client : IClient
                 {
                     response1.Dispose();
                     var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken);
+                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken, partitionId);
 
                     // Attempt again with basic token
                     var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
@@ -586,7 +603,7 @@ public class Client : IClient
                     // Attempt to send request when the scope changes and a token cache hits
                     var newKey = string.Join(" ", newScopes);
                     if (newKey != attemptedKey &&
-                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken))
+                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken, partitionId))
                     {
                         var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                         requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
@@ -618,7 +635,7 @@ public class Client : IClient
                         newScopes.Select(newScope => newScope.ToString()).ToList(),
                         cancellationToken
                     ).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken);
+                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
 
                     var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);

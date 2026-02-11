@@ -61,29 +61,14 @@ public class PlainClient : IClient
         _noRedirectClient = noRedirectHttpClient ?? DefaultHttpClient.NoRedirectInstance;
     }
 
-    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage originalRequest, CancellationToken cancellationToken = default)
-    {
-        originalRequest.AddDefaultUserAgent();
-        return await _client.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Sends an HTTP request with optional redirect control.
-    /// </summary>
-    /// <param name="originalRequest">The HTTP request message to send.</param>
-    /// <param name="allowAutoRedirect">
-    /// Whether to follow redirects automatically. When <c>false</c>, uses the configured no-redirect
-    /// <see cref="HttpClient"/> instance (see constructors) to capture redirect locations without following
-    /// them (e.g., for <c>GetBlobLocationAsync</c>). By default, this is <see cref="DefaultHttpClient.NoRedirectInstance"/>.
-    /// </param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains the HTTP response message.</returns>
+    /// <inheritdoc/>
     public async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage originalRequest,
-        bool allowAutoRedirect,
-        CancellationToken cancellationToken = default
-    )
+        string? partitionId = null,
+        bool allowAutoRedirect = true,
+        CancellationToken cancellationToken = default)
     {
+        // partitionId is ignored since PlainClient doesn't do authentication caching
         originalRequest.AddDefaultUserAgent();
         var client = allowAutoRedirect ? _client : _noRedirectClient;
         return await client.SendAsync(originalRequest, cancellationToken).ConfigureAwait(false);
