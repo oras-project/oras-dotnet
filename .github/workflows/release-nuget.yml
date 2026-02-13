@@ -37,7 +37,7 @@ jobs:
           if ! echo "$TAG_NAME" \
             | grep -qP '^v\d+\.\d+\.\d+(-[a-zA-Z0-9.\-]+)?(\+[a-zA-Z0-9.\-]+)?$'; then
             echo "::error::Invalid tag '${TAG_NAME}'." \
-              "Must be valid SemVer2: vMAJOR.MINOR.PATCH[-prerelease][+metadata]."
+              "Must be of the form: vMAJOR.MINOR.PATCH[-prerelease][+metadata]."
             exit 1
           fi
           echo "version=${TAG_NAME#v}" >> $GITHUB_OUTPUT
