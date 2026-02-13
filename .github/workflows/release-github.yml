@@ -191,9 +191,20 @@ jobs:
             PRERELEASE_FLAG="--prerelease"
           fi
 
-          gh release create "$TAG_NAME" \
-            --repo "${{ github.repository }}" \
-            --title "$TAG_NAME" \
-            --notes-file release-notes.md \
-            --draft \
-            $PRERELEASE_FLAG
+          # Make release creation idempotent: edit if release exists, otherwise create.
+          if gh release view "$TAG_NAME" \
+            --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" \
+              --repo "${{ github.repository }}" \
+              --title "$TAG_NAME" \
+              --notes-file release-notes.md \
+              --draft \
+              $PRERELEASE_FLAG
+          else
+            gh release create "$TAG_NAME" \
+              --repo "${{ github.repository }}" \
+              --title "$TAG_NAME" \
+              --notes-file release-notes.md \
+              --draft \
+              $PRERELEASE_FLAG
+          fi

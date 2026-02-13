@@ -88,8 +88,6 @@ jobs:
 
       - name: Generate PR list
         id: changelog
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PREV_TAG="${{ steps.prev_tag.outputs.tag }}"
           COMMIT_SHA="${{ steps.resolve.outputs.sha }}"
