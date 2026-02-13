@@ -36,7 +36,7 @@ jobs:
           if ! echo "${GITHUB_REF_NAME}" \
             | grep -qP '^v\d+\.\d+\.\d+(-[a-zA-Z0-9.\-]+)?(\+[a-zA-Z0-9.\-]+)?$'; then
             echo "::error::Invalid tag '${GITHUB_REF_NAME}'." \
-              "Must be valid SemVer2: vMAJOR.MINOR.PATCH[-prerelease][+metadata]."
+              "Must match: vMAJOR.MINOR.PATCH[-prerelease][+metadata]."
             exit 1
           fi
 
