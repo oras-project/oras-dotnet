@@ -1,0 +1,210 @@
+# Copyright The ORAS Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: release-github
+
+on:
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag name
+        run: |
+          if ! echo "${GITHUB_REF_NAME}" \
+            | grep -qP '^v\d+\.\d+\.\d+(-[a-zA-Z0-9.\-]+)?(\+[a-zA-Z0-9.\-]+)?$'; then
+            echo "::error::Invalid tag '${GITHUB_REF_NAME}'." \
+              "Must match: vMAJOR.MINOR.PATCH[-prerelease][+metadata]."
+            exit 1
+          fi
+
+      - name: Get previous release tag
+        id: prev_tag
+        run: |
+          # Get the most recent tag reachable from this tag,
+          # excluding the current tag itself.
+          PREV_TAG=$(git tag --merged "${GITHUB_REF_NAME}" \
+            --sort=-v:refname \
+            | grep -xFv "${GITHUB_REF_NAME}" | head -n 1)
+          echo "tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        id: notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          PREV_TAG="${{ steps.prev_tag.outputs.tag }}"
+          REPO="${{ github.repository }}"
+          VERSION="${TAG_NAME#v}"
+
+          # Extract PR numbers from commit messages, then look up
+          # each PR's metadata via the GitHub API. Falls back to
+          # commit message parsing if the API lookup fails.
+          if [ -n "$PREV_TAG" ]; then
+            PR_NUMBERS=$(git log --oneline "$PREV_TAG..$TAG_NAME" \
+              | grep -oP '#\K\d+' | sort -n -u || true)
+          else
+            # First release: include all commits
+            PR_NUMBERS=$(git log --oneline "$TAG_NAME" \
+              | grep -oP '#\K\d+' | sort -n -u || true)
+          fi
+
+          # Build a map of PR numbers to commit message data
+          # for fallback when API lookup fails.
+          declare -A COMMIT_MAP
+          while IFS= read -r line; do
+            if [[ "$line" =~ \#([0-9]+)\) ]]; then
+              COMMIT_MAP["${BASH_REMATCH[1]}"]="$line"
+            fi
+          done < <(if [ -n "$PREV_TAG" ]; then
+            git log --format="%s%x09%an" "$PREV_TAG..$TAG_NAME"
+          else
+            git log --format="%s%x09%an" "$TAG_NAME"
+          fi)
+
+          PRS=""
+          for num in $PR_NUMBERS; do
+            PR_DATA=$(gh pr view "$num" --repo "$REPO" \
+              --json number,title,author \
+              --jq '"\(.number)\t\(.title)\t\(.author.login)"' \
+              2>/dev/null || true)
+            if [ -n "$PR_DATA" ]; then
+              PRS="${PRS}${PR_DATA}"$'\n'
+            elif [ -n "${COMMIT_MAP[$num]:-}" ]; then
+              # Fallback: parse title and author from commit msg.
+              # Author is plain text (no @) to avoid wrong tags.
+              RAW="${COMMIT_MAP[$num]}"
+              TITLE=$(echo "$RAW" \
+                | sed -E "s/ *\(#${num}\)\t.*$//" )
+              AUTHOR=$(echo "$RAW" \
+                | sed -E 's/^.*\t//')
+              PRS="${PRS}$(printf '%s\t%s\t~%s' \
+                "$num" "$TITLE" "$AUTHOR")"$'\n'
+            fi
+          done
+
+          # Categorize PRs by conventional commit prefix
+          BREAKING=""
+          FEATURES=""
+          FIXES=""
+          OTHER=""
+          COMMITS=""
+
+          while IFS=$'\t' read -r num title author; do
+            [ -z "$num" ] && continue
+            # Fallback authors are prefixed with ~ (no @ tag)
+            if [[ "$author" == ~* ]]; then
+              entry="* ${title} by ${author#~} in #${num}"
+            else
+              entry="* ${title} by @${author} in #${num}"
+            fi
+
+            case "$title" in
+              *!:*|*"BREAKING CHANGE"*)
+                BREAKING="${BREAKING}${entry}"$'\n'
+                ;;
+              feat:*|feat\(*\):*)
+                FEATURES="${FEATURES}${entry}"$'\n'
+                ;;
+              fix:*|fix\(*\):*)
+                FIXES="${FIXES}${entry}"$'\n'
+                ;;
+              *)
+                OTHER="${OTHER}${entry}"$'\n'
+                ;;
+            esac
+
+            COMMITS="${COMMITS}${entry}"$'\n'
+          done <<< "$PRS"
+
+          # If no PRs found, list raw commits as fallback
+          if [ -z "$COMMITS" ]; then
+            if [ -n "$PREV_TAG" ]; then
+              RAW_LOG=$(git log --format="* %s (%an)" \
+                "$PREV_TAG..$TAG_NAME")
+            else
+              RAW_LOG=$(git log --format="* %s (%an)" \
+                "$TAG_NAME")
+            fi
+            COMMITS="${RAW_LOG}"$'\n'
+          fi
+
+          # Build release notes
+          NUGET_URL="https://www.nuget.org/packages/OrasProject.Oras/${VERSION}"
+          NOTES="The NuGet package is available at [nuget.org](${NUGET_URL})."
+          NOTES="${NOTES}"$'\n'
+
+          if [ -n "$BREAKING" ]; then
+            NOTES="${NOTES}"$'\n'"## Breaking Changes"$'\n\n'"${BREAKING}"
+          fi
+          if [ -n "$FEATURES" ]; then
+            NOTES="${NOTES}"$'\n'"## New Features"$'\n\n'"${FEATURES}"
+          fi
+          if [ -n "$FIXES" ]; then
+            NOTES="${NOTES}"$'\n'"## Bug Fixes"$'\n\n'"${FIXES}"
+          fi
+          if [ -n "$OTHER" ]; then
+            NOTES="${NOTES}"$'\n'"## Other Changes"$'\n\n'"${OTHER}"
+          fi
+
+          NOTES="${NOTES}"$'\n'"## Detailed Commits"$'\n\n'"${COMMITS}"
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG="https://github.com/${REPO}/compare/${PREV_TAG}...${TAG_NAME}"
+            NOTES="${NOTES}"$'\n'"**Full Changelog**: [${PREV_TAG}...${TAG_NAME}](${CHANGELOG})"
+          fi
+
+          # Write notes to file for gh release
+          echo "$NOTES" > release-notes.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+
+          # Determine if this is a pre-release
+          PRERELEASE_FLAG=""
+          if echo "$TAG_NAME" | grep -qE '[-](alpha|beta|rc|preview)'; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          # Make release creation idempotent: edit if release exists, otherwise create.
+          if gh release view "$TAG_NAME" \
+            --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" \
+              --repo "${{ github.repository }}" \
+              --title "$TAG_NAME" \
+              --notes-file release-notes.md \
+              --draft \
+              $PRERELEASE_FLAG
+          else
+            gh release create "$TAG_NAME" \
+              --repo "${{ github.repository }}" \
+              --title "$TAG_NAME" \
+              --notes-file release-notes.md \
+              --draft \
+              $PRERELEASE_FLAG
+          fi
