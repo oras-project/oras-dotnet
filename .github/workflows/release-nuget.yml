@@ -30,26 +30,26 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
+      - name: Validate tag name
+        uses: ./.github/actions/validate-tag
+        with:
+          tag: ${{ github.event.release.tag_name }}
       - name: Extract Version
         id: version
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          TAG_NAME="${{ github.event.release.tag_name }}"
-          if ! echo "$TAG_NAME" \
-            | grep -qP '^v\d+\.\d+\.\d+(-[a-zA-Z0-9.\-]+)?(\+[a-zA-Z0-9.\-]+)?$'; then
-            echo "::error::Invalid tag '${TAG_NAME}'." \
-              "Must be of the form: vMAJOR.MINOR.PATCH[-prerelease][+metadata]."
-            exit 1
-          fi
           echo "version=${TAG_NAME#v}" >> $GITHUB_OUTPUT
       - name: Build nuget package
         run: dotnet build ./src/OrasProject.Oras --configuration Release /p:PackageVersion=${{ steps.version.outputs.version }}
       - name: Upload nupkg and checksum to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
           NUPKG: ./src/OrasProject.Oras/bin/Release/OrasProject.Oras.${{ steps.version.outputs.version }}.nupkg
         run: |
-          sha256sum "$NUPKG" | awk '{print $1}' > "${NUPKG}.sha256"
-          gh release upload "${{ github.event.release.tag_name }}" \
+          (cd "$(dirname "$NUPKG")" && sha256sum "$(basename "$NUPKG")") > "${NUPKG}.sha256"
+          gh release upload "$TAG_NAME" \
             "$NUPKG" \
             "${NUPKG}.sha256"
       - name: Publish nuget package

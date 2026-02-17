@@ -32,13 +32,9 @@ jobs:
           fetch-depth: 0
 
       - name: Validate tag name
-        run: |
-          if ! echo "${GITHUB_REF_NAME}" \
-            | grep -qP '^v\d+\.\d+\.\d+(-[a-zA-Z0-9.\-]+)?(\+[a-zA-Z0-9.\-]+)?$'; then
-            echo "::error::Invalid tag '${GITHUB_REF_NAME}'." \
-              "Must match: vMAJOR.MINOR.PATCH[-prerelease][+metadata]."
-            exit 1
-          fi
+        uses: ./.github/actions/validate-tag
+        with:
+          tag: ${{ github.ref_name }}
 
       - name: Get previous release tag
         id: prev_tag
@@ -54,22 +50,23 @@ jobs:
         id: notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREV_TAG: ${{ steps.prev_tag.outputs.tag }}
+          REPO: ${{ github.repository }}
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
-          PREV_TAG="${{ steps.prev_tag.outputs.tag }}"
-          REPO="${{ github.repository }}"
           VERSION="${TAG_NAME#v}"
 
-          # Extract PR numbers from commit messages, then look up
-          # each PR's metadata via the GitHub API. Falls back to
-          # commit message parsing if the API lookup fails.
+          # Extract PR numbers from squash-merge commit messages
+          # (matches "(#123)" format), then look up each PR's
+          # metadata via the GitHub API. Falls back to commit
+          # message parsing if the API lookup fails.
           if [ -n "$PREV_TAG" ]; then
             PR_NUMBERS=$(git log --oneline "$PREV_TAG..$TAG_NAME" \
-              | grep -oP '#\K\d+' | sort -n -u || true)
+              | grep -oP '\(#\K\d+(?=\))' | sort -n -u || true)
           else
             # First release: include all commits
             PR_NUMBERS=$(git log --oneline "$TAG_NAME" \
-              | grep -oP '#\K\d+' | sort -n -u || true)
+              | grep -oP '\(#\K\d+(?=\))' | sort -n -u || true)
           fi
 
           # Build a map of PR numbers to commit message data
@@ -182,27 +179,28 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
 
-          # Determine if this is a pre-release
+          # Determine if this is a pre-release (any - suffix)
           PRERELEASE_FLAG=""
-          if echo "$TAG_NAME" | grep -qE '[-](alpha|beta|rc|preview)'; then
+          if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-.+ ]]; then
             PRERELEASE_FLAG="--prerelease"
           fi
 
           # Make release creation idempotent: edit if release exists, otherwise create.
           if gh release view "$TAG_NAME" \
-            --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            --repo "$REPO" >/dev/null 2>&1; then
             gh release edit "$TAG_NAME" \
-              --repo "${{ github.repository }}" \
+              --repo "$REPO" \
               --title "$TAG_NAME" \
               --notes-file release-notes.md \
               --draft \
               $PRERELEASE_FLAG
           else
             gh release create "$TAG_NAME" \
-              --repo "${{ github.repository }}" \
+              --repo "$REPO" \
               --title "$TAG_NAME" \
               --notes-file release-notes.md \
               --draft \

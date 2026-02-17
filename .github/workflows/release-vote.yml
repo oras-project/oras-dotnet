@@ -43,36 +43,31 @@ jobs:
           fetch-depth: 0
 
       - name: Validate tag name
-        run: |
-          TAG_NAME="${{ inputs.tag_name }}"
-          if ! echo "$TAG_NAME" \
-            | grep -qP '^v\d+\.\d+\.\d+(-[a-zA-Z0-9.\-]+)?(\+[a-zA-Z0-9.\-]+)?$'; then
-            echo "::error::Invalid tag name '${TAG_NAME}'." \
-              "Must match: vMAJOR.MINOR.PATCH[-prerelease][+metadata]."
-            exit 1
-          fi
+        uses: ./.github/actions/validate-tag
+        with:
+          tag: ${{ inputs.tag_name }}
 
       - name: Resolve commit SHA
         id: resolve
+        env:
+          INPUT_SHA: ${{ inputs.commit_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          if [ -n "${{ inputs.commit_sha }}" ]; then
-            SHA="${{ inputs.commit_sha }}"
-            if ! git rev-parse --verify "${SHA}^{commit}" >/dev/null 2>&1; then
-              echo "::error::Invalid commit SHA: ${SHA}"
+          if [ -n "$INPUT_SHA" ]; then
+            if ! git rev-parse --verify "${INPUT_SHA}^{commit}" >/dev/null 2>&1; then
+              echo "::error::Invalid commit SHA: ${INPUT_SHA}"
               exit 1
             fi
-            echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+            echo "sha=${INPUT_SHA}" >> "$GITHUB_OUTPUT"
           else
-            DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
-            git fetch origin "$DEFAULT_BRANCH"
-            SHA="$(git rev-parse "origin/$DEFAULT_BRANCH")"
-            echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Get previous release tag
         id: prev_tag
+        env:
+          COMMIT_SHA: ${{ steps.resolve.outputs.sha }}
         run: |
-          COMMIT_SHA="${{ steps.resolve.outputs.sha }}"
           PREV_TAG=$(git tag --merged "$COMMIT_SHA" \
             --sort=-v:refname | head -n 1)
           echo "tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
@@ -91,18 +86,18 @@ jobs:
 
       - name: Generate PR list
         id: changelog
+        env:
+          PREV_TAG: ${{ steps.prev_tag.outputs.tag }}
+          COMMIT_SHA: ${{ steps.resolve.outputs.sha }}
         run: |
-          PREV_TAG="${{ steps.prev_tag.outputs.tag }}"
-          COMMIT_SHA="${{ steps.resolve.outputs.sha }}"
-
           if [ -n "$PREV_TAG" ]; then
             PR_NUMBERS=$(git log --oneline \
               "$PREV_TAG..$COMMIT_SHA" \
-              | grep -oP '#\K\d+' | sort -n -u || true)
+              | grep -oP '\(#\K\d+(?=\))' | sort -n -u || true)
           else
             # First release: include all commits
             PR_NUMBERS=$(git log --oneline "$COMMIT_SHA" \
-              | grep -oP '#\K\d+' | sort -n -u || true)
+              | grep -oP '\(#\K\d+(?=\))' | sort -n -u || true)
           fi
 
           # Format as markdown list with linked PR references.
@@ -123,13 +118,13 @@ jobs:
       - name: Create vote issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ inputs.tag_name }}
+          COMMIT_SHA: ${{ steps.resolve.outputs.sha }}
+          PREV_TAG: ${{ steps.prev_tag.outputs.tag }}
+          MAINTAINERS: ${{ steps.maintainers.outputs.list }}
+          PR_LIST: ${{ steps.changelog.outputs.pr_list }}
+          REPO: ${{ github.repository }}
         run: |
-          TAG_NAME="${{ inputs.tag_name }}"
-          COMMIT_SHA="${{ steps.resolve.outputs.sha }}"
-          PREV_TAG="${{ steps.prev_tag.outputs.tag }}"
-          MAINTAINERS="${{ steps.maintainers.outputs.list }}"
-          PR_LIST="${{ steps.changelog.outputs.pr_list }}"
-          REPO="${{ github.repository }}"
           COUNT=$(echo "$MAINTAINERS" | grep -c '\- \[ \]')
 
           # Build changelog context
@@ -141,16 +136,24 @@ jobs:
             CHANGELOG_LINK=""
           fi
 
-          BODY="At least 2 approvals are needed from the ${COUNT} maintainers for tagging ${COMMIT_SHA} as \`${TAG_NAME}\`."
-          BODY="${BODY}"$'\n\n'"${MAINTAINERS}"
-          BODY="${BODY}"$'\n\n'"${CHANGES_HEADER}"
-          BODY="${BODY}"$'\n\n'"${PR_LIST}"
-          if [ -n "$CHANGELOG_LINK" ]; then
-            BODY="${BODY}"$'\n\n'"${CHANGELOG_LINK}"
-          fi
-          BODY="${BODY}"$'\n'"Please respond LGTM or REJECT (with reasoning)."
+          # Write body to a file to avoid shell interpolation
+          # issues with multiline step outputs.
+          {
+            echo "At least 2 approvals are needed from the ${COUNT} maintainers for tagging ${COMMIT_SHA} as \`${TAG_NAME}\`."
+            echo ""
+            echo "$MAINTAINERS"
+            echo ""
+            echo "$CHANGES_HEADER"
+            echo ""
+            echo "$PR_LIST"
+            if [ -n "$CHANGELOG_LINK" ]; then
+              echo ""
+              echo "$CHANGELOG_LINK"
+            fi
+            echo "Please respond LGTM or REJECT (with reasoning)."
+          } > vote-body.md
 
           gh issue create \
             --repo "$REPO" \
             --title "Vote for release of \`${TAG_NAME}\`" \
-            --body "$BODY"
+            --body-file vote-body.md
