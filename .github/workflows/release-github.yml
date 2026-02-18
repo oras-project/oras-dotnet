@@ -197,12 +197,12 @@ jobs:
               --title "$TAG_NAME" \
               --notes-file release-notes.md \
               --draft \
-              $PRERELEASE_FLAG
+              ${PRERELEASE_FLAG:+"$PRERELEASE_FLAG"}
           else
             gh release create "$TAG_NAME" \
               --repo "$REPO" \
               --title "$TAG_NAME" \
               --notes-file release-notes.md \
               --draft \
-              $PRERELEASE_FLAG
+              ${PRERELEASE_FLAG:+"$PRERELEASE_FLAG"}
           fi

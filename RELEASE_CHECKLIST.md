@@ -13,7 +13,7 @@ This document describes the checklist to publish a release through the [GitHub r
    git tag <tag_name> <commit_sha>
    git push origin <tag_name>
    ```
-   If the voted commit cannot be found in the _recent commits_, a release branch (e.g. `release-1.0`) is required to be created from the voted commit and used as the target branch.
+   For backport releases, create a release branch (e.g. `release-1.0`) from the voted commit and push the tag from that branch.
 4. The tag push automatically triggers [`release-github`](.github/workflows/release-github.yml), which creates a **draft** GitHub Release with auto-generated release notes. Pre-release versions (alpha, beta, rc, preview) are automatically marked as pre-releases.
 5. Review the draft release on the [Releases page](https://github.com/oras-project/oras-dotnet/releases). Edit the release notes if needed.
 6. Publish the release. This triggers [`release-nuget`](.github/workflows/release-nuget.yml), which builds and publishes the NuGet package to [nuget.org](https://www.nuget.org/packages/OrasProject.Oras/) and uploads the `.nupkg` with a SHA256 checksum as release assets.

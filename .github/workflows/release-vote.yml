@@ -169,6 +169,11 @@ jobs:
             echo "Please respond LGTM or REJECT (with reasoning)."
           } > vote-body.md
 
+          gh label create release \
+            --repo "$REPO" \
+            --description "Release vote" \
+            --color "0E8A16" 2>/dev/null || true
+
           gh issue create \
             --repo "$REPO" \
             --title "Vote for release of \`${TAG_NAME}\`" \

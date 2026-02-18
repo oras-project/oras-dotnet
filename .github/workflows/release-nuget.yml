@@ -41,7 +41,12 @@ jobs:
         run: |
           echo "version=${TAG_NAME#v}" >> $GITHUB_OUTPUT
       - name: Build nuget package
-        run: dotnet build ./src/OrasProject.Oras --configuration Release /p:PackageVersion=${{ steps.version.outputs.version }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dotnet build ./src/OrasProject.Oras \
+            --configuration Release \
+            /p:PackageVersion="$VERSION"
       - name: Upload nupkg and checksum to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -54,4 +59,11 @@ jobs:
             "${NUPKG}.sha256" \
             --clobber
       - name: Publish nuget package
-        run: dotnet nuget push ./src/OrasProject.Oras/bin/Release/OrasProject.Oras.${{ steps.version.outputs.version }}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUPKG: ./src/OrasProject.Oras/bin/Release/OrasProject.Oras.${{ steps.version.outputs.version }}.nupkg
+        run: |
+          dotnet nuget push "$NUPKG" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY" \
+            --skip-duplicate
