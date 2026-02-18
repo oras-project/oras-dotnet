@@ -190,13 +190,21 @@ jobs:
           fi
 
           # Make release creation idempotent: edit if release exists, otherwise create.
+          # Preserve draft state: only set --draft when creating or when the
+          # existing release is already a draft to avoid unpublishing.
           if gh release view "$TAG_NAME" \
             --repo "$REPO" >/dev/null 2>&1; then
+            DRAFT_FLAG=""
+            IS_DRAFT=$(gh release view "$TAG_NAME" \
+              --repo "$REPO" --json isDraft --jq '.isDraft')
+            if [ "$IS_DRAFT" = "true" ]; then
+              DRAFT_FLAG="--draft"
+            fi
             gh release edit "$TAG_NAME" \
               --repo "$REPO" \
               --title "$TAG_NAME" \
               --notes-file release-notes.md \
-              --draft \
+              ${DRAFT_FLAG:+"$DRAFT_FLAG"} \
               ${PRERELEASE_FLAG:+"$PRERELEASE_FLAG"}
           else
             gh release create "$TAG_NAME" \
