@@ -120,7 +120,7 @@ jobs:
             fi
 
             case "$title" in
-              *!:*|*"BREAKING CHANGE"*)
+              *!:*)
                 BREAKING="${BREAKING}${entry}"$'\n'
                 ;;
               feat:*|feat\(*\):*)
@@ -167,7 +167,7 @@ jobs:
             NOTES="${NOTES}"$'\n'"## Other Changes"$'\n\n'"${OTHER}"
           fi
 
-          NOTES="${NOTES}"$'\n'"## Detailed Commits"$'\n\n'"${COMMITS}"
+          NOTES="${NOTES}"$'\n'"## All Changes"$'\n\n'"${COMMITS}"
           if [ -n "$PREV_TAG" ]; then
             CHANGELOG="https://github.com/${REPO}/compare/${PREV_TAG}...${TAG_NAME}"
             NOTES="${NOTES}"$'\n'"**Full Changelog**: [${PREV_TAG}...${TAG_NAME}](${CHANGELOG})"

@@ -51,6 +51,7 @@ jobs:
           (cd "$(dirname "$NUPKG")" && sha256sum "$(basename "$NUPKG")") > "${NUPKG}.sha256"
           gh release upload "$TAG_NAME" \
             "$NUPKG" \
-            "${NUPKG}.sha256"
+            "${NUPKG}.sha256" \
+            --clobber
       - name: Publish nuget package
         run: dotnet nuget push ./src/OrasProject.Oras/bin/Release/OrasProject.Oras.${{ steps.version.outputs.version }}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate

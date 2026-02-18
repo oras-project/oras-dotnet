@@ -47,6 +47,15 @@ jobs:
         with:
           tag: ${{ inputs.tag_name }}
 
+      - name: Verify tag does not already exist
+        env:
+          TAG_NAME: ${{ inputs.tag_name }}
+        run: |
+          if git tag -l "$TAG_NAME" | grep -q .; then
+            echo "::error::Tag '${TAG_NAME}' already exists."
+            exit 1
+          fi
+
       - name: Resolve commit SHA
         id: resolve
         env:
@@ -60,7 +69,14 @@ jobs:
             fi
             echo "sha=${INPUT_SHA}" >> "$GITHUB_OUTPUT"
           else
-            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            if ! git rev-parse --verify "origin/${DEFAULT_BRANCH}^{commit}" \
+              >/dev/null 2>&1; then
+              echo "::error::Unable to resolve default branch" \
+                "'${DEFAULT_BRANCH}'"
+              exit 1
+            fi
+            echo "sha=$(git rev-parse "origin/${DEFAULT_BRANCH}")" \
+              >> "$GITHUB_OUTPUT"
           fi
 
       - name: Get previous release tag
@@ -125,7 +141,7 @@ jobs:
           PR_LIST: ${{ steps.changelog.outputs.pr_list }}
           REPO: ${{ github.repository }}
         run: |
-          COUNT=$(echo "$MAINTAINERS" | grep -c '\- \[ \]')
+          COUNT=$(echo "$MAINTAINERS" | grep -c '\- \[ \]' || true)
 
           # Build changelog context
           if [ -n "$PREV_TAG" ]; then
@@ -156,4 +172,5 @@ jobs:
           gh issue create \
             --repo "$REPO" \
             --title "Vote for release of \`${TAG_NAME}\`" \
+            --label release \
             --body-file vote-body.md

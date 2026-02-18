@@ -30,7 +30,7 @@ runs:
         TAG_NAME: ${{ inputs.tag }}
       run: |
         if ! echo "$TAG_NAME" \
-          | grep -qP '^v\d+\.\d+\.\d+(-[a-zA-Z0-9.\-]+)?(\+[a-zA-Z0-9.\-]+)?$'; then
+          | grep -qP '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$'; then
           echo "::error::Invalid tag '${TAG_NAME}'." \
             "Must be valid SemVer2: vMAJOR.MINOR.PATCH[-prerelease][+metadata]."
           exit 1
