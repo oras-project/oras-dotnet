@@ -1,0 +1,181 @@
+# Copyright The ORAS Authors.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: release-vote
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: >
+          The tag name for the new release (e.g., v1.0.0).
+          Must be a valid SemVer2 version prefixed with 'v'.
+        required: true
+        type: string
+      commit_sha:
+        description: >
+          The commit SHA to tag for this release.
+          Defaults to the latest commit on the default branch.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-vote-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag name
+        uses: ./.github/actions/validate-tag
+        with:
+          tag: ${{ inputs.tag_name }}
+
+      - name: Verify tag does not already exist
+        env:
+          TAG_NAME: ${{ inputs.tag_name }}
+        run: |
+          if git tag -l "$TAG_NAME" | grep -q .; then
+            echo "::error::Tag '${TAG_NAME}' already exists."
+            exit 1
+          fi
+
+      - name: Resolve commit SHA
+        id: resolve
+        env:
+          INPUT_SHA: ${{ inputs.commit_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -n "$INPUT_SHA" ]; then
+            if ! git rev-parse --verify "${INPUT_SHA}^{commit}" >/dev/null 2>&1; then
+              echo "::error::Invalid commit SHA: ${INPUT_SHA}"
+              exit 1
+            fi
+            echo "sha=${INPUT_SHA}" >> "$GITHUB_OUTPUT"
+          else
+            if ! git rev-parse --verify "origin/${DEFAULT_BRANCH}^{commit}" \
+              >/dev/null 2>&1; then
+              echo "::error::Unable to resolve default branch" \
+                "'${DEFAULT_BRANCH}'"
+              exit 1
+            fi
+            echo "sha=$(git rev-parse "origin/${DEFAULT_BRANCH}")" \
+              >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get previous release tag
+        id: prev_tag
+        env:
+          COMMIT_SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          PREV_TAG=$(git tag --merged "$COMMIT_SHA" \
+            --sort=-v:refname | head -n 1)
+          echo "tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Parse maintainers
+        id: maintainers
+        run: |
+          # Parse MAINTAINERS.md into checkbox list
+          # Format: "- Name (@handle)" -> "- [ ] Name (@handle)"
+          {
+            echo 'list<<EOF'
+            grep -E '^\s*-\s+.+\(@.+\)' MAINTAINERS.md \
+              | sed 's/^\s*-\s*/- [ ] /'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate PR list
+        id: changelog
+        env:
+          PREV_TAG: ${{ steps.prev_tag.outputs.tag }}
+          COMMIT_SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          if [ -n "$PREV_TAG" ]; then
+            PR_NUMBERS=$(git log --oneline \
+              "$PREV_TAG..$COMMIT_SHA" \
+              | grep -oP '\(#\K\d+(?=\))' | sort -n -u || true)
+          else
+            # First release: include all commits
+            PR_NUMBERS=$(git log --oneline "$COMMIT_SHA" \
+              | grep -oP '\(#\K\d+(?=\))' | sort -n -u || true)
+          fi
+
+          # Format as markdown list with linked PR references.
+          {
+            echo 'pr_list<<EOF'
+            if [ -z "$PR_NUMBERS" ]; then
+              echo "_No PRs found — direct commits only._"
+            else
+              echo "$PR_NUMBERS" | while read -r num; do
+                if [ -n "$num" ]; then
+                  echo "- #${num}"
+                fi
+              done
+            fi
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create vote issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ inputs.tag_name }}
+          COMMIT_SHA: ${{ steps.resolve.outputs.sha }}
+          PREV_TAG: ${{ steps.prev_tag.outputs.tag }}
+          MAINTAINERS: ${{ steps.maintainers.outputs.list }}
+          PR_LIST: ${{ steps.changelog.outputs.pr_list }}
+          REPO: ${{ github.repository }}
+        run: |
+          COUNT=$(echo "$MAINTAINERS" | grep -c '\- \[ \]' || true)
+
+          # Build changelog context
+          if [ -n "$PREV_TAG" ]; then
+            CHANGES_HEADER="The changes compared to \`${PREV_TAG}\` include:"
+            CHANGELOG_LINK="See [the full changelog](https://github.com/${REPO}/compare/${PREV_TAG}...${COMMIT_SHA}) for more details."
+          else
+            CHANGES_HEADER="The changes in this release include:"
+            CHANGELOG_LINK=""
+          fi
+
+          # Write body to a file to avoid shell interpolation
+          # issues with multiline step outputs.
+          {
+            echo "At least 2 approvals are needed from the ${COUNT} maintainers for tagging ${COMMIT_SHA} as \`${TAG_NAME}\`."
+            echo ""
+            echo "$MAINTAINERS"
+            echo ""
+            echo "$CHANGES_HEADER"
+            echo ""
+            echo "$PR_LIST"
+            if [ -n "$CHANGELOG_LINK" ]; then
+              echo ""
+              echo "$CHANGELOG_LINK"
+            fi
+            echo "Please respond LGTM or REJECT (with reasoning)."
+          } > vote-body.md
+
+          gh label create release \
+            --repo "$REPO" \
+            --description "Release vote" \
+            --color "0E8A16" 2>/dev/null || true
+
+          gh issue create \
+            --repo "$REPO" \
+            --title "Vote for release of \`${TAG_NAME}\`" \
+            --label release \
+            --body-file vote-body.md
