@@ -15,6 +15,7 @@ namespace OrasProject.Oras.Registry.Remote;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using OrasProject.Oras.Serialization;
 
 public enum ErrorCode
 {
@@ -52,7 +53,7 @@ public class Error
         {
             try
             {
-                var detailJson = JsonSerializer.Serialize(detailValue);
+                var detailJson = OciJsonSerializer.FormatErrorDetail(detailValue);
                 return $"{result} (Detail: {detailJson})";
             }
             catch

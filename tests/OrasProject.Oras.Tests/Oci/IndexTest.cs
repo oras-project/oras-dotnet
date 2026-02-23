@@ -14,6 +14,7 @@
 using System.Text.Json;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Serialization;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using Xunit;
 using Index = OrasProject.Oras.Oci.Index;
@@ -41,7 +42,7 @@ public class IndexTest
             }
         };
 
-        var (generatedIndexDesc, generatedIndexContent) = Index.GenerateIndex(expectedManifests);
+        var (generatedIndexDesc, generatedIndexContent) = OciJsonSerializer.GenerateIndex(expectedManifests);
         Assert.NotNull(generatedIndexDesc);
         Assert.Equal(MediaType.ImageIndex, generatedIndexDesc.MediaType);
         Assert.Equal(generatedIndexContent.Length, generatedIndexDesc.Size);
@@ -62,7 +63,7 @@ public class IndexTest
     public void GenerateIndex_CorrectlyGeneratesIndexDescriptorWithEmptyManifests()
     {
         var expectedManifests = new List<Descriptor>();
-        var (generatedIndexDesc, generatedIndexContent) = Index.GenerateIndex(expectedManifests);
+        var (generatedIndexDesc, generatedIndexContent) = OciJsonSerializer.GenerateIndex(expectedManifests);
 
         Assert.NotNull(generatedIndexDesc);
         Assert.Equal(MediaType.ImageIndex, generatedIndexDesc.MediaType);
