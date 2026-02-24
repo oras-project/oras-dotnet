@@ -616,7 +616,8 @@ public class ExtendedCopyTest
     }
 
     /// <summary>
-    /// ExtendedCopyAsync throws when source target, destination target, source target reference or ExtendedCopyOption is null.
+    /// ExtendedCopyAsync throws when source target, destination target, source target reference or
+    /// ExtendedCopyOptions is null.
     /// </summary>
     [Fact]
     public async Task ExtendedCopyAsync_NullArguments_ThrowsError()
