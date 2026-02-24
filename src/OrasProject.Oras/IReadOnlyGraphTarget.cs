@@ -16,7 +16,7 @@ using OrasProject.Oras.Content;
 namespace OrasProject.Oras;
 
 /// <summary>
-/// ReadOnlyGraphTarget represents a read-only GraphTarget.
+/// IReadOnlyGraphTarget represents a read-only graph target.
 /// </summary>
 public interface IReadOnlyGraphTarget : IReadOnlyGraphStorage, IResolvable
 {
