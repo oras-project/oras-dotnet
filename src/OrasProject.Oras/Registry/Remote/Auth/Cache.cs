@@ -18,24 +18,28 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-public sealed class Cache(IMemoryCache memoryCache) : ICache
+public sealed class Cache : ICache
 {
     #region private members
     /// <summary>
-    /// CacheEntry represents a cache entry for storing authentication tokens associated with a specific challenge scheme.
+    /// CacheEntry represents a cache entry for storing authentication tokens associated with a
+    /// specific challenge scheme.
     /// </summary>
     /// <param name="Scheme">The authentication scheme associated with the cache entry.</param>
-    /// <param name="Tokens">A dictionary containing authentication tokens, where the key is the scopes and the value is the token itself.</param>
+    /// <param name="Tokens">
+    /// A dictionary containing authentication tokens, where the key is the scopes and the value
+    /// is the token itself.
+    /// </param>
     private sealed record CacheEntry(Challenge.Scheme Scheme, Dictionary<string, string> Tokens);
 
     /// <summary>
     /// The underlying memory cache used to store authentication schemes and tokens.
     /// </summary>
-    private readonly IMemoryCache _memoryCache = memoryCache;
+    private readonly IMemoryCache _memoryCache;
 
     /// <summary>
-    /// Dictionary to store per-registry locks to ensure thread-safety while allowing
-    /// concurrent operations on different registries.
+    /// Dictionary to store per-key locks to ensure thread-safety while allowing
+    /// concurrent operations on different cache keys.
     /// </summary>
     private readonly ConcurrentDictionary<string, object> _locks = new();
 
@@ -54,12 +58,29 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     };
 
     /// <summary>
-    /// Generates a consistent cache key for a registry.
+    /// Generates a consistent cache key from the registry and optional PartitionId.
+    /// Uses pipe (|) as delimiter since it cannot appear in registry hostnames.
     /// </summary>
-    /// <param name="registry">The registry name</param>
-    /// <returns>A prefixed cache key for the registry</returns>
-    private static string GetCacheKey(string registry) => $"{_cacheKeyPrefix}{registry}";
+    /// <param name="registry">The registry host.</param>
+    /// <param name="partitionId">Optional cache partition identifier.</param>
+    /// <returns>A prefixed cache key.</returns>
+    private static string GetCacheKey(string registry, string? partitionId) =>
+        string.IsNullOrEmpty(partitionId)
+            ? $"{_cacheKeyPrefix}{registry}"
+            : $"{_cacheKeyPrefix}{partitionId}|{registry}";
     #endregion
+
+    /// <summary>
+    /// Creates a new Cache instance with the specified memory cache.
+    /// </summary>
+    /// <param name="memoryCache">The underlying memory cache to use for storage.</param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="memoryCache"/> is null.
+    /// </exception>
+    public Cache(IMemoryCache memoryCache)
+    {
+        _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
+    }
 
     /// <summary>
     /// Cache entry options used in SetCache for configuring token caching behavior.
@@ -73,19 +94,24 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     public MemoryCacheEntryOptions? CacheEntryOptions { get; set; }
 
     /// <summary>
-    /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified registry.
+    /// TryGetScheme attempts to retrieve the authentication scheme associated with the specified
+    /// registry host.
     /// </summary>
-    /// <param name="registry">The registry for which to retrieve the authentication scheme.</param>
+    /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="scheme">
-    /// When this method returns, contains the <see cref="Challenge.Scheme"/> associated with the specified registry
-    /// if the registry exists in the cache; otherwise, <see cref="Challenge.Scheme.Unknown"/>.
+    /// When this method returns, contains the <see cref="Challenge.Scheme"/> associated with the
+    /// registry if found in the cache; otherwise, <see cref="Challenge.Scheme.Unknown"/>.
+    /// </param>
+    /// <param name="partitionId">
+    /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
+    /// enabling multi-partition scenarios where different credentials are used for the same registry.
     /// </param>
     /// <returns>
-    /// <c>true</c> if the authentication scheme for the specified registry was found in the cache; otherwise, <c>false</c>.
+    /// <c>true</c> if the authentication scheme was found in the cache; otherwise, <c>false</c>.
     /// </returns>
-    public bool TryGetScheme(string registry, out Challenge.Scheme scheme)
+    public bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? partitionId = null)
     {
-        var cacheKey = GetCacheKey(registry);
+        var cacheKey = GetCacheKey(registry, partitionId);
         if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? cacheEntry) && cacheEntry != null)
         {
             scheme = cacheEntry.Scheme;
@@ -99,15 +125,24 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     /// <summary>
     /// Sets or updates the cache for a specific registry and authentication scheme.
     /// </summary>
-    /// <param name="registry">The registry for which the cache is being set or updated.</param>
+    /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="scheme">The authentication scheme associated with the cache entry.</param>
-    /// <param name="key">The key used to identify the token within the cache entry.</param>
+    /// <param name="scopeKey">
+    /// The OAuth2 scope key used to identify the token within the cache entry.
+    /// </param>
     /// <param name="token">The token to be stored in the cache.</param>
+    /// <param name="partitionId">
+    /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
+    /// enabling multi-partition scenarios where different credentials are used for the same registry.
+    /// </param>
     /// <remarks>
     /// <para>
     /// If the registry already exists in the cache:
     /// <list type="bullet">
-    /// <item> If the provided scheme differs from the existing scheme, the cache entry is replaced with a new one.</item>
+    /// <item>
+    /// If the provided scheme differs from the existing scheme, the cache entry is replaced with
+    /// a new one.
+    /// </item>
     /// <item> Otherwise, the token is added or updated in the existing cache entry.</item>
     /// </list>
     /// </para>
@@ -117,9 +152,14 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     /// when size limits are configured.
     /// </para>
     /// </remarks>
-    public void SetCache(string registry, Challenge.Scheme scheme, string key, string token)
+    public void SetCache(
+        string registry,
+        Challenge.Scheme scheme,
+        string scopeKey,
+        string token,
+        string? partitionId = null)
     {
-        var cacheKey = GetCacheKey(registry);
+        var cacheKey = GetCacheKey(registry, partitionId);
         var lockObj = _locks.GetOrAdd(cacheKey, _ => new object());
         // Lock for atomicity
         lock (lockObj)
@@ -129,14 +169,14 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
                 scheme == oldEntry.Scheme)
             {
                 // When the scheme matches, update the token in the existing entry
-                oldEntry.Tokens[key] = token;
+                oldEntry.Tokens[scopeKey] = token;
                 return;
             }
 
             // Otherwise, set a new entry
             var tokens = new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                [key] = token
+                [scopeKey] = token
             };
             var newEntry = new CacheEntry(scheme, tokens);
 
@@ -146,25 +186,38 @@ public sealed class Cache(IMemoryCache memoryCache) : ICache
     }
 
     /// <summary>
-    /// TryGetToken attempts to retrieve a token from the cache for the specified registry, authentication scheme, and key.
+    /// TryGetToken attempts to retrieve a token from the cache for the specified registry,
+    /// scheme, and scope key.
     /// </summary>
-    /// <param name="registry">The registry for which the token is being requested.</param>
+    /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="scheme">The authentication scheme associated with the token.</param>
-    /// <param name="key">The key used to identify the token within the cache.</param>
+    /// <param name="scopeKey">
+    /// The OAuth2 scope key used to identify the token within the cache.
+    /// </param>
     /// <param name="token">
-    /// When this method returns, contains the token associated with the specified registry, scheme, and key,
-    /// if the token is found; otherwise, an empty string.
+    /// When this method returns, contains the token associated with the specified registry,
+    /// scheme, and scope key, if found; otherwise, an empty string.
+    /// </param>
+    /// <param name="partitionId">
+    /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
+    /// enabling multi-partition scenarios where different credentials are used for the same registry.
     /// </param>
     /// <returns>
-    /// <c>true</c> if a token matching the specified registry, scheme, and key is found in the cache; otherwise, <c>false</c>.
+    /// <c>true</c> if a token matching the specified registry, scheme, and scope key is found;
+    /// otherwise, <c>false</c>.
     /// </returns>
-    public bool TryGetToken(string registry, Challenge.Scheme scheme, string key, out string token)
+    public bool TryGetToken(
+        string registry,
+        Challenge.Scheme scheme,
+        string scopeKey,
+        out string token,
+        string? partitionId = null)
     {
-        var cacheKey = GetCacheKey(registry);
+        var cacheKey = GetCacheKey(registry, partitionId);
         if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? cacheEntry) &&
             cacheEntry != null &&
             cacheEntry.Scheme == scheme &&
-            cacheEntry.Tokens.TryGetValue(key, out var cachedToken))
+            cacheEntry.Tokens.TryGetValue(scopeKey, out var cachedToken))
         {
             token = cachedToken;
             return true;

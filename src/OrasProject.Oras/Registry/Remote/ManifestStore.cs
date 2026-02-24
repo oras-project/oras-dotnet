@@ -46,7 +46,10 @@ public class ManifestStore(Repository repository) : IManifestStore
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(target.MediaType);
 
-        var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var response = await Repository.Options.Client.SendAsync(
+            request,
+            partitionId: Repository.Options.PartitionId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         try
         {
             switch (response.StatusCode)
@@ -111,7 +114,10 @@ public class ManifestStore(Repository repository) : IManifestStore
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
         request.AddHeaders(options.Headers);
-        var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var response = await Repository.Options.Client.SendAsync(
+            request,
+            partitionId: Repository.Options.PartitionId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -354,7 +360,10 @@ public class ManifestStore(Repository repository) : IManifestStore
         request.Content.Headers.ContentLength = expected.Size;
         request.Content.Headers.Add("Content-Type", expected.MediaType);
         var client = Repository.Options.Client;
-        using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await client.SendAsync(
+            request,
+            partitionId: Repository.Options.PartitionId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.Created)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -390,7 +399,10 @@ public class ManifestStore(Repository repository) : IManifestStore
         using var request = new HttpRequestMessage(HttpMethod.Head, url);
         request.Headers.Accept.ParseAdd(Repository.ManifestAcceptHeader());
         request.AddHeaders(options.Headers);
-        using var response = await Repository.Options.Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await Repository.Options.Client.SendAsync(
+            request,
+            partitionId: Repository.Options.PartitionId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         return response.StatusCode switch
         {
             HttpStatusCode.OK => await response.GenerateDescriptorAsync(remoteReference, Repository.Options.MaxMetadataBytes, cancellationToken).ConfigureAwait(false),

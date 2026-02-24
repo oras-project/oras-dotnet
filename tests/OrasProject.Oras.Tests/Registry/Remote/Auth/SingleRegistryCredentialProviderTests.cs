@@ -29,11 +29,11 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             };
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new SingleRegistryCredentialProvider(registry!, credential));
+            Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry!, credential));
         }
 
         [Fact]
-        public void Constructor_EmptyRegistry_ThrowsArgumentNullException()
+        public void Constructor_EmptyRegistry_ThrowsArgumentException()
         {
             // Arrange
             string registry = "   ";
@@ -44,18 +44,18 @@ namespace OrasProject.Oras.Registry.Remote.Auth.Tests
             };
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new SingleRegistryCredentialProvider(registry, credential));
+            Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
         }
 
         [Fact]
-        public void Constructor_EmptyCredential_ThrowsArgumentNullException()
+        public void Constructor_EmptyCredential_ThrowsArgumentException()
         {
             // Arrange
             string registry = "example.com";
             var credential = CredentialExtensions.EmptyCredential;
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new SingleRegistryCredentialProvider(registry, credential));
+            Assert.Throws<ArgumentException>(() => new SingleRegistryCredentialProvider(registry, credential));
         }
 
         [Fact]
