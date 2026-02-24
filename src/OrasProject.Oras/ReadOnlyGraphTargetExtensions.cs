@@ -73,11 +73,11 @@ public static class ReadOnlyGraphTargetExtensions
         {
             throw new ArgumentNullException(nameof(dst), "Destination target cannot be null");
         }
-        if (string.IsNullOrWhiteSpace(srcRef))
+        if (string.IsNullOrEmpty(srcRef))
         {
             throw new ArgumentNullException(nameof(srcRef), "Source target reference cannot be null or empty");
         }
-        if (string.IsNullOrWhiteSpace(dstRef))
+        if (string.IsNullOrEmpty(dstRef))
         {
             dstRef = srcRef;
         }
