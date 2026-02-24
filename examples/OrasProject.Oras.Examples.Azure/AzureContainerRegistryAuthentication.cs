@@ -23,9 +23,9 @@ public static class AzureContainerRegistryAuthentication
     // authenticate with Azure Container Registry, and perform a copy operation
     // between two ACR repositories.
     // For production use: Implement proper exception handling, cancellation, and dependency injection.
-    public static async Task AuthenticateWithAzureContainerRegistry()
+    public static async Task AuthenticateWithAzureContainerRegistryAsync(CancellationToken cancellationToken = default)
     {
-        var httpClient = new HttpClient();
+        using var httpClient = new HttpClient();
 
         // Create a repository instance for the source repository.
         var srcCredentialProvider = new AzureCredentialProvider("mysourceregistry.azurecr.io");
@@ -40,14 +40,14 @@ public static class AzureContainerRegistryAuthentication
         var dstRepository = new Repository(new RepositoryOptions
         {
             Reference = Reference.Parse("mydestinationregistry.azurecr.io/myimage"),
-            Client = new Client(httpClient, credentialProvider: dstCredentialProvider)
+            Client = new Client(httpClient, credentialProvider: dstCredentialProvider),
         });
 
         // Copy the artifact tagged by v1.1.0 from the source repository to the destination
         // repository, and tag it with v1.
         var srcReference = "v1.1.0";
         var dstReference = "v1";
-        await srcRepository.CopyAsync(srcReference, dstRepository, dstReference);
+        await srcRepository.CopyAsync(srcReference, dstRepository, dstReference, cancellationToken);
     }
 }
 #endregion
