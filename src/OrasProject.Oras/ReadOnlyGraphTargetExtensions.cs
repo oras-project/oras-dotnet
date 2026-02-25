@@ -56,7 +56,10 @@ public static class ReadOnlyGraphTargetExtensions
     /// tagging the destination.
     /// </param>
     /// <returns>The descriptor of the tagged node after it has been copied to the destination.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when src, srcRef, dst, or opts is null.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="src"/>, <paramref name="dst"/>, or <paramref name="opts"/> is null,
+    /// or when <paramref name="srcRef"/> is null or empty.
+    /// </exception>
     public static async Task<Descriptor> ExtendedCopyAsync(
         this IReadOnlyGraphTarget src,
         string srcRef,
