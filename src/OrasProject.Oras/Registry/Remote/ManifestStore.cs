@@ -13,6 +13,7 @@
 
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Serialization;
 using System;
 using System.IO;
 using System.Net;
@@ -259,8 +260,12 @@ public class ManifestStore(Repository repository) : IManifestStore
         switch (desc.MediaType)
         {
             case MediaType.ImageIndex:
-                var indexManifest = JsonSerializer.Deserialize<Index>(content)
-                                        ?? throw new JsonException("Failed to deserialize index");
+                var indexManifest = await OciJsonSerializer
+                    .DeserializeAsync<Index>(
+                        content, cancellationToken)
+                    .ConfigureAwait(false)
+                    ?? throw new JsonException(
+                        "Failed to deserialize index");
                 if (indexManifest.Subject == null)
                 {
                     return;
@@ -270,8 +275,12 @@ public class ManifestStore(Repository repository) : IManifestStore
                 desc.Annotations = indexManifest.Annotations;
                 break;
             case MediaType.ImageManifest:
-                var imageManifest = JsonSerializer.Deserialize<Manifest>(content) ??
-                                        throw new JsonException("Failed to deserialize manifest");
+                var imageManifest = await OciJsonSerializer
+                    .DeserializeAsync<Manifest>(
+                        content, cancellationToken)
+                    .ConfigureAwait(false)
+                    ?? throw new JsonException(
+                        "Failed to deserialize manifest");
                 if (imageManifest.Subject == null)
                 {
                     return;
@@ -325,7 +334,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             // 2. OR the updated referrers list is empty but referrers GC
             //    is skipped, in this case an empty index should still be pushed
             //    as the old index won't get deleted
-            var (indexDesc, indexContent) = Index.GenerateIndex(updatedReferrers);
+            var (indexDesc, indexContent) = OciJsonSerializer.GenerateIndex(updatedReferrers);
             using var content = new MemoryStream(indexContent);
             await DoPushAsync(indexDesc, content, Repository.ParseReference(referrersTag), cancellationToken).ConfigureAwait(false);
         }
@@ -479,7 +488,10 @@ public class ManifestStore(Repository repository) : IManifestStore
         switch (target.MediaType)
         {
             case MediaType.ImageManifest:
-                var imageManifest = JsonSerializer.Deserialize<Manifest>(manifestContent);
+                var imageManifest = await OciJsonSerializer
+                    .DeserializeAsync<Manifest>(
+                        manifestContent, cancellationToken)
+                    .ConfigureAwait(false);
                 if (imageManifest?.Subject == null)
                 {
                     // no subject, no indexing needed
@@ -488,7 +500,10 @@ public class ManifestStore(Repository repository) : IManifestStore
                 subject = imageManifest.Subject;
                 break;
             case MediaType.ImageIndex:
-                var imageIndex = JsonSerializer.Deserialize<Index>(manifestContent);
+                var imageIndex = await OciJsonSerializer
+                    .DeserializeAsync<Index>(
+                        manifestContent, cancellationToken)
+                    .ConfigureAwait(false);
                 if (imageIndex?.Subject == null)
                 {
                     // no subject, no indexing needed

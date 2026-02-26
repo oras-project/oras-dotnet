@@ -14,6 +14,7 @@
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Serialization;
 
 using System;
 using System.Collections.Generic;
@@ -235,7 +236,7 @@ public static partial class Packer
     /// <returns></returns>
     private static async Task<Descriptor> PushManifestAsync(IPushable pusher, object manifest, string mediaType, string? artifactType, IDictionary<string, string>? annotations, CancellationToken cancellationToken = default)
     {
-        var manifestJson = JsonSerializer.SerializeToUtf8Bytes(manifest);
+        var manifestJson = OciJsonSerializer.SerializeToUtf8Bytes(manifest);
         var manifestDesc = Descriptor.Create(manifestJson, mediaType);
         manifestDesc.ArtifactType = artifactType;
         manifestDesc.Annotations = annotations;

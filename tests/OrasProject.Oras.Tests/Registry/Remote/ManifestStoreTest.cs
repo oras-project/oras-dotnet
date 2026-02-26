@@ -18,6 +18,7 @@ using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
+using OrasProject.Oras.Serialization;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Content.Digest;
@@ -355,7 +356,7 @@ public class ManifestStoreTest
         {
             firstExpectedManifestDesc
         };
-        var (firstExpectedIndexReferrersDesc, firstExpectedIndexReferrersBytes) = Index.GenerateIndex(firstExpectedReferrersList);
+        var (firstExpectedIndexReferrersDesc, firstExpectedIndexReferrersBytes) = OciJsonSerializer.GenerateIndex(firstExpectedReferrersList);
 
         // second push
         var (_, secondExpectedManifestBytes) = RandomManifestWithSubject(firstExpectedManifest.Subject);
@@ -370,7 +371,7 @@ public class ManifestStoreTest
         {
             secondExpectedManifestDesc
         };
-        var (secondExpectedIndexReferrersDesc, secondExpectedIndexReferrersBytes) = Index.GenerateIndex(secondExpectedReferrersList);
+        var (secondExpectedIndexReferrersDesc, secondExpectedIndexReferrersBytes) = OciJsonSerializer.GenerateIndex(secondExpectedReferrersList);
 
         byte[]? receivedManifestContent = null;
         byte[]? receivedIndexContent = null;
@@ -517,7 +518,7 @@ public class ManifestStoreTest
             expectedIndexManifestDesc,
         };
 
-        var (expectedIndexReferrersDesc, expectedIndexReferrersBytes) = Index.GenerateIndex(expectedReferrers);
+        var (expectedIndexReferrersDesc, expectedIndexReferrersBytes) = OciJsonSerializer.GenerateIndex(expectedReferrers);
 
         byte[]? receivedIndexManifestContent = null;
         byte[]? receivedIndexReferrersContent = null;
@@ -838,12 +839,12 @@ public class ManifestStoreTest
         // referrers list after deleting the image manifest
         var firstUpdatedReferrersList = new List<Descriptor>(oldReferrersList.Manifests);
         firstUpdatedReferrersList.Remove(manifestToDeleteDesc);
-        var (firstUpdatedIndexReferrersDesc, firstUpdatedIndexReferrersBytes) = Index.GenerateIndex(firstUpdatedReferrersList);
+        var (firstUpdatedIndexReferrersDesc, firstUpdatedIndexReferrersBytes) = OciJsonSerializer.GenerateIndex(firstUpdatedReferrersList);
 
         // referrers list after deleting the index manifest
         var secondUpdatedReferrersList = new List<Descriptor>(firstUpdatedReferrersList);
         secondUpdatedReferrersList.Remove(indexToDeleteDesc);
-        var (secondUpdatedIndexReferrersDesc, secondUpdatedIndexReferrersBytes) = Index.GenerateIndex(secondUpdatedReferrersList);
+        var (secondUpdatedIndexReferrersDesc, secondUpdatedIndexReferrersBytes) = OciJsonSerializer.GenerateIndex(secondUpdatedReferrersList);
 
         var manifestDeleted = false;
         var oldIndexDeleted = false;
