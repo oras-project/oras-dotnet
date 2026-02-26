@@ -28,6 +28,8 @@ public class CopyGraphOptions
     private const int _defaultConcurrency = 3;
 
     private int _concurrency = _defaultConcurrency;
+    // Defaults to the OCI manifest size limit since manifests are
+    // the primary metadata cached during copy operations.
     private long _maxMetadataBytes = OciLimits.MaxManifestBytes;
 
     /// <summary>

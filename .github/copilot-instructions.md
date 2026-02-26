@@ -50,6 +50,7 @@ ORAS .NET library conventions. Signal over prose.
 - `required` for logically mandatory properties.
 - No speculative abstractions. No unnecessary dependencies.
 - No dead code — remove unreachable branches; verify with coverage.
+- Name tuple elements in return types (e.g., `(Descriptor Descriptor, byte[] Content)`).
 - Line length: target 100, hard limit 120. URLs and other non-breakable strings may exceed the limit.
 
 ## Serialization

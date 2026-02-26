@@ -80,7 +80,7 @@ internal static class OciJsonSerializer
     /// Generates an OCI Index from a list of manifest descriptors
     /// and returns the index descriptor and serialized bytes.
     /// </summary>
-    internal static (Descriptor, byte[]) GenerateIndex(
+    internal static (Descriptor Descriptor, byte[] Content) GenerateIndex(
         IList<Descriptor> manifests)
     {
         var index = new Index(manifests);
@@ -111,12 +111,14 @@ internal static class OciJsonSerializer
         {
             switch (ch)
             {
+                // JSON structural characters
                 case '"':
                     sb.Append("\\\"");
                     break;
                 case '\\':
                     sb.Append("\\\\");
                     break;
+                // Named control character escapes
                 case '\b':
                     sb.Append("\\b");
                     break;
@@ -132,6 +134,7 @@ internal static class OciJsonSerializer
                 case '\t':
                     sb.Append("\\t");
                     break;
+                // HTML-sensitive characters (Go escapes these)
                 case '<':
                     sb.Append("\\u003c");
                     break;
@@ -141,6 +144,7 @@ internal static class OciJsonSerializer
                 case '&':
                     sb.Append("\\u0026");
                     break;
+                // Unicode line/paragraph separators (Go escapes these)
                 case '\u2028':
                     sb.Append("\\u2028");
                     break;
@@ -148,6 +152,9 @@ internal static class OciJsonSerializer
                     sb.Append("\\u2029");
                     break;
                 default:
+                    // Escape remaining control chars (U+0000–U+001F)
+                    // as \uXXXX; pass all other characters through
+                    // literally, including '+'.
                     if (ch <= '\u001F')
                     {
                         sb.Append($"\\u{(int)ch:x4}");
