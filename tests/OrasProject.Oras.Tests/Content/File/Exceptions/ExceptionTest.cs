@@ -32,7 +32,7 @@ public class ExceptionTest
     }
 
     [Fact]
-    public async Task FileStoreDuplicateNameException()
+    public async Task DuplicateFileNameException()
     {
         await Assert.ThrowsAsync<DuplicateFileNameException>(
             () => throw new DuplicateFileNameException());
