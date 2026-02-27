@@ -568,12 +568,13 @@ public class ExtendedCopyTest
             descs.Add(desc);
         }
 
-        void GenerateManifest(Descriptor config, List<Descriptor> layers)
+        void GenerateManifest(Descriptor config, List<Descriptor> layers, Descriptor? subject)
         {
             var manifest = new Manifest
             {
                 Config = config,
-                Layers = layers
+                Layers = layers,
+                Subject = subject
             };
             var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
             AppendBlob(MediaType.ImageManifest, manifestBytes);
@@ -584,7 +585,9 @@ public class ExtendedCopyTest
         // Create artifact
         AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
         AppendBlob(MediaType.ImageLayer, GetBytes("layer1")); // blob 1
-        GenerateManifest(descs[0], descs.GetRange(1, 1)); // blob 2
+        GenerateManifest(descs[0], descs.GetRange(1, 1), null); // blob 2
+        AppendBlob(MediaType.ImageLayer, GetBytes("subject layer")); // blob 3
+        GenerateManifest(descs[0], descs.GetRange(3, 1), descs[2]); // blob 4
 
         // Push all blobs to source and tag the manifest
         for (var i = 0; i < blobs.Count; i++)
@@ -593,7 +596,7 @@ public class ExtendedCopyTest
             await sourceTarget.PushAsync(descs[i], stream, cancellationToken);
         }
         var srcRef = "source:v1";
-        await sourceTarget.TagAsync(descs[2], srcRef, cancellationToken);
+        await sourceTarget.TagAsync(descs[4], srcRef, cancellationToken);
 
         var destinationTarget = new MemoryStore();
         var dstRef = "destination:v2";
@@ -602,7 +605,7 @@ public class ExtendedCopyTest
         var result = await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget, dstRef, opts, cancellationToken);
 
         // Verify the result descriptor matches the manifest
-        Assert.Equal(descs[2].Digest, result.Digest);
+        Assert.Equal(descs[4].Digest, result.Digest);
 
         // Verify all content was copied
         for (var i = 0; i < descs.Count; i++)
@@ -612,7 +615,98 @@ public class ExtendedCopyTest
 
         // Verify the destination tag exists with correct reference
         var resolvedDesc = await destinationTarget.ResolveAsync(dstRef, cancellationToken);
-        Assert.Equal(descs[2].Digest, resolvedDesc.Digest);
+        Assert.Equal(descs[4].Digest, resolvedDesc.Digest);
+    }
+
+    /// <summary>
+    /// Can copy using the overload without ExtendedCopyOptions.
+    /// </summary>
+    [Fact]
+    public async Task ExtendedCopyAsync_WithoutOptions_CanCopy()
+    {
+        var sourceTarget = new MemoryStore();
+        var cancellationToken = CancellationToken.None;
+        var blobs = new List<byte[]>();
+        var descs = new List<Descriptor>();
+
+        void AppendBlob(string mediaType, byte[] blob)
+        {
+            blobs.Add(blob);
+            var desc = new Descriptor
+            {
+                MediaType = mediaType,
+                Digest = Digest.ComputeSha256(blob),
+                Size = blob.Length
+            };
+            descs.Add(desc);
+        }
+
+        void GenerateManifest(
+            Descriptor config,
+            List<Descriptor> layers,
+            Descriptor? subject = null)
+        {
+            var manifest = new Manifest
+            {
+                Config = config,
+                Layers = layers,
+                Subject = subject
+            };
+            var manifestBytes = Encoding.UTF8.GetBytes(
+                JsonSerializer.Serialize(manifest));
+            AppendBlob(MediaType.ImageManifest, manifestBytes);
+        }
+
+        byte[] GetBytes(string data) =>
+            Encoding.UTF8.GetBytes(data);
+
+        // Create base artifact
+        AppendBlob(MediaType.ImageConfig, GetBytes("config"));
+        AppendBlob(MediaType.ImageLayer, GetBytes("layer1"));
+        GenerateManifest(descs[0], descs.GetRange(1, 1));
+
+        // Create referrer
+        AppendBlob(MediaType.ImageConfig, GetBytes("ref-cfg"));
+        AppendBlob(MediaType.ImageLayer, GetBytes("ref-data"));
+        GenerateManifest(
+            descs[3], descs.GetRange(4, 1), descs[2]);
+
+        // Push all blobs and tag the manifest
+        for (var i = 0; i < blobs.Count; i++)
+        {
+            using var stream = new MemoryStream(blobs[i]);
+            await sourceTarget.PushAsync(
+                descs[i], stream, cancellationToken);
+        }
+        var srcRef = "artifact:v1";
+        await sourceTarget.TagAsync(
+            descs[2], srcRef, cancellationToken);
+
+        var destinationTarget = new MemoryStore();
+        var dstRef = "dest:v1";
+
+        // Use the overload without ExtendedCopyOptions
+        var result = await sourceTarget.ExtendedCopyAsync(
+            srcRef,
+            destinationTarget,
+            dstRef,
+            cancellationToken);
+
+        // Verify result descriptor matches the manifest
+        Assert.Equal(descs[2].Digest, result.Digest);
+
+        // Verify all content was copied
+        for (var i = 0; i < descs.Count; i++)
+        {
+            Assert.True(
+                await destinationTarget.ExistsAsync(
+                    descs[i], cancellationToken));
+        }
+
+        // Verify the destination tag resolves correctly
+        var resolved = await destinationTarget.ResolveAsync(
+            dstRef, cancellationToken);
+        Assert.Equal(descs[2].Digest, resolved.Digest);
     }
 
     /// <summary>
@@ -670,12 +764,13 @@ public class ExtendedCopyTest
             descs.Add(desc);
         }
 
-        void GenerateManifest(Descriptor config, List<Descriptor> layers)
+        void GenerateManifest(Descriptor config, List<Descriptor> layers, Descriptor? subject)
         {
             var manifest = new Manifest
             {
                 Config = config,
-                Layers = layers
+                Layers = layers,
+                Subject = subject
             };
             var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
             AppendBlob(MediaType.ImageManifest, manifestBytes);
@@ -686,7 +781,9 @@ public class ExtendedCopyTest
         // Create artifact
         AppendBlob(MediaType.ImageConfig, GetBytes("config")); // blob 0
         AppendBlob(MediaType.ImageLayer, GetBytes("layer1")); // blob 1
-        GenerateManifest(descs[0], descs.GetRange(1, 1)); // blob 2
+        GenerateManifest(descs[0], descs.GetRange(1, 1), null); // blob 2
+        AppendBlob(MediaType.ImageLayer, GetBytes("subject layer")); // blob 3
+        GenerateManifest(descs[0], descs.GetRange(3, 1), descs[2]); // blob 4
 
         // Push all blobs to source and tag the manifest
         for (var i = 0; i < blobs.Count; i++)
@@ -695,7 +792,7 @@ public class ExtendedCopyTest
             await sourceTarget.PushAsync(descs[i], stream, cancellationToken);
         }
         var srcRef = "artifact:v1";
-        await sourceTarget.TagAsync(descs[2], srcRef, cancellationToken);
+        await sourceTarget.TagAsync(descs[4], srcRef, cancellationToken);
 
         var destinationTarget = new MemoryStore();
         var opts = new ExtendedCopyOptions();
@@ -704,7 +801,7 @@ public class ExtendedCopyTest
         var result = await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget, "", opts, cancellationToken);
 
         // Verify the result descriptor matches the manifest
-        Assert.Equal(descs[2].Digest, result.Digest);
+        Assert.Equal(descs[4].Digest, result.Digest);
 
         // Verify all content was copied
         for (var i = 0; i < descs.Count; i++)
@@ -714,6 +811,6 @@ public class ExtendedCopyTest
 
         // Verify the tag in destination matches source reference (not null)
         var resolvedDesc = await destinationTarget.ResolveAsync(srcRef, cancellationToken);
-        Assert.Equal(descs[2].Digest, resolvedDesc.Digest);
+        Assert.Equal(descs[4].Digest, resolvedDesc.Digest);
     }
 }
