@@ -34,13 +34,13 @@ public class ExceptionTest
     [Fact]
     public async Task FileStoreDuplicateNameException()
     {
-        await Assert.ThrowsAsync<FileStoreDuplicateNameException>(
-            () => throw new FileStoreDuplicateNameException());
-        await Assert.ThrowsAsync<FileStoreDuplicateNameException>(
-            () => throw new FileStoreDuplicateNameException(
+        await Assert.ThrowsAsync<DuplicateFileNameException>(
+            () => throw new DuplicateFileNameException());
+        await Assert.ThrowsAsync<DuplicateFileNameException>(
+            () => throw new DuplicateFileNameException(
                 "Duplicate name"));
-        await Assert.ThrowsAsync<FileStoreDuplicateNameException>(
-            () => throw new FileStoreDuplicateNameException(
+        await Assert.ThrowsAsync<DuplicateFileNameException>(
+            () => throw new DuplicateFileNameException(
                 "Duplicate name", null));
     }
 

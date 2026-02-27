@@ -20,18 +20,18 @@ namespace OrasProject.Oras.Content.File.Exceptions;
 /// FileStoreDuplicateNameException is thrown when a name
 /// already exists in the FileStore.
 /// </summary>
-public class FileStoreDuplicateNameException : IOException
+public class DuplicateFileNameException : IOException
 {
-    public FileStoreDuplicateNameException()
+    public DuplicateFileNameException()
     {
     }
 
-    public FileStoreDuplicateNameException(string? message)
+    public DuplicateFileNameException(string? message)
         : base(message)
     {
     }
 
-    public FileStoreDuplicateNameException(
+    public DuplicateFileNameException(
         string? message,
         Exception? inner)
         : base(message, inner)
