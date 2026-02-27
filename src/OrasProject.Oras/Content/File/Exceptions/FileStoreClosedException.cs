@@ -19,8 +19,7 @@ namespace OrasProject.Oras.Content.File.Exceptions;
 /// FileStoreClosedException is thrown when an operation
 /// is attempted on a closed FileStore.
 /// </summary>
-public class FileStoreClosedException
-    : InvalidOperationException
+public class FileStoreClosedException : InvalidOperationException
 {
     public FileStoreClosedException()
         : base("Store already closed")
