@@ -17,21 +17,21 @@ using System.IO;
 namespace OrasProject.Oras.Content.File.Exceptions;
 
 /// <summary>
-/// DuplicateNameException is thrown when a name
+/// FileStoreDuplicateNameException is thrown when a name
 /// already exists in the FileStore.
 /// </summary>
-public class DuplicateNameException : IOException
+public class FileStoreDuplicateNameException : IOException
 {
-    public DuplicateNameException()
+    public FileStoreDuplicateNameException()
     {
     }
 
-    public DuplicateNameException(string? message)
+    public FileStoreDuplicateNameException(string? message)
         : base(message)
     {
     }
 
-    public DuplicateNameException(
+    public FileStoreDuplicateNameException(
         string? message,
         Exception? inner)
         : base(message, inner)
