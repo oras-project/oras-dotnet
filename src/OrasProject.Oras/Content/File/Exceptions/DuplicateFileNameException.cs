@@ -17,7 +17,7 @@ using System.IO;
 namespace OrasProject.Oras.Content.File.Exceptions;
 
 /// <summary>
-/// FileStoreDuplicateNameException is thrown when a name
+/// DuplicateFileNameException is thrown when a name
 /// already exists in the FileStore.
 /// </summary>
 public class DuplicateFileNameException : IOException
