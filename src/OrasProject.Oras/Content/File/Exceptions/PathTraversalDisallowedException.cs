@@ -21,8 +21,7 @@ namespace OrasProject.Oras.Content.File.Exceptions;
 /// path traversal attempt is detected and path
 /// traversal is not allowed.
 /// </summary>
-public class PathTraversalDisallowedException
-    : IOException
+public class PathTraversalDisallowedException : IOException
 {
     public PathTraversalDisallowedException()
     {
