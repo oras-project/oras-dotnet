@@ -734,10 +734,10 @@ public class ExtendedCopyTest
 
         destinationTarget = new MemoryStore();
         await Assert.ThrowsAsync<ArgumentNullException>(
-            async () => await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget, dstRef, null!, cancellationToken));
+            async () => await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget!, dstRef, null!, cancellationToken));
 
         await Assert.ThrowsAsync<ArgumentNullException>(
-            async () => await sourceTarget.ExtendedCopyAsync("", destinationTarget, dstRef, opts, cancellationToken));
+            async () => await sourceTarget.ExtendedCopyAsync("", destinationTarget!, dstRef, opts, cancellationToken));
     }
 
     /// <summary>
