@@ -19,34 +19,62 @@ namespace OrasProject.Oras.Tests.Content;
 public class ExceptionTest
 {
     [Fact]
-    public async Task InvalidDescriptorSizeException()
+    public void InvalidDescriptorSizeException_Constructors()
     {
-        await Assert.ThrowsAsync<InvalidDescriptorSizeException>(() => throw new InvalidDescriptorSizeException());
-        await Assert.ThrowsAsync<InvalidDescriptorSizeException>(() => throw new InvalidDescriptorSizeException("Invalid descriptor size"));
-        await Assert.ThrowsAsync<InvalidDescriptorSizeException>(() => throw new InvalidDescriptorSizeException("Invalid descriptor size", null));
+        var ex1 = new InvalidDescriptorSizeException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new InvalidDescriptorSizeException("Invalid descriptor size");
+        Assert.Equal("Invalid descriptor size", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new InvalidDescriptorSizeException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task MismatchedDigestException()
+    public void MismatchedDigestException_Constructors()
     {
-        await Assert.ThrowsAsync<MismatchedDigestException>(() => throw new MismatchedDigestException());
-        await Assert.ThrowsAsync<MismatchedDigestException>(() => throw new MismatchedDigestException("Mismatched digest"));
-        await Assert.ThrowsAsync<MismatchedDigestException>(() => throw new MismatchedDigestException("Mismatched digest", null));
+        var ex1 = new MismatchedDigestException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new MismatchedDigestException("Mismatched digest");
+        Assert.Equal("Mismatched digest", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new MismatchedDigestException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task MismatchedSizeException()
+    public void MismatchedSizeException_Constructors()
     {
-        await Assert.ThrowsAsync<MismatchedSizeException>(() => throw new MismatchedSizeException());
-        await Assert.ThrowsAsync<MismatchedSizeException>(() => throw new MismatchedSizeException("Mismatched size"));
-        await Assert.ThrowsAsync<MismatchedSizeException>(() => throw new MismatchedSizeException("Mismatched size", null));
+        var ex1 = new MismatchedSizeException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new MismatchedSizeException("Mismatched size");
+        Assert.Equal("Mismatched size", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new MismatchedSizeException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task InvalidDigestException()
+    public void InvalidDigestException_Constructors()
     {
-        await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException());
-        await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException("Invalid digest"));
-        await Assert.ThrowsAsync<InvalidDigestException>(() => throw new InvalidDigestException("Invalid digest", null));
+        var ex1 = new InvalidDigestException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new InvalidDigestException("Invalid digest");
+        Assert.Equal("Invalid digest", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new InvalidDigestException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 }
