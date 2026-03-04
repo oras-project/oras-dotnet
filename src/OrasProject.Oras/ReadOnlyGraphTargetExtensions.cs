@@ -43,7 +43,8 @@ public static class ReadOnlyGraphTargetExtensions
     /// </param>
     /// <param name="dstRef">
     /// Destination reference to associate with the copied tagged
-    /// node. If null or empty, <paramref name="srcRef"/> is used.
+    /// node. If null, empty, or whitespace,
+    /// <paramref name="srcRef"/> is used.
     /// </param>
     /// <param name="cancellationToken">
     /// Token to observe for cancellation.
@@ -89,8 +90,9 @@ public static class ReadOnlyGraphTargetExtensions
     /// The destination target that will receive the copied content and tag for the tagged node.
     /// </param>
     /// <param name="dstRef">
-    /// Destination reference to associate with the copied tagged node in <paramref name="dst"/>.
-    /// If null or empty, the value of <paramref name="srcRef"/> is used.
+    /// Destination reference to associate with the copied tagged
+    /// node in <paramref name="dst"/>. If null, empty, or
+    /// whitespace, the value of <paramref name="srcRef"/> is used.
     /// </param>
     /// <param name="opts">
     /// Options that control how the extended copy operation traverses and copies the graph,
@@ -126,7 +128,7 @@ public static class ReadOnlyGraphTargetExtensions
         {
             throw new ArgumentNullException(
                 nameof(srcRef),
-                "Source target reference cannot be null or empty");
+                "Source target reference cannot be null, empty, or whitespace");
         }
         if (opts == null)
         {
