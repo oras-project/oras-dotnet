@@ -28,9 +28,7 @@ public class TarUtilitiesTest : IDisposable
 
     public TarUtilitiesTest()
     {
-        _tempDir = Path.Combine(
-            Path.GetTempPath(),
-            $"oras-tar-test-{Guid.NewGuid():N}");
+        _tempDir = Path.Combine(Path.GetTempPath(), $"oras-tar-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
     }
 
@@ -42,199 +40,36 @@ public class TarUtilitiesTest : IDisposable
         }
     }
 
+    /// <summary>
+    /// Verifies basic tar creation with files: entry names, types, uid/gid=0,
+    /// and trailing-slash normalization for the root entry.
+    /// Consolidates BasicFiles, SetsUidGidToZero, and PrefixWithoutSlash tests.
+    /// </summary>
     [Fact]
-    public async Task TarDirectoryAsync_BasicFiles()
+    public async Task TarDirectoryAsync_BasicFilesAndPortability()
     {
         // Arrange
         var srcDir = Path.Combine(_tempDir, "src");
         Directory.CreateDirectory(srcDir);
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(srcDir, "file1.txt"), "hello");
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(srcDir, "file2.txt"), "world");
+        await System.IO.File.WriteAllTextAsync(Path.Combine(srcDir, "file1.txt"), "hello");
+        await System.IO.File.WriteAllTextAsync(Path.Combine(srcDir, "file2.txt"), "world");
 
-        // Act
+        // Act — prefix without trailing slash
         using var output = new MemoryStream();
         await TarUtilities.TarDirectoryAsync(
-            srcDir, "myprefix", output,
-            reproducible: false);
+            srcDir, "myprefix", output, reproducible: false);
         output.Position = 0;
 
-        // Assert
+        // Assert — entry names and types
         var entries = await ReadAllTarEntriesAsync(output);
         Assert.Contains(entries,
-            e => e.Name == "myprefix/"
-                && e.EntryType == TarEntryType.Directory);
+            e => e.Name == "myprefix/" && e.EntryType == TarEntryType.Directory);
         Assert.Contains(entries,
-            e => e.Name == "myprefix/file1.txt"
-                && e.EntryType == TarEntryType.RegularFile);
+            e => e.Name == "myprefix/file1.txt" && e.EntryType == TarEntryType.RegularFile);
         Assert.Contains(entries,
-            e => e.Name == "myprefix/file2.txt"
-                && e.EntryType == TarEntryType.RegularFile);
-    }
+            e => e.Name == "myprefix/file2.txt" && e.EntryType == TarEntryType.RegularFile);
 
-    [Fact]
-    public async Task TarDirectoryAsync_WithSubdirectories()
-    {
-        // Arrange
-        var srcDir = Path.Combine(_tempDir, "src");
-        var subDir = Path.Combine(srcDir, "sub");
-        Directory.CreateDirectory(subDir);
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(srcDir, "root.txt"), "root");
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(subDir, "nested.txt"), "nested");
-
-        // Act
-        using var output = new MemoryStream();
-        await TarUtilities.TarDirectoryAsync(
-            srcDir, "pkg", output, reproducible: false);
-        output.Position = 0;
-
-        // Assert
-        var entries = await ReadAllTarEntriesAsync(output);
-        Assert.Contains(entries,
-            e => e.Name == "pkg/"
-                && e.EntryType == TarEntryType.Directory);
-        Assert.Contains(entries,
-            e => e.Name == "pkg/sub/"
-                && e.EntryType == TarEntryType.Directory);
-        Assert.Contains(entries,
-            e => e.Name == "pkg/root.txt"
-                && e.EntryType == TarEntryType.RegularFile);
-        Assert.Contains(entries,
-            e => e.Name == "pkg/sub/nested.txt"
-                && e.EntryType == TarEntryType.RegularFile);
-    }
-
-    [Fact]
-    public async Task TarDirectoryAsync_Reproducible_SetsEpoch()
-    {
-        // Arrange
-        var srcDir = Path.Combine(_tempDir, "src");
-        Directory.CreateDirectory(srcDir);
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(srcDir, "data.txt"), "content");
-
-        // Act
-        using var output = new MemoryStream();
-        await TarUtilities.TarDirectoryAsync(
-            srcDir, "prefix", output,
-            reproducible: true);
-        output.Position = 0;
-
-        // Assert — all entries should have Unix epoch
-        var entries = await ReadAllTarEntriesAsync(output);
-        Assert.All(entries, e =>
-            Assert.Equal(
-                DateTimeOffset.UnixEpoch,
-                e.ModificationTime));
-    }
-
-    [Fact]
-    public async Task TarDirectoryAsync_NonReproducible_HasRecentTime()
-    {
-        // Arrange
-        var srcDir = Path.Combine(_tempDir, "src");
-        Directory.CreateDirectory(srcDir);
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(srcDir, "data.txt"), "content");
-
-        // Act
-        var beforeTar = DateTimeOffset.UtcNow;
-        using var output = new MemoryStream();
-        await TarUtilities.TarDirectoryAsync(
-            srcDir, "prefix", output,
-            reproducible: false);
-        var afterTar = DateTimeOffset.UtcNow;
-        output.Position = 0;
-
-        // Assert — entries should have a recent time
-        var entries = await ReadAllTarEntriesAsync(output);
-        var earliest = beforeTar.AddMinutes(-5);
-        var latest = afterTar.AddMinutes(5);
-        Assert.All(entries, e =>
-            Assert.InRange(
-                e.ModificationTime,
-                earliest,
-                latest));
-    }
-
-    [Fact]
-    public async Task TarDirectoryAsync_EmptyDirectory()
-    {
-        // Arrange
-        var srcDir = Path.Combine(_tempDir, "empty");
-        Directory.CreateDirectory(srcDir);
-
-        // Act
-        using var output = new MemoryStream();
-        await TarUtilities.TarDirectoryAsync(
-            srcDir, "root", output,
-            reproducible: true);
-        output.Position = 0;
-
-        // Assert — only root directory entry
-        var entries = await ReadAllTarEntriesAsync(output);
-        Assert.Single(entries);
-        Assert.Equal("root/", entries[0].Name);
-        Assert.Equal(
-            TarEntryType.Directory, entries[0].EntryType);
-    }
-
-    [Fact]
-    public async Task TarDirectoryAsync_FileContent_IsPreserved()
-    {
-        // Arrange
-        var srcDir = Path.Combine(_tempDir, "src");
-        Directory.CreateDirectory(srcDir);
-        var expected = "hello, tar!";
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(srcDir, "test.txt"), expected);
-
-        // Act
-        using var output = new MemoryStream();
-        await TarUtilities.TarDirectoryAsync(
-            srcDir, "p", output, reproducible: false);
-        output.Position = 0;
-
-        // Assert
-        using var reader = new TarReader(output);
-        TarEntry? entry;
-        while ((entry = await reader.GetNextEntryAsync()) !=
-            null)
-        {
-            if (entry.Name == "p/test.txt"
-                && entry.DataStream != null)
-            {
-                using var sr = new StreamReader(
-                    entry.DataStream);
-                var actual = await sr.ReadToEndAsync();
-                Assert.Equal(expected, actual);
-                return;
-            }
-        }
-        Assert.Fail("Expected entry p/test.txt not found");
-    }
-
-    [Fact]
-    public async Task TarDirectoryAsync_SetsUidGidToZero()
-    {
-        // Arrange
-        var srcDir = Path.Combine(_tempDir, "src");
-        Directory.CreateDirectory(srcDir);
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(srcDir, "f.txt"), "x");
-
-        // Act
-        using var output = new MemoryStream();
-        await TarUtilities.TarDirectoryAsync(
-            srcDir, "test", output,
-            reproducible: false);
-        output.Position = 0;
-
-        // Assert — all entries should have uid=0, gid=0
-        var entries = await ReadAllTarEntriesAsync(output);
+        // Assert — all entries have uid=0, gid=0 (portable)
         Assert.All(entries, e =>
         {
             var pax = Assert.IsType<PaxTarEntry>(e);
@@ -243,35 +78,33 @@ public class TarUtilitiesTest : IDisposable
         });
     }
 
+    /// <summary>
+    /// Verifies reproducible tar: deterministic entry order, epoch timestamps,
+    /// and correct entry types for subdirectories and files.
+    /// Consolidates WithSubdirectories, DeterministicOrder, and
+    /// Reproducible_SetsEpoch tests.
+    /// </summary>
     [Fact]
-    public async Task TarDirectoryAsync_Reproducible_DeterministicOrder()
+    public async Task TarDirectoryAsync_Reproducible_OrderAndTimestamps()
     {
-        // Arrange — create files in non-alphabetical order
+        // Arrange — create files and dirs in non-alphabetical order
         var srcDir = Path.Combine(_tempDir, "src");
         var subB = Path.Combine(srcDir, "beta");
         var subA = Path.Combine(srcDir, "alpha");
         Directory.CreateDirectory(subB);
         Directory.CreateDirectory(subA);
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(srcDir, "z.txt"), "z");
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(srcDir, "a.txt"), "a");
-        await System.IO.File.WriteAllTextAsync(
-            Path.Combine(subA, "inner.txt"), "i");
+        await System.IO.File.WriteAllTextAsync(Path.Combine(srcDir, "z.txt"), "z");
+        await System.IO.File.WriteAllTextAsync(Path.Combine(srcDir, "a.txt"), "a");
+        await System.IO.File.WriteAllTextAsync(Path.Combine(subA, "inner.txt"), "i");
 
         // Act
         using var output = new MemoryStream();
-        await TarUtilities.TarDirectoryAsync(
-            srcDir, "pkg", output,
-            reproducible: true);
+        await TarUtilities.TarDirectoryAsync(srcDir, "pkg", output, reproducible: true);
         output.Position = 0;
 
-        // Assert — entries are in deterministic order
+        // Assert — entries are in deterministic depth-first order
         var entries = await ReadAllTarEntriesAsync(output);
         var names = entries.Select(e => e.Name).ToList();
-
-        // Depth-first walk: root → sorted subdirs
-        // (recursing into each) → sorted files.
         Assert.Equal(
             new List<string>
             {
@@ -283,27 +116,94 @@ public class TarUtilitiesTest : IDisposable
                 "pkg/z.txt"
             },
             names);
+
+        // Assert — correct entry types
+        Assert.Contains(entries,
+            e => e.Name == "pkg/" && e.EntryType == TarEntryType.Directory);
+        Assert.Contains(entries,
+            e => e.Name == "pkg/alpha/" && e.EntryType == TarEntryType.Directory);
+        Assert.Contains(entries,
+            e => e.Name == "pkg/beta/" && e.EntryType == TarEntryType.Directory);
+        Assert.Contains(entries,
+            e => e.Name == "pkg/alpha/inner.txt"
+                && e.EntryType == TarEntryType.RegularFile);
+
+        // Assert — all entries should have Unix epoch timestamp
+        Assert.All(entries,
+            e => Assert.Equal(DateTimeOffset.UnixEpoch, e.ModificationTime));
     }
 
     [Fact]
-    public async Task TarDirectoryAsync_PrefixWithoutSlash()
+    public async Task TarDirectoryAsync_NonReproducible_HasRecentTime()
     {
         // Arrange
         var srcDir = Path.Combine(_tempDir, "src");
         Directory.CreateDirectory(srcDir);
+        await System.IO.File.WriteAllTextAsync(Path.Combine(srcDir, "data.txt"), "content");
 
-        // Act — prefix without trailing slash
+        // Act
+        var beforeTar = DateTimeOffset.UtcNow;
         using var output = new MemoryStream();
         await TarUtilities.TarDirectoryAsync(
-            srcDir, "notrail", output,
-            reproducible: true);
+            srcDir, "prefix", output, reproducible: false);
+        var afterTar = DateTimeOffset.UtcNow;
         output.Position = 0;
 
-        // Assert — root entry should still end with /
+        // Assert — entries should have a recent time
         var entries = await ReadAllTarEntriesAsync(output);
-        Assert.Contains(entries,
-            e => e.Name == "notrail/"
-                && e.EntryType == TarEntryType.Directory);
+        var earliest = beforeTar.AddMinutes(-5);
+        var latest = afterTar.AddMinutes(5);
+        Assert.All(entries,
+            e => Assert.InRange(e.ModificationTime, earliest, latest));
+    }
+
+    [Fact]
+    public async Task TarDirectoryAsync_EmptyDirectory()
+    {
+        // Arrange
+        var srcDir = Path.Combine(_tempDir, "empty");
+        Directory.CreateDirectory(srcDir);
+
+        // Act
+        using var output = new MemoryStream();
+        await TarUtilities.TarDirectoryAsync(srcDir, "root", output, reproducible: true);
+        output.Position = 0;
+
+        // Assert — only root directory entry
+        var entries = await ReadAllTarEntriesAsync(output);
+        Assert.Single(entries);
+        Assert.Equal("root/", entries[0].Name);
+        Assert.Equal(TarEntryType.Directory, entries[0].EntryType);
+    }
+
+    [Fact]
+    public async Task TarDirectoryAsync_FileContent_IsPreserved()
+    {
+        // Arrange
+        var srcDir = Path.Combine(_tempDir, "src");
+        Directory.CreateDirectory(srcDir);
+        var expected = "hello, tar!";
+        await System.IO.File.WriteAllTextAsync(Path.Combine(srcDir, "test.txt"), expected);
+
+        // Act
+        using var output = new MemoryStream();
+        await TarUtilities.TarDirectoryAsync(srcDir, "p", output, reproducible: false);
+        output.Position = 0;
+
+        // Assert
+        using var reader = new TarReader(output);
+        TarEntry? entry;
+        while ((entry = await reader.GetNextEntryAsync()) != null)
+        {
+            if (entry.Name == "p/test.txt" && entry.DataStream != null)
+            {
+                using var sr = new StreamReader(entry.DataStream);
+                var actual = await sr.ReadToEndAsync();
+                Assert.Equal(expected, actual);
+                return;
+            }
+        }
+        Assert.Fail("Expected entry p/test.txt not found");
     }
 
     [Theory]
@@ -314,8 +214,7 @@ public class TarUtilitiesTest : IDisposable
     [InlineData("a/../b")]
     [InlineData("a/./b")]
     [InlineData("a//b")]
-    public async Task TarDirectoryAsync_InvalidPrefix_Throws(
-        string prefix)
+    public async Task TarDirectoryAsync_InvalidPrefix_Throws(string prefix)
     {
         var srcDir = Path.Combine(_tempDir, "src");
         Directory.CreateDirectory(srcDir);
@@ -323,115 +222,82 @@ public class TarUtilitiesTest : IDisposable
         using var output = new MemoryStream();
         await Assert.ThrowsAsync<ArgumentException>(
             () => TarUtilities.TarDirectoryAsync(
-                srcDir, prefix, output,
-                reproducible: false));
+                srcDir, prefix, output, reproducible: false));
     }
 
     [Fact]
     public async Task TarDirectoryAsync_MissingSource_Throws()
     {
-        var missing = Path.Combine(
-            _tempDir, "does-not-exist");
+        var missing = Path.Combine(_tempDir, "does-not-exist");
 
         using var output = new MemoryStream();
-        await Assert.ThrowsAsync<
-            DirectoryNotFoundException>(
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(
             () => TarUtilities.TarDirectoryAsync(
-                missing, "pkg", output,
-                reproducible: false));
+                missing, "pkg", output, reproducible: false));
 
         // Stream should be empty — no partial archive
         Assert.Equal(0, output.Length);
     }
 
-    [Fact]
-    public void CreateDirectoryEntry_AppendsSlash()
+    /// <summary>
+    /// Consolidates CreateDirectoryEntry tests: slash appending, preserving
+    /// trailing slash, and reproducible timestamp behavior.
+    /// </summary>
+    [Theory]
+    [InlineData("mydir", false, "mydir/")]
+    [InlineData("mydir/", false, "mydir/")]
+    [InlineData("mydir", true, "mydir/")]
+    public void CreateDirectoryEntry_SlashAndTimestamp(
+        string input, bool reproducible, string expectedName)
     {
-        // Arrange
         var dir = Path.Combine(_tempDir, "testdir");
         Directory.CreateDirectory(dir);
 
-        // Act
-        var entry = TarUtilities.CreateDirectoryEntry(
-            "mydir", dir, reproducible: false);
+        var entry = TarUtilities.CreateDirectoryEntry(input, dir, reproducible);
 
-        // Assert
-        Assert.Equal("mydir/", entry.Name);
+        Assert.Equal(expectedName, entry.Name);
         Assert.Equal(TarEntryType.Directory, entry.EntryType);
-    }
-
-    [Fact]
-    public void CreateDirectoryEntry_PreservesTrailingSlash()
-    {
-        // Arrange
-        var dir = Path.Combine(_tempDir, "testdir");
-        Directory.CreateDirectory(dir);
-
-        // Act
-        var entry = TarUtilities.CreateDirectoryEntry(
-            "mydir/", dir, reproducible: false);
-
-        // Assert
-        Assert.Equal("mydir/", entry.Name);
-    }
-
-    [Fact]
-    public void CreateDirectoryEntry_Reproducible_SetsEpoch()
-    {
-        // Arrange
-        var dir = Path.Combine(_tempDir, "testdir");
-        Directory.CreateDirectory(dir);
-
-        // Act
-        var entry = TarUtilities.CreateDirectoryEntry(
-            "mydir", dir, reproducible: true);
-
-        // Assert
-        Assert.Equal(
-            DateTimeOffset.UnixEpoch,
-            entry.ModificationTime);
         Assert.Equal(0, entry.Uid);
         Assert.Equal(0, entry.Gid);
+
+        if (reproducible)
+        {
+            Assert.Equal(DateTimeOffset.UnixEpoch, entry.ModificationTime);
+        }
     }
 
-    [Fact]
-    public void GetUnixFileMode_Directory_Returns755()
+    /// <summary>
+    /// Consolidates GetUnixFileMode tests: directory returns 755, file returns 644.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GetUnixFileMode_ReturnsCorrectMode(bool isDirectory)
     {
-        // Arrange
-        var dir = Path.Combine(_tempDir, "testdir");
-        Directory.CreateDirectory(dir);
-        var dirInfo = new DirectoryInfo(dir);
+        FileSystemInfo info;
+        UnixFileMode expected;
 
-        // Act
-        var mode = TarUtilities.GetUnixFileMode(dirInfo);
+        if (isDirectory)
+        {
+            var dir = Path.Combine(_tempDir, "testdir");
+            Directory.CreateDirectory(dir);
+            info = new DirectoryInfo(dir);
+            expected = UnixFileMode.UserRead | UnixFileMode.UserWrite
+                | UnixFileMode.UserExecute | UnixFileMode.GroupRead
+                | UnixFileMode.GroupExecute | UnixFileMode.OtherRead
+                | UnixFileMode.OtherExecute;
+        }
+        else
+        {
+            var filePath = Path.Combine(_tempDir, "test.txt");
+            System.IO.File.WriteAllText(filePath, "data");
+            info = new FileInfo(filePath);
+            expected = UnixFileMode.UserRead | UnixFileMode.UserWrite
+                | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+        }
 
-        // Assert — rwxr-xr-x = 755
-        var expected = UnixFileMode.UserRead
-            | UnixFileMode.UserWrite
-            | UnixFileMode.UserExecute
-            | UnixFileMode.GroupRead
-            | UnixFileMode.GroupExecute
-            | UnixFileMode.OtherRead
-            | UnixFileMode.OtherExecute;
-        Assert.Equal(expected, mode);
-    }
+        var mode = TarUtilities.GetUnixFileMode(info);
 
-    [Fact]
-    public void GetUnixFileMode_File_Returns644()
-    {
-        // Arrange
-        var filePath = Path.Combine(_tempDir, "test.txt");
-        System.IO.File.WriteAllText(filePath, "data");
-        var fileInfo = new FileInfo(filePath);
-
-        // Act
-        var mode = TarUtilities.GetUnixFileMode(fileInfo);
-
-        // Assert — rw-r--r-- = 644
-        var expected = UnixFileMode.UserRead
-            | UnixFileMode.UserWrite
-            | UnixFileMode.GroupRead
-            | UnixFileMode.OtherRead;
         Assert.Equal(expected, mode);
     }
 
@@ -442,29 +308,23 @@ public class TarUtilitiesTest : IDisposable
         var srcDir = Path.Combine(_tempDir, "src");
         Directory.CreateDirectory(srcDir);
         var targetFile = Path.Combine(srcDir, "real.txt");
-        await System.IO.File.WriteAllTextAsync(
-            targetFile, "data");
+        await System.IO.File.WriteAllTextAsync(targetFile, "data");
         var linkPath = Path.Combine(srcDir, "link.txt");
         try
         {
-            System.IO.File.CreateSymbolicLink(
-                linkPath, "real.txt");
+            System.IO.File.CreateSymbolicLink(linkPath, "real.txt");
         }
         catch (Exception ex)
             when (ex is UnauthorizedAccessException
-                or PlatformNotSupportedException
-                or IOException)
+                or PlatformNotSupportedException or IOException)
         {
             throw Xunit.Sdk.SkipException.ForSkip(
-                "Symlinks not supported on this" +
-                $" platform: {ex.Message}");
+                $"Symlinks not supported on this platform: {ex.Message}");
         }
 
         // Act
         using var output = new MemoryStream();
-        await TarUtilities.TarDirectoryAsync(
-            srcDir, "sym", output,
-            reproducible: true);
+        await TarUtilities.TarDirectoryAsync(srcDir, "sym", output, reproducible: true);
         output.Position = 0;
 
         // Assert
@@ -476,14 +336,11 @@ public class TarUtilitiesTest : IDisposable
         var pax = Assert.IsType<PaxTarEntry>(symEntry);
         Assert.Equal(0, pax.Uid);
         Assert.Equal(0, pax.Gid);
-        Assert.Equal(
-            DateTimeOffset.UnixEpoch,
-            pax.ModificationTime);
+        Assert.Equal(DateTimeOffset.UnixEpoch, pax.ModificationTime);
     }
 
     [Fact]
-    public async Task
-        TarDirectoryAsync_DirSymlink_EmitsEntryNoRecurse()
+    public async Task TarDirectoryAsync_DirSymlink_EmitsEntryNoRecurse()
     {
         // Arrange — create a real subdirectory with a file,
         // then create a directory symlink pointing to it.
@@ -495,74 +352,58 @@ public class TarUtilitiesTest : IDisposable
         var linkDir = Path.Combine(srcDir, "linked");
         try
         {
-            Directory.CreateSymbolicLink(
-                linkDir, realDir);
+            Directory.CreateSymbolicLink(linkDir, realDir);
         }
         catch (Exception ex)
             when (ex is UnauthorizedAccessException
-                or PlatformNotSupportedException
-                or IOException)
+                or PlatformNotSupportedException or IOException)
         {
             throw Xunit.Sdk.SkipException.ForSkip(
-                "Symlinks not supported on this" +
-                $" platform: {ex.Message}");
+                $"Symlinks not supported on this platform: {ex.Message}");
         }
 
         // Act
         using var output = new MemoryStream();
-        await TarUtilities.TarDirectoryAsync(
-            srcDir, "ds", output,
-            reproducible: true);
+        await TarUtilities.TarDirectoryAsync(srcDir, "ds", output, reproducible: true);
         output.Position = 0;
 
         // Assert
         var entries = await ReadAllTarEntriesAsync(output);
-        var names = entries
-            .Select(e => e.Name).ToList();
+        var names = entries.Select(e => e.Name).ToList();
 
-        // The directory symlink should be emitted as a
-        // SymbolicLink entry (not a Directory entry), and
-        // no files from inside the target should appear.
+        // The directory symlink should be emitted as a SymbolicLink entry
+        // (not a Directory entry), and no files from inside the target
+        // should appear.
         var symEntry = Assert.Single(entries,
-            e => e.EntryType
-                == TarEntryType.SymbolicLink);
+            e => e.EntryType == TarEntryType.SymbolicLink);
         Assert.Equal("ds/linked", symEntry.Name);
-        Assert.Equal(
-            NormalizeSeparators(realDir),
-            symEntry.LinkName);
+        Assert.Equal(NormalizeSeparators(realDir), symEntry.LinkName);
 
-        // inner.txt should appear only under ds/real/,
-        // not under ds/linked/.
-        Assert.Single(names,
-            n => n == "ds/real/inner.txt");
-        Assert.DoesNotContain(
-            "ds/linked/inner.txt", names);
+        // inner.txt should appear only under ds/real/, not under ds/linked/.
+        Assert.Single(names, n => n == "ds/real/inner.txt");
+        Assert.DoesNotContain("ds/linked/inner.txt", names);
     }
 
     /// <summary>
-    /// Normalizes path separators for test assertions,
-    /// mirroring the production NormalizeSeparators logic.
+    /// Normalizes path separators for test assertions, mirroring the production
+    /// NormalizeSeparators logic.
     /// </summary>
     private static string NormalizeSeparators(string path)
     {
         return Path.DirectorySeparatorChar != '/'
-            ? path.Replace(
-                Path.DirectorySeparatorChar, '/')
+            ? path.Replace(Path.DirectorySeparatorChar, '/')
             : path;
     }
 
     /// <summary>
     /// Reads all tar entries from a stream into a list.
     /// </summary>
-    private static async Task<List<TarEntry>>
-        ReadAllTarEntriesAsync(Stream stream)
+    private static async Task<List<TarEntry>> ReadAllTarEntriesAsync(Stream stream)
     {
         var entries = new List<TarEntry>();
-        using var reader = new TarReader(
-            stream, leaveOpen: true);
+        using var reader = new TarReader(stream, leaveOpen: true);
         TarEntry? entry;
-        while ((entry = await reader.GetNextEntryAsync()) !=
-            null)
+        while ((entry = await reader.GetNextEntryAsync()) != null)
         {
             entries.Add(entry);
         }
