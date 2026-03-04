@@ -58,12 +58,12 @@ public static class ReadOnlyTargetExtensions
     /// <exception cref="Exception"></exception>
     public static async Task<Descriptor> CopyAsync(this IReadOnlyTarget src, string srcRef, ITarget dst, string dstRef, CopyOptions copyOptions, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(srcRef))
+        if (string.IsNullOrWhiteSpace(srcRef))
         {
             throw new ArgumentNullException(nameof(srcRef));
         }
 
-        if (string.IsNullOrEmpty(dstRef))
+        if (string.IsNullOrWhiteSpace(dstRef))
         {
             dstRef = srcRef;
         }

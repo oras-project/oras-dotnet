@@ -102,8 +102,9 @@ public static class ReadOnlyGraphTargetExtensions
     /// </param>
     /// <returns>The descriptor of the tagged node after it has been copied to the destination.</returns>
     /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="src"/>, <paramref name="dst"/>, or <paramref name="opts"/> is null,
-    /// or when <paramref name="srcRef"/> is null or empty.
+    /// Thrown when <paramref name="src"/>, <paramref name="dst"/>,
+    /// or <paramref name="opts"/> is null, or when
+    /// <paramref name="srcRef"/> is null, empty, or whitespace.
     /// </exception>
     public static async Task<Descriptor> ExtendedCopyAsync(
         this IReadOnlyGraphTarget src,
@@ -121,15 +122,17 @@ public static class ReadOnlyGraphTargetExtensions
         {
             throw new ArgumentNullException(nameof(dst), "Destination target cannot be null");
         }
-        if (string.IsNullOrEmpty(srcRef))
+        if (string.IsNullOrWhiteSpace(srcRef))
         {
-            throw new ArgumentNullException(nameof(srcRef), "Source target reference cannot be null or empty");
+            throw new ArgumentNullException(
+                nameof(srcRef),
+                "Source target reference cannot be null or empty");
         }
         if (opts == null)
         {
             throw new ArgumentNullException(nameof(opts), "ExtendedCopyOptions cannot be null");
         }
-        if (string.IsNullOrEmpty(dstRef))
+        if (string.IsNullOrWhiteSpace(dstRef))
         {
             dstRef = srcRef;
         }
