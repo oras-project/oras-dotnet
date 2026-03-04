@@ -18,6 +18,6 @@ namespace OrasProject.Oras;
 /// <summary>
 /// IReadOnlyGraphTarget represents a read-only graph target.
 /// </summary>
-public interface IReadOnlyGraphTarget : IReadOnlyGraphStorage, IResolvable
+public interface IReadOnlyGraphTarget : IReadOnlyTarget, IReadOnlyGraphStorage
 {
 }
