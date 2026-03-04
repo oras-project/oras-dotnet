@@ -209,6 +209,8 @@ public class TarUtilitiesTest : IDisposable
     [Theory]
     [InlineData("")]
     [InlineData("/absolute")]
+    [InlineData("C:/abs")]
+    [InlineData("C:\\abs")]
     [InlineData("../escape")]
     [InlineData("a/..")]
     [InlineData("a/../b")]

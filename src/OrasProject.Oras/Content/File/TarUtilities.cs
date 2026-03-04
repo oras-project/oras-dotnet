@@ -236,7 +236,21 @@ internal static class TarUtilities
     }
 
     /// <summary>
-    /// Validates that a prefix contains no traversal, empty, or dot-only segments.
+    /// Returns true if the path starts with a Windows-style drive prefix
+    /// (e.g. "C:" or "C:/"). This check is needed because
+    /// <see cref="Path.IsPathRooted"/> does not recognise drive letters on
+    /// non-Windows platforms.
+    /// </summary>
+    private static bool HasDrivePrefix(string path)
+    {
+        return path.Length >= 2
+            && char.IsAsciiLetter(path[0])
+            && path[1] == ':';
+    }
+
+    /// <summary>
+    /// Validates that a prefix is a relative, non-rooted path with no traversal,
+    /// empty, or dot-only segments.
     /// </summary>
     private static void ValidatePrefix(string prefix)
     {
@@ -244,6 +258,12 @@ internal static class TarUtilities
         {
             throw new ArgumentException(
                 "Prefix must not be empty.", nameof(prefix));
+        }
+
+        if (Path.IsPathRooted(prefix) || HasDrivePrefix(prefix))
+        {
+            throw new ArgumentException(
+                "Prefix must be a relative path.", nameof(prefix));
         }
 
         var segments = prefix.Split('/');
