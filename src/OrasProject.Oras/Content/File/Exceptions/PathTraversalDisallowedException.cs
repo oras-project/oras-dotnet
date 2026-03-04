@@ -12,7 +12,6 @@
 // limitations under the License.
 
 using System;
-using System.IO;
 
 namespace OrasProject.Oras.Content.File.Exceptions;
 
@@ -21,7 +20,8 @@ namespace OrasProject.Oras.Content.File.Exceptions;
 /// path traversal attempt is detected and path
 /// traversal is not allowed.
 /// </summary>
-public class PathTraversalDisallowedException : IOException
+public class PathTraversalDisallowedException
+    : UnauthorizedAccessException
 {
     public PathTraversalDisallowedException()
     {

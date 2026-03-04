@@ -32,6 +32,13 @@ public class MissingNameException : ArgumentException
 
     public MissingNameException(
         string? message,
+        string? paramName)
+        : base(message, paramName)
+    {
+    }
+
+    public MissingNameException(
+        string? message,
         Exception? inner)
         : base(message, inner)
     {

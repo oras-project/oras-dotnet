@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using OrasProject.Oras.Content.File.Exceptions;
 using Xunit;
 
@@ -19,80 +20,82 @@ namespace OrasProject.Oras.Tests.Content.File.Exceptions;
 public class ExceptionTest
 {
     [Fact]
-    public async Task FileStoreClosedException()
+    public void FileStoreClosedException_Constructors()
     {
-        await Assert.ThrowsAsync<FileStoreClosedException>(
-            () => throw new FileStoreClosedException());
-        await Assert.ThrowsAsync<FileStoreClosedException>(
-            () => throw new FileStoreClosedException(
-                "Store already closed"));
-        await Assert.ThrowsAsync<FileStoreClosedException>(
-            () => throw new FileStoreClosedException(
-                "Store already closed", null));
+        var ex1 = new FileStoreClosedException();
+        Assert.Equal("Store already closed", ex1.Message);
+
+        var ex2 = new FileStoreClosedException("custom");
+        Assert.Equal("custom", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new FileStoreClosedException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task DuplicateFileNameException()
+    public void DuplicateFileNameException_Constructors()
     {
-        await Assert.ThrowsAsync<DuplicateFileNameException>(
-            () => throw new DuplicateFileNameException());
-        await Assert.ThrowsAsync<DuplicateFileNameException>(
-            () => throw new DuplicateFileNameException(
-                "Duplicate name"));
-        await Assert.ThrowsAsync<DuplicateFileNameException>(
-            () => throw new DuplicateFileNameException(
-                "Duplicate name", null));
+        var ex1 = new DuplicateFileNameException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new DuplicateFileNameException("Duplicate name");
+        Assert.Equal("Duplicate name", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new DuplicateFileNameException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task MissingNameException()
+    public void MissingNameException_Constructors()
     {
-        await Assert.ThrowsAsync<MissingNameException>(
-            () => throw new MissingNameException());
-        await Assert.ThrowsAsync<MissingNameException>(
-            () => throw new MissingNameException(
-                "Missing name"));
-        await Assert.ThrowsAsync<MissingNameException>(
-            () => throw new MissingNameException(
-                "Missing name", null));
+        var ex1 = new MissingNameException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new MissingNameException("Missing name");
+        Assert.Equal("Missing name", ex2.Message);
+
+        var ex3 = new MissingNameException("Missing name", "myParam");
+        Assert.Contains("Missing name", ex3.Message);
+        Assert.Equal("myParam", ex3.ParamName);
+
+        var inner = new InvalidOperationException("inner");
+        var ex4 = new MissingNameException("msg", inner);
+        Assert.Equal("msg", ex4.Message);
+        Assert.Same(inner, ex4.InnerException);
     }
 
     [Fact]
-    public async Task OverwriteDisallowedException()
+    public void OverwriteDisallowedException_Constructors()
     {
-        await Assert.ThrowsAsync<
-            OverwriteDisallowedException>(
-            () => throw new
-                OverwriteDisallowedException());
-        await Assert.ThrowsAsync<
-            OverwriteDisallowedException>(
-            () => throw new
-                OverwriteDisallowedException(
-                    "Overwrite disallowed"));
-        await Assert.ThrowsAsync<
-            OverwriteDisallowedException>(
-            () => throw new
-                OverwriteDisallowedException(
-                    "Overwrite disallowed", null));
+        var ex1 = new OverwriteDisallowedException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new OverwriteDisallowedException("Overwrite disallowed");
+        Assert.Equal("Overwrite disallowed", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new OverwriteDisallowedException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task PathTraversalDisallowedException()
+    public void PathTraversalDisallowedException_Constructors()
     {
-        await Assert.ThrowsAsync<
-            PathTraversalDisallowedException>(
-            () => throw new
-                PathTraversalDisallowedException());
-        await Assert.ThrowsAsync<
-            PathTraversalDisallowedException>(
-            () => throw new
-                PathTraversalDisallowedException(
-                    "Path traversal disallowed"));
-        await Assert.ThrowsAsync<
-            PathTraversalDisallowedException>(
-            () => throw new
-                PathTraversalDisallowedException(
-                    "Path traversal disallowed",
-                    null));
+        var ex1 = new PathTraversalDisallowedException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new PathTraversalDisallowedException(
+            "Path traversal disallowed");
+        Assert.Equal("Path traversal disallowed", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new PathTraversalDisallowedException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 }
