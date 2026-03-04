@@ -44,6 +44,14 @@ internal static class TarUtilities
     /// <param name="cancellationToken">
     /// Cancellation token.
     /// </param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="prefix"/> is empty,
+    /// absolute, or contains traversal segments.
+    /// </exception>
+    /// <exception cref="DirectoryNotFoundException">
+    /// Thrown when <paramref name="sourceDirectory"/>
+    /// does not exist.
+    /// </exception>
     internal static async Task TarDirectoryAsync(
         string sourceDirectory,
         string prefix,
@@ -89,6 +97,18 @@ internal static class TarUtilities
     /// without recursion to prevent cycles and unintended
     /// inclusion of files outside the source tree.
     /// </summary>
+    /// <remarks>
+    /// This method uses recursion bounded by actual
+    /// filesystem depth. Symlinked directories are not
+    /// followed, so cycles cannot occur. For typical OCI
+    /// layer content the depth is well within safe stack
+    /// limits.
+    /// Symlink targets (both directory and file) are
+    /// preserved as-is from the filesystem, which may
+    /// include absolute paths. Callers or extractors
+    /// must validate link targets independently to
+    /// guard against symlink-based path traversal.
+    /// </remarks>
     private static async Task WalkDirectoryAsync(
         TarWriter tarWriter,
         string sourceDirectory,
@@ -336,10 +356,17 @@ internal static class TarUtilities
     }
 
     /// <summary>
-    /// Returns the default Unix file mode for a file system
-    /// entry: rwxr-xr-x (755) for directories, rw-r--r--
-    /// (644) for files.
+    /// Returns a hardcoded portable Unix file mode for a
+    /// file system entry: rwxr-xr-x (755) for directories,
+    /// rw-r--r-- (644) for files.
     /// </summary>
+    /// <remarks>
+    /// This method does not read actual filesystem
+    /// permissions. It returns fixed modes suitable for
+    /// cross-platform tar archives. The
+    /// <paramref name="info"/> parameter is used only to
+    /// distinguish directories from files via type check.
+    /// </remarks>
     /// <param name="info">
     /// The file system info to determine the mode for.
     /// </param>
