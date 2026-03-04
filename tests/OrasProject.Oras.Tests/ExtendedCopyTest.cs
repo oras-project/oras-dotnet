@@ -602,7 +602,12 @@ public class ExtendedCopyTest
         var dstRef = "destination:v2";
         var opts = new ExtendedCopyOptions();
 
-        var result = await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget, dstRef, opts, cancellationToken);
+        var result = await sourceTarget.ExtendedCopyAsync(
+            srcRef,
+            destinationTarget,
+            dstRef,
+            opts,
+            cancellationToken);
 
         // Verify the result descriptor matches the manifest
         Assert.Equal(descs[4].Digest, result.Digest);
@@ -610,11 +615,13 @@ public class ExtendedCopyTest
         // Verify all content was copied
         for (var i = 0; i < descs.Count; i++)
         {
-            Assert.True(await destinationTarget.ExistsAsync(descs[i], cancellationToken));
+            Assert.True(await destinationTarget.ExistsAsync(
+                descs[i], cancellationToken));
         }
 
         // Verify the destination tag exists with correct reference
-        var resolvedDesc = await destinationTarget.ResolveAsync(dstRef, cancellationToken);
+        var resolvedDesc = await destinationTarget.ResolveAsync(
+            dstRef, cancellationToken);
         Assert.Equal(descs[4].Digest, resolvedDesc.Digest);
     }
 
@@ -724,20 +731,28 @@ public class ExtendedCopyTest
         var opts = new ExtendedCopyOptions();
 
         await Assert.ThrowsAsync<ArgumentNullException>(
-            async () => await sourceTarget!.ExtendedCopyAsync(srcRef, destinationTarget!, dstRef, opts, cancellationToken));
+            async () => await sourceTarget!.ExtendedCopyAsync(
+                srcRef, destinationTarget!, dstRef,
+                opts, cancellationToken));
 
         sourceTarget = new MemoryStore();
         destinationTarget = null;
 
         await Assert.ThrowsAsync<ArgumentNullException>(
-            async () => await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget!, dstRef, opts, cancellationToken));
+            async () => await sourceTarget.ExtendedCopyAsync(
+                srcRef, destinationTarget!, dstRef,
+                opts, cancellationToken));
 
         destinationTarget = new MemoryStore();
         await Assert.ThrowsAsync<ArgumentNullException>(
-            async () => await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget!, dstRef, null!, cancellationToken));
+            async () => await sourceTarget.ExtendedCopyAsync(
+                srcRef, destinationTarget!, dstRef,
+                null!, cancellationToken));
 
         await Assert.ThrowsAsync<ArgumentNullException>(
-            async () => await sourceTarget.ExtendedCopyAsync("", destinationTarget!, dstRef, opts, cancellationToken));
+            async () => await sourceTarget.ExtendedCopyAsync(
+                "", destinationTarget!, dstRef,
+                opts, cancellationToken));
     }
 
     /// <summary>
@@ -798,7 +813,12 @@ public class ExtendedCopyTest
         var opts = new ExtendedCopyOptions();
 
         // Call with empty dstRef
-        var result = await sourceTarget.ExtendedCopyAsync(srcRef, destinationTarget, "", opts, cancellationToken);
+        var result = await sourceTarget.ExtendedCopyAsync(
+            srcRef,
+            destinationTarget,
+            "",
+            opts,
+            cancellationToken);
 
         // Verify the result descriptor matches the manifest
         Assert.Equal(descs[4].Digest, result.Digest);
