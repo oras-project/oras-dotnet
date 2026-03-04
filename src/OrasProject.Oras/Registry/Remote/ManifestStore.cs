@@ -428,9 +428,12 @@ public class ManifestStore(Repository repository) : IManifestStore
         using var contentStream = await FetchAsync(descriptor, cancellationToken).ConfigureAwait(false);
         // Buffer the content into a seekable MemoryStream to support retry scenarios
         // where the stream needs to be rewound (e.g., authentication retries).
-        // ReadAllAsync also verifies content integrity via SHA-256 digest validation,
+        // ReadAllAsync also verifies content integrity via digest validation,
         // consistent with other manifest operations in this codebase.
-        var contentBytes = await contentStream.ReadAllAsync(descriptor, cancellationToken).ConfigureAwait(false);
+        // Note: ReadAllAsync currently hardcodes SHA-256 for digest
+        // verification. This is a pre-existing limitation tracked separately.
+        var contentBytes = await contentStream.ReadAllAsync(
+            descriptor, cancellationToken).ConfigureAwait(false);
         using var seekableStream = new MemoryStream(contentBytes);
         await DoPushAsync(descriptor, seekableStream, remoteReference, cancellationToken).ConfigureAwait(false);
     }

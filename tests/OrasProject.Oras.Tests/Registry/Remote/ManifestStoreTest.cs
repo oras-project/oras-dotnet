@@ -19,6 +19,7 @@ using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
+using OrasProject.Oras.Registry.Remote.Auth;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Content.Digest;
@@ -1009,10 +1010,11 @@ public class ManifestStoreTest
     }
 
     /// <summary>
-    /// ManifestStore_TagAsync_WithAuthRetry tests that TagAsync succeeds when authentication
-    /// retry is required. This test verifies the fix for the non-seekable stream issue where
-    /// the HTTP response stream from FetchAsync could not be rewound during authentication retry.
-    /// Uses Auth.Client which handles 401 responses with automatic retry.
+    /// ManifestStore_TagAsync_WithAuthRetry tests that TagAsync
+    /// succeeds when authentication retry is required. Uses a
+    /// non-seekable stream for the GET response to validate that
+    /// TagAsync properly buffers content. Captures content from
+    /// both PUT attempts to verify content integrity across retries.
     /// </summary>
     [Fact]
     public async Task ManifestStore_TagAsync_WithAuthRetry()
@@ -1024,7 +1026,8 @@ public class ManifestStoreTest
             Digest = ComputeSha256(index),
             Size = index.Length
         };
-        byte[]? receivedContent = null;
+        byte[]? firstPutContent = null;
+        byte[]? secondPutContent = null;
         var targetTag = "v1.0";
         var putRequestCount = 0;
 
@@ -1037,179 +1040,87 @@ public class ManifestStoreTest
                 RequestMessage = req
             };
 
-            // Handle GET request for fetching manifest - allow without auth
-            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + indexDesc.Digest)
+            // Handle GET request for fetching manifest
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.AbsolutePath
+                    == "/v2/test/manifests/" + indexDesc.Digest)
             {
-                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values)
+                if (req.Headers.TryGetValues(
+                        "Accept",
+                        out IEnumerable<string>? values)
                     && !values.Contains(indexDesc.MediaType))
                 {
-                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    return new HttpResponseMessage(
+                        HttpStatusCode.BadRequest);
                 }
-                // Use NonSeekableStream to simulate HTTP response streams which are typically non-seekable.
-                // This ensures the test validates that TagAsync properly buffers content for retry scenarios.
-                response.Content = new StreamContent(new NonSeekableStream(index));
-                response.Headers.Add(_dockerContentDigestHeader, [indexDesc.Digest]);
-                response.Content.Headers.Add("Content-Type", [indexDesc.MediaType]);
+                // Use NonSeekableStream to simulate HTTP
+                // response streams (typically non-seekable).
+                response.Content = new StreamContent(
+                    new NonSeekableStream(index));
+                response.Headers.Add(
+                    _dockerContentDigestHeader,
+                    [indexDesc.Digest]);
+                response.Content.Headers.Add(
+                    "Content-Type", [indexDesc.MediaType]);
                 return response;
             }
 
-            // Handle PUT request for tagging - force retry on first attempt
-            if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + targetTag)
+            // Handle PUT request - force 401 on first attempt
+            if (req.Method == HttpMethod.Put
+                && req.RequestUri?.AbsolutePath
+                    == "/v2/test/manifests/" + targetTag)
             {
                 putRequestCount++;
 
-                // First PUT request always returns 401 to force retry
-                if (putRequestCount == 1)
-                {
-                    response.StatusCode = HttpStatusCode.Unauthorized;
-                    response.Headers.WwwAuthenticate.ParseAdd("Basic realm=\"test\"");
-                    return response;
-                }
-
-                // Subsequent requests succeed
+                // Capture content from each attempt
                 if (req.Content != null)
                 {
-                    receivedContent = await req.Content.ReadAsByteArrayAsync(cancellationToken);
-                }
-
-                response.Headers.Add(_dockerContentDigestHeader, [indexDesc.Digest]);
-                response.StatusCode = HttpStatusCode.Created;
-                return response;
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        }
-
-        var mockHandler = CustomHandler(MockHttpRequestHandlerAsync);
-        var httpClient = new HttpClient(mockHandler.Object);
-
-        // Use Auth.Client with a credential provider that returns basic credentials
-        var mockCredentialProvider = new Mock<OrasProject.Oras.Registry.Remote.Auth.ICredentialProvider>();
-        mockCredentialProvider
-            .Setup(p => p.ResolveCredentialAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OrasProject.Oras.Registry.Remote.Auth.Credential
-            {
-                Username = "testuser",
-                Password = "testpass"
-            });
-
-        var authClient = new OrasProject.Oras.Registry.Remote.Auth.Client(
-            httpClient,
-            mockCredentialProvider.Object);
-
-        var repo = new Repository(new RepositoryOptions()
-        {
-            Reference = Reference.Parse("localhost:5000/test"),
-            Client = authClient,
-            PlainHttp = true,
-        });
-        var cancellationToken = new CancellationToken();
-        var store = new ManifestStore(repo);
-
-        // This should succeed even with auth retry because the stream is now buffered
-        await store.TagAsync(indexDesc, targetTag, cancellationToken);
-
-        // Verify the content was correctly transmitted
-        Assert.Equal(index, receivedContent);
-        // Verify that retry occurred (at least 2 PUT requests: first without auth, second with auth)
-        Assert.True(putRequestCount >= 2, $"Expected at least 2 PUT requests but got {putRequestCount}");
-    }
-
-    /// <summary>
-    /// ManifestStore_TagAsync_BuffersStreamForRetry verifies that TagAsync properly buffers
-    /// the fetched manifest content, allowing the request to be retried multiple times.
-    /// Uses Auth.Client to test authentication retry with buffered content.
-    /// </summary>
-    [Fact]
-    public async Task ManifestStore_TagAsync_BuffersStreamForRetry()
-    {
-        var (_, expectedManifestBytes) = RandomManifest();
-        var expectedManifestDesc = new Descriptor
-        {
-            MediaType = MediaType.ImageManifest,
-            Digest = ComputeSha256(expectedManifestBytes),
-            Size = expectedManifestBytes.Length
-        };
-
-        byte[]? firstReceivedContent = null;
-        byte[]? secondReceivedContent = null;
-        var targetTag = "latest";
-        var putRequestCount = 0;
-
-        async Task<HttpResponseMessage> MockHttpRequestHandlerAsync(
-            HttpRequestMessage req,
-            CancellationToken cancellationToken = default)
-        {
-            var response = new HttpResponseMessage
-            {
-                RequestMessage = req
-            };
-
-            // Handle GET request for fetching manifest
-            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + expectedManifestDesc.Digest)
-            {
-                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(expectedManifestDesc.MediaType))
-                {
-                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
-                }
-                // Use NonSeekableStream to simulate HTTP response streams which are typically non-seekable.
-                // This ensures the test validates that TagAsync properly buffers content for retry scenarios.
-                response.Content = new StreamContent(new NonSeekableStream(expectedManifestBytes));
-                response.Headers.Add(_dockerContentDigestHeader, [expectedManifestDesc.Digest]);
-                response.Content.Headers.Add("Content-Type", [expectedManifestDesc.MediaType]);
-                return response;
-            }
-
-            // Handle PUT request - simulate auth retry
-            if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == "/v2/test/manifests/" + targetTag)
-            {
-                putRequestCount++;
-
-                if (req.Content != null)
-                {
-                    var buf = await req.Content.ReadAsByteArrayAsync(cancellationToken);
-
-                    // Capture content from both attempts to verify they match
+                    var buf = await req.Content
+                        .ReadAsByteArrayAsync(cancellationToken);
                     if (putRequestCount == 1)
-                    {
-                        firstReceivedContent = buf;
-                    }
+                        firstPutContent = buf;
                     else
-                    {
-                        secondReceivedContent = buf;
-                    }
+                        secondPutContent = buf;
                 }
 
-                // First PUT request always returns 401 to force retry
+                // First PUT always returns 401 to force retry
                 if (putRequestCount == 1)
                 {
-                    response.StatusCode = HttpStatusCode.Unauthorized;
-                    response.Headers.WwwAuthenticate.ParseAdd("Basic realm=\"test\"");
+                    response.StatusCode =
+                        HttpStatusCode.Unauthorized;
+                    response.Headers.WwwAuthenticate
+                        .ParseAdd("Basic realm=\"test\"");
                     return response;
                 }
 
-                response.Headers.Add(_dockerContentDigestHeader, [expectedManifestDesc.Digest]);
+                response.Headers.Add(
+                    _dockerContentDigestHeader,
+                    [indexDesc.Digest]);
                 response.StatusCode = HttpStatusCode.Created;
                 return response;
             }
 
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
+            return new HttpResponseMessage(
+                HttpStatusCode.NotFound);
         }
 
-        var mockHandler = CustomHandler(MockHttpRequestHandlerAsync);
+        var mockHandler =
+            CustomHandler(MockHttpRequestHandlerAsync);
         var httpClient = new HttpClient(mockHandler.Object);
 
-        // Use Auth.Client with a credential provider
-        var mockCredentialProvider = new Mock<OrasProject.Oras.Registry.Remote.Auth.ICredentialProvider>();
+        var mockCredentialProvider =
+            new Mock<ICredentialProvider>();
         mockCredentialProvider
-            .Setup(p => p.ResolveCredentialAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OrasProject.Oras.Registry.Remote.Auth.Credential
+            .Setup(p => p.ResolveCredentialAsync(
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Credential
             {
                 Username = "testuser",
                 Password = "testpass"
             });
 
-        var authClient = new OrasProject.Oras.Registry.Remote.Auth.Client(
+        var authClient = new Client(
             httpClient,
             mockCredentialProvider.Object);
 
@@ -1222,21 +1133,26 @@ public class ManifestStoreTest
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
 
-        await store.TagAsync(expectedManifestDesc, targetTag, cancellationToken);
+        await store.TagAsync(
+            indexDesc, targetTag, cancellationToken);
 
-        // Verify retry occurred (at least 2 PUT requests)
-        Assert.True(putRequestCount >= 2, $"Expected at least 2 PUT requests but got {putRequestCount}");
-        // Verify both attempts received the same content
-        Assert.NotNull(firstReceivedContent);
-        Assert.NotNull(secondReceivedContent);
-        Assert.Equal(expectedManifestBytes, firstReceivedContent);
-        Assert.Equal(expectedManifestBytes, secondReceivedContent);
-        Assert.Equal(firstReceivedContent, secondReceivedContent);
+        // Verify retry occurred
+        Assert.True(
+            putRequestCount >= 2,
+            "Expected at least 2 PUT requests but got "
+                + $"{putRequestCount}");
+        // Verify content integrity across retries
+        Assert.NotNull(firstPutContent);
+        Assert.NotNull(secondPutContent);
+        Assert.Equal(index, firstPutContent);
+        Assert.Equal(index, secondPutContent);
+        Assert.Equal(firstPutContent, secondPutContent);
     }
 
     /// <summary>
-    /// ManifestStore_TagAsync_SucceedsWithoutRetry ensures TagAsync still works correctly
-    /// when no authentication retry is needed.
+    /// ManifestStore_TagAsync_SucceedsWithoutRetry ensures TagAsync
+    /// works correctly when no authentication retry is needed.
+    /// Uses NonSeekableStream to validate the buffering path.
     /// </summary>
     [Fact]
     public async Task ManifestStore_TagAsync_SucceedsWithoutRetry()
@@ -1263,34 +1179,51 @@ public class ManifestStoreTest
 
             // Handle GET request for fetching manifest
             if (req.Method == HttpMethod.Get
-                && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{indexDesc.Digest}")
+                && req.RequestUri?.AbsolutePath
+                    == $"/v2/test/manifests/{indexDesc.Digest}")
             {
-                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values) && !values.Contains(indexDesc.MediaType))
+                if (req.Headers.TryGetValues(
+                        "Accept",
+                        out IEnumerable<string>? values)
+                    && !values.Contains(indexDesc.MediaType))
                 {
-                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    return new HttpResponseMessage(
+                        HttpStatusCode.BadRequest);
                 }
-                response.Content = new ByteArrayContent(index);
-                response.Headers.Add(_dockerContentDigestHeader, [indexDesc.Digest]);
-                response.Content.Headers.Add("Content-Type", [indexDesc.MediaType]);
+                // Use NonSeekableStream to validate the
+                // buffering path end-to-end.
+                response.Content = new StreamContent(
+                    new NonSeekableStream(index));
+                response.Headers.Add(
+                    _dockerContentDigestHeader,
+                    [indexDesc.Digest]);
+                response.Content.Headers.Add(
+                    "Content-Type", [indexDesc.MediaType]);
                 return response;
             }
 
-            // Handle PUT request - succeed immediately (no retry needed)
-            if (req.Method == HttpMethod.Put && req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{targetTag}")
+            // Handle PUT request - succeed immediately
+            if (req.Method == HttpMethod.Put
+                && req.RequestUri?.AbsolutePath
+                    == $"/v2/test/manifests/{targetTag}")
             {
                 putRequestCount++;
 
                 if (req.Content != null)
                 {
-                    receivedContent = await req.Content.ReadAsByteArrayAsync(cancellationToken);
+                    receivedContent = await req.Content
+                        .ReadAsByteArrayAsync(cancellationToken);
                 }
 
-                response.Headers.Add(_dockerContentDigestHeader, [indexDesc.Digest]);
+                response.Headers.Add(
+                    _dockerContentDigestHeader,
+                    [indexDesc.Digest]);
                 response.StatusCode = HttpStatusCode.Created;
                 return response;
             }
 
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
+            return new HttpResponseMessage(
+                HttpStatusCode.NotFound);
         }
 
         var repo = new Repository(new RepositoryOptions()
@@ -1302,7 +1235,8 @@ public class ManifestStoreTest
         var cancellationToken = new CancellationToken();
         var store = new ManifestStore(repo);
 
-        await store.TagAsync(indexDesc, targetTag, cancellationToken);
+        await store.TagAsync(
+            indexDesc, targetTag, cancellationToken);
 
         // Verify the content was correctly transmitted
         Assert.Equal(index, receivedContent);
