@@ -4451,4 +4451,112 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         await Assert.ThrowsAsync<ResponseException>(async () => await repo.PingReferrersAsync(cancellationToken));
         Assert.Equal(Referrers.ReferrersState.Unknown, repo.ReferrersState);
     }
+
+    [Fact]
+    public async Task Repository_GetPredecessorsAsync_ShouldReturnReferrers()
+    {
+        var expectedReferrersList = new List<Descriptor>
+        {
+            RandomDescriptor(artifactType: "doc/example"),
+            RandomDescriptor(artifactType: "doc/abc"),
+            RandomDescriptor(artifactType: "abc/abc"),
+        };
+        var expectedIndex = RandomIndex(expectedReferrersList);
+        var expectedIndexBytes =
+            JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
+        var desc = RandomDescriptor();
+
+        HttpResponseMessage MockedHttpHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(
+                    HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath
+                == $"/v2/test/referrers/{desc.Digest}")
+            {
+                res.Content =
+                    new ByteArrayContent(expectedIndexBytes);
+                res.Content.Headers.Add(
+                    "Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(
+                    _dockerContentDigestHeader, [desc.Digest]);
+                return res;
+            }
+            return new HttpResponseMessage(
+                HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockedHttpHandler),
+            PlainHttp = true,
+        });
+
+        var cancellationToken = new CancellationToken();
+        var predecessors = await repo.GetPredecessorsAsync(
+            desc, cancellationToken);
+        var predecessorList = predecessors.ToList();
+        Assert.Equal(
+            expectedReferrersList.Count, predecessorList.Count);
+        Assert.Equivalent(
+            expectedReferrersList, predecessorList);
+    }
+
+    [Fact]
+    public async Task Repository_GetPredecessorsAsync_EmptyReferrers()
+    {
+        var expectedIndex = RandomIndex(new List<Descriptor>());
+        var expectedIndexBytes =
+            JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
+        var desc = RandomDescriptor();
+
+        HttpResponseMessage MockedHttpHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(
+                    HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath
+                == $"/v2/test/referrers/{desc.Digest}")
+            {
+                res.Content =
+                    new ByteArrayContent(expectedIndexBytes);
+                res.Content.Headers.Add(
+                    "Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(
+                    _dockerContentDigestHeader, [desc.Digest]);
+                return res;
+            }
+            return new HttpResponseMessage(
+                HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockedHttpHandler),
+            PlainHttp = true,
+        });
+
+        var cancellationToken = new CancellationToken();
+        var predecessors = await repo.GetPredecessorsAsync(
+            desc, cancellationToken);
+        Assert.Empty(predecessors);
+    }
 }
