@@ -35,8 +35,18 @@ using Index = OrasProject.Oras.Oci.Index;
 namespace OrasProject.Oras.Registry.Remote;
 
 /// <summary>
-/// Repository is an HTTP client to a remote repository
+/// Repository is an HTTP client to a remote repository.
 /// </summary>
+/// <remarks>
+/// This type implements <see cref="IReadOnlyGraphStorage"/> to
+/// support graph operations such as
+/// <see cref="GetPredecessorsAsync"/> and
+/// <c>ExtendedCopyGraphAsync</c>. The <see cref="IRepository"/>
+/// interface does not extend <see cref="IReadOnlyGraphStorage"/>,
+/// so callers that only hold an <see cref="IRepository"/> reference
+/// must cast to <see cref="IReadOnlyGraphStorage"/> or
+/// <see cref="Repository"/> to access these graph-related APIs.
+/// </remarks>
 public class Repository : IRepository, IReadOnlyGraphStorage
 {
     /// <summary>

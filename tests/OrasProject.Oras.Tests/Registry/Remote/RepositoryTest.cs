@@ -4494,12 +4494,13 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 HttpStatusCode.NotFound);
         }
 
-        var repo = new Repository(new RepositoryOptions()
-        {
-            Reference = Reference.Parse("localhost:5000/test"),
-            Client = CustomClient(MockedHttpHandler),
-            PlainHttp = true,
-        });
+        IPredecessorFindable repo = new Repository(
+            new RepositoryOptions()
+            {
+                Reference = Reference.Parse("localhost:5000/test"),
+                Client = CustomClient(MockedHttpHandler),
+                PlainHttp = true,
+            });
 
         var cancellationToken = new CancellationToken();
         var predecessors = await repo.GetPredecessorsAsync(
@@ -4547,16 +4548,132 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 HttpStatusCode.NotFound);
         }
 
-        var repo = new Repository(new RepositoryOptions()
-        {
-            Reference = Reference.Parse("localhost:5000/test"),
-            Client = CustomClient(MockedHttpHandler),
-            PlainHttp = true,
-        });
+        IReadOnlyGraphStorage repo = new Repository(
+            new RepositoryOptions()
+            {
+                Reference = Reference.Parse("localhost:5000/test"),
+                Client = CustomClient(MockedHttpHandler),
+                PlainHttp = true,
+            });
 
         var cancellationToken = new CancellationToken();
         var predecessors = await repo.GetPredecessorsAsync(
             desc, cancellationToken);
         Assert.Empty(predecessors);
+    }
+
+    [Fact]
+    public async Task Repository_GetPredecessorsAsync_ReferrersApiError_Throws()
+    {
+        var desc = RandomDescriptor();
+
+        static HttpResponseMessage MockedHttpHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(
+                    HttpStatusCode.MethodNotAllowed);
+            }
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req,
+                StatusCode = HttpStatusCode.InternalServerError,
+                Content = new StringContent(
+                    @"{ ""errors"": [ { ""code"":"
+                    + @" ""INTERNAL_SERVER_ERROR"","
+                    + @" ""message"": ""some error"""
+                    + @" } ] }")
+            };
+            return res;
+        }
+
+        IPredecessorFindable repo = new Repository(
+            new RepositoryOptions()
+            {
+                Reference = Reference.Parse("localhost:5000/test"),
+                Client = CustomClient(MockedHttpHandler),
+                PlainHttp = true,
+            });
+
+        var cancellationToken = new CancellationToken();
+        await Assert.ThrowsAsync<ResponseException>(
+            () => repo.GetPredecessorsAsync(
+                desc, cancellationToken));
+    }
+
+    [Fact]
+    public async Task
+        Repository_GetPredecessorsAsync_FallbackToTagSchema()
+    {
+        var referrersList = new List<Descriptor>
+        {
+            RandomDescriptor(artifactType: "doc/example"),
+            RandomDescriptor(artifactType: "doc/abc"),
+        };
+        var expectedIndex = RandomIndex(referrersList);
+        var expectedIndexBytes =
+            JsonSerializer.SerializeToUtf8Bytes(expectedIndex);
+        var desc = RandomDescriptor();
+        var referrersTag = Referrers.BuildReferrersTag(desc);
+
+        HttpResponseMessage MockedHttpHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(
+                    HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath
+                == $"/v2/test/referrers/{desc.Digest}")
+            {
+                return new HttpResponseMessage(
+                    HttpStatusCode.NotFound);
+            }
+            if (req.RequestUri?.AbsolutePath
+                == $"/v2/test/manifests/{referrersTag}")
+            {
+                if (req.Headers.TryGetValues(
+                        "Accept",
+                        out IEnumerable<string>? values)
+                    && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(
+                        HttpStatusCode.BadRequest);
+                }
+                res.Content = new ByteArrayContent(
+                    expectedIndexBytes);
+                res.Content.Headers.Add(
+                    "Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(
+                    _dockerContentDigestHeader,
+                    [ComputeSha256(expectedIndexBytes)]);
+                return res;
+            }
+            return new HttpResponseMessage(
+                HttpStatusCode.NotFound);
+        }
+
+        IPredecessorFindable repo = new Repository(
+            new RepositoryOptions()
+            {
+                Reference = Reference.Parse("localhost:5000/test"),
+                Client = CustomClient(MockedHttpHandler),
+                PlainHttp = true,
+            });
+
+        var cancellationToken = new CancellationToken();
+        var predecessors = await repo.GetPredecessorsAsync(
+            desc, cancellationToken);
+        var predecessorList = predecessors.ToList();
+        Assert.Equivalent(
+            expectedIndex.Manifests, predecessorList);
     }
 }
