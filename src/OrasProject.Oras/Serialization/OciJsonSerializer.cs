@@ -23,7 +23,7 @@ namespace OrasProject.Oras.Serialization;
 
 /// <summary>
 /// OciJsonSerializer provides JSON serialization for OCI content
-/// with Go-compatible encoding (literal '+' instead of '\u002B').
+/// with Go-compatible encoding (literal '+' instead of the JSON escape U+002B).
 /// </summary>
 internal static class OciJsonSerializer
 {
