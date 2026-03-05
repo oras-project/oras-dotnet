@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -19,7 +18,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
-using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Serialization;
 
@@ -36,6 +34,12 @@ internal static class OciJsonSerializer
     /// Go-compatible string escaping. Throws if the result exceeds
     /// <see cref="OciLimits.MaxManifestBytes"/>.
     /// </summary>
+    /// <remarks>
+    /// The full byte array is materialized before the size check.
+    /// This is acceptable because OCI manifests are bounded in
+    /// practice, but callers constructing adversarially large
+    /// objects will allocate before the guard fires.
+    /// </remarks>
     internal static byte[] SerializeToUtf8Bytes<T>(T value)
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(value, s_options);
@@ -74,20 +78,6 @@ internal static class OciJsonSerializer
         return await JsonSerializer.DeserializeAsync<T>(
             utf8Json, s_options, cancellationToken)
             .ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Generates an OCI Index from a list of manifest descriptors
-    /// and returns the index descriptor and serialized bytes.
-    /// </summary>
-    internal static (Descriptor Descriptor, byte[] Content) GenerateIndex(
-        IList<Descriptor> manifests)
-    {
-        var index = new Index(manifests);
-        var indexContent = SerializeToUtf8Bytes(index);
-        return (
-            Descriptor.Create(indexContent, MediaType.ImageIndex),
-            indexContent);
     }
 
     /// <summary>

@@ -334,7 +334,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             // 2. OR the updated referrers list is empty but referrers GC
             //    is skipped, in this case an empty index should still be pushed
             //    as the old index won't get deleted
-            var (indexDesc, indexContent) = OciJsonSerializer.GenerateIndex(updatedReferrers);
+            var (indexDesc, indexContent) = Index.GenerateIndex(updatedReferrers);
             using var content = new MemoryStream(indexContent);
             await DoPushAsync(indexDesc, content, Repository.ParseReference(referrersTag), cancellationToken).ConfigureAwait(false);
         }

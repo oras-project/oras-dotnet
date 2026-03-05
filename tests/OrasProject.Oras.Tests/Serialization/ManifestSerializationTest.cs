@@ -116,6 +116,8 @@ public class ManifestSerializationTest
     /// <summary>
     /// Deserialize → re-serialize round-trip: output must contain
     /// no escaped '+' and be semantically equivalent to input.
+    /// Also verifies byte-level idempotency: serializing the
+    /// deserialized object twice produces identical bytes.
     /// </summary>
     [Theory]
     [MemberData(nameof(JsonRoundTripFixtures))]
@@ -140,26 +142,24 @@ public class ManifestSerializationTest
         Assert.DoesNotContain("\\u002B", output);
         Assert.Contains("+", output);
 
-        // Verify semantic equivalence via re-deserialization
+        // Verify byte-level idempotency: a second round-trip must
+        // produce byte-identical output for CAS compatibility.
+        byte[] reserialized2;
         if (isIndex)
         {
-            var orig = OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
-            var got = OciJsonSerializer.Deserialize<OciIndex>(reserialized)!;
-            Assert.Equal(orig.Manifests.Count, got.Manifests.Count);
+            var idx2 =
+                OciJsonSerializer.Deserialize<OciIndex>(reserialized)!;
+            reserialized2 =
+                OciJsonSerializer.SerializeToUtf8Bytes(idx2);
         }
         else
         {
-            var orig = OciJsonSerializer.Deserialize<Manifest>(bytes)!;
-            var got = OciJsonSerializer.Deserialize<Manifest>(reserialized)!;
-            Assert.Equal(orig.MediaType, got.MediaType);
-            Assert.Equal(orig.ArtifactType, got.ArtifactType);
-            Assert.Equal(orig.Layers.Count, got.Layers.Count);
-            Assert.Equal(
-                orig.Subject?.Digest, got.Subject?.Digest);
-            Assert.Equal(
-                orig.Annotations?.Count,
-                got.Annotations?.Count);
+            var m2 =
+                OciJsonSerializer.Deserialize<Manifest>(reserialized)!;
+            reserialized2 =
+                OciJsonSerializer.SerializeToUtf8Bytes(m2);
         }
+        Assert.Equal(reserialized, reserialized2);
     }
 
     [Fact]
