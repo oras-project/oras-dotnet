@@ -26,10 +26,11 @@ namespace OrasProject.Oras;
 public class CopyGraphOptions
 {
     private const int _defaultConcurrency = 3;
-    private const long _defaultMaxMetadataBytes = 4 * 1024 * 1024; // 4 MiB
 
     private int _concurrency = _defaultConcurrency;
-    private long _maxMetadataBytes = _defaultMaxMetadataBytes;
+    // Defaults to the OCI manifest size limit since manifests are
+    // the primary metadata cached during copy operations.
+    private long _maxMetadataBytes = OciLimits.MaxManifestBytes;
 
     /// <summary>
     /// Concurrency limits the maximum number of concurrent copy tasks.

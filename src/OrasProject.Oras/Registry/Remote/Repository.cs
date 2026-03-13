@@ -30,6 +30,7 @@ using System.Threading.Tasks;
 using System.Web;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Registry.Remote.Auth;
+using OrasProject.Oras.Serialization;
 using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -323,7 +324,8 @@ public class Repository : IRepository
         }
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         var limitedStreamContent = await stream.ReadStreamWithLimitAsync(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
-        var tagList = JsonSerializer.Deserialize<TagList>(limitedStreamContent);
+        var tagList = OciJsonSerializer.Deserialize<TagList>(
+            limitedStreamContent);
         return (tagList.Tags, response.ParseLink());
     }
 
@@ -600,10 +602,17 @@ public class Repository : IRepository
             }
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            var limitedStreamContent = await stream.ReadStreamWithLimitAsync(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
-            var referrersIndex = JsonSerializer.Deserialize<Index>(limitedStreamContent) ??
-                                    throw new InvalidResponseException(
-                                        $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");
+            var limitedStreamContent = await stream
+                .ReadStreamWithLimitAsync(
+                    _opts.MaxMetadataBytes,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            var referrersIndex = OciJsonSerializer
+                .Deserialize<Index>(limitedStreamContent) ??
+                throw new InvalidResponseException(
+                    $"{response.RequestMessage?.Method} "
+                    + $"{response.RequestMessage?.RequestUri}"
+                    + ": failed to decode response");
 
             // Set ReferrerState to Supported
             SetReferrersState(true);
@@ -688,8 +697,11 @@ public class Repository : IRepository
             result.Descriptor.LimitSize(Options.MaxMetadataBytes);
             using var stream = result.Stream;
             var indexBytes = await stream.ReadAllAsync(result.Descriptor, cancellationToken).ConfigureAwait(false);
-            var index = JsonSerializer.Deserialize<Index>(indexBytes) ?? throw new JsonException(
-                $"error when deserialize index manifest for referrersTag {referrersTag}");
+            var index = OciJsonSerializer
+                .Deserialize<Index>(indexBytes)
+                ?? throw new JsonException(
+                    "Error deserializing index manifest"
+                    + $" for referrersTag {referrersTag}");
             return (result.Descriptor, index.Manifests);
         }
         catch (NotFoundException)
