@@ -35,9 +35,19 @@ using Index = OrasProject.Oras.Oci.Index;
 namespace OrasProject.Oras.Registry.Remote;
 
 /// <summary>
-/// Repository is an HTTP client to a remote repository
+/// Repository is an HTTP client to a remote repository.
 /// </summary>
-public class Repository : IRepository
+/// <remarks>
+/// This type implements <see cref="IReadOnlyGraphStorage"/> to
+/// support graph operations such as
+/// <see cref="GetPredecessorsAsync"/> and
+/// <c>ExtendedCopyGraphAsync</c>. The <see cref="IRepository"/>
+/// interface does not extend <see cref="IReadOnlyGraphStorage"/>,
+/// so callers that only hold an <see cref="IRepository"/> reference
+/// must cast to <see cref="IReadOnlyGraphStorage"/> or
+/// <see cref="Repository"/> to access these graph-related APIs.
+/// </remarks>
+public class Repository : IRepository, IReadOnlyGraphStorage
 {
     /// <summary>
     /// Blobs provides access to the blob CAS only, which contains
@@ -783,5 +793,34 @@ public class Repository : IRepository
     public void SetReferrersState(bool isSupported)
     {
         ReferrersState = isSupported ? Referrers.ReferrersState.Supported : Referrers.ReferrersState.NotSupported;
+    }
+
+    /// <summary>
+    /// GetPredecessorsAsync returns the nodes directly pointing to
+    /// the given node. In the context of a remote repository, these
+    /// are the referrers of the given descriptor.
+    /// </summary>
+    /// <param name="node">
+    /// The descriptor of the node whose predecessors
+    /// (referrers) are to be retrieved.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// The cancellation token.
+    /// </param>
+    /// <returns>
+    /// A collection of descriptors representing the
+    /// predecessors (referrers) of the given node.
+    /// </returns>
+    public async Task<IEnumerable<Descriptor>> GetPredecessorsAsync(
+        Descriptor node,
+        CancellationToken cancellationToken = default)
+    {
+        var predecessors = new List<Descriptor>();
+        await foreach (var referrer in FetchReferrersAsync(node, cancellationToken)
+            .ConfigureAwait(false))
+        {
+            predecessors.Add(referrer);
+        }
+        return predecessors;
     }
 }
