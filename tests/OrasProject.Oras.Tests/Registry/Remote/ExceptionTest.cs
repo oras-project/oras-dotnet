@@ -19,20 +19,35 @@ namespace OrasProject.Oras.Tests.Registry.Remote;
 public class ExceptionTest
 {
     [Fact]
-    public async Task ReferrersSupportLevelAlreadySetException()
+    public void ReferrersStateAlreadySetException_Constructors()
     {
-        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException());
-        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set"));
-        await Assert.ThrowsAsync<ReferrersStateAlreadySetException>(() => throw new ReferrersStateAlreadySetException("Referrers state has already been set", null));
+        var ex1 = new ReferrersStateAlreadySetException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new ReferrersStateAlreadySetException(
+            "Referrers state has already been set");
+        Assert.Equal(
+            "Referrers state has already been set",
+            ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new ReferrersStateAlreadySetException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task InvalidResponseException()
+    public void InvalidResponseException_Constructors()
     {
-        await Assert.ThrowsAsync<InvalidResponseException>(() => throw new InvalidResponseException());
-        await Assert.ThrowsAsync<InvalidResponseException>(() =>
-            throw new InvalidResponseException("Invalid response"));
-        await Assert.ThrowsAsync<InvalidResponseException>(() =>
-            throw new InvalidResponseException("Invalid response", null));
+        var ex1 = new InvalidResponseException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new InvalidResponseException("Invalid response");
+        Assert.Equal("Invalid response", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new InvalidResponseException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 }
