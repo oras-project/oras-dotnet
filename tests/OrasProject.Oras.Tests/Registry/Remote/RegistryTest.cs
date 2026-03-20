@@ -173,4 +173,45 @@ public partial class RegistryTest
         }
         Assert.Equal(wantRepositories, gotRepositories);
     }
+
+    /// <summary>
+    /// ListRepositoriesAsync_EmptyResponse tests that ListRepositoriesAsync handles
+    /// a registry response with no "repositories" key gracefully instead of throwing
+    /// a NullReferenceException.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    public async Task ListRepositoriesAsync_EmptyResponse()
+    {
+        HttpResponseMessage Func(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get ||
+                req.RequestUri?.AbsolutePath != "/v2/_catalog")
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+
+            res.Content = new StringContent("{}");
+            return res;
+        }
+
+        var registry = new Oras.Registry.Remote.Registry(new RepositoryOptions()
+        {
+            Reference = new Reference("localhost:5000"),
+            PlainHttp = true,
+            Client = CustomClient(Func),
+        });
+        var cancellationToken = new CancellationToken();
+
+        var gotRepositories = new List<string>();
+        await foreach (var repo in registry.ListRepositoriesAsync().WithCancellation(cancellationToken))
+        {
+            gotRepositories.Add(repo);
+        }
+        Assert.Empty(gotRepositories);
+    }
 }
