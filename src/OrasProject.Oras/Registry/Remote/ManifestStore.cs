@@ -420,9 +420,22 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <returns></returns>
     public async Task TagAsync(Descriptor descriptor, string reference, CancellationToken cancellationToken = default)
     {
+        // Enforce size limit to prevent unbounded memory allocations during buffering.
+        // This uses MaxMetadataBytes as a reasonable default; callers with legitimate
+        // large manifests can increase Repository.Options.MaxMetadataBytes if needed.
+        descriptor.LimitSize(Repository.Options.MaxMetadataBytes);
         var remoteReference = Repository.ParseReference(reference);
         using var contentStream = await FetchAsync(descriptor, cancellationToken).ConfigureAwait(false);
-        await DoPushAsync(descriptor, contentStream, remoteReference, cancellationToken).ConfigureAwait(false);
+        // Buffer the content into a seekable MemoryStream to support retry scenarios
+        // where the stream needs to be rewound (e.g., authentication retries).
+        // ReadAllAsync also verifies content integrity via digest validation,
+        // consistent with other manifest operations in this codebase.
+        // Note: ReadAllAsync currently hardcodes SHA-256 for digest
+        // verification. This is a pre-existing limitation tracked separately.
+        var contentBytes = await contentStream.ReadAllAsync(
+            descriptor, cancellationToken).ConfigureAwait(false);
+        using var seekableStream = new MemoryStream(contentBytes);
+        await DoPushAsync(descriptor, seekableStream, remoteReference, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
