@@ -14,6 +14,7 @@
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Exceptions;
+using OrasProject.Oras.Serialization;
 using System.Text;
 using System.Text.Json;
 using Xunit;
@@ -177,7 +178,7 @@ public class PackerTest
             Layers = layers,
             Annotations = annotations
         };
-        var expectedManifestBytes = JsonSerializer.SerializeToUtf8Bytes(expectedManifest);
+        var expectedManifestBytes = OciJsonSerializer.SerializeToUtf8Bytes(expectedManifest);
 
         using var rc = await memoryTarget.FetchAsync(manifestDesc, cancellationToken);
         Assert.NotNull(rc);
@@ -223,12 +224,12 @@ public class PackerTest
             Layers = layers,
             Annotations = annotations
         };
-        expectedManifestBytes = JsonSerializer.SerializeToUtf8Bytes(expectedManifest);
+        expectedManifestBytes = OciJsonSerializer.SerializeToUtf8Bytes(expectedManifest);
 
         using var rc2 = await memoryTarget.FetchAsync(manifestDesc, cancellationToken);
         Assert.NotNull(rc2);
         Manifest? manifest2 = await JsonSerializer.DeserializeAsync<Manifest>(rc2!);
-        var got2 = JsonSerializer.SerializeToUtf8Bytes(manifest2);
+        var got2 = OciJsonSerializer.SerializeToUtf8Bytes(manifest2);
         Assert.Equal(expectedManifestBytes, got2);
 
         // Verify descriptor
@@ -493,10 +494,10 @@ public class PackerTest
             Layers = layers,
             Annotations = annotations
         };
-        var expectedManifestBytes = JsonSerializer.SerializeToUtf8Bytes(expectedManifest);
+        var expectedManifestBytes = OciJsonSerializer.SerializeToUtf8Bytes(expectedManifest);
         using var rc = await memoryTarget.FetchAsync(manifestDesc, cancellationToken);
         Manifest? manifest = await JsonSerializer.DeserializeAsync<Manifest>(rc);
-        var got = JsonSerializer.SerializeToUtf8Bytes(manifest);
+        var got = OciJsonSerializer.SerializeToUtf8Bytes(manifest);
         Assert.Equal(expectedManifestBytes, got);
 
         // Verify descriptor
@@ -524,10 +525,10 @@ public class PackerTest
 
         manifestDesc = await Packer.PackManifestAsync(memoryTarget, Packer.ManifestVersion.Version1_1, null, opts, cancellationToken);
         expectedManifest.ArtifactType = null;
-        expectedManifestBytes = JsonSerializer.SerializeToUtf8Bytes(expectedManifest);
+        expectedManifestBytes = OciJsonSerializer.SerializeToUtf8Bytes(expectedManifest);
         using var rc2 = await memoryTarget.FetchAsync(manifestDesc, cancellationToken);
         Manifest? manifest2 = await JsonSerializer.DeserializeAsync<Manifest>(rc2);
-        var got2 = JsonSerializer.SerializeToUtf8Bytes(manifest2);
+        var got2 = OciJsonSerializer.SerializeToUtf8Bytes(manifest2);
         Assert.Equal(expectedManifestBytes, got2);
 
         expectedManifestDesc = new Descriptor
@@ -560,10 +561,10 @@ public class PackerTest
         var expectedConfigDesc = emptyJSON;
         expectedManifest.ArtifactType = artifactType;
         expectedManifest.Config = expectedConfigDesc;
-        expectedManifestBytes = JsonSerializer.SerializeToUtf8Bytes(expectedManifest);
+        expectedManifestBytes = OciJsonSerializer.SerializeToUtf8Bytes(expectedManifest);
         using var rc3 = await memoryTarget.FetchAsync(manifestDesc, cancellationToken);
         Manifest? manifest3 = await JsonSerializer.DeserializeAsync<Manifest>(rc3);
-        var got3 = JsonSerializer.SerializeToUtf8Bytes(manifest3);
+        var got3 = OciJsonSerializer.SerializeToUtf8Bytes(manifest3);
         Assert.Equal(expectedManifestBytes, got3);
 
         expectedManifestDesc = new Descriptor
@@ -708,5 +709,53 @@ public class PackerTest
             // Check if the caught exception is of type InvalidDateTimeFormatException
             Assert.True(ex is NotSupportedException, $"Expected InvalidDateTimeFormatException but got {ex.GetType().Name}");
         }
+    }
+
+    [Fact]
+    public async Task PackManifestAsync_ShouldNotEscapePlusSign()
+    {
+        var memoryTarget = new MemoryStore();
+        var artifactType = "application/vnd.test+encoding";
+
+        var manifestDesc = await Packer.PackManifestAsync(
+            memoryTarget,
+            Packer.ManifestVersion.Version1_1,
+            artifactType,
+            new PackManifestOptions());
+
+        var stream = await memoryTarget.FetchAsync(manifestDesc);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        var rawJson = await reader.ReadToEndAsync();
+
+        Assert.DoesNotContain("\\u002B", rawJson);
+        Assert.Contains("+", rawJson);
+    }
+
+    [Fact]
+    public async Task PackManifestAsync_AnnotationsWithPlus()
+    {
+        var memoryTarget = new MemoryStore();
+        var artifactType = "application/vnd.test+encoding";
+        var opts = new PackManifestOptions
+        {
+            ManifestAnnotations = new Dictionary<string, string>
+            {
+                ["org.example+custom/key+1"] = "value+with+plus"
+            }
+        };
+
+        var manifestDesc = await Packer.PackManifestAsync(
+            memoryTarget,
+            Packer.ManifestVersion.Version1_1,
+            artifactType,
+            opts);
+
+        var stream = await memoryTarget.FetchAsync(manifestDesc);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        var rawJson = await reader.ReadToEndAsync();
+
+        Assert.DoesNotContain("\\u002B", rawJson);
+        Assert.Contains("org.example+custom/key+1", rawJson);
+        Assert.Contains("value+with+plus", rawJson);
     }
 }
