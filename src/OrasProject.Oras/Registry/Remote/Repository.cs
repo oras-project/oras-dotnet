@@ -275,11 +275,6 @@ public class Repository : IRepository
         {
             (var tags, url) = await FetchTagsPageAsync(last, url!, cancellationToken).ConfigureAwait(false);
 
-            if (tags == null)
-            {
-                yield break;
-            }
-
             last = null;
             foreach (var tag in tags)
             {
@@ -324,13 +319,13 @@ public class Repository : IRepository
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         var limitedStreamContent = await stream.ReadStreamWithLimitAsync(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
         var tagList = JsonSerializer.Deserialize<TagList>(limitedStreamContent);
-        return (tagList.Tags, response.ParseLink());
+        return (tagList.Tags ?? Array.Empty<string>(), response.ParseLink());
     }
 
     internal struct TagList
     {
         [JsonPropertyName("tags")]
-        public string[] Tags { get; set; }
+        public string[]? Tags { get; set; }
     }
 
     /// <summary>

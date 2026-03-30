@@ -145,12 +145,12 @@ public class Registry : IRegistry
         }
         var data = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         var repositories = JsonSerializer.Deserialize<RepositoryList>(data);
-        return (repositories.Repositories, response.ParseLink());
+        return (repositories.Repositories ?? Array.Empty<string>(), response.ParseLink());
     }
 
     internal struct RepositoryList
     {
         [JsonPropertyName("repositories")]
-        public string[] Repositories { get; set; }
+        public string[]? Repositories { get; set; }
     }
 }
