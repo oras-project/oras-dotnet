@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -38,7 +39,7 @@ public static class FetchableExtensions
             case MediaType.ImageManifest:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
-                    var manifest = JsonSerializer.Deserialize<Manifest>(content) ??
+                    var manifest = OciJsonSerializer.Deserialize<Manifest>(content) ??
                                         throw new JsonException("Failed to deserialize manifest");
 
                     var descriptors = new List<Descriptor>();
@@ -55,7 +56,7 @@ public static class FetchableExtensions
             case MediaType.ImageIndex:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
-                    var index = JsonSerializer.Deserialize<Index>(content) ??
+                    var index = OciJsonSerializer.Deserialize<Index>(content) ??
                                         throw new JsonException("Failed to deserialize index manifest");
                     var descriptors = new List<Descriptor>();
                     if (index.Subject != null)
