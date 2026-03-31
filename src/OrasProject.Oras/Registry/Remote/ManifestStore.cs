@@ -256,14 +256,29 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <returns></returns>
     private async Task ProcessReferrersAndPushIndex(Descriptor desc, Stream content, CancellationToken cancellationToken = default)
     {
+        // Buffer stream for sync deserialization — avoids async
+        // state machine overhead for already-buffered data.
+        byte[] contentBytes;
+        if (content is MemoryStream ms)
+        {
+            contentBytes = ms.ToArray();
+        }
+        else
+        {
+            using var buf = new MemoryStream();
+            await content.CopyToAsync(buf, cancellationToken)
+                .ConfigureAwait(false);
+            contentBytes = buf.ToArray();
+        }
+
         Descriptor? subject;
         switch (desc.MediaType)
         {
             case MediaType.ImageIndex:
-                var indexManifest = await OciJsonSerializer
-                    .DeserializeAsync<Index>(content, cancellationToken)
-                    .ConfigureAwait(false)
-                    ?? throw new JsonException("Failed to deserialize index");
+                var indexManifest =
+                    OciJsonSerializer.Deserialize<Index>(contentBytes)
+                    ?? throw new JsonException(
+                        "Failed to deserialize index");
                 if (indexManifest.Subject == null)
                 {
                     return;
@@ -273,10 +288,11 @@ public class ManifestStore(Repository repository) : IManifestStore
                 desc.Annotations = indexManifest.Annotations;
                 break;
             case MediaType.ImageManifest:
-                var imageManifest = await OciJsonSerializer
-                    .DeserializeAsync<Manifest>(content, cancellationToken)
-                    .ConfigureAwait(false)
-                    ?? throw new JsonException("Failed to deserialize manifest");
+                var imageManifest =
+                    OciJsonSerializer.Deserialize<Manifest>(
+                        contentBytes)
+                    ?? throw new JsonException(
+                        "Failed to deserialize manifest");
                 if (imageManifest.Subject == null)
                 {
                     return;
@@ -480,13 +496,28 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <param name="cancellationToken"></param>
     private async Task IndexReferrersForDelete(Descriptor target, Stream manifestContent, CancellationToken cancellationToken = default)
     {
+        // Buffer stream for sync deserialization — avoids async
+        // state machine overhead for already-buffered data.
+        byte[] manifestBytes;
+        if (manifestContent is MemoryStream ms)
+        {
+            manifestBytes = ms.ToArray();
+        }
+        else
+        {
+            using var buf = new MemoryStream();
+            await manifestContent.CopyToAsync(
+                buf, cancellationToken).ConfigureAwait(false);
+            manifestBytes = buf.ToArray();
+        }
+
         Descriptor subject;
         switch (target.MediaType)
         {
             case MediaType.ImageManifest:
-                var imageManifest = await OciJsonSerializer
-                    .DeserializeAsync<Manifest>(manifestContent, cancellationToken)
-                    .ConfigureAwait(false);
+                var imageManifest =
+                    OciJsonSerializer.Deserialize<Manifest>(
+                        manifestBytes);
                 if (imageManifest?.Subject == null)
                 {
                     // no subject, no indexing needed
@@ -495,9 +526,9 @@ public class ManifestStore(Repository repository) : IManifestStore
                 subject = imageManifest.Subject;
                 break;
             case MediaType.ImageIndex:
-                var imageIndex = await OciJsonSerializer
-                    .DeserializeAsync<Index>(manifestContent, cancellationToken)
-                    .ConfigureAwait(false);
+                var imageIndex =
+                    OciJsonSerializer.Deserialize<Index>(
+                        manifestBytes);
                 if (imageIndex?.Subject == null)
                 {
                     // no subject, no indexing needed

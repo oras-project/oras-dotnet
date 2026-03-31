@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Buffers;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -89,6 +91,29 @@ internal static class OciJsonSerializer
     }
 
     /// <summary>
+    /// Returns true if the string contains any character that
+    /// <see cref="EscapeJsonString"/> would escape. Used to skip the
+    /// full escape pass for the common case of simple ASCII strings
+    /// (digests, media types, tags).
+    /// </summary>
+    internal static bool NeedsEscaping(string value)
+    {
+        foreach (var ch in value)
+        {
+            if (ch <= '\u001F' || ch == '"' || ch == '\\' ||
+                ch == '<' || ch == '>' || ch == '&' ||
+                ch == '\u2028' || ch == '\u2029')
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static ReadOnlySpan<byte> HexDigits =>
+        "0123456789abcdef"u8;
+
+    /// <summary>
     /// Escapes a JSON string value.
     /// Escapes: ", \, control chars, &lt;, &gt;, &amp;, U+2028, U+2029.
     /// Does NOT escape '+', matching Go's encoding/json.Marshal for
@@ -96,67 +121,99 @@ internal static class OciJsonSerializer
     /// </summary>
     internal static string EscapeJsonString(string value)
     {
-        var sb = new StringBuilder(value.Length);
-        foreach (var ch in value)
+        // Fast path: if no chars need escaping, return as-is.
+        if (!NeedsEscaping(value))
         {
-            switch (ch)
-            {
-                // JSON structural characters
-                case '"':
-                    sb.Append("\\\"");
-                    break;
-                case '\\':
-                    sb.Append("\\\\");
-                    break;
-                // Named control character escapes
-                case '\b':
-                    sb.Append("\\b");
-                    break;
-                case '\f':
-                    sb.Append("\\f");
-                    break;
-                case '\n':
-                    sb.Append("\\n");
-                    break;
-                case '\r':
-                    sb.Append("\\r");
-                    break;
-                case '\t':
-                    sb.Append("\\t");
-                    break;
-                // HTML-sensitive characters (Go escapes these)
-                case '<':
-                    sb.Append("\\u003c");
-                    break;
-                case '>':
-                    sb.Append("\\u003e");
-                    break;
-                case '&':
-                    sb.Append("\\u0026");
-                    break;
-                // Unicode line/paragraph separators (Go escapes these)
-                case '\u2028':
-                    sb.Append("\\u2028");
-                    break;
-                case '\u2029':
-                    sb.Append("\\u2029");
-                    break;
-                default:
-                    // Escape remaining control chars (U+0000–U+001F)
-                    // as \uXXXX; pass all other characters through
-                    // literally, including '+'.
-                    if (ch <= '\u001F')
-                    {
-                        sb.Append($"\\u{(int)ch:x4}");
-                    }
-                    else
-                    {
-                        sb.Append(ch);
-                    }
-                    break;
-            }
+            return value;
         }
-        return sb.ToString();
+
+        // Worst case: every char becomes 6 chars (\uXXXX).
+        var maxLen = value.Length * 6;
+        var pooled = ArrayPool<char>.Shared.Rent(maxLen);
+        try
+        {
+            var pos = 0;
+            foreach (var ch in value)
+            {
+                switch (ch)
+                {
+                    case '"':
+                        pooled[pos++] = '\\';
+                        pooled[pos++] = '"';
+                        break;
+                    case '\\':
+                        pooled[pos++] = '\\';
+                        pooled[pos++] = '\\';
+                        break;
+                    case '\b':
+                        pooled[pos++] = '\\';
+                        pooled[pos++] = 'b';
+                        break;
+                    case '\f':
+                        pooled[pos++] = '\\';
+                        pooled[pos++] = 'f';
+                        break;
+                    case '\n':
+                        pooled[pos++] = '\\';
+                        pooled[pos++] = 'n';
+                        break;
+                    case '\r':
+                        pooled[pos++] = '\\';
+                        pooled[pos++] = 'r';
+                        break;
+                    case '\t':
+                        pooled[pos++] = '\\';
+                        pooled[pos++] = 't';
+                        break;
+                    case '<':
+                        WriteHexEscape(pooled, ref pos, ch);
+                        break;
+                    case '>':
+                        WriteHexEscape(pooled, ref pos, ch);
+                        break;
+                    case '&':
+                        WriteHexEscape(pooled, ref pos, ch);
+                        break;
+                    case '\u2028':
+                        WriteHexEscape(pooled, ref pos, ch);
+                        break;
+                    case '\u2029':
+                        WriteHexEscape(pooled, ref pos, ch);
+                        break;
+                    default:
+                        if (ch <= '\u001F')
+                        {
+                            WriteHexEscape(pooled, ref pos, ch);
+                        }
+                        else
+                        {
+                            pooled[pos++] = ch;
+                        }
+                        break;
+                }
+            }
+            return new string(pooled, 0, pos);
+        }
+        finally
+        {
+            ArrayPool<char>.Shared.Return(pooled);
+        }
+    }
+
+    /// <summary>
+    /// Writes a \uXXXX hex escape sequence into the buffer at
+    /// the current position.
+    /// </summary>
+    private static void WriteHexEscape(
+        char[] buffer, ref int pos, char ch)
+    {
+        var hex = HexDigits;
+        buffer[pos++] = '\\';
+        buffer[pos++] = 'u';
+        buffer[pos++] = (char)hex[(ch >> 12) & 0xF];
+        buffer[pos++] = (char)hex[(ch >> 8) & 0xF];
+        buffer[pos++] = (char)hex[(ch >> 4) & 0xF];
+        buffer[pos++] = (char)hex[ch & 0xF];
     }
 
     private static JsonSerializerOptions CreateOptions()
