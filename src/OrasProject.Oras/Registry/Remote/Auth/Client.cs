@@ -15,6 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -524,6 +525,27 @@ public class Client : IClient
         {
             return await SendRequestAsync(originalRequest, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
         }
+
+        // Buffer non-seekable content upfront so auth retries can rewind it.
+        // This handles scope upgrades where a body-containing request may need
+        // to be resent after obtaining a new token.
+        if (originalRequest.Content != null)
+        {
+            var stream = await originalRequest.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            if (!stream.CanSeek)
+            {
+                var memStream = new MemoryStream();
+                await stream.CopyToAsync(memStream, cancellationToken).ConfigureAwait(false);
+                memStream.Position = 0;
+                var bufferedContent = new StreamContent(memStream);
+                foreach (var header in originalRequest.Content.Headers)
+                {
+                    bufferedContent.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+                originalRequest.Content = bufferedContent;
+            }
+        }
+
         var host = originalRequest.RequestUri?.Authority ??
                     throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);

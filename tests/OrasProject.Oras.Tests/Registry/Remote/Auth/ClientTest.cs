@@ -18,6 +18,7 @@ using Moq;
 using Moq.Protected;
 using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras.Registry.Remote.Exceptions;
+using OrasProject.Oras.Tests.Registry.Remote;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using Xunit;
 
@@ -1726,5 +1727,284 @@ public class ClientTest
         // Verify both clients were used with the custom timeout configuration
         Assert.Equal(TimeSpan.FromSeconds(30), client.BaseClient.Timeout);
         Assert.Equal(TimeSpan.FromSeconds(30), client.NoRedirectClient.Timeout);
+    }
+
+    [Fact]
+    public async Task SendAsync_NonSeekableContent_BufferedForAuthRetry()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = "https://auth.example.com";
+        var service = "test_service";
+        string[] scopes = ["repository:repo1:push"];
+        var expectedToken = "access_token";
+        var bodyContent = "test body content"u8.ToArray();
+        string? capturedBody = null;
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            // Token endpoint
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.GetLeftPart(UriPartial.Path)
+                    .TrimEnd('/') == realm.TrimEnd('/'))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        $"{{\"access_token\": \"{expectedToken}\"}}"),
+                    RequestMessage = req
+                };
+            }
+
+            // Registry endpoint
+            if (req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization is { Scheme: "Bearer" }
+                    && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    // Capture the body on the successful retry
+                    if (req.Content != null)
+                    {
+                        capturedBody = await req.Content
+                            .ReadAsStringAsync(cancellationToken);
+                    }
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.Unauthorized,
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\""
+                                + $",service=\"{service}\""
+                                + $",scope=\"{string.Join(" ", scopes)}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+
+        // Use a non-seekable stream as request content
+        var nonSeekableStream =
+            new NonSeekableStream(bodyContent);
+        var content = new StreamContent(nonSeekableStream);
+        content.Headers.TryAddWithoutValidation(
+            "Content-Type", "application/octet-stream");
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put, $"https://{host}/v2/repo/blobs/uploads/1")
+        {
+            Content = content
+        };
+
+        // Act
+        var response = await client.SendAsync(
+            request, cancellationToken: CancellationToken.None);
+
+        // Assert — request succeeded and body was preserved
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("test body content", capturedBody);
+    }
+
+    [Fact]
+    public async Task SendAsync_SeekableContent_NotRebuffered()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = "https://auth.example.com";
+        var service = "test_service";
+        string[] scopes = ["repository:repo1:push"];
+        var expectedToken = "access_token";
+        var bodyContent = "seekable body"u8.ToArray();
+        string? capturedBody = null;
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.GetLeftPart(UriPartial.Path)
+                    .TrimEnd('/') == realm.TrimEnd('/'))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        $"{{\"access_token\": \"{expectedToken}\"}}"),
+                    RequestMessage = req
+                };
+            }
+
+            if (req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization is { Scheme: "Bearer" }
+                    && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    if (req.Content != null)
+                    {
+                        capturedBody = await req.Content
+                            .ReadAsStringAsync(cancellationToken);
+                    }
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.Unauthorized,
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\""
+                                + $",service=\"{service}\""
+                                + $",scope=\"{string.Join(" ", scopes)}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+
+        // Use a seekable MemoryStream as request content
+        var seekableStream = new MemoryStream(bodyContent);
+        var content = new StreamContent(seekableStream);
+        content.Headers.TryAddWithoutValidation(
+            "Content-Type", "application/octet-stream");
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put, $"https://{host}/v2/repo/blobs/uploads/1")
+        {
+            Content = content
+        };
+
+        // Act
+        var response = await client.SendAsync(
+            request, cancellationToken: CancellationToken.None);
+
+        // Assert — body preserved through seekable rewind
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("seekable body", capturedBody);
+    }
+
+    [Fact]
+    public async Task SendAsync_NonSeekableContent_PreservesContentHeaders()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = "https://auth.example.com";
+        var service = "test_service";
+        string[] scopes = ["repository:repo1:push"];
+        var expectedToken = "access_token";
+        var bodyContent = "header test"u8.ToArray();
+        string? capturedContentType = null;
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.GetLeftPart(UriPartial.Path)
+                    .TrimEnd('/') == realm.TrimEnd('/'))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        $"{{\"access_token\": \"{expectedToken}\"}}"),
+                    RequestMessage = req
+                };
+            }
+
+            if (req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization is { Scheme: "Bearer" }
+                    && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    capturedContentType = req.Content?.Headers
+                        .ContentType?.MediaType;
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.Unauthorized,
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\""
+                                + $",service=\"{service}\""
+                                + $",scope=\"{string.Join(" ", scopes)}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+
+        var nonSeekableStream =
+            new NonSeekableStream(bodyContent);
+        var content = new StreamContent(nonSeekableStream);
+        content.Headers.TryAddWithoutValidation(
+            "Content-Type", "application/vnd.oci.image.manifest.v1+json");
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put, $"https://{host}/v2/repo/manifests/latest")
+        {
+            Content = content
+        };
+
+        // Act
+        var response = await client.SendAsync(
+            request, cancellationToken: CancellationToken.None);
+
+        // Assert — content type header survived the buffering
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(
+            "application/vnd.oci.image.manifest.v1+json",
+            capturedContentType);
     }
 }
