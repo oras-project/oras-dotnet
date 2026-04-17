@@ -699,8 +699,20 @@ public class Client : IClient
             return;
         }
 
-        var stream = await originalContent.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        if (stream.CanSeek || originalContent.Headers.ContentLength is not long len || len > MaxBufferSize)
+        // Check Content-Length before touching the stream so we
+        // avoid unnecessary ReadAsStreamAsync calls for oversized
+        // or unknown-length payloads (which could have side effects
+        // on custom HttpContent implementations).
+        if (originalContent.Headers.ContentLength is not long len
+            || len > MaxBufferSize)
+        {
+            return;
+        }
+
+        var stream = await originalContent
+            .ReadAsStreamAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (stream.CanSeek)
         {
             return;
         }
@@ -721,6 +733,7 @@ public class Client : IClient
             if (total > MaxBufferSize)
             {
                 memStream.Dispose();
+                originalContent.Dispose();
                 throw new InvalidOperationException(
                     "Buffered content exceeded the"
                     + " maximum buffer size of"
@@ -746,11 +759,14 @@ public class Client : IClient
                 header.Key, header.Value);
         }
         bufferedContent.Headers.ContentLength = memStream.Length;
-        // Replace the request content with the buffered copy and
-        // dispose the original to avoid leaking the underlying
-        // stream. This intentionally mutates the caller's request
-        // because SendCoreAsync owns the request lifecycle and the
-        // original non-seekable stream cannot be rewound.
+        // Replace request.Content with the buffered copy and
+        // dispose the original content to avoid leaking the
+        // underlying stream. This intentionally mutates the
+        // caller-provided HttpRequestMessage: after buffering,
+        // the original HttpContent and its stream are no longer
+        // usable by the caller. This is required because the
+        // original non-seekable stream cannot be rewound for
+        // subsequent processing or retries.
         request.Content = bufferedContent;
         originalContent.Dispose();
     }
