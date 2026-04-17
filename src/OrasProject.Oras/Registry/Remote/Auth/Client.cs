@@ -705,6 +705,12 @@ public class Client : IClient
             return;
         }
 
+        // Content-Length may not match the actual stream length:
+        //  - If the stream is longer than declared, the chunked
+        //    copy guard below caps it at MaxBufferSize and throws.
+        //  - If the stream is shorter than declared, we derive the
+        //    final Content-Length from the actual buffered bytes
+        //    (see below) so the outgoing request stays consistent.
         var memStream = new MemoryStream((int)len);
         var buf = new byte[81920];
         long total = 0;
@@ -727,8 +733,24 @@ public class Client : IClient
         var bufferedContent = new StreamContent(memStream);
         foreach (var header in originalContent.Headers)
         {
-            bufferedContent.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            // Skip Content-Length — derive it from the actual
+            // buffered bytes so a lying caller header cannot
+            // produce a mismatched request.
+            if (string.Equals(
+                    header.Key, "Content-Length",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            bufferedContent.Headers.TryAddWithoutValidation(
+                header.Key, header.Value);
         }
+        bufferedContent.Headers.ContentLength = memStream.Length;
+        // Replace the request content with the buffered copy and
+        // dispose the original to avoid leaking the underlying
+        // stream. This intentionally mutates the caller's request
+        // because SendCoreAsync owns the request lifecycle and the
+        // original non-seekable stream cannot be rewound.
         request.Content = bufferedContent;
         originalContent.Dispose();
     }
