@@ -2028,4 +2028,42 @@ public class ClientTest
             "application/vnd.oci.image.manifest.v1+json",
             capturedContentType);
     }
+
+    [Fact]
+    public async Task SendAsync_NonSeekableContent_ExceedsMaxBuffer_ThrowsOnContentLength()
+    {
+        // Arrange
+        var host = "example.com";
+        var bodyContent = "small"u8.ToArray();
+
+        HttpResponseMessage MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+
+        var nonSeekableStream = new NonSeekableStream(bodyContent);
+        var content = new StreamContent(nonSeekableStream);
+        // Declare a Content-Length exceeding the 4 MB limit
+        content.Headers.ContentLength = 5L * 1024 * 1024;
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put, $"https://{host}/v2/repo/blobs/uploads/1")
+        {
+            Content = content
+        };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.SendAsync(
+                request, cancellationToken: CancellationToken.None));
+        Assert.Contains("exceeds the maximum buffer size", ex.Message);
+    }
 }
