@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 using System.Net;
+using System.IO;
 using System.Net.Http.Headers;
 using System.Security.Authentication;
 using System.Text;
@@ -1780,7 +1781,8 @@ public class ClientTest
                 // initial attempt, as a real HttpClient would.
                 if (req.Content != null)
                 {
-                    await req.Content.ReadAsStreamAsync(cancellationToken);
+                    var s = await req.Content.ReadAsStreamAsync(cancellationToken);
+                    await s.CopyToAsync(Stream.Null, cancellationToken);
                 }
 
                 return new HttpResponseMessage
@@ -1816,9 +1818,11 @@ public class ClientTest
         var content = new StreamContent(nonSeekableStream);
         content.Headers.TryAddWithoutValidation(
             "Content-Type", "application/octet-stream");
+        content.Headers.ContentLength = bodyContent.Length;
 
         using var request = new HttpRequestMessage(
-            HttpMethod.Put, $"https://{host}/v2/repo/blobs/uploads/1")
+            HttpMethod.Put,
+            $"https://{host}/v2/repo/blobs/uploads/1")
         {
             Content = content
         };
@@ -1880,7 +1884,8 @@ public class ClientTest
                 // initial attempt, as a real HttpClient would.
                 if (req.Content != null)
                 {
-                    await req.Content.ReadAsStreamAsync(cancellationToken);
+                    var s = await req.Content.ReadAsStreamAsync(cancellationToken);
+                    await s.CopyToAsync(Stream.Null, cancellationToken);
                 }
 
                 return new HttpResponseMessage
@@ -1976,7 +1981,8 @@ public class ClientTest
                 // initial attempt, as a real HttpClient would.
                 if (req.Content != null)
                 {
-                    await req.Content.ReadAsStreamAsync(cancellationToken);
+                    var s = await req.Content.ReadAsStreamAsync(cancellationToken);
+                    await s.CopyToAsync(Stream.Null, cancellationToken);
                 }
 
                 return new HttpResponseMessage
@@ -2010,7 +2016,9 @@ public class ClientTest
             new NonSeekableStream(bodyContent);
         var content = new StreamContent(nonSeekableStream);
         content.Headers.TryAddWithoutValidation(
-            "Content-Type", "application/vnd.oci.image.manifest.v1+json");
+            "Content-Type",
+            "application/vnd.oci.image.manifest.v1+json");
+        content.Headers.ContentLength = bodyContent.Length;
 
         using var request = new HttpRequestMessage(
             HttpMethod.Put, $"https://{host}/v2/repo/manifests/latest")
@@ -2030,9 +2038,10 @@ public class ClientTest
     }
 
     [Fact]
-    public async Task SendAsync_NonSeekableContent_ExceedsMaxBuffer_ThrowsOnContentLength()
+    public async Task SendAsync_LargeNonSeekableContent_SkipsBuffering()
     {
-        // Arrange
+        // Arrange — Content-Length exceeds MaxBufferSize so buffering
+        // is skipped and the request proceeds on the first attempt.
         var host = "example.com";
         var bodyContent = "small"u8.ToArray();
 
@@ -2051,30 +2060,30 @@ public class ClientTest
 
         var nonSeekableStream = new NonSeekableStream(bodyContent);
         var content = new StreamContent(nonSeekableStream);
-        // Declare a Content-Length exceeding the 4 MB limit
         content.Headers.ContentLength = 5L * 1024 * 1024;
 
         using var request = new HttpRequestMessage(
-            HttpMethod.Put, $"https://{host}/v2/repo/blobs/uploads/1")
+            HttpMethod.Put,
+            $"https://{host}/v2/repo/blobs/uploads/1")
         {
             Content = content
         };
 
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => client.SendAsync(
-                request, cancellationToken: CancellationToken.None));
-        Assert.Contains("exceeds the maximum buffer size", ex.Message);
+        // Act — should succeed without throwing
+        var response = await client.SendAsync(
+            request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
-    public async Task SendAsync_NonSeekableContent_ExceedsMaxBuffer_ThrowsAfterCopy()
+    public async Task SendAsync_UnknownLengthNonSeekableContent_SkipsBuffering()
     {
-        // Arrange
+        // Arrange — no Content-Length on a non-seekable stream,
+        // so buffering is skipped and the request proceeds.
         var host = "example.com";
-        // Create content just over the 4 MB limit without
-        // setting Content-Length so the early check is skipped.
-        var bodyContent = new byte[Client.MaxBufferSize + 1];
+        var bodyContent = "payload"u8.ToArray();
 
         HttpResponseMessage MockHttpRequestHandler(
             HttpRequestMessage req,
@@ -2091,10 +2100,52 @@ public class ClientTest
 
         var nonSeekableStream = new NonSeekableStream(bodyContent);
         var content = new StreamContent(nonSeekableStream);
-        // Do not set Content-Length — forces the post-copy check
 
         using var request = new HttpRequestMessage(
-            HttpMethod.Put, $"https://{host}/v2/repo/blobs/uploads/1")
+            HttpMethod.Put,
+            $"https://{host}/v2/repo/blobs/uploads/1")
+        {
+            Content = content
+        };
+
+        // Act — should succeed without throwing
+        var response = await client.SendAsync(
+            request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SendAsync_NonSeekableContent_ContentLengthLies_Throws()
+    {
+        // Arrange — Content-Length claims small but stream yields
+        // more than MaxBufferSize, triggering the chunked copy guard.
+        var host = "example.com";
+        var bodyContent = new byte[Client.MaxBufferSize + 1];
+
+        HttpResponseMessage MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+
+        var nonSeekableStream =
+            new NonSeekableStream(bodyContent);
+        var content = new StreamContent(nonSeekableStream);
+        // Lie: claim small enough to buffer
+        content.Headers.ContentLength = 1024;
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put,
+            $"https://{host}/v2/repo/blobs/uploads/1")
         {
             Content = content
         };
@@ -2102,7 +2153,9 @@ public class ClientTest
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => client.SendAsync(
-                request, cancellationToken: CancellationToken.None));
-        Assert.Contains("exceeds the maximum buffer size", ex.Message);
+                request,
+                cancellationToken: CancellationToken.None));
+        Assert.Contains(
+            "exceeded the maximum buffer size", ex.Message);
     }
 }

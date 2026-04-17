@@ -532,41 +532,15 @@ public class Client : IClient
             return await SendRequestAsync(originalRequest, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
         }
 
-        // Buffer non-seekable content upfront so auth retries can rewind it.
-        // This handles scope upgrades where a body-containing request may need
-        // to be resent after obtaining a new token.
-        var originalContent = originalRequest.Content;
-        if (originalContent != null)
-        {
-            var stream = await originalContent.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            if (!stream.CanSeek)
-            {
-                if (originalContent.Headers.ContentLength > MaxBufferSize)
-                {
-                    throw new InvalidOperationException(
-                        $"Content length {originalContent.Headers.ContentLength}"
-                        + $" exceeds the maximum buffer size of {MaxBufferSize} bytes.");
-                }
-                var memStream = new MemoryStream();
-                await stream.CopyToAsync(memStream, cancellationToken).ConfigureAwait(false);
-                if (memStream.Length > MaxBufferSize)
-                {
-                    var length = memStream.Length;
-                    memStream.Dispose();
-                    throw new InvalidOperationException(
-                        $"Buffered content size {length}"
-                        + $" exceeds the maximum buffer size of {MaxBufferSize} bytes.");
-                }
-                memStream.Position = 0;
-                var bufferedContent = new StreamContent(memStream);
-                foreach (var header in originalContent.Headers)
-                {
-                    bufferedContent.Headers.TryAddWithoutValidation(header.Key, header.Value);
-                }
-                originalRequest.Content = bufferedContent;
-                originalContent.Dispose();
-            }
-        }
+        // Buffer non-seekable content upfront so auth retries can
+        // rewind it. Only buffer when the content length is known and
+        // small enough. For oversized or unknown-length non-seekable
+        // streams, skip buffering so the initial request can still
+        // proceed — a retry may not be possible but failing before the
+        // first auth attempt would break valid large streaming uploads.
+        await BufferNonSeekableContentAsync(
+            originalRequest, cancellationToken)
+            .ConfigureAwait(false);
 
         var host = originalRequest.RequestUri?.Authority ??
                     throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
@@ -706,5 +680,56 @@ public class Client : IClient
     {
         var client = allowAutoRedirect ? BaseClient : NoRedirectClient;
         return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Replaces non-seekable request content with a buffered
+    /// seekable copy so that auth retries can rewind the body.
+    /// Buffering is only attempted when Content-Length is known
+    /// and within <see cref="MaxBufferSize"/>. Oversized or
+    /// unknown-length streams are left as-is.
+    /// </summary>
+    private static async Task BufferNonSeekableContentAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        var originalContent = request.Content;
+        if (originalContent == null)
+        {
+            return;
+        }
+
+        var stream = await originalContent.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        if (stream.CanSeek || originalContent.Headers.ContentLength is not long len || len > MaxBufferSize)
+        {
+            return;
+        }
+
+        var memStream = new MemoryStream((int)len);
+        var buf = new byte[81920];
+        long total = 0;
+        int read;
+        while ((read = await stream.ReadAsync(buf, cancellationToken).ConfigureAwait(false)) > 0)
+        {
+            total += read;
+            if (total > MaxBufferSize)
+            {
+                memStream.Dispose();
+                throw new InvalidOperationException(
+                    "Buffered content exceeded the"
+                    + " maximum buffer size of"
+                    + $" {MaxBufferSize} bytes.");
+            }
+            await memStream.WriteAsync(buf.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+        }
+
+        memStream.Position = 0;
+        var bufferedContent = new StreamContent(memStream);
+        foreach (var header in originalContent.Headers)
+        {
+            bufferedContent.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+        request.Content = bufferedContent;
+        originalContent.Dispose();
     }
 }
