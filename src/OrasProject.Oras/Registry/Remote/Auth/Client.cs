@@ -186,7 +186,7 @@ public class Client : IClient
     /// Maximum size (4 MB) for buffering non-seekable request content.
     /// In practice only manifest-sized payloads flow through this path.
     /// </summary>
-    private const long MaxBufferSize = 4 * 1024 * 1024;
+    internal const long MaxBufferSize = 4 * 1024 * 1024;
 
     /// <summary>
     /// ScopeManager is an instance to manage scopes.
@@ -551,9 +551,10 @@ public class Client : IClient
                 await stream.CopyToAsync(memStream, cancellationToken).ConfigureAwait(false);
                 if (memStream.Length > MaxBufferSize)
                 {
+                    var length = memStream.Length;
                     memStream.Dispose();
                     throw new InvalidOperationException(
-                        $"Buffered content size {memStream.Length}"
+                        $"Buffered content size {length}"
                         + $" exceeds the maximum buffer size of {MaxBufferSize} bytes.");
                 }
                 memStream.Position = 0;

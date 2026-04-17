@@ -2066,4 +2066,43 @@ public class ClientTest
                 request, cancellationToken: CancellationToken.None));
         Assert.Contains("exceeds the maximum buffer size", ex.Message);
     }
+
+    [Fact]
+    public async Task SendAsync_NonSeekableContent_ExceedsMaxBuffer_ThrowsAfterCopy()
+    {
+        // Arrange
+        var host = "example.com";
+        // Create content just over the 4 MB limit without
+        // setting Content-Length so the early check is skipped.
+        var bodyContent = new byte[Client.MaxBufferSize + 1];
+
+        HttpResponseMessage MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+
+        var nonSeekableStream = new NonSeekableStream(bodyContent);
+        var content = new StreamContent(nonSeekableStream);
+        // Do not set Content-Length — forces the post-copy check
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put, $"https://{host}/v2/repo/blobs/uploads/1")
+        {
+            Content = content
+        };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.SendAsync(
+                request, cancellationToken: CancellationToken.None));
+        Assert.Contains("exceeds the maximum buffer size", ex.Message);
+    }
 }
