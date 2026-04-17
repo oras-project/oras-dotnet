@@ -15,6 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -180,6 +181,12 @@ public class Client : IClient
     /// defaultClientID specifies the default client ID used in OAuth2.
     /// </summary>
     private const string _defaultClientId = "oras-dotnet";
+
+    /// <summary>
+    /// Maximum size (4 MB) for buffering non-seekable request content.
+    /// In practice only manifest-sized payloads flow through this path.
+    /// </summary>
+    internal const long MaxBufferSize = 4 * 1024 * 1024;
 
     /// <summary>
     /// ScopeManager is an instance to manage scopes.
@@ -524,6 +531,17 @@ public class Client : IClient
         {
             return await SendRequestAsync(originalRequest, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
         }
+
+        // Buffer non-seekable content upfront so auth retries can
+        // rewind it. Only buffer when the content length is known and
+        // small enough. For oversized or unknown-length non-seekable
+        // streams, skip buffering so the initial request can still
+        // proceed — a retry may not be possible but failing before the
+        // first auth attempt would break valid large streaming uploads.
+        await BufferNonSeekableContentAsync(
+            originalRequest, cancellationToken)
+            .ConfigureAwait(false);
+
         var host = originalRequest.RequestUri?.Authority ??
                     throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
@@ -662,5 +680,94 @@ public class Client : IClient
     {
         var client = allowAutoRedirect ? BaseClient : NoRedirectClient;
         return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Replaces non-seekable request content with a buffered
+    /// seekable copy so that auth retries can rewind the body.
+    /// Buffering is only attempted when Content-Length is known
+    /// and within <see cref="MaxBufferSize"/>. Oversized or
+    /// unknown-length streams are left as-is.
+    /// </summary>
+    private static async Task BufferNonSeekableContentAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        var originalContent = request.Content;
+        if (originalContent == null)
+        {
+            return;
+        }
+
+        // Check Content-Length before touching the stream so we
+        // avoid unnecessary ReadAsStreamAsync calls for oversized
+        // or unknown-length payloads (which could have side effects
+        // on custom HttpContent implementations).
+        if (originalContent.Headers.ContentLength is not long len
+            || len > MaxBufferSize)
+        {
+            return;
+        }
+
+        var stream = await originalContent
+            .ReadAsStreamAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (stream.CanSeek)
+        {
+            return;
+        }
+
+        // Content-Length may not match the actual stream length:
+        //  - If the stream is longer than declared, the chunked
+        //    copy guard below caps it at MaxBufferSize and throws.
+        //  - If the stream is shorter than declared, we derive the
+        //    final Content-Length from the actual buffered bytes
+        //    (see below) so the outgoing request stays consistent.
+        var memStream = new MemoryStream((int)len);
+        var buf = new byte[81920];
+        long total = 0;
+        int read;
+        while ((read = await stream.ReadAsync(buf, cancellationToken).ConfigureAwait(false)) > 0)
+        {
+            total += read;
+            if (total > MaxBufferSize)
+            {
+                memStream.Dispose();
+                originalContent.Dispose();
+                throw new InvalidOperationException(
+                    "Buffered content exceeded the"
+                    + " maximum buffer size of"
+                    + $" {MaxBufferSize} bytes.");
+            }
+            await memStream.WriteAsync(buf.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+        }
+
+        memStream.Position = 0;
+        var bufferedContent = new StreamContent(memStream);
+        foreach (var header in originalContent.Headers)
+        {
+            // Skip Content-Length — derive it from the actual
+            // buffered bytes so a lying caller header cannot
+            // produce a mismatched request.
+            if (string.Equals(
+                    header.Key, "Content-Length",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            bufferedContent.Headers.TryAddWithoutValidation(
+                header.Key, header.Value);
+        }
+        bufferedContent.Headers.ContentLength = memStream.Length;
+        // Replace request.Content with the buffered copy and
+        // dispose the original content to avoid leaking the
+        // underlying stream. This intentionally mutates the
+        // caller-provided HttpRequestMessage: after buffering,
+        // the original HttpContent and its stream are no longer
+        // usable by the caller. This is required because the
+        // original non-seekable stream cannot be rewound for
+        // subsequent processing or retries.
+        request.Content = bufferedContent;
+        originalContent.Dispose();
     }
 }
