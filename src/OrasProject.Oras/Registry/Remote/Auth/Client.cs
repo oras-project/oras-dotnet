@@ -183,6 +183,12 @@ public class Client : IClient
     private const string _defaultClientId = "oras-dotnet";
 
     /// <summary>
+    /// Maximum size (4 MB) for buffering non-seekable request content.
+    /// In practice only manifest-sized payloads flow through this path.
+    /// </summary>
+    private const long MaxBufferSize = 4 * 1024 * 1024;
+
+    /// <summary>
     /// ScopeManager is an instance to manage scopes.
     /// </summary>
     public ScopeManager ScopeManager { get; set; } = new();
@@ -529,20 +535,35 @@ public class Client : IClient
         // Buffer non-seekable content upfront so auth retries can rewind it.
         // This handles scope upgrades where a body-containing request may need
         // to be resent after obtaining a new token.
-        if (originalRequest.Content != null)
+        var originalContent = originalRequest.Content;
+        if (originalContent != null)
         {
-            var stream = await originalRequest.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            var stream = await originalContent.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             if (!stream.CanSeek)
             {
+                if (originalContent.Headers.ContentLength > MaxBufferSize)
+                {
+                    throw new InvalidOperationException(
+                        $"Content length {originalContent.Headers.ContentLength}"
+                        + $" exceeds the maximum buffer size of {MaxBufferSize} bytes.");
+                }
                 var memStream = new MemoryStream();
                 await stream.CopyToAsync(memStream, cancellationToken).ConfigureAwait(false);
+                if (memStream.Length > MaxBufferSize)
+                {
+                    memStream.Dispose();
+                    throw new InvalidOperationException(
+                        $"Buffered content size {memStream.Length}"
+                        + $" exceeds the maximum buffer size of {MaxBufferSize} bytes.");
+                }
                 memStream.Position = 0;
                 var bufferedContent = new StreamContent(memStream);
-                foreach (var header in originalRequest.Content.Headers)
+                foreach (var header in originalContent.Headers)
                 {
                     bufferedContent.Headers.TryAddWithoutValidation(header.Key, header.Value);
                 }
                 originalRequest.Content = bufferedContent;
+                originalContent.Dispose();
             }
         }
 

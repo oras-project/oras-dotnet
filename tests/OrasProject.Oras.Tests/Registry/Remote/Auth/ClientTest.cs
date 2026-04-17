@@ -1776,6 +1776,13 @@ public class ClientTest
                     };
                 }
 
+                // Simulate the transport consuming the body on the
+                // initial attempt, as a real HttpClient would.
+                if (req.Content != null)
+                {
+                    await req.Content.ReadAsStreamAsync(cancellationToken);
+                }
+
                 return new HttpResponseMessage
                 {
                     StatusCode = HttpStatusCode.Unauthorized,
@@ -1826,7 +1833,7 @@ public class ClientTest
     }
 
     [Fact]
-    public async Task SendAsync_SeekableContent_NotRebuffered()
+    public async Task SendAsync_SeekableContent_RewindWorks()
     {
         // Arrange
         var host = "example.com";
@@ -1867,6 +1874,13 @@ public class ClientTest
                     {
                         RequestMessage = req
                     };
+                }
+
+                // Simulate the transport consuming the body on the
+                // initial attempt, as a real HttpClient would.
+                if (req.Content != null)
+                {
+                    await req.Content.ReadAsStreamAsync(cancellationToken);
                 }
 
                 return new HttpResponseMessage
@@ -1956,6 +1970,13 @@ public class ClientTest
                     {
                         RequestMessage = req
                     };
+                }
+
+                // Simulate the transport consuming the body on the
+                // initial attempt, as a real HttpClient would.
+                if (req.Content != null)
+                {
+                    await req.Content.ReadAsStreamAsync(cancellationToken);
                 }
 
                 return new HttpResponseMessage
