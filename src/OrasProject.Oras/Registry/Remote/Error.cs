@@ -13,6 +13,7 @@
 
 namespace OrasProject.Oras.Registry.Remote;
 
+using OrasProject.Oras;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -52,7 +53,7 @@ public class Error
         {
             try
             {
-                var detailJson = JsonSerializer.Serialize(detailValue);
+                var detailJson = JsonSerializer.Serialize(detailValue, OrasJsonJsonSerializerContext.Default.JsonElement);
                 return $"{result} (Detail: {detailJson})";
             }
             catch
