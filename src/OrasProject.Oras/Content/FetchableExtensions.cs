@@ -38,7 +38,7 @@ public static class FetchableExtensions
             case MediaType.ImageManifest:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
-                    var manifest = JsonSerializer.Deserialize<Manifest>(content) ??
+                    var manifest = JsonSerializer.Deserialize(content, OrasJsonJsonSerializerContext.Default.Manifest) ??
                                         throw new JsonException("Failed to deserialize manifest");
 
                     var descriptors = new List<Descriptor>();
@@ -55,7 +55,7 @@ public static class FetchableExtensions
             case MediaType.ImageIndex:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
-                    var index = JsonSerializer.Deserialize<Index>(content) ??
+                    var index = JsonSerializer.Deserialize(content, OrasJsonJsonSerializerContext.Default.Index) ??
                                         throw new JsonException("Failed to deserialize index manifest");
                     var descriptors = new List<Descriptor>();
                     if (index.Subject != null)

@@ -19,6 +19,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using OrasProject.Oras;
 
 namespace OrasProject.Oras.Registry.Remote.Exceptions;
 
@@ -27,12 +28,6 @@ namespace OrasProject.Oras.Registry.Remote.Exceptions;
 /// </summary>
 public class ResponseException : HttpRequestException
 {
-    private class ErrorResponse
-    {
-        [JsonPropertyName("errors")]
-        public required IList<Error> Errors { get; set; }
-    }
-
     /// <summary>
     /// Gets the HTTP method used in the request.
     /// </summary>
@@ -81,7 +76,7 @@ public class ResponseException : HttpRequestException
         {
             try
             {
-                var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(responseBody);
+                var errorResponse = JsonSerializer.Deserialize(responseBody, OrasJsonJsonSerializerContext.Default.ErrorResponse);
                 errors = errorResponse?.Errors;
             }
             catch
@@ -141,4 +136,10 @@ public class ResponseException : HttpRequestException
 
         return messageBuilder.ToString();
     }
+}
+
+internal class ErrorResponse
+{
+    [JsonPropertyName("errors")]
+    public required IList<Error> Errors { get; set; }
 }

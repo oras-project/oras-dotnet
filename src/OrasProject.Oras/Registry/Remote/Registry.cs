@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using OrasProject.Oras.Exceptions;
+using OrasProject.Oras;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -144,13 +145,13 @@ public class Registry : IRegistry
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
         var data = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var repositories = JsonSerializer.Deserialize<RepositoryList>(data);
+        var repositories = JsonSerializer.Deserialize(data, OrasJsonJsonSerializerContext.Default.RepositoryList);
         return (repositories.Repositories ?? Array.Empty<string>(), response.ParseLink());
     }
+}
 
-    internal struct RepositoryList
-    {
-        [JsonPropertyName("repositories")]
-        public string[]? Repositories { get; set; }
-    }
+internal struct RepositoryList
+{
+    [JsonPropertyName("repositories")]
+    public string[]? Repositories { get; set; }
 }
