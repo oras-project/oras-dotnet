@@ -11,11 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace OrasProject.Oras.Registry.Remote;
-
-using OrasProject.Oras;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+
+namespace OrasProject.Oras.Registry.Remote;
 
 public enum ErrorCode
 {
@@ -53,7 +52,7 @@ public class Error
         {
             try
             {
-                var detailJson = JsonSerializer.Serialize(detailValue, OrasJsonJsonSerializerContext.Default.JsonElement);
+                var detailJson = JsonSerializer.Serialize(detailValue, OrasJsonSerializerContext.Default.JsonElement);
                 return $"{result} (Detail: {detailJson})";
             }
             catch

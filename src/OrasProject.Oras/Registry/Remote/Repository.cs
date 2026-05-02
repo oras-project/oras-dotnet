@@ -15,7 +15,6 @@ using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Registry.Exceptions;
 using OrasProject.Oras.Registry.Remote.Exceptions;
 using OrasProject.Oras.Oci;
-using OrasProject.Oras;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -25,13 +24,11 @@ using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Registry.Remote.Auth;
-using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
 
@@ -319,7 +316,7 @@ public class Repository : IRepository
         }
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         var limitedStreamContent = await stream.ReadStreamWithLimitAsync(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
-        var tagList = JsonSerializer.Deserialize(limitedStreamContent, OrasJsonJsonSerializerContext.Default.TagList);
+        var tagList = JsonSerializer.Deserialize(limitedStreamContent, OrasJsonSerializerContext.Default.TagList);
         return (tagList.Tags ?? Array.Empty<string>(), response.ParseLink());
     }
 
@@ -372,7 +369,10 @@ public class Repository : IRepository
         {
             if (remoteReference.Registry != _opts.Reference.Registry || remoteReference.Repository != _opts.Reference.Repository)
             {
-                throw new InvalidReferenceException($"Mismatch between received {JsonSerializer.Serialize(remoteReference, OrasJsonJsonSerializerContext.Default.Reference)} and expected {JsonSerializer.Serialize(_opts.Reference, OrasJsonJsonSerializerContext.Default.Reference)}");
+                var received = JsonSerializer.Serialize(remoteReference, OrasJsonSerializerContext.Default.Reference);
+                var expected = JsonSerializer.Serialize(_opts.Reference, OrasJsonSerializerContext.Default.Reference);
+
+                throw new InvalidReferenceException($"Mismatch between received {received} and expected {expected}");
             }
         }
         else
@@ -591,7 +591,7 @@ public class Repository : IRepository
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             var limitedStreamContent = await stream.ReadStreamWithLimitAsync(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
-            var referrersIndex = JsonSerializer.Deserialize(limitedStreamContent, OrasJsonJsonSerializerContext.Default.Index) ??
+            var referrersIndex = JsonSerializer.Deserialize(limitedStreamContent, OrasJsonSerializerContext.Default.Index) ??
                                     throw new InvalidResponseException(
                                         $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: failed to decode response");
 
@@ -678,7 +678,7 @@ public class Repository : IRepository
             result.Descriptor.LimitSize(Options.MaxMetadataBytes);
             using var stream = result.Stream;
             var indexBytes = await stream.ReadAllAsync(result.Descriptor, cancellationToken).ConfigureAwait(false);
-            var index = JsonSerializer.Deserialize(indexBytes, OrasJsonJsonSerializerContext.Default.Index) ?? throw new JsonException(
+            var index = JsonSerializer.Deserialize(indexBytes, OrasJsonSerializerContext.Default.Index) ?? throw new JsonException(
                 $"error when deserialize index manifest for referrersTag {referrersTag}");
             return (result.Descriptor, index.Manifests);
         }
@@ -774,10 +774,4 @@ public class Repository : IRepository
     {
         ReferrersState = isSupported ? Referrers.ReferrersState.Supported : Referrers.ReferrersState.NotSupported;
     }
-}
-
-internal struct TagList
-{
-    [JsonPropertyName("tags")]
-    public string[]? Tags { get; set; }
 }

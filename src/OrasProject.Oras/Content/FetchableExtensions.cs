@@ -17,7 +17,6 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Index = OrasProject.Oras.Oci.Index;
 namespace OrasProject.Oras.Content;
 
 
@@ -38,7 +37,7 @@ public static class FetchableExtensions
             case MediaType.ImageManifest:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
-                    var manifest = JsonSerializer.Deserialize(content, OrasJsonJsonSerializerContext.Default.Manifest) ??
+                    var manifest = JsonSerializer.Deserialize(content, OrasJsonSerializerContext.Default.Manifest) ??
                                         throw new JsonException("Failed to deserialize manifest");
 
                     var descriptors = new List<Descriptor>();
@@ -55,7 +54,7 @@ public static class FetchableExtensions
             case MediaType.ImageIndex:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
-                    var index = JsonSerializer.Deserialize(content, OrasJsonJsonSerializerContext.Default.Index) ??
+                    var index = JsonSerializer.Deserialize(content, OrasJsonSerializerContext.Default.Index) ??
                                         throw new JsonException("Failed to deserialize index manifest");
                     var descriptors = new List<Descriptor>();
                     if (index.Subject != null)

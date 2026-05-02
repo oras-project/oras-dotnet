@@ -12,14 +12,12 @@
 // limitations under the License.
 
 using OrasProject.Oras.Exceptions;
-using OrasProject.Oras;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -145,13 +143,7 @@ public class Registry : IRegistry
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
         var data = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var repositories = JsonSerializer.Deserialize(data, OrasJsonJsonSerializerContext.Default.RepositoryList);
+        var repositories = JsonSerializer.Deserialize(data, OrasJsonSerializerContext.Default.RepositoryList);
         return (repositories.Repositories ?? Array.Empty<string>(), response.ParseLink());
     }
-}
-
-internal struct RepositoryList
-{
-    [JsonPropertyName("repositories")]
-    public string[]? Repositories { get; set; }
 }

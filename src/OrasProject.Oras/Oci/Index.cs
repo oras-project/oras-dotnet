@@ -15,7 +15,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using OrasProject.Oras;
 
 namespace OrasProject.Oras.Oci;
 
@@ -60,7 +59,7 @@ public class Index : Versioned
     internal static (Descriptor, byte[]) GenerateIndex(IList<Descriptor> manifests)
     {
         var index = new Index(manifests);
-        var indexContent = JsonSerializer.SerializeToUtf8Bytes(index, OrasJsonJsonSerializerContext.Default.Index);
+        var indexContent = JsonSerializer.SerializeToUtf8Bytes(index, OrasJsonSerializerContext.Default.Index);
         return (Descriptor.Create(indexContent, Oci.MediaType.ImageIndex), indexContent);
     }
 }

@@ -13,7 +13,6 @@
 
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
-using OrasProject.Oras;
 using System;
 using System.IO;
 using System.Net;
@@ -260,7 +259,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         switch (desc.MediaType)
         {
             case MediaType.ImageIndex:
-                var indexManifest = JsonSerializer.Deserialize(content, OrasJsonJsonSerializerContext.Default.Index)
+                var indexManifest = JsonSerializer.Deserialize(content, OrasJsonSerializerContext.Default.Index)
                                         ?? throw new JsonException("Failed to deserialize index");
                 if (indexManifest.Subject == null)
                 {
@@ -271,7 +270,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 desc.Annotations = indexManifest.Annotations;
                 break;
             case MediaType.ImageManifest:
-                var imageManifest = JsonSerializer.Deserialize(content, OrasJsonJsonSerializerContext.Default.Manifest) ??
+                var imageManifest = JsonSerializer.Deserialize(content, OrasJsonSerializerContext.Default.Manifest) ??
                                         throw new JsonException("Failed to deserialize manifest");
                 if (imageManifest.Subject == null)
                 {
@@ -480,7 +479,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         switch (target.MediaType)
         {
             case MediaType.ImageManifest:
-                var imageManifest = JsonSerializer.Deserialize(manifestContent, OrasJsonJsonSerializerContext.Default.Manifest);
+                var imageManifest = JsonSerializer.Deserialize(manifestContent, OrasJsonSerializerContext.Default.Manifest);
                 if (imageManifest?.Subject == null)
                 {
                     // no subject, no indexing needed
@@ -489,7 +488,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 subject = imageManifest.Subject;
                 break;
             case MediaType.ImageIndex:
-                var imageIndex = JsonSerializer.Deserialize(manifestContent, OrasJsonJsonSerializerContext.Default.Index);
+                var imageIndex = JsonSerializer.Deserialize(manifestContent, OrasJsonSerializerContext.Default.Index);
                 if (imageIndex?.Subject == null)
                 {
                     // no subject, no indexing needed
