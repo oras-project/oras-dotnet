@@ -832,7 +832,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                     break;
             }
 
-            var listOfTags = new Repository.TagList
+            var listOfTags = new Oras.Registry.Remote.TagList
             {
                 Tags = [.. tags]
             };
@@ -897,7 +897,7 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
                 return new HttpResponseMessage(HttpStatusCode.BadRequest);
             }
 
-            var listOfTags = new Repository.TagList
+            var listOfTags = new Oras.Registry.Remote.TagList
             {
                 Tags = null!
             };

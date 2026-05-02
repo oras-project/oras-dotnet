@@ -143,7 +143,7 @@ public partial class RegistryTest
                     break;
             }
 
-            var repositoryList = new Oras.Registry.Remote.Registry.RepositoryList
+            var repositoryList = new Oras.Registry.Remote.RepositoryList
             {
                 Repositories = [.. repos]
             };
