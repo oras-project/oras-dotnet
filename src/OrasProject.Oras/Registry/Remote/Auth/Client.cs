@@ -251,6 +251,19 @@ public class Client : IClient
     internal const long MaxBufferSize = 4 * 1024 * 1024;
 
     /// <summary>
+    /// Validates realm URLs before sending credentials to them.
+    /// Default: a <see cref="DefaultRealmValidator"/> instance with
+    /// secure defaults.
+    /// </summary>
+    /// <remarks>
+    /// This property cannot be null. To disable validation (not
+    /// recommended), provide an implementation that always returns
+    /// <c>true</c>.
+    /// </remarks>
+    public IRealmValidator RealmValidator { get; set; } =
+        new DefaultRealmValidator();
+
+    /// <summary>
     /// ScopeManager is an instance to manage scopes.
     /// </summary>
     public ScopeManager ScopeManager { get; set; } = new();
@@ -739,6 +752,30 @@ public class Client : IClient
                         // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
                         throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
                     }
+
+                    // Validate realm URL before sending credentials.
+                    if (!Uri.TryCreate(
+                            realm, UriKind.Absolute,
+                            out var realmUri))
+                    {
+                        throw new AuthenticationException(
+                            $"Invalid realm URL: '{realm}'");
+                    }
+
+                    var registryUri = originalRequest.RequestUri!;
+                    if (!await RealmValidator.IsRealmAllowedAsync(
+                            registryUri, realmUri, cancellationToken)
+                        .ConfigureAwait(false))
+                    {
+                        throw new AuthenticationException(
+                            $"Authentication realm"
+                            + $" '{realmUri.Host}' is not allowed"
+                            + $" for registry"
+                            + $" '{registryUri.Host}'. The realm"
+                            + " host must match the registry"
+                            + " host or be explicitly trusted.");
+                    }
+
                     if (!parameters.TryGetValue("service", out var service))
                     {
                         // some registries may omit the `service` parameter; use an empty string when absent.

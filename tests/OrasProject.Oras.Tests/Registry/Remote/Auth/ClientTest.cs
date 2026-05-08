@@ -731,6 +731,12 @@ public class ClientTest
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
+        client.RealmValidator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            { "auth.example.com" }
+        };
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
         var cancellationToken = new CancellationToken();
 
@@ -1007,6 +1013,12 @@ public class ClientTest
         var mockHandler = CustomHandler(MockHttpRequestHandler);
 
         var client = new Client(new HttpClient(mockHandler.Object), mockCredentialProvider.Object);
+        client.RealmValidator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            { "auth.example.com" }
+        };
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"].Add("abc");
         client.CustomHeaders["key1"] = ["value1"];
@@ -1130,6 +1142,12 @@ public class ClientTest
             .ReturnsAsync(new Credential { RefreshToken = refreshToken });
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object), mockCredentialProvider.Object);
+        client.RealmValidator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            { "auth.noservice.example.com" }
+        };
         // Populate scope manager to ensure scopes passed into token request
         Assert.True(Scope.TryParse(scopes[0], out var scope));
         client.ScopeManager.SetScopeForRegistry(host, scope);
@@ -1443,6 +1461,12 @@ public class ClientTest
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
+        client.RealmValidator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            { "auth.example.com" }
+        };
 
         // Act: call port 5000
         using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}:5000");
@@ -1811,6 +1835,12 @@ public class ClientTest
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
+        client.RealmValidator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            { "auth.example.com" }
+        };
 
         // Use a non-seekable stream as request content
         var nonSeekableStream =
@@ -1914,6 +1944,12 @@ public class ClientTest
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
+        client.RealmValidator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            { "auth.example.com" }
+        };
 
         // Use a seekable MemoryStream as request content
         var seekableStream = new MemoryStream(bodyContent);
@@ -2011,6 +2047,12 @@ public class ClientTest
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(new HttpClient(mockHandler.Object));
+        client.RealmValidator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            { "auth.example.com" }
+        };
 
         var nonSeekableStream =
             new NonSeekableStream(bodyContent);
@@ -2410,6 +2452,12 @@ public class ClientTest
         var client = new Client(
             new HttpClient(mockHandler.Object), null, null,
             mockProvider.Object, null);
+        client.RealmValidator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            { "auth.example.com" }
+        };
         using var request = new HttpRequestMessage(
             HttpMethod.Get, $"https://{host}");
 
@@ -2427,5 +2475,239 @@ public class ClientTest
                 true,
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+
+    [Fact]
+    public async Task SendAsync_RealmValidation_RejectsUntrustedRealm()
+    {
+        // Arrange: registry returns a Bearer challenge with an
+        // untrusted realm host.
+        var host = "victim.io";
+        var evilRealm = "https://evil.com/token";
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken ct)
+        {
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Headers =
+                {
+                    WwwAuthenticate =
+                    {
+                        new AuthenticationHeaderValue(
+                            "Bearer",
+                            $"realm=\"{evilRealm}\","
+                            + "service=\"test\"")
+                    }
+                },
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(
+            new HttpClient(mockHandler.Object));
+
+        var request = new HttpRequestMessage(
+            HttpMethod.Get, $"https://{host}/v2/");
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<AuthenticationException>(
+            () => client.SendAsync(request,
+                cancellationToken: CancellationToken.None));
+        Assert.Contains("evil.com", ex.Message);
+        Assert.Contains("not allowed", ex.Message);
+    }
+
+    [Fact]
+    public async Task SendAsync_RealmValidation_AllowsSameHost()
+    {
+        // Arrange: registry returns a Bearer challenge pointing to
+        // the same host — should be allowed.
+        var host = "myreg.io";
+        var realm = $"https://{host}/token";
+        var expectedToken = "good_token";
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken ct)
+        {
+            // Token endpoint
+            if (req.RequestUri?.GetLeftPart(UriPartial.Path)
+                    .Contains("/token") == true)
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        $"{{\"access_token\":\"{expectedToken}\"}}"),
+                    RequestMessage = req
+                };
+            }
+
+            // First call returns 401
+            if (req.Headers.Authorization == null)
+            {
+                return new HttpResponseMessage(
+                    HttpStatusCode.Unauthorized)
+                {
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\","
+                                + "service=\"test\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            // Authenticated call succeeds
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(
+            new HttpClient(mockHandler.Object));
+
+        var request = new HttpRequestMessage(
+            HttpMethod.Get, $"https://{host}/v2/");
+
+        // Act
+        var response = await client.SendAsync(request,
+            cancellationToken: CancellationToken.None);
+
+        // Assert — no exception, request succeeded
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SendAsync_RealmValidation_InvalidRealmUrl_Throws()
+    {
+        // Arrange: registry returns a Bearer challenge with an
+        // invalid realm URL.
+        var host = "myreg.io";
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken ct)
+        {
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Headers =
+                {
+                    WwwAuthenticate =
+                    {
+                        new AuthenticationHeaderValue(
+                            "Bearer",
+                            "realm=\"not-a-valid-url\","
+                            + "service=\"test\"")
+                    }
+                },
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(
+            new HttpClient(mockHandler.Object));
+
+        var request = new HttpRequestMessage(
+            HttpMethod.Get, $"https://{host}/v2/");
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<AuthenticationException>(
+            () => client.SendAsync(request,
+                cancellationToken: CancellationToken.None));
+        Assert.Contains("Invalid realm URL", ex.Message);
+    }
+
+    [Fact]
+    public async Task SendAsync_RealmValidation_EmptyRealm_Throws()
+    {
+        // Arrange: registry returns a Bearer challenge with an
+        // empty realm string.
+        var host = "myreg.io";
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken ct)
+        {
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Headers =
+                {
+                    WwwAuthenticate =
+                    {
+                        new AuthenticationHeaderValue(
+                            "Bearer",
+                            "realm=\"\",service=\"test\"")
+                    }
+                },
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(
+            new HttpClient(mockHandler.Object));
+
+        var request = new HttpRequestMessage(
+            HttpMethod.Get, $"https://{host}/v2/");
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<AuthenticationException>(
+            () => client.SendAsync(request,
+                cancellationToken: CancellationToken.None));
+        Assert.Contains("Invalid realm URL", ex.Message);
+    }
+
+    [Fact]
+    public async Task SendAsync_RealmValidation_RelativeRealm_Throws()
+    {
+        // Arrange: registry returns a Bearer challenge with a
+        // relative realm URL.
+        var host = "myreg.io";
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken ct)
+        {
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Headers =
+                {
+                    WwwAuthenticate =
+                    {
+                        new AuthenticationHeaderValue(
+                            "Bearer",
+                            "realm=\"/token\","
+                            + "service=\"test\"")
+                    }
+                },
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(
+            new HttpClient(mockHandler.Object));
+
+        var request = new HttpRequestMessage(
+            HttpMethod.Get, $"https://{host}/v2/");
+
+        // Act & Assert — /token parses as file:///token on Linux,
+        // which is rejected by the scheme check in the validator.
+        var ex = await Assert.ThrowsAsync<AuthenticationException>(
+            () => client.SendAsync(request,
+                cancellationToken: CancellationToken.None));
+        Assert.Contains("not allowed", ex.Message);
     }
 }
