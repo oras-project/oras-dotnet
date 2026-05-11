@@ -46,8 +46,22 @@ public sealed class DefaultRealmValidator : IRealmValidator
     /// Realms matching these hosts are always allowed regardless of
     /// other rules.
     /// </summary>
+    /// <remarks>
+    /// Pre-populated with well-known registries whose auth realm
+    /// host differs from the registry host:
+    /// <list type="bullet">
+    /// <item><c>auth.docker.io</c> — Docker Hub
+    /// (registry: registry-1.docker.io)</item>
+    /// <item><c>gitlab.com</c> — GitLab Container Registry
+    /// (registry: registry.gitlab.com)</item>
+    /// </list>
+    /// </remarks>
     public ISet<string> TrustedRealmHosts { get; init; } =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "auth.docker.io",
+            "gitlab.com"
+        };
 
     /// <inheritdoc/>
     public Task<bool> IsRealmAllowedAsync(

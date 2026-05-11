@@ -302,16 +302,22 @@ public class DefaultRealmValidatorTest
     [Fact]
     public async Task TrustedHostNotAffectedBySchemeBlock()
     {
-        // Trusted host with HTTPS is allowed.
-        var validator = new DefaultRealmValidator
-        {
-            TrustedRealmHosts = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-            { "auth.docker.io" }
-        };
+        // Docker Hub: auth.docker.io is in the default trusted
+        // list — works without explicit TrustedRealmHosts.
+        var validator = new DefaultRealmValidator();
         Assert.True(await validator.IsRealmAllowedAsync(
             Reg("https://registry-1.docker.io/v2/"),
             Realm("https://auth.docker.io/token")));
+    }
+
+    [Fact]
+    public async Task GitLabRegistry_DefaultTrusted_Allowed()
+    {
+        // GitLab: gitlab.com is in the default trusted list.
+        var validator = new DefaultRealmValidator();
+        Assert.True(await validator.IsRealmAllowedAsync(
+            Reg("https://registry.gitlab.com/v2/"),
+            Realm("https://gitlab.com/jwt/auth")));
     }
 
     [Fact]
