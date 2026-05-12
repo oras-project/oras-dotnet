@@ -12,7 +12,9 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -47,21 +49,36 @@ public sealed class DefaultRealmValidator : IRealmValidator
     /// other rules.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Pre-populated with well-known registries whose auth realm
     /// host differs from the registry host:
+    /// </para>
     /// <list type="bullet">
     /// <item><c>auth.docker.io</c> — Docker Hub
     /// (registry: registry-1.docker.io)</item>
     /// <item><c>gitlab.com</c> — GitLab Container Registry
     /// (registry: registry.gitlab.com)</item>
     /// </list>
+    /// <para>
+    /// Values are normalized (lowercased, trailing dots stripped)
+    /// and frozen on assignment. Mutations to the original
+    /// collection have no effect after initialization.
+    /// </para>
     /// </remarks>
-    public ISet<string> TrustedRealmHosts { get; init; } =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "auth.docker.io",
-            "gitlab.com"
-        };
+    public IReadOnlySet<string> TrustedRealmHosts
+    {
+        get => _trustedRealmHosts;
+        init => _trustedRealmHosts =
+            (value ?? throw new ArgumentNullException(
+                nameof(value)))
+            .Select(NormalizeHost)
+            .ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private readonly IReadOnlySet<string> _trustedRealmHosts =
+        FrozenSet.ToFrozenSet(
+            new[] { "auth.docker.io", "gitlab.com" },
+            StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc/>
     public Task<bool> IsRealmAllowedAsync(

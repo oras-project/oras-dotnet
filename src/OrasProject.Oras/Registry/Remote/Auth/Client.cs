@@ -256,11 +256,19 @@ public class Client : IClient
     /// secure defaults.
     /// </summary>
     /// <remarks>
-    /// This property cannot be null. To disable validation (not
-    /// recommended), provide an implementation that always returns
-    /// <c>true</c>.
+    /// This property is init-only and cannot be null. To use a
+    /// different validator, set it during construction. To disable
+    /// validation (not recommended), provide an implementation
+    /// that always returns <c>true</c>.
     /// </remarks>
-    public IRealmValidator RealmValidator { get; set; } =
+    public IRealmValidator RealmValidator
+    {
+        get => _realmValidator;
+        init => _realmValidator = value
+            ?? throw new ArgumentNullException(nameof(value));
+    }
+
+    private readonly IRealmValidator _realmValidator =
         new DefaultRealmValidator();
 
     /// <summary>
@@ -771,9 +779,7 @@ public class Client : IClient
                             $"Authentication realm"
                             + $" '{realmUri.Host}' is not allowed"
                             + $" for registry"
-                            + $" '{registryUri.Host}'. The realm"
-                            + " host must match the registry"
-                            + " host or be explicitly trusted.");
+                            + $" '{registryUri.Host}'.");
                     }
 
                     if (!parameters.TryGetValue("service", out var service))

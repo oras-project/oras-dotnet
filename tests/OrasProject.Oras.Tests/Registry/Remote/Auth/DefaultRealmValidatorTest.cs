@@ -330,4 +330,205 @@ public class DefaultRealmValidatorTest
     }
 
     #endregion
+
+    #region Adversarial — immutability & mutation resistance
+
+    [Fact]
+    public async Task TrustedHosts_FrozenAfterInit_MutationHasNoEffect()
+    {
+        // Arrange: pass a mutable HashSet, then mutate it after
+        // construction.
+        var mutable = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            "auth.example.com"
+        };
+        var validator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = mutable
+        };
+
+        // Act: mutate the original collection.
+        mutable.Add("evil.com");
+
+        // Assert: the validator is unaffected.
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://victim.io/v2/"),
+            Realm("https://evil.com/token")));
+        Assert.True(await validator.IsRealmAllowedAsync(
+            Reg("https://registry.example.com/v2/"),
+            Realm("https://auth.example.com/token")));
+    }
+
+    [Fact]
+    public void TrustedHosts_NullAssignment_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new DefaultRealmValidator
+            {
+                TrustedRealmHosts = null!
+            });
+    }
+
+    [Fact]
+    public async Task TrustedHosts_TrailingDotNormalized()
+    {
+        // Trailing dot in the configured set should still match.
+        var validator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>
+            {
+                "auth.example.com."
+            }
+        };
+        Assert.True(await validator.IsRealmAllowedAsync(
+            Reg("https://registry.example.com/v2/"),
+            Realm("https://auth.example.com/token")));
+    }
+
+    [Fact]
+    public async Task TrustedHosts_IsReadOnly()
+    {
+        var validator = new DefaultRealmValidator();
+        // IReadOnlySet does not expose Add/Remove — compile-time
+        // safety. At runtime, FrozenSet throws on mutation
+        // attempts via ICollection<T>.
+        Assert.IsAssignableFrom<IReadOnlySet<string>>(
+            validator.TrustedRealmHosts);
+    }
+
+    #endregion
+
+    #region Adversarial — attack patterns
+
+    [Fact]
+    public async Task FragmentInjection_HostStillEvil_Rejected()
+    {
+        var validator = new DefaultRealmValidator();
+        // Fragment doesn't change the host.
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://victim.io/v2/"),
+            Realm("https://evil.com/token#victim.io")));
+    }
+
+    [Fact]
+    public async Task QueryInjection_HostStillEvil_Rejected()
+    {
+        var validator = new DefaultRealmValidator();
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://victim.io/v2/"),
+            Realm(
+                "https://evil.com/token?host=victim.io")));
+    }
+
+    [Fact]
+    public async Task IPv6SameHost_Allowed()
+    {
+        var validator = new DefaultRealmValidator();
+        Assert.True(await validator.IsRealmAllowedAsync(
+            Reg("https://[::1]/v2/"),
+            Realm("https://[::1]/token")));
+    }
+
+    [Fact]
+    public async Task IPv6DifferentHost_Rejected()
+    {
+        var validator = new DefaultRealmValidator();
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://[::1]/v2/"),
+            Realm("https://[::2]/token")));
+    }
+
+    [Fact]
+    public async Task PortSmuggling_SamePortDifferentHost_Rejected()
+    {
+        var validator = new DefaultRealmValidator();
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://victim.io:8443/v2/"),
+            Realm("https://evil.com:8443/token")));
+    }
+
+    [Fact]
+    public async Task UserinfoOnTrustedHost_Rejected()
+    {
+        // Userinfo check fires before trusted host check.
+        var validator = new DefaultRealmValidator();
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://registry-1.docker.io/v2/"),
+            Realm(
+                "https://user@auth.docker.io/token")));
+    }
+
+    [Fact]
+    public async Task HttpOnTrustedHost_RejectedByDefault()
+    {
+        // HTTP scheme block applies even to trusted hosts.
+        var validator = new DefaultRealmValidator();
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://registry-1.docker.io/v2/"),
+            Realm("http://auth.docker.io/token")));
+    }
+
+    [Fact]
+    public async Task AtSignInPath_NotConfusedAsUserinfo()
+    {
+        // '@' in path segment is valid and should not be
+        // confused with userinfo.
+        var validator = new DefaultRealmValidator();
+        Assert.True(await validator.IsRealmAllowedAsync(
+            Reg("https://myreg.io/v2/"),
+            Realm("https://myreg.io/auth@v2/token")));
+    }
+
+    [Fact]
+    public async Task SuperstringHostname_Rejected()
+    {
+        // "auth.docker.io.evil.com" is NOT "auth.docker.io"
+        var validator = new DefaultRealmValidator();
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://registry-1.docker.io/v2/"),
+            Realm(
+                "https://auth.docker.io.evil.com/tok"
+                )));
+    }
+
+    [Fact]
+    public async Task EmptyTrustedHosts_OnlySameHostAllowed()
+    {
+        var validator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts =
+                new HashSet<string>()
+        };
+        // Same host still allowed.
+        Assert.True(await validator.IsRealmAllowedAsync(
+            Reg("https://myreg.io/v2/"),
+            Realm("https://myreg.io/token")));
+        // Docker Hub realm rejected without trusted list.
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://registry-1.docker.io/v2/"),
+            Realm("https://auth.docker.io/token")));
+    }
+
+    #endregion
+
+    #region Adversarial — Client null guard
+
+    [Fact]
+    public void Client_RealmValidator_NullAssignment_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => new Client { RealmValidator = null! });
+    }
+
+    [Fact]
+    public void Client_RealmValidator_HasDefault()
+    {
+        var client = new Client();
+        Assert.NotNull(client.RealmValidator);
+        Assert.IsType<DefaultRealmValidator>(
+            client.RealmValidator);
+    }
+
+    #endregion
 }

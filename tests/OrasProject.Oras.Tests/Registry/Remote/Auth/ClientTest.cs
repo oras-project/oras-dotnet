@@ -730,12 +730,14 @@ public class ClientTest
         }
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
-        var client = new Client(new HttpClient(mockHandler.Object));
-        client.RealmValidator = new DefaultRealmValidator
+        var client = new Client(new HttpClient(mockHandler.Object))
         {
-            TrustedRealmHosts = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-            { "auth.example.com" }
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase)
+                { "auth.example.com" }
+            }
         };
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
         var cancellationToken = new CancellationToken();
@@ -1012,12 +1014,14 @@ public class ClientTest
             });
         var mockHandler = CustomHandler(MockHttpRequestHandler);
 
-        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialProvider.Object);
-        client.RealmValidator = new DefaultRealmValidator
+        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialProvider.Object)
         {
-            TrustedRealmHosts = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-            { "auth.example.com" }
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase)
+                { "auth.example.com" }
+            }
         };
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"].Add("abc");
@@ -1141,12 +1145,14 @@ public class ClientTest
             .Setup(p => p.ResolveCredentialAsync(host, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Credential { RefreshToken = refreshToken });
 
-        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object), mockCredentialProvider.Object);
-        client.RealmValidator = new DefaultRealmValidator
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object), mockCredentialProvider.Object)
         {
-            TrustedRealmHosts = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-            { "auth.noservice.example.com" }
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase)
+                { "auth.noservice.example.com" }
+            }
         };
         // Populate scope manager to ensure scopes passed into token request
         Assert.True(Scope.TryParse(scopes[0], out var scope));
@@ -1268,7 +1274,16 @@ public class ClientTest
                 Password = password
             });
         var mockHandler = CustomHandler(MockHttpRequestHandler);
-        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialProvider.Object);
+
+        var client = new Client(new HttpClient(mockHandler.Object), mockCredentialProvider.Object)
+        {
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase)
+                { "auth.example.com" }
+            }
+        };
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"].Add("abc");
         client.CustomHeaders["key1"] = ["value1"];
@@ -1460,12 +1475,14 @@ public class ClientTest
         }
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
-        var client = new Client(new HttpClient(mockHandler.Object));
-        client.RealmValidator = new DefaultRealmValidator
+        var client = new Client(new HttpClient(mockHandler.Object))
         {
-            TrustedRealmHosts = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-            { "auth.example.com" }
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase)
+                { "auth.example.com" }
+            }
         };
 
         // Act: call port 5000
@@ -1834,12 +1851,14 @@ public class ClientTest
         }
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
-        var client = new Client(new HttpClient(mockHandler.Object));
-        client.RealmValidator = new DefaultRealmValidator
+        var client = new Client(new HttpClient(mockHandler.Object))
         {
-            TrustedRealmHosts = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-            { "auth.example.com" }
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase)
+                { "auth.example.com" }
+            }
         };
 
         // Use a non-seekable stream as request content
@@ -1943,12 +1962,14 @@ public class ClientTest
         }
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
-        var client = new Client(new HttpClient(mockHandler.Object));
-        client.RealmValidator = new DefaultRealmValidator
+        var client = new Client(new HttpClient(mockHandler.Object))
         {
-            TrustedRealmHosts = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-            { "auth.example.com" }
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase)
+                { "auth.example.com" }
+            }
         };
 
         // Use a seekable MemoryStream as request content
@@ -2046,12 +2067,14 @@ public class ClientTest
         }
 
         var mockHandler = CustomHandler(MockHttpRequestHandler);
-        var client = new Client(new HttpClient(mockHandler.Object));
-        client.RealmValidator = new DefaultRealmValidator
+        var client = new Client(new HttpClient(mockHandler.Object))
         {
-            TrustedRealmHosts = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-            { "auth.example.com" }
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase)
+                { "auth.example.com" }
+            }
         };
 
         var nonSeekableStream =
