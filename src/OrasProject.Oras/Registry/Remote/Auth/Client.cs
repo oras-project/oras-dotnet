@@ -69,7 +69,28 @@ public class Client : IClient
         HttpClient? httpClient = null,
         ICredentialProvider? credentialProvider = null,
         ICache? cache = null)
-        : this(httpClient, null, credentialProvider, cache)
+        : this(httpClient, null, credentialProvider, null, cache)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the Client class with an access-token provider.
+    /// </summary>
+    /// <param name="httpClient">
+    /// Optional HttpClient to use for standard requests that follow redirects.
+    /// If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
+    /// </param>
+    /// <param name="accessTokenProvider">
+    /// An access-token provider that returns ready-to-use tokens.  When set, the client
+    /// calls this provider first during Bearer authentication before falling back to
+    /// credential-based token exchange.
+    /// </param>
+    /// <param name="cache">Optional cache for storing authentication tokens.</param>
+    public Client(
+        HttpClient? httpClient,
+        IAccessTokenProvider accessTokenProvider,
+        ICache? cache = null)
+        : this(httpClient, null, null, accessTokenProvider, cache)
     {
     }
 
@@ -91,14 +112,21 @@ public class Client : IClient
     /// </para>
     /// </param>
     /// <param name="credentialProvider">Optional credential provider for registry authentication.</param>
+    /// <param name="accessTokenProvider">
+    /// Optional access-token provider.  When set, the client calls this provider first during
+    /// Bearer authentication.  If it returns <c>null</c>, the client falls through to
+    /// credential-based authentication via <paramref name="credentialProvider"/>.
+    /// </param>
     /// <param name="cache">Optional cache for storing authentication tokens.</param>
     public Client(
         HttpClient? httpClient,
         HttpClient? noRedirectHttpClient,
         ICredentialProvider? credentialProvider,
-        ICache? cache)
+        IAccessTokenProvider? accessTokenProvider = null,
+        ICache? cache = null)
     {
         CredentialProvider = credentialProvider;
+        AccessTokenProvider = accessTokenProvider;
         _cache = cache;
         BaseClient = httpClient ?? DefaultHttpClient.Instance;
         NoRedirectClient = noRedirectHttpClient ?? DefaultHttpClient.NoRedirectInstance;
@@ -109,6 +137,14 @@ public class Client : IClient
     /// credentials for accessing remote registries.
     /// </summary>
     public ICredentialProvider? CredentialProvider { get; init; }
+
+    /// <summary>
+    /// AccessTokenProvider provides pre-resolved access tokens for Bearer authentication.
+    /// When set, the client calls this provider first during Bearer auth.  If it returns
+    /// <c>null</c>, the client falls through to credential-based authentication via
+    /// <see cref="CredentialProvider"/>.
+    /// </summary>
+    public IAccessTokenProvider? AccessTokenProvider { get; init; }
 
     /// <summary>
     /// BaseClient is an instance of HttpClient to send http requests that follow redirects.
@@ -299,7 +335,10 @@ public class Client : IClient
     /// <summary>
     /// Fetches a OAuth2 access token for accessing a registry.
     ///
-    /// If credential is empty or refreshToken is not set and OAuth2 authentication is not forced,
+    /// When an <see cref="AccessTokenProvider"/> is configured it is consulted first.
+    /// If it returns a non-empty token, that token is used directly — bypassing credential
+    /// resolution entirely.  Otherwise, the existing credential-based flow is used:
+    /// if credential is empty or refreshToken is not set and OAuth2 authentication is not forced,
     /// the method would fetch anonymous token with a Http Get request
     /// otherwise, it would fetch OAuth2 token with a Http Post request.
     /// </summary>
@@ -322,6 +361,19 @@ public class Client : IClient
         IList<string> scopes,
         CancellationToken cancellationToken = default)
     {
+        // When an AccessTokenProvider is configured, try it first.  It returns a
+        // ready-to-use scoped token without exposing raw credentials in-process.
+        if (AccessTokenProvider != null)
+        {
+            var accessToken = await AccessTokenProvider.ResolveAccessTokenAsync(
+                registry, realm, service, scopes, cancellationToken)
+                .ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                return accessToken;
+            }
+        }
+
         var credential = await ResolveCredentialAsync(registry, cancellationToken)
             .ConfigureAwait(false);
         if (!string.IsNullOrEmpty(credential.AccessToken))

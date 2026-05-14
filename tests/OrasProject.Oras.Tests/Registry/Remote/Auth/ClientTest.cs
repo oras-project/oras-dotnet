@@ -2158,4 +2158,130 @@ public class ClientTest
                 request,
                 cancellationToken: CancellationToken.None));
     }
+
+    [Fact]
+    public async Task FetchBearerAuth_WithAccessTokenProvider_ReturnsToken()
+    {
+        // Arrange
+        var registry = "example.com";
+        var realm = "https://auth.example.com/token";
+        var service = "test_service";
+        var scopes = new List<string> { "repository:repo:pull" };
+        var expectedToken = "access-token-from-provider";
+
+        var mockProvider = new Mock<IAccessTokenProvider>();
+        mockProvider
+            .Setup(p => p.ResolveAccessTokenAsync(registry, realm, service, scopes, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedToken);
+
+        var client = new Client(new HttpClient(), mockProvider.Object);
+
+        // Act
+        var result = await client.FetchBearerAuthAsync(registry, realm, service, scopes, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(expectedToken, result);
+        mockProvider.Verify(
+            p => p.ResolveAccessTokenAsync(registry, realm, service, scopes, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task FetchBearerAuth_AccessTokenProviderReturnsNull_FallsThroughToCredential()
+    {
+        // Arrange
+        var registry = "example.com";
+        var realm = "https://auth.example.com/token";
+        var service = "test_service";
+        var scopes = new List<string> { "repository:repo:pull" };
+        var expectedToken = "credential-access-token";
+
+        var mockProvider = new Mock<IAccessTokenProvider>();
+        mockProvider
+            .Setup(p => p.ResolveAccessTokenAsync(registry, realm, service, scopes, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(p => p.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Credential { AccessToken = expectedToken });
+
+        var client = new Client(null, null, mockCredentialProvider.Object, mockProvider.Object);
+
+        // Act
+        var result = await client.FetchBearerAuthAsync(registry, realm, service, scopes, CancellationToken.None);
+
+        // Assert — fell through to credential-based auth
+        Assert.Equal(expectedToken, result);
+        mockProvider.Verify(
+            p => p.ResolveAccessTokenAsync(registry, realm, service, scopes, It.IsAny<CancellationToken>()),
+            Times.Once);
+        mockCredentialProvider.Verify(
+            p => p.ResolveCredentialAsync(registry, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SendAsync_WithAccessTokenProvider_BypassesCredentialResolution()
+    {
+        // Arrange — a mock registry that returns 401 with a Bearer challenge,
+        // then succeeds when the expected token is presented.
+        var host = "example.com";
+        var expectedToken = "provider-scoped-token";
+        var realm = "https://auth.example.com/token";
+        var service = "test_service";
+        string[] expectedScopes = ["repository:repo1:pull"];
+
+        var mockProvider = new Mock<IAccessTokenProvider>();
+        mockProvider
+            .Setup(p => p.ResolveAccessTokenAsync(
+                host, realm, service,
+                It.Is<IList<string>>(s => s.SequenceEqual(expectedScopes)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedToken);
+
+        // No credential provider — proves we never fall through
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Scheme == "Bearer"
+                    && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\",service=\"{service}\",scope=\"{string.Join(" ", expectedScopes)}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object), mockProvider.Object);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+
+        // Act
+        var result = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+        mockProvider.Verify(
+            p => p.ResolveAccessTokenAsync(host, realm, service,
+                It.Is<IList<string>>(s => s.SequenceEqual(expectedScopes)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 }
