@@ -28,13 +28,13 @@ public partial class ManifestSerializationTest
             "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
             "config": {
                 "mediaType": "application/vnd.docker.container.image.v1+json",
-                "digest": "sha256:aaa111bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333",
+                "digest": "sha256:aaa111bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ccc333ccc3",
                 "size": 1024
             },
             "layers": [
                 {
                     "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
-                    "digest": "sha256:bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ddd444",
+                    "digest": "sha256:bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ddd444ddd444ddd4",
                     "size": 2048
                 }
             ]

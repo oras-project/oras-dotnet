@@ -52,6 +52,10 @@ public partial class ManifestSerializationTest
 
         var output = Encoding.UTF8.GetString(reserialized);
         Assert.DoesNotContain("\\u002B", output);
+        if (json.Contains('+'))
+        {
+            Assert.Contains("+", output);
+        }
 
         // Byte-level idempotency on second round-trip
         byte[] reserialized2;

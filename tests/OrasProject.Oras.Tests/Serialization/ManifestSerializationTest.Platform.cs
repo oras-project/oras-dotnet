@@ -64,7 +64,8 @@ public partial class ManifestSerializationTest
         Assert.Contains("\"os\":\"linux\"", json);
         Assert.Contains(
             "\"os.version\":\"5.4.0-42-generic\"", json);
-        Assert.Contains("\"os.features\"", json);
+        Assert.Contains(
+            "\"os.features\":[\"feature1\",\"feature2\"]", json);
         Assert.Contains("\"variant\":\"v8\"", json);
     }
 

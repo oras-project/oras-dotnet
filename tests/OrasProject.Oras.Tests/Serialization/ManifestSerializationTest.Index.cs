@@ -30,12 +30,12 @@ public partial class ManifestSerializationTest
             "manifests": [
                 {
                     "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "digest": "sha256:aaa111bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333",
+                    "digest": "sha256:aaa111bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ccc333ccc3",
                     "size": 500
                 },
                 {
                     "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-                    "digest": "sha256:bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ddd444",
+                    "digest": "sha256:bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ddd444ddd444ddd4",
                     "size": 600
                 }
             ]
@@ -49,7 +49,7 @@ public partial class ManifestSerializationTest
             "manifests": [
                 {
                     "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "digest": "sha256:aaa111bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333",
+                    "digest": "sha256:aaa111bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ccc333ccc3",
                     "size": 500,
                     "platform": {
                         "architecture": "amd64",
@@ -58,7 +58,7 @@ public partial class ManifestSerializationTest
                 },
                 {
                     "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "digest": "sha256:bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ddd444",
+                    "digest": "sha256:bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ddd444ddd444ddd4",
                     "size": 600,
                     "platform": {
                         "architecture": "arm64",
@@ -108,7 +108,7 @@ public partial class ManifestSerializationTest
             "manifests": [
                 {
                     "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "digest": "sha256:aaa111bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333",
+                    "digest": "sha256:aaa111bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ccc333ccc3",
                     "size": 500,
                     "platform": {
                         "architecture": "amd64",
@@ -117,7 +117,7 @@ public partial class ManifestSerializationTest
                 },
                 {
                     "mediaType": "application/vnd.oci.image.index.v1+json",
-                    "digest": "sha256:ccc333ddd444eee555fff666aaa111bbb222ccc333ddd444eee555",
+                    "digest": "sha256:ccc333ddd444eee555fff666aaa111bbb222ccc333ddd444eee555eee555eee5",
                     "size": 900
                 }
             ]
@@ -166,13 +166,13 @@ public partial class ManifestSerializationTest
         {
             new()
             {
-                Digest = "sha256:aaa111",
+                Digest = "sha256:aaa111aaa111aaa111aaa111aaa111aaa111aaa111aaa111aaa111aaa111aaaa",
                 MediaType = MediaType.ImageManifest,
                 Size = 100
             },
             new()
             {
-                Digest = "sha256:bbb222",
+                Digest = "sha256:bbb222bbb222bbb222bbb222bbb222bbb222bbb222bbb222bbb222bbb222bbbb",
                 MediaType = MediaType.ImageManifest,
                 Size = 200
             }
@@ -187,6 +187,13 @@ public partial class ManifestSerializationTest
 
         var idx = OciJsonSerializer.Deserialize<OciIndex>(content)!;
         Assert.Equal(2, idx.Manifests.Count);
+        Assert.Equal(manifests.Count, idx.Manifests.Count);
+        Assert.Equal(manifests[0].Digest, idx.Manifests[0].Digest);
+        Assert.Equal(manifests[0].MediaType, idx.Manifests[0].MediaType);
+        Assert.Equal(manifests[0].Size, idx.Manifests[0].Size);
+        Assert.Equal(manifests[1].Digest, idx.Manifests[1].Digest);
+        Assert.Equal(manifests[1].MediaType, idx.Manifests[1].MediaType);
+        Assert.Equal(manifests[1].Size, idx.Manifests[1].Size);
         Assert.Equal(MediaType.ImageIndex, idx.MediaType);
         Assert.Equal(2, idx.SchemaVersion);
     }
