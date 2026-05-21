@@ -22,8 +22,6 @@ namespace OrasProject.Oras.Tests.Serialization;
 
 public partial class ManifestSerializationTest
 {
-    #region Docker JSON Constants
-
     private const string DockerManifestJson = """
         {
             "schemaVersion": 2,
@@ -71,17 +69,11 @@ public partial class ManifestSerializationTest
         }
         """;
 
-    #endregion
-
-    #region Docker Manifest Tests
-
     [Fact]
     public void Deserialize_DockerManifest_PreservesFields()
     {
-        var bytes =
-            Encoding.UTF8.GetBytes(DockerManifestJson);
-        var m =
-            OciJsonSerializer.Deserialize<Manifest>(bytes)!;
+        var bytes = Encoding.UTF8.GetBytes(DockerManifestJson);
+        var m = OciJsonSerializer.Deserialize<Manifest>(bytes)!;
 
         Assert.Equal(
             Docker.MediaType.Manifest, m.MediaType);
@@ -94,10 +86,8 @@ public partial class ManifestSerializationTest
     [Fact]
     public void Deserialize_DockerManifestList_FieldAssertions()
     {
-        var bytes =
-            Encoding.UTF8.GetBytes(DockerManifestListJson);
-        var idx =
-            OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
+        var bytes = Encoding.UTF8.GetBytes(DockerManifestListJson);
+        var idx = OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
 
         Assert.Equal(2, idx.Manifests.Count);
 
@@ -130,6 +120,4 @@ public partial class ManifestSerializationTest
         Assert.Contains(
             Docker.MediaType.Manifest, json);
     }
-
-    #endregion
 }

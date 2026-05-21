@@ -20,8 +20,6 @@ namespace OrasProject.Oras.Tests.Serialization;
 
 public partial class ManifestSerializationTest
 {
-    #region Descriptor JSON Fixtures
-
     private const string DescriptorWithUrlsJson = """
         {
             "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
@@ -66,8 +64,6 @@ public partial class ManifestSerializationTest
             "size": 2
         }
         """;
-
-    #endregion
 
     [Fact]
     public void Deserialize_DescriptorWithUrls_UrlsPopulated()

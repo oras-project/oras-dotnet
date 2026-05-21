@@ -21,8 +21,6 @@ namespace OrasProject.Oras.Tests.Serialization;
 
 public partial class ManifestSerializationTest
 {
-    #region OCI Manifest JSON Constants
-
     /// <summary>
     /// OCI image-spec v1.1.1 manifest.md example image manifest.
     /// </summary>
@@ -137,10 +135,6 @@ public partial class ManifestSerializationTest
         }
         """;
 
-    #endregion
-
-    #region OCI Manifest Tests
-
     [Theory]
     [MemberData(nameof(OciManifestFieldFixtures))]
     public void Deserialize_OciManifest_PreservesAllFields(
@@ -152,8 +146,7 @@ public partial class ManifestSerializationTest
         bool hasAnnotations)
     {
         var bytes = Encoding.UTF8.GetBytes(json);
-        var m =
-            OciJsonSerializer.Deserialize<Manifest>(bytes)!;
+        var m = OciJsonSerializer.Deserialize<Manifest>(bytes)!;
 
         Assert.Equal(2, m.SchemaVersion);
         Assert.Equal(expectedMediaType, m.MediaType);
@@ -180,8 +173,7 @@ public partial class ManifestSerializationTest
         string expectedValue)
     {
         var bytes = Encoding.UTF8.GetBytes(json);
-        var m =
-            OciJsonSerializer.Deserialize<Manifest>(bytes)!;
+        var m = OciJsonSerializer.Deserialize<Manifest>(bytes)!;
 
         Assert.NotNull(m.Annotations);
         Assert.True(
@@ -194,10 +186,8 @@ public partial class ManifestSerializationTest
     [Fact]
     public void Deserialize_SpecImageManifest_FieldAssertions()
     {
-        var bytes =
-            Encoding.UTF8.GetBytes(SpecImageManifestJson);
-        var m =
-            OciJsonSerializer.Deserialize<Manifest>(bytes)!;
+        var bytes = Encoding.UTF8.GetBytes(SpecImageManifestJson);
+        var m = OciJsonSerializer.Deserialize<Manifest>(bytes)!;
 
         Assert.Equal(
             MediaType.ImageConfig, m.Config.MediaType);
@@ -243,8 +233,7 @@ public partial class ManifestSerializationTest
             }
             """;
         var bytes = Encoding.UTF8.GetBytes(minimalJson);
-        var m =
-            OciJsonSerializer.Deserialize<Manifest>(bytes)!;
+        var m = OciJsonSerializer.Deserialize<Manifest>(bytes)!;
 
         Assert.NotNull(m);
         Assert.Null(m.MediaType);
@@ -253,12 +242,7 @@ public partial class ManifestSerializationTest
         Assert.Null(m.Annotations);
     }
 
-    #endregion
-
-    #region OCI Manifest Fixture Providers
-
-    public static IEnumerable<object[]>
-        OciManifestFieldFixtures()
+    public static IEnumerable<object[]> OciManifestFieldFixtures()
     {
         yield return new object[]
         {
@@ -281,8 +265,7 @@ public partial class ManifestSerializationTest
         };
     }
 
-    public static IEnumerable<object[]>
-        OciAnnotationFixtures()
+    public static IEnumerable<object[]> OciAnnotationFixtures()
     {
         yield return new object[]
         {
@@ -303,6 +286,4 @@ public partial class ManifestSerializationTest
             "layer+value"
         };
     }
-
-    #endregion
 }

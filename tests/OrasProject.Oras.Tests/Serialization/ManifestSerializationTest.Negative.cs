@@ -25,8 +25,7 @@ public partial class ManifestSerializationTest
     [InlineData("not json")]
     [InlineData("[]")]
     [InlineData("{")]
-    public void Deserialize_InvalidJson_ThrowsJsonException(
-        string json)
+    public void Deserialize_InvalidJson_ThrowsJsonException(string json)
     {
         var bytes = Encoding.UTF8.GetBytes(json);
         Assert.Throws<JsonException>(

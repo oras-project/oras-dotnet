@@ -23,8 +23,6 @@ namespace OrasProject.Oras.Tests.Serialization;
 
 public partial class ManifestSerializationTest
 {
-    #region Index JSON Constants
-
     private const string MinimalIndexJson = """
         {
             "schemaVersion": 2,
@@ -134,10 +132,6 @@ public partial class ManifestSerializationTest
         }
         """;
 
-    #endregion
-
-    #region Index Tests
-
     [Theory]
     [MemberData(nameof(IndexFieldFixtures))]
     public void Deserialize_Index_PreservesAllFields(
@@ -184,16 +178,14 @@ public partial class ManifestSerializationTest
             }
         };
 
-        var (desc, content) =
-            OciIndex.GenerateIndex(manifests);
+        var (desc, content) = OciIndex.GenerateIndex(manifests);
 
         Assert.Equal(MediaType.ImageIndex, desc.MediaType);
         Assert.Equal(content.Length, desc.Size);
         Assert.Equal(
             Digest.ComputeSha256(content), desc.Digest);
 
-        var idx =
-            OciJsonSerializer.Deserialize<OciIndex>(content)!;
+        var idx = OciJsonSerializer.Deserialize<OciIndex>(content)!;
         Assert.Equal(2, idx.Manifests.Count);
         Assert.Equal(MediaType.ImageIndex, idx.MediaType);
         Assert.Equal(2, idx.SchemaVersion);
@@ -203,16 +195,14 @@ public partial class ManifestSerializationTest
     public void GenerateIndex_EmptyManifests_ProducesValidOutput()
     {
         var manifests = new List<Descriptor>();
-        var (desc, content) =
-            OciIndex.GenerateIndex(manifests);
+        var (desc, content) = OciIndex.GenerateIndex(manifests);
 
         Assert.Equal(MediaType.ImageIndex, desc.MediaType);
         Assert.Equal(content.Length, desc.Size);
         Assert.Equal(
             Digest.ComputeSha256(content), desc.Digest);
 
-        var idx =
-            OciJsonSerializer.Deserialize<OciIndex>(content)!;
+        var idx = OciJsonSerializer.Deserialize<OciIndex>(content)!;
         Assert.Empty(idx.Manifests);
         Assert.Equal(MediaType.ImageIndex, idx.MediaType);
         Assert.Equal(2, idx.SchemaVersion);
@@ -221,10 +211,8 @@ public partial class ManifestSerializationTest
     [Fact]
     public void Deserialize_SpecMultiPlatformIndex_PlatformAssertions()
     {
-        var bytes =
-            Encoding.UTF8.GetBytes(SpecMultiPlatformIndexJson);
-        var idx =
-            OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
+        var bytes = Encoding.UTF8.GetBytes(SpecMultiPlatformIndexJson);
+        var idx = OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
 
         Assert.Equal(2, idx.Manifests.Count);
 
@@ -243,8 +231,7 @@ public partial class ManifestSerializationTest
     public void Deserialize_NestedIndex_MixedMediaTypes()
     {
         var bytes = Encoding.UTF8.GetBytes(NestedIndexJson);
-        var idx =
-            OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
+        var idx = OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
 
         Assert.Equal(2, idx.Manifests.Count);
         Assert.Equal(
@@ -259,16 +246,11 @@ public partial class ManifestSerializationTest
     public void Serialize_IndexEmptyManifests_ArrayPresent()
     {
         var index = new OciIndex(new List<Descriptor>());
-        var bytes =
-            OciJsonSerializer.SerializeToUtf8Bytes(index);
+        var bytes = OciJsonSerializer.SerializeToUtf8Bytes(index);
         var json = Encoding.UTF8.GetString(bytes);
 
         Assert.Contains("\"manifests\":[]", json);
     }
-
-    #endregion
-
-    #region Index Fixture Providers
 
     public static IEnumerable<object[]> IndexFieldFixtures()
     {
@@ -279,6 +261,4 @@ public partial class ManifestSerializationTest
         yield return new object[]
             { EmptyManifestsIndexJson, 0, false };
     }
-
-    #endregion
 }

@@ -21,8 +21,6 @@ namespace OrasProject.Oras.Tests.Serialization;
 
 public partial class ManifestSerializationTest
 {
-    #region Artifact JSON Constants
-
     private const string MinimalArtifactJson = """
         {
             "schemaVersion": 2,
@@ -91,17 +89,11 @@ public partial class ManifestSerializationTest
         }
         """;
 
-    #endregion
-
-    #region Artifact Tests
-
     [Fact]
     public void Deserialize_MinimalArtifact_FieldAssertions()
     {
-        var bytes =
-            Encoding.UTF8.GetBytes(MinimalArtifactJson);
-        var m =
-            OciJsonSerializer.Deserialize<Manifest>(bytes)!;
+        var bytes = Encoding.UTF8.GetBytes(MinimalArtifactJson);
+        var m = OciJsonSerializer.Deserialize<Manifest>(bytes)!;
 
         Assert.Equal(
             "application/vnd.example.sbom.v1",
@@ -115,10 +107,8 @@ public partial class ManifestSerializationTest
     [Fact]
     public void Deserialize_ArtifactWithConfig_SubjectPresent()
     {
-        var bytes =
-            Encoding.UTF8.GetBytes(ArtifactWithConfigJson);
-        var m =
-            OciJsonSerializer.Deserialize<Manifest>(bytes)!;
+        var bytes = Encoding.UTF8.GetBytes(ArtifactWithConfigJson);
+        var m = OciJsonSerializer.Deserialize<Manifest>(bytes)!;
 
         Assert.NotNull(m.Subject);
         Assert.StartsWith("sha256:", m.Subject!.Digest);
@@ -147,8 +137,7 @@ public partial class ManifestSerializationTest
             }
         };
 
-        var bytes =
-            OciJsonSerializer.SerializeToUtf8Bytes(manifest);
+        var bytes = OciJsonSerializer.SerializeToUtf8Bytes(manifest);
         var json = Encoding.UTF8.GetString(bytes);
 
         Assert.Contains("\"subject\"", json);
@@ -157,18 +146,13 @@ public partial class ManifestSerializationTest
     [Fact]
     public void Serialize_ArtifactPlusSign_NoEscaping()
     {
-        var bytes =
-            Encoding.UTF8.GetBytes(ArtifactPlusSignJson);
-        var m =
-            OciJsonSerializer.Deserialize<Manifest>(bytes)!;
-        var reserialized =
-            OciJsonSerializer.SerializeToUtf8Bytes(m);
+        var bytes = Encoding.UTF8.GetBytes(ArtifactPlusSignJson);
+        var m = OciJsonSerializer.Deserialize<Manifest>(bytes)!;
+        var reserialized = OciJsonSerializer.SerializeToUtf8Bytes(m);
         var output = Encoding.UTF8.GetString(reserialized);
 
         Assert.DoesNotContain("\\u002B", output);
         Assert.Contains(
             "application/vnd.example+sbom.v1+json", output);
     }
-
-    #endregion
 }

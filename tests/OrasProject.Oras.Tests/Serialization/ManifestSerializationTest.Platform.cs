@@ -20,8 +20,6 @@ namespace OrasProject.Oras.Tests.Serialization;
 
 public partial class ManifestSerializationTest
 {
-    #region Platform JSON Fixtures
-
     private const string FullPlatformJson = """
         {
             "architecture": "amd64",
@@ -46,8 +44,6 @@ public partial class ManifestSerializationTest
             "os.features": ["sse4", "aes", "sha1", "sha2"]
         }
         """;
-
-    #endregion
 
     [Fact]
     public void Serialize_Platform_AllFields()
@@ -95,8 +91,7 @@ public partial class ManifestSerializationTest
     public void Deserialize_Platform_MissingOptionals_NoException()
     {
         var bytes = Encoding.UTF8.GetBytes(MinimalPlatformJson);
-        var platform =
-            OciJsonSerializer.Deserialize<Platform>(bytes)!;
+        var platform = OciJsonSerializer.Deserialize<Platform>(bytes)!;
 
         Assert.Equal("amd64", platform.Architecture);
         Assert.Equal("linux", platform.Os);
@@ -108,10 +103,8 @@ public partial class ManifestSerializationTest
     [Fact]
     public void Deserialize_Platform_WithOsFeatures_ListPopulated()
     {
-        var bytes =
-            Encoding.UTF8.GetBytes(PlatformWithOsFeaturesJson);
-        var platform =
-            OciJsonSerializer.Deserialize<Platform>(bytes)!;
+        var bytes = Encoding.UTF8.GetBytes(PlatformWithOsFeaturesJson);
+        var platform = OciJsonSerializer.Deserialize<Platform>(bytes)!;
 
         Assert.NotNull(platform.OsFeatures);
         Assert.Equal(4, platform.OsFeatures!.Count);
