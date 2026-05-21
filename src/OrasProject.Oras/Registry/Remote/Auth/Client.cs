@@ -15,6 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -180,6 +181,12 @@ public class Client : IClient
     /// defaultClientID specifies the default client ID used in OAuth2.
     /// </summary>
     private const string _defaultClientId = "oras-dotnet";
+
+    /// <summary>
+    /// Maximum size (4 MB) for buffering non-seekable request content.
+    /// In practice only manifest-sized payloads flow through this path.
+    /// </summary>
+    internal const long MaxBufferSize = 4 * 1024 * 1024;
 
     /// <summary>
     /// ScopeManager is an instance to manage scopes.
@@ -524,6 +531,16 @@ public class Client : IClient
         {
             return await SendRequestAsync(originalRequest, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
         }
+
+        // Buffer non-seekable content upfront so auth retries can
+        // rewind it.  Skips when Content-Length exceeds 4 MB (to
+        // avoid consuming large non-seekable streams).  Unknown-
+        // length content is buffered; if it turns out to exceed
+        // the cap AND is non-seekable, throws immediately.
+        await BufferNonSeekableContentAsync(
+            originalRequest, cancellationToken)
+            .ConfigureAwait(false);
+
         var host = originalRequest.RequestUri?.Authority ??
                     throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
@@ -662,5 +679,68 @@ public class Client : IClient
     {
         var client = allowAutoRedirect ? BaseClient : NoRedirectClient;
         return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Buffers non-seekable request content in place so that auth
+    /// retries can rewind the body.  Uses the built-in
+    /// <see cref="HttpContent.LoadIntoBufferAsync(long)"/> which
+    /// handles both known and unknown Content-Length, enforces the
+    /// size cap, and makes the stream seekable after completion.
+    /// Seekable content that exceeds the buffer size is left
+    /// untouched (it can be rewound directly without buffering).
+    /// Non-seekable content with a declared Content-Length over the
+    /// limit is also left untouched — the first send proceeds but
+    /// a 401 retry would fail because the body cannot be replayed.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="HttpContent.LoadIntoBufferAsync(long)"/> on
+    /// .NET 8 does not accept a <see cref="CancellationToken"/>;
+    /// the token is only used in the catch-path stream check.
+    /// With the 4 MB cap, buffering completes quickly in practice.
+    /// </remarks>
+    private static async Task BufferNonSeekableContentAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        var content = request.Content;
+        if (content == null)
+        {
+            return;
+        }
+
+        // If Content-Length is declared and exceeds the cap, skip
+        // buffering to avoid partially consuming a non-seekable
+        // stream.  Seekable streams will still work (rewind on
+        // retry); non-seekable ones accept the limitation.
+        if (content.Headers.ContentLength > MaxBufferSize)
+        {
+            return;
+        }
+
+        try
+        {
+            await content.LoadIntoBufferAsync(MaxBufferSize)
+                .ConfigureAwait(false);
+        }
+        catch (HttpRequestException)
+        {
+            // Content exceeds MaxBufferSize (unknown length that
+            // turned out to be too large).  If the stream is
+            // seekable, rewind and continue — the retry path can
+            // replay the body directly.  If not seekable, the
+            // stream is partially consumed and unrecoverable;
+            // rethrow so the caller gets a clear size error rather
+            // than a confusing "stream already consumed" later.
+            var stream = await content
+                .ReadAsStreamAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (!stream.CanSeek)
+            {
+                throw;
+            }
+
+            stream.Position = 0;
+        }
     }
 }
