@@ -35,7 +35,7 @@ public partial class ManifestSerializationTest
     private const string DescriptorWithDataJson = """
         {
             "mediaType": "application/vnd.oci.empty.v1+json",
-            "digest": "sha256:44136fa355b311bfa706c319d8f39c36e47d288aca2e1cc38b1c9299874ad691",
+            "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
             "size": 2,
             "data": "e30="
         }
@@ -60,7 +60,7 @@ public partial class ManifestSerializationTest
     private const string DescriptorMinimalJson = """
         {
             "mediaType": "application/vnd.oci.empty.v1+json",
-            "digest": "sha256:44136fa355b311bfa706c319d8f39c36e47d288aca2e1cc38b1c9299874ad691",
+            "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
             "size": 2
         }
         """;
@@ -97,7 +97,7 @@ public partial class ManifestSerializationTest
         var desc = new Descriptor
         {
             MediaType = MediaType.EmptyJson,
-            Digest = "sha256:44136fa355b311bfa706c319d8f39c36e47d288aca2e1cc38b1c9299874ad691",
+            Digest = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
             Size = 2
         };
 

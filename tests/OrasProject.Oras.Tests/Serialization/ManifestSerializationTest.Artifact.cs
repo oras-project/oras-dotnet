@@ -27,13 +27,13 @@ public partial class ManifestSerializationTest
             "mediaType": "application/vnd.oci.image.manifest.v1+json",
             "config": {
                 "mediaType": "application/vnd.oci.empty.v1+json",
-                "digest": "sha256:44136fa355b311bfa706c319d8f39c36e47d288aca2e1cc38b1c9299874ad691",
+                "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
                 "size": 2
             },
             "layers": [
                 {
                     "mediaType": "application/vnd.oci.empty.v1+json",
-                    "digest": "sha256:44136fa355b311bfa706c319d8f39c36e47d288aca2e1cc38b1c9299874ad691",
+                    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
                     "size": 2
                 }
             ],
@@ -72,13 +72,13 @@ public partial class ManifestSerializationTest
             "mediaType": "application/vnd.oci.image.manifest.v1+json",
             "config": {
                 "mediaType": "application/vnd.oci.empty.v1+json",
-                "digest": "sha256:44136fa355b311bfa706c319d8f39c36e47d288aca2e1cc38b1c9299874ad691",
+                "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
                 "size": 2
             },
             "layers": [
                 {
                     "mediaType": "application/vnd.oci.empty.v1+json",
-                    "digest": "sha256:44136fa355b311bfa706c319d8f39c36e47d288aca2e1cc38b1c9299874ad691",
+                    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
                     "size": 2
                 }
             ],

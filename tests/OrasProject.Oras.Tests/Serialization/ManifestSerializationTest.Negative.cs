@@ -71,7 +71,7 @@ public partial class ManifestSerializationTest
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
                 "config": {
                     "mediaType": "application/vnd.oci.image.config.v1+json",
-                    "digest": "sha256:44136fa355b311bfa706c319d8f39c36e47d288aca2e1cc38b1c9299874ad691",
+                    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
                     "size": 2,
                     "unknownNested": "should be ignored"
                 },
@@ -95,7 +95,7 @@ public partial class ManifestSerializationTest
                 "manifests": [
                     {
                         "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                        "digest": "sha256:44136fa355b311bfa706c319d8f39c36e47d288aca2e1cc38b1c9299874ad691",
+                        "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
                         "size": 100,
                         "platform": {
                             "architecture": "amd64",
@@ -119,7 +119,7 @@ public partial class ManifestSerializationTest
         var json = """
             {
                 "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
-                "digest": "sha256:44136fa355b311bfa706c319d8f39c36e47d288aca2e1cc38b1c9299874ad691",
+                "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
                 "size": 1024,
                 "customExtension": { "nested": true }
             }
