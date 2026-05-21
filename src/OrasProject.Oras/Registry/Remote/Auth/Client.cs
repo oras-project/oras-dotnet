@@ -74,62 +74,87 @@ public class Client : IClient
     }
 
     /// <summary>
-    /// Initializes a new instance of the Client class with an access-token provider.
+    /// Initializes a new instance of the Client class with separate
+    /// HttpClient instances for redirect control.
     /// </summary>
     /// <param name="httpClient">
-    /// Optional HttpClient to use for standard requests that follow redirects.
-    /// If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
-    /// </param>
-    /// <param name="accessTokenProvider">
-    /// An access-token provider that returns ready-to-use tokens.  When set, the client
-    /// calls this provider first during Bearer authentication before falling back to
-    /// credential-based token exchange.
-    /// </param>
-    /// <param name="cache">Optional cache for storing authentication tokens.</param>
-    public Client(
-        HttpClient? httpClient,
-        IAccessTokenProvider accessTokenProvider,
-        ICache? cache = null)
-        : this(httpClient, null, null, accessTokenProvider, cache)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the Client class with separate HttpClient instances for redirect control.
-    /// </summary>
-    /// <param name="httpClient">
-    /// Optional HttpClient to use for standard requests that follow redirects.
-    /// If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
+    /// Optional HttpClient to use for standard requests that follow
+    /// redirects.  If not provided, uses
+    /// <see cref="DefaultHttpClient.Instance"/>.
     /// </param>
     /// <param name="noRedirectHttpClient">
-    /// Optional HttpClient configured with <c>AllowAutoRedirect = false</c> for capturing redirect locations.
-    /// If not provided, uses <see cref="DefaultHttpClient.NoRedirectInstance"/>.
+    /// Optional HttpClient configured with
+    /// <c>AllowAutoRedirect = false</c> for capturing redirect
+    /// locations.  If not provided, uses
+    /// <see cref="DefaultHttpClient.NoRedirectInstance"/>.
     /// <para>
-    /// <strong>Advanced Usage:</strong> To apply consistent HTTP configuration (timeouts, proxy, headers) 
-    /// across both redirect and no-redirect scenarios, provide both <paramref name="httpClient"/> and 
-    /// <paramref name="noRedirectHttpClient"/> with the same base configuration but different redirect settings.
-    /// This is useful with IHttpClientFactory or custom HttpClient management.
+    /// <strong>Advanced Usage:</strong> To apply consistent HTTP
+    /// configuration (timeouts, proxy, headers) across both redirect
+    /// and no-redirect scenarios, provide both
+    /// <paramref name="httpClient"/> and
+    /// <paramref name="noRedirectHttpClient"/> with the same base
+    /// configuration but different redirect settings.  This is useful
+    /// with IHttpClientFactory or custom HttpClient management.
     /// </para>
     /// </param>
-    /// <param name="credentialProvider">Optional credential provider for registry authentication.</param>
-    /// <param name="accessTokenProvider">
-    /// Optional access-token provider.  When set, the client calls this provider first during
-    /// Bearer authentication.  If it returns <c>null</c>, the client falls through to
-    /// credential-based authentication via <paramref name="credentialProvider"/>.
+    /// <param name="credentialProvider">
+    /// Optional credential provider for registry authentication.
     /// </param>
-    /// <param name="cache">Optional cache for storing authentication tokens.</param>
+    /// <param name="cache">
+    /// Optional cache for storing authentication tokens.
+    /// </param>
     public Client(
         HttpClient? httpClient,
         HttpClient? noRedirectHttpClient,
         ICredentialProvider? credentialProvider,
-        IAccessTokenProvider? accessTokenProvider = null,
-        ICache? cache = null)
+        ICache? cache)
+        : this(httpClient, noRedirectHttpClient, credentialProvider,
+            null, cache)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the Client class with separate
+    /// HttpClient instances for redirect control and an optional
+    /// access-token provider.
+    /// </summary>
+    /// <param name="httpClient">
+    /// Optional HttpClient to use for standard requests that follow
+    /// redirects.  If not provided, uses
+    /// <see cref="DefaultHttpClient.Instance"/>.
+    /// </param>
+    /// <param name="noRedirectHttpClient">
+    /// Optional HttpClient configured with
+    /// <c>AllowAutoRedirect = false</c> for capturing redirect
+    /// locations.  If not provided, uses
+    /// <see cref="DefaultHttpClient.NoRedirectInstance"/>.
+    /// </param>
+    /// <param name="credentialProvider">
+    /// Optional credential provider for registry authentication.
+    /// </param>
+    /// <param name="accessTokenProvider">
+    /// Optional access-token provider.  When set, the client calls
+    /// this provider first during Bearer authentication.  If it
+    /// returns <c>null</c> or whitespace, the client falls through to
+    /// credential-based authentication via
+    /// <paramref name="credentialProvider"/>.
+    /// </param>
+    /// <param name="cache">
+    /// Optional cache for storing authentication tokens.
+    /// </param>
+    public Client(
+        HttpClient? httpClient,
+        HttpClient? noRedirectHttpClient,
+        ICredentialProvider? credentialProvider,
+        IAccessTokenProvider? accessTokenProvider,
+        ICache? cache)
     {
         CredentialProvider = credentialProvider;
         AccessTokenProvider = accessTokenProvider;
         _cache = cache;
         BaseClient = httpClient ?? DefaultHttpClient.Instance;
-        NoRedirectClient = noRedirectHttpClient ?? DefaultHttpClient.NoRedirectInstance;
+        NoRedirectClient =
+            noRedirectHttpClient ?? DefaultHttpClient.NoRedirectInstance;
     }
 
     /// <summary>
@@ -139,10 +164,11 @@ public class Client : IClient
     public ICredentialProvider? CredentialProvider { get; init; }
 
     /// <summary>
-    /// AccessTokenProvider provides pre-resolved access tokens for Bearer authentication.
-    /// When set, the client calls this provider first during Bearer auth.  If it returns
-    /// <c>null</c>, the client falls through to credential-based authentication via
-    /// <see cref="CredentialProvider"/>.
+    /// AccessTokenProvider provides pre-resolved access tokens for
+    /// Bearer authentication.  When set, the client calls this provider
+    /// first during Bearer auth.  If it returns <c>null</c> or
+    /// whitespace, the client falls through to credential-based
+    /// authentication via <see cref="CredentialProvider"/>.
     /// </summary>
     public IAccessTokenProvider? AccessTokenProvider { get; init; }
 
@@ -335,21 +361,29 @@ public class Client : IClient
     /// <summary>
     /// Fetches a OAuth2 access token for accessing a registry.
     ///
-    /// When an <see cref="AccessTokenProvider"/> is configured it is consulted first.
-    /// If it returns a non-empty token, that token is used directly — bypassing credential
-    /// resolution entirely.  Otherwise, the existing credential-based flow is used:
-    /// if credential is empty or refreshToken is not set and OAuth2 authentication is not forced,
-    /// the method would fetch anonymous token with a Http Get request
-    /// otherwise, it would fetch OAuth2 token with a Http Post request.
+    /// When an <see cref="AccessTokenProvider"/> is configured it is
+    /// consulted first.  If it returns a non-whitespace token, that
+    /// token is used directly — bypassing credential resolution
+    /// entirely.  Otherwise, the existing credential-based flow is
+    /// used: if credential is empty or refreshToken is not set and
+    /// OAuth2 authentication is not forced, the method would fetch
+    /// anonymous token with a Http Get request otherwise, it would
+    /// fetch OAuth2 token with a Http Post request.
     /// </summary>
     /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="realm">The authentication realm to use.</param>
-    /// <param name="service">The service name for which the token is requested.</param>
-    /// <param name="scopes">The scopes of access requested for the token.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <param name="service">
+    /// The service name for which the token is requested.
+    /// </param>
+    /// <param name="scopes">
+    /// The scopes of access requested for the token.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token to monitor for cancellation requests.
+    /// </param>
     /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains the bearer
-    /// authentication token as a string.
+    /// A task that represents the asynchronous operation. The task
+    /// result contains the bearer authentication token as a string.
     /// </returns>
     /// <exception cref="AuthenticationException">
     /// Thrown when credentials are missing or invalid.
@@ -361,14 +395,22 @@ public class Client : IClient
         IList<string> scopes,
         CancellationToken cancellationToken = default)
     {
-        // When an AccessTokenProvider is configured, try it first.  It returns a
-        // ready-to-use scoped token without exposing raw credentials in-process.
+        // When an AccessTokenProvider is configured, try it first.
+        // It returns a ready-to-use scoped token without exposing raw
+        // credentials in-process.
         if (AccessTokenProvider != null)
         {
-            var accessToken = await AccessTokenProvider.ResolveAccessTokenAsync(
-                registry, realm, service, scopes, cancellationToken)
+            var readOnlyScopes =
+                (IReadOnlyList<string>)scopes.ToArray();
+            var accessToken =
+                await AccessTokenProvider.ResolveAccessTokenAsync(
+                    registry,
+                    realm,
+                    service,
+                    readOnlyScopes,
+                    cancellationToken)
                 .ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(accessToken))
+            if (!string.IsNullOrWhiteSpace(accessToken))
             {
                 return accessToken;
             }

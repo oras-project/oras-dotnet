@@ -22,36 +22,50 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Unlike <see cref="ICredentialProvider"/>, which returns raw credentials that the
-/// <see cref="Client"/> exchanges at a token endpoint, an <see cref="IAccessTokenProvider"/>
-/// returns a ready-to-use access token.  This is useful when token acquisition is handled
-/// by an external service (e.g., a gRPC token service) that owns the credential exchange.
+/// Unlike <see cref="ICredentialProvider"/>, which returns raw credentials that
+/// the <see cref="Client"/> exchanges at a token endpoint, an
+/// <see cref="IAccessTokenProvider"/> returns a ready-to-use access token.
+/// This is useful when token acquisition is handled by an external service
+/// (e.g., a gRPC token service) that owns the credential exchange.
 /// </para>
 /// <para>
-/// When both <see cref="IAccessTokenProvider"/> and <see cref="ICredentialProvider"/> are
-/// configured on a <see cref="Client"/>, the access-token provider is tried first.  If it
-/// returns <c>null</c>, the client falls through to credential-based authentication.
+/// When both <see cref="IAccessTokenProvider"/> and
+/// <see cref="ICredentialProvider"/> are configured on a <see cref="Client"/>,
+/// the access-token provider is tried first.  If it returns <c>null</c> or
+/// whitespace, the client falls through to credential-based authentication.
 /// </para>
 /// </remarks>
+/// <seealso href="https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#authorization">
+/// OCI Distribution Spec — Authorization
+/// </seealso>
 public interface IAccessTokenProvider
 {
     /// <summary>
-    /// Resolves an access token for the given registry authentication challenge.
+    /// Resolves an access token for the given registry authentication
+    /// challenge.
     /// </summary>
-    /// <param name="hostname">The registry hostname (authority) that issued the challenge.</param>
-    /// <param name="realm">The authentication realm URL from the WWW-Authenticate header.</param>
-    /// <param name="service">The service identifier from the WWW-Authenticate header.</param>
-    /// <param name="scopes">The requested access scopes.</param>
-    /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+    /// <param name="hostname">
+    /// The registry hostname (authority) that issued the challenge.
+    /// </param>
+    /// <param name="realm">
+    /// The authentication realm URL from the WWW-Authenticate header.
+    /// </param>
+    /// <param name="service">
+    /// The service identifier from the WWW-Authenticate header.
+    /// </param>
+    /// <param name="scopes">The requested access scopes (read-only).</param>
+    /// <param name="cancellationToken">
+    /// A token to cancel the asynchronous operation.
+    /// </param>
     /// <returns>
-    /// The access token string, or <c>null</c> if this provider cannot resolve a token
-    /// for the given parameters (in which case the client falls through to credential-based
-    /// authentication).
+    /// The access token string, or <c>null</c> / whitespace if this provider
+    /// cannot resolve a token for the given parameters (in which case the
+    /// client falls through to credential-based authentication).
     /// </returns>
     Task<string?> ResolveAccessTokenAsync(
         string hostname,
         string realm,
         string service,
-        IList<string> scopes,
+        IReadOnlyList<string> scopes,
         CancellationToken cancellationToken = default);
 }
