@@ -343,6 +343,10 @@ public class Client : IClient
     /// <exception cref="KeyNotFoundException">
     /// Thrown if required parameters (e.g., "realm") are missing in the authentication challenge.
     /// </exception>
+    /// <exception cref="AuthenticationException">
+    /// Thrown when the realm URL is invalid or not allowed by
+    /// <see cref="RealmValidator"/>.
+    /// </exception>
     public Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage originalRequest,
         string? partitionId = null,

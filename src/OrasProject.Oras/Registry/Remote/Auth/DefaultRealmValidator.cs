@@ -94,8 +94,8 @@ public sealed class DefaultRealmValidator : IRealmValidator
 
         // 2. Reject HTTP unless explicitly allowed.
         if (!AllowInsecureHttp
-            && string.Equals(
-                realmUri.Scheme, "http",
+            && realmUri.Scheme.Equals(
+                Uri.UriSchemeHttp,
                 StringComparison.OrdinalIgnoreCase))
         {
             return Task.FromResult(false);
@@ -129,11 +129,11 @@ public sealed class DefaultRealmValidator : IRealmValidator
     /// </summary>
     private static bool IsHttpScheme(Uri uri)
     {
-        return string.Equals(
-                   uri.Scheme, "https",
+        return uri.Scheme.Equals(
+                   Uri.UriSchemeHttps,
                    StringComparison.OrdinalIgnoreCase)
-               || string.Equals(
-                   uri.Scheme, "http",
+               || uri.Scheme.Equals(
+                   Uri.UriSchemeHttp,
                    StringComparison.OrdinalIgnoreCase);
     }
 

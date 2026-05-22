@@ -2474,12 +2474,14 @@ public class ClientTest
         var mockHandler = CustomHandler(MockHttpRequestHandler);
         var client = new Client(
             new HttpClient(mockHandler.Object), null, null,
-            mockProvider.Object, null);
-        client.RealmValidator = new DefaultRealmValidator
+            mockProvider.Object, null)
         {
-            TrustedRealmHosts = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-            { "auth.example.com" }
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase)
+                { "auth.example.com" }
+            }
         };
         using var request = new HttpRequestMessage(
             HttpMethod.Get, $"https://{host}");
