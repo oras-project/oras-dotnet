@@ -37,7 +37,7 @@ public class CalculateDigest
     /// </summary>
     [Theory]
     [InlineData("sha256:6c3c624b58dbbcd3c0dd82b4c53f04194d1247c6eebdaab7c610cf7d66709b3b")]
-    [InlineData("sha512:401b09eab3c013d4ca54922bb802bec8fd5318192b0a75f201d8b372742c513925d98f76b340d9e59a4efdc45db9f5c640a21831b3d08be")]
+    [InlineData("sha512:cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e")]
     public void Validate_ReturnsDigest_ForRegisteredAlgorithms(string validDigest)
     {
         var result = Digest.Validate(validDigest);
@@ -45,15 +45,19 @@ public class CalculateDigest
     }
 
     /// <summary>
-    /// This method tests if the digest validation throws an exception for unregistered or unsupported algorithms
+    /// This method tests if the digest validation passes for unrecognized algorithms
+    /// that match the general digest grammar, per OCI image-spec v1.1.1:
+    /// "Implementations SHOULD allow digests with unrecognized algorithms to pass
+    /// validation if they comply with the above grammar."
     /// </summary>
     [Theory]
-    [InlineData("md5:098f6bcd4621d373cade4e832627b4f6")] // MD5, unregistered digest
-    [InlineData("sha1:3b8b5a6b79f6d1114a7b7e95b3e3bc74dd1b6a2a")] // SHA-1, unregistered digest
-    [InlineData("multihash+base58:QmRZxt2b1FVZPNqd8hsiykDL3TdBDeTSPX9Kv46HmX4Gx8")] // Multihash, unregistered digest
-    public void Validate_ThrowsException_ForUnregisteredAlgorithms(string invalidDigest)
+    [InlineData("md5:098f6bcd4621d373cade4e832627b4f6")]
+    [InlineData("sha1:3b8b5a6b79f6d1114a7b7e95b3e3bc74dd1b6a2a")]
+    [InlineData("multihash+base58:QmRZxt2b1FVZPNqd8hsiykDL3TdBDeTSPX9Kv46HmX4Gx8")]
+    public void Validate_ReturnsDigest_ForUnrecognizedAlgorithms(string digest)
     {
-        Assert.Throws<InvalidDigestException>(() => Digest.Validate(invalidDigest));
+        var result = Digest.Validate(digest);
+        Assert.Equal(digest, result);
     }
 
     /// <summary>
