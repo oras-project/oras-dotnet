@@ -436,7 +436,7 @@ public partial class Reference
             reference : throw new InvalidReferenceException(error);
     }
 
-    private static bool TryValidateTag(string reference, out string error)
+    internal static bool TryValidateTag(string reference, out string error)
     {
         if (string.IsNullOrEmpty(reference))
         {
