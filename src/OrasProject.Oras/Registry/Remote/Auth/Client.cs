@@ -359,7 +359,7 @@ public class Client : IClient
     }
 
     /// <summary>
-    /// Fetches a OAuth2 access token for accessing a registry.
+    /// Fetches a bearer access token for accessing a registry.
     ///
     /// When an <see cref="AccessTokenProvider"/> is configured it is
     /// consulted first.  If it returns a non-whitespace token, that
@@ -377,6 +377,11 @@ public class Client : IClient
     /// </param>
     /// <param name="scopes">
     /// The scopes of access requested for the token.
+    /// </param>
+    /// <param name="forceRefresh">
+    /// When <see langword="true"/>, instructs the provider to bypass
+    /// any cached token and acquire a fresh one. This is always set
+    /// after a 401 response indicates the current token is stale.
     /// </param>
     /// <param name="cancellationToken">
     /// A token to monitor for cancellation requests.
@@ -401,8 +406,8 @@ public class Client : IClient
         // credentials in-process.
         if (AccessTokenProvider != null)
         {
-            var readOnlyScopes =
-                (IReadOnlyList<string>)scopes.ToArray();
+            var readOnlyScopes = scopes as IReadOnlyList<string>
+                ?? (IReadOnlyList<string>)scopes.ToArray();
             var accessToken =
                 await AccessTokenProvider.ResolveAccessTokenAsync(
                     registry,
