@@ -49,11 +49,36 @@ public interface IAccessTokenProvider
     /// </param>
     /// <param name="realm">
     /// The authentication realm URL from the WWW-Authenticate header.
+    /// <para>
+    /// <b>Trust boundary:</b> This value is derived from a server-supplied
+    /// WWW-Authenticate header and must be treated as untrusted input.
+    /// Implementations should validate the URL before making outbound
+    /// requests (e.g., restrict to HTTPS, allowlist known token
+    /// endpoints).
+    /// </para>
     /// </param>
     /// <param name="service">
     /// The service identifier from the WWW-Authenticate header.
+    /// <para>
+    /// <b>Trust boundary:</b> This value is attacker-controlled.
+    /// Implementations should not use it to make security decisions
+    /// without independent validation.
+    /// </para>
     /// </param>
-    /// <param name="scopes">The requested access scopes (read-only).</param>
+    /// <param name="scopes">
+    /// The requested access scopes (read-only).
+    /// <para>
+    /// <b>Trust boundary:</b> Scope values originate from the
+    /// WWW-Authenticate header and should be validated or sanitized
+    /// before forwarding to external token services.
+    /// </para>
+    /// </param>
+    /// <param name="forceRefresh">
+    /// When <c>true</c>, indicates that a previously returned token was
+    /// rejected by the server (e.g., expired or revoked). Implementations
+    /// that maintain their own token cache should bypass it and acquire a
+    /// fresh token.  When <c>false</c>, a cached token may be returned.
+    /// </param>
     /// <param name="cancellationToken">
     /// A token to cancel the asynchronous operation.
     /// </param>
@@ -67,5 +92,6 @@ public interface IAccessTokenProvider
         string realm,
         string service,
         IReadOnlyList<string> scopes,
+        bool forceRefresh = false,
         CancellationToken cancellationToken = default);
 }

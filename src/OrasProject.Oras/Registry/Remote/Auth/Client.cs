@@ -393,6 +393,7 @@ public class Client : IClient
         string realm,
         string service,
         IList<string> scopes,
+        bool forceRefresh = false,
         CancellationToken cancellationToken = default)
     {
         // When an AccessTokenProvider is configured, try it first.
@@ -408,6 +409,7 @@ public class Client : IClient
                     realm,
                     service,
                     readOnlyScopes,
+                    forceRefresh,
                     cancellationToken)
                 .ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(accessToken))
@@ -744,6 +746,7 @@ public class Client : IClient
                         realm,
                         service,
                         newScopes.Select(newScope => newScope.ToString()).ToList(),
+                        forceRefresh: true,
                         cancellationToken
                     ).ConfigureAwait(false);
                     Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);

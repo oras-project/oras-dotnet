@@ -2175,6 +2175,7 @@ public class ClientTest
                 registry, realm, service,
                 It.Is<IReadOnlyList<string>>(
                     s => s.SequenceEqual(scopes)),
+                It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedToken);
 
@@ -2183,7 +2184,7 @@ public class ClientTest
 
         // Act
         var result = await client.FetchBearerAuthAsync(
-            registry, realm, service, scopes, CancellationToken.None);
+            registry, realm, service, scopes, false, CancellationToken.None);
 
         // Assert
         Assert.Equal(expectedToken, result);
@@ -2191,6 +2192,7 @@ public class ClientTest
             p => p.ResolveAccessTokenAsync(
                 registry, realm, service,
                 It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -2210,6 +2212,7 @@ public class ClientTest
             .Setup(p => p.ResolveAccessTokenAsync(
                 registry, realm, service,
                 It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
 
@@ -2226,7 +2229,7 @@ public class ClientTest
 
         // Act
         var result = await client.FetchBearerAuthAsync(
-            registry, realm, service, scopes, CancellationToken.None);
+            registry, realm, service, scopes, false, CancellationToken.None);
 
         // Assert — fell through to credential-based auth
         Assert.Equal(expectedToken, result);
@@ -2234,6 +2237,7 @@ public class ClientTest
             p => p.ResolveAccessTokenAsync(
                 registry, realm, service,
                 It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
         mockCredentialProvider.Verify(
@@ -2261,6 +2265,7 @@ public class ClientTest
             .Setup(p => p.ResolveAccessTokenAsync(
                 registry, realm, service,
                 It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(emptyToken);
 
@@ -2277,7 +2282,7 @@ public class ClientTest
 
         // Act
         var result = await client.FetchBearerAuthAsync(
-            registry, realm, service, scopes, CancellationToken.None);
+            registry, realm, service, scopes, false, CancellationToken.None);
 
         // Assert — whitespace/empty triggers fallthrough
         Assert.Equal(expectedToken, result);
@@ -2315,6 +2320,7 @@ public class ClientTest
             .Setup(p => p.ResolveAccessTokenAsync(
                 registry, realm, service,
                 It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedToken);
 
@@ -2326,7 +2332,7 @@ public class ClientTest
 
         // Act
         var result = await client.FetchBearerAuthAsync(
-            registry, realm, service, scopes, CancellationToken.None);
+            registry, realm, service, scopes, false, CancellationToken.None);
 
         // Assert — credential provider was never consulted
         Assert.Equal(expectedToken, result);
@@ -2354,6 +2360,7 @@ public class ClientTest
                 host, realm, service,
                 It.Is<IReadOnlyList<string>>(
                     s => s.SequenceEqual(expectedScopes)),
+                It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedToken);
 
@@ -2417,6 +2424,7 @@ public class ClientTest
                 host, realm, service,
                 It.Is<IReadOnlyList<string>>(
                     s => s.SequenceEqual(expectedScopes)),
+                true,
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
