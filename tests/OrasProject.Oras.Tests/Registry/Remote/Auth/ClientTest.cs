@@ -2158,4 +2158,274 @@ public class ClientTest
                 request,
                 cancellationToken: CancellationToken.None));
     }
+
+    [Fact]
+    public async Task FetchBearerAuth_WithAccessTokenProvider_ReturnsToken()
+    {
+        // Arrange
+        var registry = "example.com";
+        var realm = "https://auth.example.com/token";
+        var service = "test_service";
+        var scopes = new List<string> { "repository:repo:pull" };
+        var expectedToken = "access-token-from-provider";
+
+        var mockProvider = new Mock<IAccessTokenProvider>();
+        mockProvider
+            .Setup(p => p.ResolveAccessTokenAsync(
+                registry, realm, service,
+                It.Is<IReadOnlyList<string>>(
+                    s => s.SequenceEqual(scopes)),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedToken);
+
+        var client = new Client(new HttpClient(), null, null,
+            mockProvider.Object, null);
+
+        // Act
+        var result = await client.FetchBearerAuthAsync(
+            registry, realm, service, scopes, false, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(expectedToken, result);
+        mockProvider.Verify(
+            p => p.ResolveAccessTokenAsync(
+                registry, realm, service,
+                It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task FetchBearerAuth_AccessTokenProviderReturnsNull_FallsThroughToCredential()
+    {
+        // Arrange
+        var registry = "example.com";
+        var realm = "https://auth.example.com/token";
+        var service = "test_service";
+        var scopes = new List<string> { "repository:repo:pull" };
+        var expectedToken = "credential-access-token";
+
+        var mockProvider = new Mock<IAccessTokenProvider>();
+        mockProvider
+            .Setup(p => p.ResolveAccessTokenAsync(
+                registry, realm, service,
+                It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(p => p.ResolveCredentialAsync(
+                registry, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+                new Credential { AccessToken = expectedToken });
+
+        var client = new Client(
+            null, null, mockCredentialProvider.Object,
+            mockProvider.Object, null);
+
+        // Act
+        var result = await client.FetchBearerAuthAsync(
+            registry, realm, service, scopes, false, CancellationToken.None);
+
+        // Assert — fell through to credential-based auth
+        Assert.Equal(expectedToken, result);
+        mockProvider.Verify(
+            p => p.ResolveAccessTokenAsync(
+                registry, realm, service,
+                It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        mockCredentialProvider.Verify(
+            p => p.ResolveCredentialAsync(
+                registry, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public async Task FetchBearerAuth_AccessTokenProviderReturnsEmptyOrWhitespace_FallsThrough(
+        string emptyToken)
+    {
+        // Arrange
+        var registry = "example.com";
+        var realm = "https://auth.example.com/token";
+        var service = "test_service";
+        var scopes = new List<string> { "repository:repo:pull" };
+        var expectedToken = "credential-access-token";
+
+        var mockProvider = new Mock<IAccessTokenProvider>();
+        mockProvider
+            .Setup(p => p.ResolveAccessTokenAsync(
+                registry, realm, service,
+                It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(emptyToken);
+
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+        mockCredentialProvider
+            .Setup(p => p.ResolveCredentialAsync(
+                registry, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+                new Credential { AccessToken = expectedToken });
+
+        var client = new Client(
+            null, null, mockCredentialProvider.Object,
+            mockProvider.Object, null);
+
+        // Act
+        var result = await client.FetchBearerAuthAsync(
+            registry, realm, service, scopes, false, CancellationToken.None);
+
+        // Assert — whitespace/empty triggers fallthrough
+        Assert.Equal(expectedToken, result);
+        mockCredentialProvider.Verify(
+            p => p.ResolveCredentialAsync(
+                registry, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public void Client_AccessTokenProviderProperty_CanBeSetViaInitializer()
+    {
+        // The init property allows setting via object initializer.
+        var mockProvider = new Mock<IAccessTokenProvider>();
+        var client = new Client(new HttpClient())
+        {
+            AccessTokenProvider = mockProvider.Object
+        };
+
+        Assert.Same(mockProvider.Object, client.AccessTokenProvider);
+    }
+
+    [Fact]
+    public async Task FetchBearerAuth_WithBothProviders_SkipsCredentialWhenTokenResolved()
+    {
+        // Arrange — both providers configured, token provider succeeds
+        var registry = "example.com";
+        var realm = "https://auth.example.com/token";
+        var service = "test_service";
+        var scopes = new List<string> { "repository:repo:pull" };
+        var expectedToken = "provider-token";
+
+        var mockProvider = new Mock<IAccessTokenProvider>();
+        mockProvider
+            .Setup(p => p.ResolveAccessTokenAsync(
+                registry, realm, service,
+                It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedToken);
+
+        var mockCredentialProvider = new Mock<ICredentialProvider>();
+
+        var client = new Client(
+            null, null, mockCredentialProvider.Object,
+            mockProvider.Object, null);
+
+        // Act
+        var result = await client.FetchBearerAuthAsync(
+            registry, realm, service, scopes, false, CancellationToken.None);
+
+        // Assert — credential provider was never consulted
+        Assert.Equal(expectedToken, result);
+        mockCredentialProvider.Verify(
+            p => p.ResolveCredentialAsync(
+                It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SendAsync_WithAccessTokenProvider_BypassesCredentialResolution()
+    {
+        // Arrange — a mock registry that returns 401 with a Bearer
+        // challenge, then succeeds when the expected token is
+        // presented.
+        var host = "example.com";
+        var expectedToken = "provider-scoped-token";
+        var realm = "https://auth.example.com/token";
+        var service = "test_service";
+        string[] expectedScopes = ["repository:repo1:pull"];
+
+        var mockProvider = new Mock<IAccessTokenProvider>();
+        mockProvider
+            .Setup(p => p.ResolveAccessTokenAsync(
+                host, realm, service,
+                It.Is<IReadOnlyList<string>>(
+                    s => s.SequenceEqual(expectedScopes)),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedToken);
+
+        // No credential provider — proves we never fall through
+        HttpResponseMessage MockHttpRequestHandler(
+            HttpRequestMessage req, CancellationToken ct)
+        {
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Scheme == "Bearer"
+                    && req.Headers.Authorization.Parameter
+                        == expectedToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(
+                    HttpStatusCode.Unauthorized)
+                {
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\","
+                                + $"service=\"{service}\","
+                                + $"scope=\"{string.Join(
+                                    " ", expectedScopes)}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(
+            new HttpClient(mockHandler.Object), null, null,
+            mockProvider.Object, null);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get, $"https://{host}");
+
+        // Act
+        var result = await client.SendAsync(
+            request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+        mockProvider.Verify(
+            p => p.ResolveAccessTokenAsync(
+                host, realm, service,
+                It.Is<IReadOnlyList<string>>(
+                    s => s.SequenceEqual(expectedScopes)),
+                true,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 }
