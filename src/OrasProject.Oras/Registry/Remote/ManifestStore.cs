@@ -258,10 +258,11 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         // Buffer stream for sync deserialization — avoids async
         // state machine overhead for already-buffered data.
-        byte[] contentBytes;
-        if (content is MemoryStream ms)
+        ReadOnlyMemory<byte> contentBytes;
+        if (content is MemoryStream ms
+            && ms.TryGetBuffer(out var segment))
         {
-            contentBytes = ms.ToArray();
+            contentBytes = segment;
         }
         else
         {
@@ -276,7 +277,8 @@ public class ManifestStore(Repository repository) : IManifestStore
         {
             case MediaType.ImageIndex:
                 var indexManifest =
-                    OciJsonSerializer.Deserialize<Index>(contentBytes)
+                    OciJsonSerializer.Deserialize<Index>(
+                        contentBytes.Span)
                     ?? throw new JsonException(
                         "Failed to deserialize index");
                 if (indexManifest.Subject == null)
@@ -290,7 +292,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             case MediaType.ImageManifest:
                 var imageManifest =
                     OciJsonSerializer.Deserialize<Manifest>(
-                        contentBytes)
+                        contentBytes.Span)
                     ?? throw new JsonException(
                         "Failed to deserialize manifest");
                 if (imageManifest.Subject == null)
@@ -298,7 +300,10 @@ public class ManifestStore(Repository repository) : IManifestStore
                     return;
                 }
                 subject = imageManifest.Subject;
-                desc.ArtifactType = string.IsNullOrEmpty(imageManifest.ArtifactType) ? imageManifest.Config.MediaType : imageManifest.ArtifactType;
+                desc.ArtifactType = string.IsNullOrEmpty(
+                    imageManifest.ArtifactType)
+                    ? imageManifest.Config.MediaType
+                    : imageManifest.ArtifactType;
                 desc.Annotations = imageManifest.Annotations;
                 break;
             default:
@@ -498,10 +503,11 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         // Buffer stream for sync deserialization — avoids async
         // state machine overhead for already-buffered data.
-        byte[] manifestBytes;
-        if (manifestContent is MemoryStream ms)
+        ReadOnlyMemory<byte> manifestBytes;
+        if (manifestContent is MemoryStream ms
+            && ms.TryGetBuffer(out var segment))
         {
-            manifestBytes = ms.ToArray();
+            manifestBytes = segment;
         }
         else
         {
@@ -517,7 +523,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             case MediaType.ImageManifest:
                 var imageManifest =
                     OciJsonSerializer.Deserialize<Manifest>(
-                        manifestBytes);
+                        manifestBytes.Span);
                 if (imageManifest?.Subject == null)
                 {
                     // no subject, no indexing needed
@@ -528,7 +534,7 @@ public class ManifestStore(Repository repository) : IManifestStore
             case MediaType.ImageIndex:
                 var imageIndex =
                     OciJsonSerializer.Deserialize<Index>(
-                        manifestBytes);
+                        manifestBytes.Span);
                 if (imageIndex?.Subject == null)
                 {
                     // no subject, no indexing needed

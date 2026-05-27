@@ -63,6 +63,15 @@ internal static class OciJsonSerializer
     }
 
     /// <summary>
+    /// Deserializes a UTF-8 JSON span to the specified type.
+    /// Avoids copying when the caller already has a buffer view.
+    /// </summary>
+    internal static T? Deserialize<T>(ReadOnlySpan<byte> utf8Json)
+    {
+        return JsonSerializer.Deserialize<T>(utf8Json, s_options);
+    }
+
+    /// <summary>
     /// Deserializes a JSON string to the specified type.
     /// </summary>
     internal static T? Deserialize<T>(string json)
