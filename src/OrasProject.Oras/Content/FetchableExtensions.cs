@@ -39,7 +39,8 @@ public static class FetchableExtensions
             case MediaType.ImageManifest:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
-                    var manifest = OciJsonSerializer.Deserialize<Manifest>(content) ??
+                    var manifest = OciJsonSerializer.Deserialize(
+                        content, OciJsonSerializerContext.OciDefault.Manifest) ??
                                         throw new JsonException("Failed to deserialize manifest");
 
                     var descriptors = new List<Descriptor>();
@@ -56,7 +57,8 @@ public static class FetchableExtensions
             case MediaType.ImageIndex:
                 {
                     var content = await fetcher.FetchAllAsync(node, cancellationToken).ConfigureAwait(false);
-                    var index = OciJsonSerializer.Deserialize<Index>(content) ??
+                    var index = OciJsonSerializer.Deserialize(
+                        content, OciJsonSerializerContext.OciDefault.Index) ??
                                         throw new JsonException("Failed to deserialize index manifest");
                     var descriptors = new List<Descriptor>();
                     if (index.Subject != null)
