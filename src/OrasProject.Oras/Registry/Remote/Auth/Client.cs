@@ -268,8 +268,7 @@ public class Client : IClient
             ?? throw new ArgumentNullException(nameof(value));
     }
 
-    private readonly IRealmValidator _realmValidator =
-        new DefaultRealmValidator();
+    private IRealmValidator _realmValidator = new DefaultRealmValidator();
 
     /// <summary>
     /// ScopeManager is an instance to manage scopes.
@@ -780,10 +779,7 @@ public class Client : IClient
                         .ConfigureAwait(false))
                     {
                         throw new AuthenticationException(
-                            $"Authentication realm"
-                            + $" '{realmUri.Host}' is not allowed"
-                            + $" for registry"
-                            + $" '{registryUri.Host}'.");
+                            $"Authentication realm '{realmUri}' is not allowed for registry '{registryUri.Host}'.");
                     }
 
                     if (!parameters.TryGetValue("service", out var service))

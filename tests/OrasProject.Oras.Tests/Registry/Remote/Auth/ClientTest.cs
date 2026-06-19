@@ -2535,7 +2535,7 @@ public class ClientTest
         var client = new Client(
             new HttpClient(mockHandler.Object));
 
-        var request = new HttpRequestMessage(
+        using var request = new HttpRequestMessage(
             HttpMethod.Get, $"https://{host}/v2/");
 
         // Act & Assert
@@ -2602,7 +2602,7 @@ public class ClientTest
         var client = new Client(
             new HttpClient(mockHandler.Object));
 
-        var request = new HttpRequestMessage(
+        using var request = new HttpRequestMessage(
             HttpMethod.Get, $"https://{host}/v2/");
 
         // Act
@@ -2644,7 +2644,7 @@ public class ClientTest
         var client = new Client(
             new HttpClient(mockHandler.Object));
 
-        var request = new HttpRequestMessage(
+        using var request = new HttpRequestMessage(
             HttpMethod.Get, $"https://{host}/v2/");
 
         // Act & Assert
@@ -2684,7 +2684,7 @@ public class ClientTest
         var client = new Client(
             new HttpClient(mockHandler.Object));
 
-        var request = new HttpRequestMessage(
+        using var request = new HttpRequestMessage(
             HttpMethod.Get, $"https://{host}/v2/");
 
         // Act & Assert
@@ -2725,7 +2725,7 @@ public class ClientTest
         var client = new Client(
             new HttpClient(mockHandler.Object));
 
-        var request = new HttpRequestMessage(
+        using var request = new HttpRequestMessage(
             HttpMethod.Get, $"https://{host}/v2/");
 
         // Act & Assert — /token parses as file:///token on Linux,

@@ -45,8 +45,8 @@ public sealed class DefaultRealmValidator : IRealmValidator
 
     /// <summary>
     /// Explicit set of trusted realm hostnames (case-insensitive).
-    /// Realms matching these hosts are always allowed regardless of
-    /// other rules.
+    /// Realms matching these hosts are allowed after basic URI safety
+    /// checks (scheme policy and userinfo rejection).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -75,7 +75,7 @@ public sealed class DefaultRealmValidator : IRealmValidator
             .ToFrozenSet(StringComparer.OrdinalIgnoreCase);
     }
 
-    private readonly IReadOnlySet<string> _trustedRealmHosts =
+    private IReadOnlySet<string> _trustedRealmHosts =
         FrozenSet.ToFrozenSet(
             new[] { "auth.docker.io", "gitlab.com" },
             StringComparer.OrdinalIgnoreCase);
