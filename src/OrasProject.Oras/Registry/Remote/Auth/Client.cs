@@ -779,8 +779,7 @@ public class Client : IClient
                         .ConfigureAwait(false))
                     {
                         throw new AuthenticationException(
-                            $"Authentication realm '{realmUri}' is not allowed for registry '{registryUri.Host}'.");
-                    }
+                            $"Authentication realm '{realmUri}' is not allowed for registry '{registryUri.Authority}'.");
 
                     if (!parameters.TryGetValue("service", out var service))
                     {
