@@ -25,8 +25,10 @@ public static class RealmValidationExamples
     /// Uses the built-in <see cref="DefaultRealmValidator"/> with custom
     /// trusted hosts added for an enterprise environment.
     /// </summary>
-    public static Client CreateClientWithCustomTrustedHosts()
+    public static Client CreateClientWithCustomTrustedHosts(HttpClient httpClient)
     {
+        ArgumentNullException.ThrowIfNull(httpClient);
+
         // DefaultRealmValidator ships with auth.docker.io and
         // gitlab.com pre-configured. You can override the trusted
         // hosts to include your organization's auth endpoints.
@@ -41,7 +43,7 @@ public static class RealmValidationExamples
             }
         };
 
-        return new Client(new HttpClient())
+        return new Client(httpClient)
         {
             RealmValidator = validator
         };
@@ -52,14 +54,16 @@ public static class RealmValidationExamples
     /// allowed — useful for local development with registries running
     /// on localhost without TLS.
     /// </summary>
-    public static Client CreateClientForLocalDev()
+    public static Client CreateClientForLocalDev(HttpClient httpClient)
     {
+        ArgumentNullException.ThrowIfNull(httpClient);
+
         var validator = new DefaultRealmValidator
         {
             AllowInsecureHttp = true
         };
 
-        return new Client(new HttpClient())
+        return new Client(httpClient)
         {
             RealmValidator = validator
         };
@@ -70,9 +74,11 @@ public static class RealmValidationExamples
     /// that restricts realm URLs to a specific corporate domain
     /// suffix.
     /// </summary>
-    public static Client CreateClientWithCustomValidator()
+    public static Client CreateClientWithCustomValidator(HttpClient httpClient)
     {
-        return new Client(new HttpClient())
+        ArgumentNullException.ThrowIfNull(httpClient);
+
+        return new Client(httpClient)
         {
             RealmValidator = new CorporateDomainRealmValidator(
                 ".mycompany.com")
@@ -100,6 +106,13 @@ public class CorporateDomainRealmValidator : IRealmValidator
     /// </param>
     public CorporateDomainRealmValidator(string allowedDomainSuffix)
     {
+        if (string.IsNullOrWhiteSpace(allowedDomainSuffix))
+        {
+            throw new ArgumentException(
+                "Allowed domain suffix cannot be null or whitespace.",
+                nameof(allowedDomainSuffix));
+        }
+
         _allowedSuffix = allowedDomainSuffix.ToLowerInvariant();
     }
 

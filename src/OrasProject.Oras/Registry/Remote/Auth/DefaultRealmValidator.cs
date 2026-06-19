@@ -117,7 +117,12 @@ public sealed class DefaultRealmValidator : IRealmValidator
         var realmHost = NormalizeHost(realmUri.Host);
         if (TrustedRealmHosts.Contains(realmHost))
         {
-            return Task.FromResult(true);
+            var defaultPort = realmUri.Scheme.Equals(
+                    Uri.UriSchemeHttps,
+                    StringComparison.OrdinalIgnoreCase)
+                ? 443
+                : 80;
+            return Task.FromResult(realmUri.Port == defaultPort);
         }
 
         // 6. Default deny.
