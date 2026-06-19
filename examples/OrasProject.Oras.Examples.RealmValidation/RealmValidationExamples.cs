@@ -120,7 +120,7 @@ public class CorporateDomainRealmValidator : IRealmValidator
         // Allow if the realm host ends with our corporate domain.
         var host = realmUri.Host.ToLowerInvariant();
         var allowed = host.EndsWith(_allowedSuffix)
-                      || host == _allowedSuffix.TrimStart('.');
+            || host == _allowedSuffix.TrimStart('.');
 
         return Task.FromResult(allowed);
     }

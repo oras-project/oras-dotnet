@@ -130,11 +130,11 @@ public sealed class DefaultRealmValidator : IRealmValidator
     private static bool IsHttpScheme(Uri uri)
     {
         return uri.Scheme.Equals(
-                   Uri.UriSchemeHttps,
-                   StringComparison.OrdinalIgnoreCase)
-               || uri.Scheme.Equals(
-                   Uri.UriSchemeHttp,
-                   StringComparison.OrdinalIgnoreCase);
+                Uri.UriSchemeHttps,
+                StringComparison.OrdinalIgnoreCase)
+            || uri.Scheme.Equals(
+                Uri.UriSchemeHttp,
+                StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
