@@ -12,6 +12,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{B36A84DF-456D-A817-6EDD-3EC3E7F6E11F}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OrasProject.Oras.Examples.ExternalTokenBroker", "examples\OrasProject.Oras.Examples.ExternalTokenBroker\OrasProject.Oras.Examples.ExternalTokenBroker.csproj", "{443703EE-D73C-4EE3-882D-5DD7DFFD09B6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OrasProject.Oras.Examples.RealmValidation", "examples\OrasProject.Oras.Examples.RealmValidation\OrasProject.Oras.Examples.RealmValidation.csproj", "{667D44C5-0DF2-4FC3-B228-0032CA585002}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
@@ -73,11 +74,24 @@ Global
 		{443703EE-D73C-4EE3-882D-5DD7DFFD09B6}.Release|x64.Build.0 = Release|Any CPU
 		{443703EE-D73C-4EE3-882D-5DD7DFFD09B6}.Release|x86.ActiveCfg = Release|Any CPU
 		{443703EE-D73C-4EE3-882D-5DD7DFFD09B6}.Release|x86.Build.0 = Release|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Debug|x64.Build.0 = Debug|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Debug|x86.Build.0 = Debug|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Release|Any CPU.Build.0 = Release|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Release|x64.ActiveCfg = Release|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Release|x64.Build.0 = Release|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Release|x86.ActiveCfg = Release|Any CPU
+		{667D44C5-0DF2-4FC3-B228-0032CA585002}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{443703EE-D73C-4EE3-882D-5DD7DFFD09B6} = {B36A84DF-456D-A817-6EDD-3EC3E7F6E11F}
+		{667D44C5-0DF2-4FC3-B228-0032CA585002} = {B36A84DF-456D-A817-6EDD-3EC3E7F6E11F}
 	EndGlobalSection
 EndGlobal

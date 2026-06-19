@@ -251,6 +251,26 @@ public class Client : IClient
     internal const long MaxBufferSize = 4 * 1024 * 1024;
 
     /// <summary>
+    /// Validates realm URLs before sending credentials to them.
+    /// Default: a <see cref="DefaultRealmValidator"/> instance with
+    /// secure defaults.
+    /// </summary>
+    /// <remarks>
+    /// This property is init-only and cannot be null. To use a
+    /// different validator, set it during construction. To disable
+    /// validation (not recommended), provide an implementation
+    /// that always returns <c>true</c>.
+    /// </remarks>
+    public IRealmValidator RealmValidator
+    {
+        get => _realmValidator;
+        init => _realmValidator = value
+            ?? throw new ArgumentNullException(nameof(value));
+    }
+
+    private IRealmValidator _realmValidator = new DefaultRealmValidator();
+
+    /// <summary>
     /// ScopeManager is an instance to manage scopes.
     /// </summary>
     public ScopeManager ScopeManager { get; set; } = new();
@@ -321,6 +341,10 @@ public class Client : IClient
     /// <exception cref="ArgumentNullException">Thrown if the request URI is null.</exception>
     /// <exception cref="KeyNotFoundException">
     /// Thrown if required parameters (e.g., "realm") are missing in the authentication challenge.
+    /// </exception>
+    /// <exception cref="AuthenticationException">
+    /// Thrown when the realm URL is invalid or not allowed by
+    /// <see cref="RealmValidator"/>.
     /// </exception>
     public Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage originalRequest,
@@ -739,6 +763,25 @@ public class Client : IClient
                         // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
                         throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
                     }
+
+                    // Validate realm URL before sending credentials.
+                    if (!Uri.TryCreate(
+                            realm, UriKind.Absolute,
+                            out var realmUri))
+                    {
+                        throw new AuthenticationException(
+                            $"Invalid realm URL: '{realm}'");
+                    }
+
+                    var registryUri = originalRequest.RequestUri!;
+                    if (!await RealmValidator.IsRealmAllowedAsync(
+                            registryUri, realmUri, cancellationToken)
+                        .ConfigureAwait(false))
+                    {
+                        throw new AuthenticationException(
+                            $"Authentication realm '{realmUri}' is not allowed for registry '{registryUri.Authority}'.");
+                    }
+
                     if (!parameters.TryGetValue("service", out var service))
                     {
                         // some registries may omit the `service` parameter; use an empty string when absent.
