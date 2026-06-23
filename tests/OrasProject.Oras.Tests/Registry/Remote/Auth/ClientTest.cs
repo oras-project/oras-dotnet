@@ -1179,7 +1179,7 @@ public class ClientTest
         var realm = $"https://{host}/token";
         var service = "test_service";
         var structuredScope = "repository:docker/library/redis:pull";
-        var opaqueScope = "aws";
+        var opaqueScope = "opaque-scope";
         var expectedToken = "opaque_scope_token";
         var tokenRequestCount = 0;
 
@@ -1265,7 +1265,7 @@ public class ClientTest
         var realm = $"https://{host}/token";
         var service = "test_service";
         var structuredScope = "repository:docker/library/redis:pull";
-        var opaqueScope = "aws";
+        var opaqueScope = "opaque-scope";
         var expectedToken = "duplicate_opaque_scope_token";
         var tokenRequestCount = 0;
 
@@ -1350,7 +1350,7 @@ public class ClientTest
         var realm = $"https://{host}/token";
         var service = "test_service";
         var structuredScope = "repository:docker/library/redis:pull";
-        var opaqueScope = "aws";
+        var opaqueScope = "opaque-scope";
         var tokenRequestCount = 0;
         var currentToken = string.Empty;
 
@@ -1438,7 +1438,7 @@ public class ClientTest
         var realm = $"https://{host}/token";
         var service = "test_service";
         var structuredScope = "repository:docker/library/redis:pull";
-        var opaqueScope = "aws";
+        var opaqueScope = "opaque-scope";
         var expectedToken = "provider_opaque_scope_token";
 
         var mockProvider = new Mock<IAccessTokenProvider>();
@@ -1613,7 +1613,7 @@ public class ClientTest
         var service = "test_service";
         var structuredScope = "repository:docker/library/redis:pull";
         var challengeStructuredScope = "repository:docker/library/redis:push";
-        var opaqueScope = "aws";
+        var opaqueScope = "opaque-scope";
         var expectedToken = "mixed_scope_token";
         var tokenRequestCount = 0;
 
