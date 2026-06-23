@@ -1172,6 +1172,441 @@ public class ClientTest
     }
 
     [Fact]
+    public async Task SendAsync_UnauthorizedResponse_PreservesOpaqueChallengeScope()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = $"https://{host}/token";
+        var service = "test_service";
+        var structuredScope = "repository:docker/library/redis:pull";
+        var opaqueScope = "aws";
+        var expectedToken = "opaque_scope_token";
+        var tokenRequestCount = 0;
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.AbsoluteUri.StartsWith(realm, StringComparison.Ordinal) == true)
+            {
+                tokenRequestCount++;
+                var query = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+                var requestedScopes = query.GetValues("scope") ?? [];
+
+                if (query["service"] == service
+                    && requestedScopes.OrderBy(scope => scope, StringComparer.Ordinal)
+                        .SequenceEqual(new[] { opaqueScope, structuredScope }))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent($"{{\"token\": \"{expectedToken}\"}}"),
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    RequestMessage = req
+                };
+            }
+
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Scheme == "Bearer"
+                    && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\",service=\"{service}\",scope=\"{opaqueScope}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
+        Assert.True(Scope.TryParse(structuredScope, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, tokenRequestCount);
+    }
+
+    [Fact]
+    public async Task SendAsync_UnauthorizedResponse_DoesNotCacheOpaqueChallengeScopeToken()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = $"https://{host}/token";
+        var service = "test_service";
+        var structuredScope = "repository:docker/library/redis:pull";
+        var opaqueScope = "aws";
+        var tokenRequestCount = 0;
+        var currentToken = string.Empty;
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.AbsoluteUri.StartsWith(realm, StringComparison.Ordinal) == true)
+            {
+                var query = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+                var requestedScopes = query.GetValues("scope") ?? [];
+                if (query["service"] != service
+                    || !requestedScopes.OrderBy(scope => scope, StringComparer.Ordinal)
+                        .SequenceEqual(new[] { opaqueScope, structuredScope }))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                currentToken = $"opaque_scope_token_{++tokenRequestCount}";
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent($"{{\"token\": \"{currentToken}\"}}"),
+                    RequestMessage = req
+                };
+            }
+
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Scheme == "Bearer"
+                    && req.Headers.Authorization.Parameter == currentToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\",service=\"{service}\",scope=\"{opaqueScope}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
+        Assert.True(Scope.TryParse(structuredScope, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+
+        // Act
+        using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        var response1 = await client.SendAsync(request1, cancellationToken: CancellationToken.None);
+        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        var response2 = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
+        Assert.Equal(2, tokenRequestCount);
+    }
+
+    [Fact]
+    public async Task SendAsync_AccessTokenProviderReceivesOpaqueChallengeScope()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = $"https://{host}/token";
+        var service = "test_service";
+        var structuredScope = "repository:docker/library/redis:pull";
+        var opaqueScope = "aws";
+        var expectedToken = "provider_opaque_scope_token";
+
+        var mockProvider = new Mock<IAccessTokenProvider>();
+        mockProvider
+            .Setup(provider => provider.ResolveAccessTokenAsync(
+                host,
+                realm,
+                service,
+                It.Is<IReadOnlyList<string>>(scopes =>
+                    scopes.OrderBy(scope => scope, StringComparer.Ordinal)
+                        .SequenceEqual(new[] { opaqueScope, structuredScope })),
+                true,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedToken);
+
+        HttpResponseMessage MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Scheme == "Bearer"
+                    && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\",service=\"{service}\",scope=\"{opaqueScope}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var client = new Client(
+            new HttpClient(CustomHandler(MockHttpRequestHandler).Object),
+            noRedirectHttpClient: null,
+            credentialProvider: null,
+            accessTokenProvider: mockProvider.Object,
+            cache: null);
+        Assert.True(Scope.TryParse(structuredScope, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        mockProvider.VerifyAll();
+    }
+
+    [Fact]
+    public async Task SendAsync_UnauthorizedResponse_PreservesStructuredScopeCacheKeyOrder()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = $"https://{host}/token";
+        var service = "test_service";
+        var expectedToken = "structured_scope_token";
+        var tokenRequestCount = 0;
+        var expectedScopes = new[]
+        {
+            "repository:redis:pull",
+            "repository:redis-extra:pull"
+        };
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.AbsoluteUri.StartsWith(realm, StringComparison.Ordinal) == true)
+            {
+                tokenRequestCount++;
+                var query = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+                var requestedScopes = query.GetValues("scope") ?? [];
+
+                if (query["service"] == service
+                    && requestedScopes.OrderBy(scope => scope, StringComparer.Ordinal)
+                        .SequenceEqual(expectedScopes.OrderBy(scope => scope, StringComparer.Ordinal)))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent($"{{\"token\": \"{expectedToken}\"}}"),
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    RequestMessage = req
+                };
+            }
+
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Scheme == "Bearer"
+                    && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\",service=\"{service}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
+        foreach (var scopeString in expectedScopes)
+        {
+            Assert.True(Scope.TryParse(scopeString, out var scope));
+            client.ScopeManager.SetScopeForRegistry(host, scope);
+        }
+
+        // Act
+        using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        var response1 = await client.SendAsync(request1, cancellationToken: CancellationToken.None);
+        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        var response2 = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
+        Assert.Equal(1, tokenRequestCount);
+    }
+
+    [Fact]
+    public async Task SendAsync_UnauthorizedResponse_PreservesMixedChallengeScopes()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = $"https://{host}/token";
+        var service = "test_service";
+        var structuredScope = "repository:docker/library/redis:pull";
+        var challengeStructuredScope = "repository:docker/library/redis:push";
+        var opaqueScope = "aws";
+        var expectedToken = "mixed_scope_token";
+        var tokenRequestCount = 0;
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.AbsoluteUri.StartsWith(realm, StringComparison.Ordinal) == true)
+            {
+                tokenRequestCount++;
+                var query = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+                var requestedScopes = query.GetValues("scope") ?? [];
+
+                if (query["service"] == service
+                    && requestedScopes.OrderBy(scope => scope, StringComparer.Ordinal)
+                        .SequenceEqual(new[] { opaqueScope, "repository:docker/library/redis:pull,push" }))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent($"{{\"token\": \"{expectedToken}\"}}"),
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    RequestMessage = req
+                };
+            }
+
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Scheme == "Bearer"
+                    && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\",service=\"{service}\",scope=\"{opaqueScope} {challengeStructuredScope}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
+        Assert.True(Scope.TryParse(structuredScope, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, tokenRequestCount);
+    }
+
+    [Fact]
     public async Task SendAsync_BearerChallengeMissingRealm_ThrowsKeyNotFoundException()
     {
         // Arrange

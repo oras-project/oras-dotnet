@@ -730,21 +730,17 @@ public class Client : IClient
                     }
 
                     var existingScopes = ScopeManager.GetScopesForHost(host);
-                    var newScopes = new SortedSet<Scope>(existingScopes);
-                    if (parameters.TryGetValue("scope", out var scopesString))
-                    {
-                        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            if (Scope.TryParse(scopeStr, out var scope))
-                            {
-                                Scope.AddOrMergeScope(newScopes, scope);
-                            }
-                        }
-                    }
+                    var (newScopes, opaqueScopes) = MergeChallengeScopes(
+                        existingScopes,
+                        parameters.TryGetValue("scope", out var scopesString)
+                            ? scopesString
+                            : null);
+                    var tokenRequestScopes = GetTokenRequestScopes(newScopes, opaqueScopes);
 
                     // Attempt to send request when the scope changes and a token cache hits
                     var newKey = string.Join(" ", newScopes);
-                    if (newKey != attemptedKey &&
+                    if (opaqueScopes.Count == 0 &&
+                        newKey != attemptedKey &&
                         Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken, partitionId))
                     {
                         var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
@@ -793,11 +789,14 @@ public class Client : IClient
                         host,
                         realm,
                         service,
-                        newScopes.Select(newScope => newScope.ToString()).ToList(),
+                        tokenRequestScopes,
                         forceRefresh: true,
                         cancellationToken
                     ).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
+                    if (opaqueScopes.Count == 0)
+                    {
+                        Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
+                    }
 
                     var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
@@ -806,6 +805,48 @@ public class Client : IClient
             default:
                 return response1;
         }
+    }
+
+    private static (SortedSet<Scope> StructuredScopes, List<string> OpaqueScopes) MergeChallengeScopes(
+        SortedSet<Scope> existingScopes,
+        string? scopesString)
+    {
+        var structuredScopes = new SortedSet<Scope>(existingScopes);
+        var opaqueScopes = new HashSet<string>(StringComparer.Ordinal);
+
+        if (string.IsNullOrWhiteSpace(scopesString))
+        {
+            return (structuredScopes, []);
+        }
+
+        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (Scope.TryParse(scopeStr, out var scope))
+            {
+                Scope.AddOrMergeScope(structuredScopes, scope);
+            }
+            else
+            {
+                opaqueScopes.Add(scopeStr);
+            }
+        }
+
+        return (structuredScopes, opaqueScopes.OrderBy(scope => scope, StringComparer.Ordinal).ToList());
+    }
+
+    private static List<string> GetTokenRequestScopes(
+        IEnumerable<Scope> structuredScopes,
+        IEnumerable<string> opaqueScopes)
+    {
+        return structuredScopes
+            .Select(scope => scope.ToString())
+            .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .Distinct(StringComparer.Ordinal)
+            .Concat(opaqueScopes
+                .Where(scope => !string.IsNullOrWhiteSpace(scope))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(scope => scope, StringComparer.Ordinal))
+            .ToList();
     }
 
     /// <summary>
