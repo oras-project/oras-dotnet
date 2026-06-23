@@ -763,7 +763,8 @@ public class Client : IClient
                     // Validate realm URL before sending credentials.
                     if (!Uri.TryCreate(
                             realm, UriKind.Absolute,
-                            out var realmUri))
+                            out var realmUri)
+                        || string.IsNullOrEmpty(realmUri.Host))
                     {
                         throw new AuthenticationException(
                             $"Invalid realm URL: '{realm}'");

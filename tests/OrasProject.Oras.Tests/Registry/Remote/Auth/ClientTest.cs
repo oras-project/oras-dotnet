@@ -1183,7 +1183,7 @@ public class ClientTest
         var expectedToken = "opaque_scope_token";
         var tokenRequestCount = 0;
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(
+        HttpResponseMessage MockHttpRequestHandler(
             HttpRequestMessage req,
             CancellationToken cancellationToken = default)
         {
@@ -1269,7 +1269,7 @@ public class ClientTest
         var tokenRequestCount = 0;
         var currentToken = string.Empty;
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(
+        HttpResponseMessage MockHttpRequestHandler(
             HttpRequestMessage req,
             CancellationToken cancellationToken = default)
         {
@@ -1439,7 +1439,7 @@ public class ClientTest
             "repository:redis-extra:pull"
         };
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(
+        HttpResponseMessage MockHttpRequestHandler(
             HttpRequestMessage req,
             CancellationToken cancellationToken = default)
         {
@@ -1532,7 +1532,7 @@ public class ClientTest
         var expectedToken = "mixed_scope_token";
         var tokenRequestCount = 0;
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(
+        HttpResponseMessage MockHttpRequestHandler(
             HttpRequestMessage req,
             CancellationToken cancellationToken = default)
         {
@@ -3163,11 +3163,10 @@ public class ClientTest
         using var request = new HttpRequestMessage(
             HttpMethod.Get, $"https://{host}/v2/");
 
-        // Act & Assert — /token parses as file:///token on Linux,
-        // which is rejected by the scheme check in the validator.
+        // Act & Assert
         var ex = await Assert.ThrowsAsync<AuthenticationException>(
             () => client.SendAsync(request,
                 cancellationToken: CancellationToken.None));
-        Assert.Contains("not allowed", ex.Message);
+        Assert.Contains("Invalid realm URL", ex.Message);
     }
 }
