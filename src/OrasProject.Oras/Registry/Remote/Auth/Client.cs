@@ -730,18 +730,21 @@ public class Client : IClient
                     }
 
                     var existingScopes = ScopeManager.GetScopesForHost(host);
-                    var (newScopes, opaqueScopes) = MergeChallengeScopes(
+                    var mergedScopes = MergeChallengeScopes(
                         existingScopes,
                         parameters.TryGetValue("scope", out var scopesString)
                             ? scopesString
                             : null);
-                    var tokenRequestScopes = GetTokenRequestScopes(newScopes, opaqueScopes);
 
                     // Attempt to send request when the scope changes and a token cache hits
-                    var newKey = string.Join(" ", newScopes);
-                    if (opaqueScopes.Count == 0 &&
-                        newKey != attemptedKey &&
-                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken, partitionId))
+                    if (!mergedScopes.HasOpaqueScopes
+                        && mergedScopes.CacheKey != attemptedKey
+                        && Cache.TryGetToken(
+                            host,
+                            schemeFromChallenge,
+                            mergedScopes.CacheKey,
+                            out var cachedToken,
+                            partitionId))
                     {
                         var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                         requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
@@ -790,13 +793,18 @@ public class Client : IClient
                         host,
                         realm,
                         service,
-                        tokenRequestScopes,
+                        mergedScopes.TokenRequestScopes,
                         forceRefresh: true,
                         cancellationToken
                     ).ConfigureAwait(false);
-                    if (opaqueScopes.Count == 0)
+                    if (!mergedScopes.HasOpaqueScopes)
                     {
-                        Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
+                        Cache.SetCache(
+                            host,
+                            schemeFromChallenge,
+                            mergedScopes.CacheKey,
+                            bearerAuthToken,
+                            partitionId);
                     }
 
                     var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
@@ -808,41 +816,106 @@ public class Client : IClient
         }
     }
 
-    private static (SortedSet<Scope> StructuredScopes, List<string> OpaqueScopes) MergeChallengeScopes(
+    private static MergedScopes MergeChallengeScopes(
         SortedSet<Scope> existingScopes,
         string? scopesString)
     {
         var structuredScopes = new SortedSet<Scope>(existingScopes);
-        var opaqueScopes = new List<string>();
+        var tokenRequestScopes = new List<string>();
+        var hasOpaqueScopes = false;
 
-        if (string.IsNullOrWhiteSpace(scopesString))
+        if (!string.IsNullOrWhiteSpace(scopesString))
         {
-            return (structuredScopes, []);
+            var remainingScopes = scopesString.AsSpan();
+            while (!remainingScopes.IsEmpty)
+            {
+                var separatorIndex = remainingScopes.IndexOf(' ');
+                var scopeSpan = separatorIndex < 0
+                    ? remainingScopes
+                    : remainingScopes[..separatorIndex];
+                remainingScopes = separatorIndex < 0
+                    ? []
+                    : remainingScopes[(separatorIndex + 1)..];
+
+                if (scopeSpan.IsEmpty)
+                {
+                    continue;
+                }
+
+                if (Scope.TryParse(scopeSpan, out var scope))
+                {
+                    Scope.AddOrMergeScope(structuredScopes, scope);
+                }
+                else
+                {
+                    tokenRequestScopes.Add(scopeSpan.ToString());
+                    hasOpaqueScopes = true;
+                }
+            }
         }
 
-        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-        {
-            if (Scope.TryParse(scopeStr, out var scope))
-            {
-                Scope.AddOrMergeScope(structuredScopes, scope);
-            }
-            else
-            {
-                opaqueScopes.Add(scopeStr);
-            }
-        }
-
-        return (structuredScopes, opaqueScopes);
+        var cacheKey = PrependStructuredScopes(tokenRequestScopes, structuredScopes);
+        return new MergedScopes(tokenRequestScopes, cacheKey, hasOpaqueScopes);
     }
 
-    private static List<string> GetTokenRequestScopes(
-        IEnumerable<Scope> structuredScopes,
-        IEnumerable<string> opaqueScopes)
+    private static string PrependStructuredScopes(
+        List<string> tokenRequestScopes,
+        SortedSet<Scope> structuredScopes)
     {
-        return structuredScopes
-            .Select(scope => scope.ToString())
-            .Concat(opaqueScopes)
-            .ToList();
+        if (structuredScopes.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var opaqueScopeCount = tokenRequestScopes.Count;
+        var structuredScopeCount = structuredScopes.Count;
+        tokenRequestScopes.Capacity = Math.Max(
+            tokenRequestScopes.Capacity,
+            opaqueScopeCount + structuredScopeCount);
+
+        for (var i = 0; i < structuredScopeCount; i++)
+        {
+            tokenRequestScopes.Add(string.Empty);
+        }
+
+        for (var i = opaqueScopeCount - 1; i >= 0; i--)
+        {
+            tokenRequestScopes[i + structuredScopeCount] = tokenRequestScopes[i];
+        }
+
+        var cacheKeyBuilder = new StringBuilder();
+        var tokenScopeIndex = 0;
+        foreach (var scope in structuredScopes)
+        {
+            var scopeString = scope.ToString();
+            tokenRequestScopes[tokenScopeIndex++] = scopeString;
+            if (cacheKeyBuilder.Length > 0)
+            {
+                cacheKeyBuilder.Append(' ');
+            }
+            cacheKeyBuilder.Append(scopeString);
+        }
+
+        return cacheKeyBuilder.ToString();
+    }
+
+    private readonly struct MergedScopes
+    {
+        public MergedScopes(
+            List<string> tokenRequestScopes,
+            string cacheKey,
+            bool hasOpaqueScopes)
+        {
+            TokenRequestScopes = tokenRequestScopes;
+            CacheKey = cacheKey;
+            HasOpaqueScopes = hasOpaqueScopes;
+        }
+
+        public List<string> TokenRequestScopes { get; }
+
+        public string CacheKey { get; }
+
+        public bool HasOpaqueScopes { get; }
     }
 
     /// <summary>

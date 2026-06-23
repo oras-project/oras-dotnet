@@ -97,27 +97,75 @@ public class Scope : IComparable<Scope>
     /// <returns><c>true</c> if the parsing succeeded; otherwise, <c>false</c>.</returns>
     public static bool TryParse(string scopeStr, [NotNullWhen(true)] out Scope? scope)
     {
-        scope = null;
         if (string.IsNullOrWhiteSpace(scopeStr))
         {
+            scope = null;
             return false;
         }
 
-        var parts = scopeStr.Split(':', StringSplitOptions.TrimEntries);
-        if (parts.Length != 3)
+        return TryParse(scopeStr.AsSpan(), out scope);
+    }
+
+    internal static bool TryParse(ReadOnlySpan<char> scopeSpan, [NotNullWhen(true)] out Scope? scope)
+    {
+        scope = null;
+        scopeSpan = scopeSpan.Trim();
+        if (scopeSpan.IsEmpty)
         {
             return false;
         }
 
-        var actions = parts[2].Split(',', StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var firstSeparator = scopeSpan.IndexOf(':');
+        if (firstSeparator < 0)
+        {
+            return false;
+        }
+
+        var remainingScope = scopeSpan[(firstSeparator + 1)..];
+        var secondSeparator = remainingScope.IndexOf(':');
+        if (secondSeparator < 0)
+        {
+            return false;
+        }
+
+        var actionSpan = remainingScope[(secondSeparator + 1)..];
+        if (actionSpan.Contains(':'))
+        {
+            return false;
+        }
+
+        var actions = ParseActions(actionSpan);
         if (actions.Contains(ActionWildcard))
         {
             actions.Clear();
             actions.Add(ActionWildcard);
         }
 
-        scope = new Scope(parts[0], parts[1], actions);
+        scope = new Scope(
+            scopeSpan[..firstSeparator].Trim().ToString(),
+            remainingScope[..secondSeparator].Trim().ToString(),
+            actions);
         return true;
+    }
+
+    private static HashSet<string> ParseActions(ReadOnlySpan<char> actionSpan)
+    {
+        var actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        while (true)
+        {
+            var separatorIndex = actionSpan.IndexOf(',');
+            var action = separatorIndex < 0
+                ? actionSpan
+                : actionSpan[..separatorIndex];
+            actions.Add(action.Trim().ToString());
+
+            if (separatorIndex < 0)
+            {
+                return actions;
+            }
+
+            actionSpan = actionSpan[(separatorIndex + 1)..];
+        }
     }
 
     /// <summary>
