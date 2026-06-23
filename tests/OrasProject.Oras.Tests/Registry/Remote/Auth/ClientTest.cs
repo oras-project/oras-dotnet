@@ -1258,6 +1258,91 @@ public class ClientTest
     }
 
     [Fact]
+    public async Task SendAsync_UnauthorizedResponse_PreservesDuplicateOpaqueChallengeScopes()
+    {
+        // Arrange
+        var host = "example.com";
+        var realm = $"https://{host}/token";
+        var service = "test_service";
+        var structuredScope = "repository:docker/library/redis:pull";
+        var opaqueScope = "aws";
+        var expectedToken = "duplicate_opaque_scope_token";
+        var tokenRequestCount = 0;
+
+        HttpResponseMessage MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.AbsoluteUri.StartsWith(realm, StringComparison.Ordinal) == true)
+            {
+                tokenRequestCount++;
+                var query = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+                var requestedScopes = query.GetValues("scope") ?? [];
+
+                if (query["service"] == service
+                    && requestedScopes.SequenceEqual(new[] { structuredScope, opaqueScope, opaqueScope }))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent($"{{\"token\": \"{expectedToken}\"}}"),
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    RequestMessage = req
+                };
+            }
+
+            if (req.Method == HttpMethod.Get
+                && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Scheme == "Bearer"
+                    && req.Headers.Authorization.Parameter == expectedToken)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    };
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Headers =
+                    {
+                        WwwAuthenticate =
+                        {
+                            new AuthenticationHeaderValue(
+                                "Bearer",
+                                $"realm=\"{realm}\",service=\"{service}\",scope=\"{opaqueScope} {opaqueScope}\"")
+                        }
+                    },
+                    RequestMessage = req
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            };
+        }
+
+        var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
+        Assert.True(Scope.TryParse(structuredScope, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, tokenRequestCount);
+    }
+
+    [Fact]
     public async Task SendAsync_UnauthorizedResponse_DoesNotCacheOpaqueChallengeScopeToken()
     {
         // Arrange

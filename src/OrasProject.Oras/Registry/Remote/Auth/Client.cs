@@ -813,7 +813,7 @@ public class Client : IClient
         string? scopesString)
     {
         var structuredScopes = new SortedSet<Scope>(existingScopes);
-        var opaqueScopes = new HashSet<string>(StringComparer.Ordinal);
+        var opaqueScopes = new List<string>();
 
         if (string.IsNullOrWhiteSpace(scopesString))
         {
@@ -832,7 +832,7 @@ public class Client : IClient
             }
         }
 
-        return (structuredScopes, opaqueScopes.OrderBy(scope => scope, StringComparer.Ordinal).ToList());
+        return (structuredScopes, opaqueScopes);
     }
 
     private static List<string> GetTokenRequestScopes(
@@ -841,12 +841,7 @@ public class Client : IClient
     {
         return structuredScopes
             .Select(scope => scope.ToString())
-            .Where(scope => !string.IsNullOrWhiteSpace(scope))
-            .Distinct(StringComparer.Ordinal)
-            .Concat(opaqueScopes
-                .Where(scope => !string.IsNullOrWhiteSpace(scope))
-                .Distinct(StringComparer.Ordinal)
-                .OrderBy(scope => scope, StringComparer.Ordinal))
+            .Concat(opaqueScopes)
             .ToList();
     }
 
