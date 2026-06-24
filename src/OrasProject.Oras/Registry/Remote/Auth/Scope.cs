@@ -116,25 +116,29 @@ public class Scope : IComparable<Scope>
         }
 
         var firstSeparator = scopeSpan.IndexOf(':');
-        if (firstSeparator < 0)
+        if (firstSeparator < 0 || scopeSpan[..firstSeparator].Trim().IsEmpty)
         {
             return false;
         }
 
         var remainingScope = scopeSpan[(firstSeparator + 1)..];
         var secondSeparator = remainingScope.IndexOf(':');
-        if (secondSeparator < 0)
+        if (secondSeparator < 0 || remainingScope[..secondSeparator].Trim().IsEmpty)
         {
             return false;
         }
 
         var actionSpan = remainingScope[(secondSeparator + 1)..];
-        if (actionSpan.Contains(':'))
+        if (actionSpan.Trim().IsEmpty || actionSpan.Contains(':'))
         {
             return false;
         }
 
-        var actions = ParseActions(actionSpan);
+        if (!TryParseActions(actionSpan, out var actions))
+        {
+            return false;
+        }
+
         if (actions.Contains(ActionWildcard))
         {
             actions.Clear();
@@ -148,20 +152,29 @@ public class Scope : IComparable<Scope>
         return true;
     }
 
-    private static HashSet<string> ParseActions(ReadOnlySpan<char> actionSpan)
+    private static bool TryParseActions(
+        ReadOnlySpan<char> actionSpan,
+        [NotNullWhen(true)] out HashSet<string>? actions)
     {
-        var actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         while (true)
         {
             var separatorIndex = actionSpan.IndexOf(',');
             var action = separatorIndex < 0
                 ? actionSpan
                 : actionSpan[..separatorIndex];
-            actions.Add(action.Trim().ToString());
+            action = action.Trim();
+            if (action.IsEmpty)
+            {
+                actions = null;
+                return false;
+            }
+
+            actions.Add(action.ToString());
 
             if (separatorIndex < 0)
             {
-                return actions;
+                return true;
             }
 
             actionSpan = actionSpan[(separatorIndex + 1)..];

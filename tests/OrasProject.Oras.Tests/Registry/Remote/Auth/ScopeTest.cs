@@ -112,6 +112,26 @@ public class ScopeTest
         Assert.Null(scope);
     }
 
+    [Theory]
+    [InlineData(":my-repo:pull")]
+    [InlineData("   :my-repo:pull")]
+    [InlineData("repository::pull")]
+    [InlineData("repository:   :pull")]
+    [InlineData("repository:my-repo:")]
+    [InlineData("repository:my-repo:   ")]
+    [InlineData("repository:my-repo:pull,")]
+    [InlineData("repository:my-repo:,pull")]
+    [InlineData("repository:my-repo:pull,,push")]
+    public void TryParse_ScopeStringWithEmptyComponents_ReturnsFalse(string scopeStr)
+    {
+        // Act
+        bool result = Scope.TryParse(scopeStr, out var scope);
+
+        // Assert
+        Assert.False(result);
+        Assert.Null(scope);
+    }
+
     [Fact]
     public void EqualsInSortedSet_DifferentScopeInstancesWithSameValues_ReturnsTrue()
     {
