@@ -820,9 +820,10 @@ public class Client : IClient
         SortedSet<Scope> existingScopes,
         string? scopesString)
     {
-        var structuredScopes = new SortedSet<Scope>(existingScopes);
+        var structuredScopes = existingScopes;
         var tokenRequestScopes = new List<string>();
         var hasOpaqueScopes = false;
+        var copiedStructuredScopes = false;
 
         if (!string.IsNullOrWhiteSpace(scopesString))
         {
@@ -844,6 +845,12 @@ public class Client : IClient
 
                 if (Scope.TryParse(scopeSpan, out var scope))
                 {
+                    if (!copiedStructuredScopes)
+                    {
+                        structuredScopes = new SortedSet<Scope>(existingScopes);
+                        copiedStructuredScopes = true;
+                    }
+
                     Scope.AddOrMergeScope(structuredScopes, scope);
                 }
                 else
