@@ -847,7 +847,7 @@ public class Client : IClient
                 {
                     if (!copiedStructuredScopes)
                     {
-                        structuredScopes = new SortedSet<Scope>(existingScopes);
+                        structuredScopes = CloneStructuredScopes(existingScopes);
                         copiedStructuredScopes = true;
                     }
 
@@ -863,6 +863,16 @@ public class Client : IClient
 
         var cacheKey = PrependStructuredScopes(tokenRequestScopes, structuredScopes);
         return new MergedScopes(tokenRequestScopes, cacheKey, hasOpaqueScopes);
+    }
+
+    private static SortedSet<Scope> CloneStructuredScopes(SortedSet<Scope> scopes)
+    {
+        var clonedScopes = new SortedSet<Scope>();
+        foreach (var scope in scopes)
+        {
+            clonedScopes.Add(scope.Clone());
+        }
+        return clonedScopes;
     }
 
     private static string PrependStructuredScopes(

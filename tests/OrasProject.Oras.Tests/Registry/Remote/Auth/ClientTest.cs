@@ -1689,6 +1689,9 @@ public class ClientTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(1, tokenRequestCount);
+        Assert.Equal(
+            new[] { structuredScope },
+            client.ScopeManager.GetScopesStringForHost(host));
     }
 
     [Fact]

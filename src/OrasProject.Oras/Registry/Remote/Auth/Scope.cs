@@ -73,6 +73,14 @@ public class Scope : IComparable<Scope>
         Actions = actions;
     }
 
+    internal Scope Clone()
+    {
+        return new Scope(
+            ResourceType,
+            ResourceName,
+            new HashSet<string>(Actions, Actions.Comparer));
+    }
+
     /// <summary>
     /// ToString converts the scope to its string representation in the format:
     /// "ResourceType:ResourceName:Action1,Action2,...".
