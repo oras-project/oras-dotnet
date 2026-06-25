@@ -3649,6 +3649,52 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     }
 
     [Fact]
+    public async Task Repository_ReferrersByApi_NullManifests_ReturnsEmpty()
+    {
+        // Some non-conformant registries return `"manifests": null` instead of
+        // an empty array when a subject has no referrers. This must not throw
+        // and should yield no referrers.
+        var indexBytes = """
+            {"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":null}
+            """u8.ToArray();
+
+        var desc = RandomDescriptor();
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{desc.Digest}")
+            {
+                res.Content = new ByteArrayContent(indexBytes);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [desc.Digest]);
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockedHttpHandler),
+            PlainHttp = true,
+        });
+
+        var cancellationToken = new CancellationToken();
+        var returnedReferrers = new List<Descriptor>();
+        await foreach (var referrer in repo.FetchReferrersByApi(desc, cancellationToken))
+        {
+            returnedReferrers.Add(referrer);
+        }
+        Assert.Empty(returnedReferrers);
+    }
+
+    [Fact]
     public async Task Repository_ReferrersByApi_SinglePageWithServerSideFilter_Successfully()
     {
         var expectedReferrersList = new List<Descriptor>
