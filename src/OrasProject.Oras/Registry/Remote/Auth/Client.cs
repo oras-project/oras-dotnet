@@ -670,6 +670,7 @@ public class Client : IClient
                     throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
         var attemptedKey = string.Empty;
+        var requestAttempt1UsedCachedBearerToken = false;
 
         // attempt to send request with cached auth token
         if (Cache.TryGetScheme(host, out var schemeFromCache, partitionId))
@@ -692,6 +693,7 @@ public class Client : IClient
                         if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken, partitionId))
                         {
                             requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                            requestAttempt1UsedCachedBearerToken = true;
                         }
                         break;
                     }
@@ -699,113 +701,207 @@ public class Client : IClient
         }
 
         var response1 = await SendRequestAsync(requestAttempt1, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-        if (response1.StatusCode != HttpStatusCode.Unauthorized)
+        var attemptedColdChallenge = false;
+
+        async Task<bool> TryRetryWithColdChallengeAsync(bool disposeCurrentResponse = false)
         {
-            return response1;
+            if (!ShouldRetryWithColdChallenge(requestAttempt1UsedCachedBearerToken, attemptedColdChallenge) ||
+                !await CanReplayRequestContentAsync(originalRequest, cancellationToken).ConfigureAwait(false))
+            {
+                return false;
+            }
+
+            if (disposeCurrentResponse)
+            {
+                response1.Dispose();
+            }
+
+            response1 = await SendColdChallengeRequestAsync(originalRequest, allowAutoRedirect, cancellationToken)
+                .ConfigureAwait(false);
+            attemptedColdChallenge = true;
+            return true;
         }
 
-        var (schemeFromChallenge, parameters) =
-            Challenge.ParseChallenge(response1.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
-
-        // Attempt again with credentials for recognized schemes
-        switch (schemeFromChallenge)
+        while (true)
         {
-            case Challenge.Scheme.Basic:
-                {
-                    response1.Dispose();
-                    var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken, partitionId);
-
-                    // Attempt again with basic token
-                    var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                    requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
-                    return await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-                }
-            case Challenge.Scheme.Bearer:
-                {
-                    response1.Dispose();
-                    if (parameters == null)
-                    {
-                        throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
-                    }
-
-                    var existingScopes = ScopeManager.GetScopesForHost(host);
-                    var newScopes = new SortedSet<Scope>(existingScopes);
-                    if (parameters.TryGetValue("scope", out var scopesString))
-                    {
-                        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            if (Scope.TryParse(scopeStr, out var scope))
-                            {
-                                Scope.AddOrMergeScope(newScopes, scope);
-                            }
-                        }
-                    }
-
-                    // Attempt to send request when the scope changes and a token cache hits
-                    var newKey = string.Join(" ", newScopes);
-                    if (newKey != attemptedKey &&
-                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken, partitionId))
-                    {
-                        var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                        requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                        var response2 = await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-
-                        if (response2.StatusCode != HttpStatusCode.Unauthorized)
-                        {
-                            return response2;
-                        }
-                        response2.Dispose();
-                    }
-
-                    if (!parameters.TryGetValue("realm", out var realm))
-                    {
-                        // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
-                        throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
-                    }
-
-                    // Validate realm URL before sending credentials.
-                    if (!Uri.TryCreate(
-                            realm, UriKind.Absolute,
-                            out var realmUri))
-                    {
-                        throw new AuthenticationException(
-                            $"Invalid realm URL: '{realm}'");
-                    }
-
-                    var registryUri = originalRequest.RequestUri!;
-                    if (!await RealmValidator.IsRealmAllowedAsync(
-                            registryUri, realmUri, cancellationToken)
-                        .ConfigureAwait(false))
-                    {
-                        throw new AuthenticationException(
-                            $"Authentication realm '{realmUri}' is not allowed for registry '{registryUri.Authority}'.");
-                    }
-
-                    if (!parameters.TryGetValue("service", out var service))
-                    {
-                        // some registries may omit the `service` parameter; use an empty string when absent.
-                        service = string.Empty;
-                    }
-
-                    // Try to fetch bearer token based on the challenge header
-                    var bearerAuthToken = await FetchBearerAuthAsync(
-                        host,
-                        realm,
-                        service,
-                        newScopes.Select(newScope => newScope.ToString()).ToList(),
-                        forceRefresh: true,
-                        cancellationToken
-                    ).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
-
-                    var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                    requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
-                    return await SendRequestAsync(requestAttempt3, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-                }
-            default:
+            if (response1.StatusCode != HttpStatusCode.Unauthorized)
+            {
                 return response1;
+            }
+
+            var (schemeFromChallenge, parameters) =
+                Challenge.ParseChallenge(response1.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
+
+            // Attempt again with credentials for recognized schemes
+            switch (schemeFromChallenge)
+            {
+                case Challenge.Scheme.Basic:
+                    {
+                        response1.Dispose();
+                        var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
+                        Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken, partitionId);
+
+                        // Attempt again with basic token
+                        var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+                        requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
+                        return await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                    }
+                case Challenge.Scheme.Bearer:
+                    {
+                        response1.Dispose();
+                        if (parameters == null)
+                        {
+                            if (await TryRetryWithColdChallengeAsync().ConfigureAwait(false))
+                            {
+                                continue;
+                            }
+
+                            throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
+                        }
+
+                        var newScopes = MergeChallengeScopes(
+                            ScopeManager.GetScopesForHost(host),
+                            parameters.TryGetValue("scope", out var scopesString)
+                                ? scopesString
+                                : null);
+
+                        // Attempt to send request when the scope changes and a token cache hits
+                        var newKey = string.Join(" ", newScopes);
+                        if (newKey != attemptedKey &&
+                            Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken, partitionId))
+                        {
+                            var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+                            requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
+                            var response2 = await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+
+                            if (response2.StatusCode != HttpStatusCode.Unauthorized)
+                            {
+                                return response2;
+                            }
+                            response2.Dispose();
+                        }
+
+                        if (!parameters.TryGetValue("realm", out var realm))
+                        {
+                            if (await TryRetryWithColdChallengeAsync().ConfigureAwait(false))
+                            {
+                                continue;
+                            }
+
+                            // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
+                            throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
+                        }
+
+                        // Validate realm URL before sending credentials.
+                        if (!Uri.TryCreate(
+                                realm, UriKind.Absolute,
+                                out var realmUri))
+                        {
+                            if (await TryRetryWithColdChallengeAsync().ConfigureAwait(false))
+                            {
+                                continue;
+                            }
+
+                            throw new AuthenticationException(
+                                $"Invalid realm URL: '{realm}'");
+                        }
+
+                        var registryUri = originalRequest.RequestUri!;
+                        if (!await RealmValidator.IsRealmAllowedAsync(
+                                registryUri, realmUri, cancellationToken)
+                            .ConfigureAwait(false))
+                        {
+                            if (await TryRetryWithColdChallengeAsync().ConfigureAwait(false))
+                            {
+                                continue;
+                            }
+
+                            throw new AuthenticationException(
+                                $"Authentication realm '{realmUri}' is not allowed for registry '{registryUri.Authority}'.");
+                        }
+
+                        if (!parameters.TryGetValue("service", out var service))
+                        {
+                            // some registries may omit the `service` parameter; use an empty string when absent.
+                            service = string.Empty;
+                        }
+
+                        // Try to fetch bearer token based on the challenge header
+                        var bearerAuthToken = await FetchBearerAuthAsync(
+                            host,
+                            realm,
+                            service,
+                            newScopes.Select(newScope => newScope.ToString()).ToList(),
+                            forceRefresh: true,
+                            cancellationToken
+                        ).ConfigureAwait(false);
+                        Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
+
+                        var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+                        requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
+                        return await SendRequestAsync(requestAttempt3, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                    }
+                default:
+                    if (await TryRetryWithColdChallengeAsync(disposeCurrentResponse: true).ConfigureAwait(false))
+                    {
+                        continue;
+                    }
+
+                    return response1;
+            }
         }
+    }
+
+    private static SortedSet<Scope> MergeChallengeScopes(
+        IEnumerable<Scope> existingScopes,
+        string? scopesString)
+    {
+        var newScopes = new SortedSet<Scope>(existingScopes);
+        if (string.IsNullOrWhiteSpace(scopesString))
+        {
+            return newScopes;
+        }
+
+        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (Scope.TryParse(scopeStr, out var scope))
+            {
+                Scope.AddOrMergeScope(newScopes, scope);
+            }
+        }
+
+        return newScopes;
+    }
+
+    private static bool ShouldRetryWithColdChallenge(
+        bool requestAttempt1UsedCachedBearerToken,
+        bool attemptedColdChallenge)
+        => requestAttempt1UsedCachedBearerToken && !attemptedColdChallenge;
+
+    private static async Task<bool> CanReplayRequestContentAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        if (request.Content == null)
+        {
+            return true;
+        }
+
+        var stream = await request.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        return stream.CanSeek;
+    }
+
+    private async Task<HttpResponseMessage> SendColdChallengeRequestAsync(
+        HttpRequestMessage originalRequest,
+        bool allowAutoRedirect,
+        CancellationToken cancellationToken)
+    {
+        // Re-send the same resource request rather than probing with a different method or URI:
+        // some registries derive the challenge from the exact resource and method being accessed.
+        // The content was already buffered/validated by BufferNonSeekableContentAsync above.
+        var coldRequest = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+        coldRequest.Headers.Authorization = null;
+        return await SendRequestAsync(coldRequest, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

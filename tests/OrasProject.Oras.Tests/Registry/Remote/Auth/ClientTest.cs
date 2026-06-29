@@ -1069,6 +1069,601 @@ public class ClientTest
     }
 
     [Fact]
+    public async Task SendAsync_CachedBearerUnauthorizedWithoutChallenge_RederivesChallengeCold()
+    {
+        // Arrange
+        var host = "dhi.example.com";
+        var realm = $"https://{host}/token";
+        var scopeString = "repository:redis:pull";
+        var staleToken = "stale_token";
+        var freshToken = "fresh_token";
+        var noAuthResourceRequests = 0;
+        var staleResourceRequests = 0;
+        var freshResourceRequests = 0;
+
+        Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsoluteUri.StartsWith(realm, StringComparison.Ordinal) == true)
+            {
+                return Task.FromResult(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent($"{{\"token\": \"{freshToken}\"}}"),
+                    RequestMessage = req
+                });
+            }
+
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Parameter == staleToken)
+                {
+                    staleResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        RequestMessage = req
+                    });
+                }
+
+                if (req.Headers.Authorization == null)
+                {
+                    noAuthResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        Headers =
+                        {
+                            WwwAuthenticate =
+                            {
+                                new AuthenticationHeaderValue(
+                                    "Bearer",
+                                    $"realm=\"{realm}\",service=\"test_service\",scope=\"{scopeString}\"")
+                            }
+                        },
+                        RequestMessage = req
+                    });
+                }
+
+                if (req.Headers.Authorization.Parameter == freshToken)
+                {
+                    freshResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    });
+                }
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            });
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+        Assert.True(Scope.TryParse(scopeString, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.Cache.SetCache(host, Challenge.Scheme.Bearer, scopeString, staleToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/v2/redis/manifests/latest");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, staleResourceRequests);
+        Assert.Equal(1, noAuthResourceRequests);
+        Assert.Equal(1, freshResourceRequests);
+
+        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/v2/redis/manifests/latest");
+        response = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, staleResourceRequests);
+        Assert.Equal(1, noAuthResourceRequests);
+        Assert.Equal(2, freshResourceRequests);
+    }
+
+    [Fact]
+    public async Task SendAsync_CachedBearerColdChallengeAlsoUnusable_ReturnsColdResponseOnce()
+    {
+        // Arrange
+        var host = "still-broken.example.com";
+        var scopeString = "repository:repo:pull";
+        var staleToken = "stale_token";
+        var staleResourceRequests = 0;
+        var noAuthResourceRequests = 0;
+
+        Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Parameter == staleToken)
+                {
+                    staleResourceRequests++;
+                }
+                else if (req.Headers.Authorization == null)
+                {
+                    noAuthResourceRequests++;
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    RequestMessage = req
+                });
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            });
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+        Assert.True(Scope.TryParse(scopeString, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.Cache.SetCache(host, Challenge.Scheme.Bearer, scopeString, staleToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/v2/repo/manifests/latest");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(1, staleResourceRequests);
+        Assert.Equal(1, noAuthResourceRequests);
+    }
+
+    [Fact]
+    public async Task SendAsync_CachedBearerUnusableChallengeWithNonReplayableContent_SkipsColdRetry()
+    {
+        // Arrange
+        var host = "large-upload.example.com";
+        var scopeString = "repository:repo:push";
+        var staleToken = "stale_token";
+        var staleResourceRequests = 0;
+        var noAuthResourceRequests = 0;
+
+        Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Put && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Parameter == staleToken)
+                {
+                    staleResourceRequests++;
+                }
+                else if (req.Headers.Authorization == null)
+                {
+                    noAuthResourceRequests++;
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    RequestMessage = req
+                });
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            });
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+        Assert.True(Scope.TryParse(scopeString, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.Cache.SetCache(host, Challenge.Scheme.Bearer, scopeString, staleToken);
+
+        var nonSeekableStream = new NonSeekableStream("payload"u8.ToArray());
+        var content = new StreamContent(nonSeekableStream);
+        content.Headers.ContentLength = Client.MaxBufferSize + 1;
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"https://{host}/v2/repo/manifests/latest")
+        {
+            Content = content
+        };
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(1, staleResourceRequests);
+        Assert.Equal(0, noAuthResourceRequests);
+    }
+
+    [Fact]
+    public async Task SendAsync_CachedBearerUnauthorizedWithMissingRealm_RederivesChallengeCold()
+    {
+        // Arrange
+        var host = "missing-realm.example.com";
+        var realm = $"https://{host}/token";
+        var scopeString = "repository:repo:pull";
+        var staleToken = "stale_token";
+        var freshToken = "fresh_token";
+        var staleResourceRequests = 0;
+        var noAuthResourceRequests = 0;
+
+        Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsoluteUri.StartsWith(realm, StringComparison.Ordinal) == true)
+            {
+                return Task.FromResult(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent($"{{\"token\": \"{freshToken}\"}}"),
+                    RequestMessage = req
+                });
+            }
+
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Parameter == staleToken)
+                {
+                    staleResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        Headers =
+                        {
+                            WwwAuthenticate =
+                            {
+                                new AuthenticationHeaderValue(
+                                    "Bearer",
+                                    $"service=\"test_service\",scope=\"{scopeString}\"")
+                            }
+                        },
+                        RequestMessage = req
+                    });
+                }
+
+                if (req.Headers.Authorization == null)
+                {
+                    noAuthResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        Headers =
+                        {
+                            WwwAuthenticate =
+                            {
+                                new AuthenticationHeaderValue(
+                                    "Bearer",
+                                    $"realm=\"{realm}\",service=\"test_service\",scope=\"{scopeString}\"")
+                            }
+                        },
+                        RequestMessage = req
+                    });
+                }
+
+                if (req.Headers.Authorization.Parameter == freshToken)
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    });
+                }
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            });
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+        Assert.True(Scope.TryParse(scopeString, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.Cache.SetCache(host, Challenge.Scheme.Bearer, scopeString, staleToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/v2/repo/manifests/latest");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, staleResourceRequests);
+        Assert.Equal(1, noAuthResourceRequests);
+    }
+
+    [Fact]
+    public async Task SendAsync_CachedBearerUnauthorizedWithDeniedRealm_RederivesChallengeCold()
+    {
+        // Arrange
+        var host = "registry.example.com";
+        var deniedRealm = "https://denied-auth.example.com/token";
+        var coldRealm = $"https://{host}/proxy_auth";
+        var scopeString = "repository:sample/repo:pull";
+        var staleToken = "stale_token";
+        var freshToken = "fresh_token";
+        var staleResourceRequests = 0;
+        var noAuthResourceRequests = 0;
+        var deniedRealmTokenRequests = 0;
+        var coldRealmTokenRequests = 0;
+
+        Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsoluteUri.StartsWith(deniedRealm, StringComparison.Ordinal) == true)
+            {
+                deniedRealmTokenRequests++;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    RequestMessage = req
+                });
+            }
+
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsoluteUri.StartsWith(coldRealm, StringComparison.Ordinal) == true)
+            {
+                coldRealmTokenRequests++;
+                return Task.FromResult(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent($"{{\"token\": \"{freshToken}\"}}"),
+                    RequestMessage = req
+                });
+            }
+
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Parameter == staleToken)
+                {
+                    staleResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        Headers =
+                        {
+                            WwwAuthenticate =
+                            {
+                                new AuthenticationHeaderValue(
+                                    "Bearer",
+                                    $"realm=\"{deniedRealm}\",service=\"registry\",scope=\"{scopeString}\"")
+                            }
+                        },
+                        RequestMessage = req
+                    });
+                }
+
+                if (req.Headers.Authorization == null)
+                {
+                    noAuthResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        Headers =
+                        {
+                            WwwAuthenticate =
+                            {
+                                new AuthenticationHeaderValue(
+                                    "Bearer",
+                                    $"realm=\"{coldRealm}\",scope=\"{scopeString}\"")
+                            }
+                        },
+                        RequestMessage = req
+                    });
+                }
+
+                if (req.Headers.Authorization.Parameter == freshToken)
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    });
+                }
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            });
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+        Assert.True(Scope.TryParse(scopeString, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.Cache.SetCache(host, Challenge.Scheme.Bearer, scopeString, staleToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/v2/sample/repo/manifests/latest");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, staleResourceRequests);
+        Assert.Equal(1, noAuthResourceRequests);
+        Assert.Equal(0, deniedRealmTokenRequests);
+        Assert.Equal(1, coldRealmTokenRequests);
+    }
+
+    [Fact]
+    public async Task SendAsync_CachedBearerUnauthorizedWithUsableChallenge_DoesNotRederiveChallengeCold()
+    {
+        // Arrange
+        var host = "compliant.example.com";
+        var realm = "https://auth.compliant.example.com/token";
+        var scopeString = "repository:repo:pull";
+        var staleToken = "stale_token";
+        var freshToken = "fresh_token";
+        var staleResourceRequests = 0;
+        var noAuthResourceRequests = 0;
+
+        Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsoluteUri.StartsWith(realm, StringComparison.Ordinal) == true)
+            {
+                return Task.FromResult(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent($"{{\"token\": \"{freshToken}\"}}"),
+                    RequestMessage = req
+                });
+            }
+
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization == null)
+                {
+                    noAuthResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                    {
+                        RequestMessage = req
+                    });
+                }
+
+                if (req.Headers.Authorization.Parameter == staleToken)
+                {
+                    staleResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        Headers =
+                        {
+                            WwwAuthenticate =
+                            {
+                                new AuthenticationHeaderValue(
+                                    "Bearer",
+                                    $"realm=\"{realm}\",service=\"test_service\",scope=\"{scopeString}\"")
+                            }
+                        },
+                        RequestMessage = req
+                    });
+                }
+
+                if (req.Headers.Authorization.Parameter == freshToken)
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        RequestMessage = req
+                    });
+                }
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            });
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object))
+        {
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "auth.compliant.example.com"
+                }
+            }
+        };
+        Assert.True(Scope.TryParse(scopeString, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.Cache.SetCache(host, Challenge.Scheme.Bearer, scopeString, staleToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/v2/repo/manifests/latest");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, staleResourceRequests);
+        Assert.Equal(0, noAuthResourceRequests);
+    }
+
+    [Fact]
+    public async Task SendAsync_CachedBearerUnauthorizedWithAllowedRealmTokenFailure_DoesNotRederiveChallengeCold()
+    {
+        // Arrange
+        var host = "badcreds.example.com";
+        var realm = "https://auth.badcreds.example.com/token";
+        var scopeString = "repository:repo:pull";
+        var staleToken = "stale_token";
+        var staleResourceRequests = 0;
+        var noAuthResourceRequests = 0;
+
+        Task<HttpResponseMessage> MockHttpRequestHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri?.AbsoluteUri.StartsWith(realm, StringComparison.Ordinal) == true)
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    RequestMessage = req
+                });
+            }
+
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization == null)
+                {
+                    noAuthResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                    {
+                        RequestMessage = req
+                    });
+                }
+
+                if (req.Headers.Authorization.Parameter == staleToken)
+                {
+                    staleResourceRequests++;
+                    return Task.FromResult(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.Unauthorized,
+                        Headers =
+                        {
+                            WwwAuthenticate =
+                            {
+                                new AuthenticationHeaderValue(
+                                    "Bearer",
+                                    $"realm=\"{realm}\",service=\"test_service\",scope=\"{scopeString}\"")
+                            }
+                        },
+                        RequestMessage = req
+                    });
+                }
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                RequestMessage = req
+            });
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object))
+        {
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "auth.badcreds.example.com"
+                }
+            }
+        };
+        Assert.True(Scope.TryParse(scopeString, out var scope));
+        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.Cache.SetCache(host, Challenge.Scheme.Bearer, scopeString, staleToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/v2/repo/manifests/latest");
+
+        // Act
+        var ex = await Assert.ThrowsAsync<ResponseException>(
+            () => client.SendAsync(request, cancellationToken: CancellationToken.None));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, ex.StatusCode);
+        Assert.Equal(1, staleResourceRequests);
+        Assert.Equal(0, noAuthResourceRequests);
+    }
+
+    [Fact]
     public async Task SendAsync_UnauthorizedResponse_BearerChallengeWithoutService_OmitsServiceInTokenRequest()
     {
         // Arrange
@@ -2730,9 +3325,13 @@ public class ClientTest
 
         // Act & Assert — /token parses as file:///token on Linux,
         // which is rejected by the scheme check in the validator.
+        // On Windows it can be rejected earlier as an invalid absolute URI.
         var ex = await Assert.ThrowsAsync<AuthenticationException>(
             () => client.SendAsync(request,
                 cancellationToken: CancellationToken.None));
-        Assert.Contains("not allowed", ex.Message);
+        Assert.True(
+            ex.Message.Contains("not allowed", StringComparison.Ordinal) ||
+            ex.Message.Contains("Invalid realm URL", StringComparison.Ordinal),
+            $"Unexpected exception message: {ex.Message}");
     }
 }
