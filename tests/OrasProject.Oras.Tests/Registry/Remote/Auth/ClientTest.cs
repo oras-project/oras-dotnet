@@ -3034,7 +3034,7 @@ public class ClientTest
         var host = "victim.io";
         var evilRealm = "https://evil.com/token";
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(
+        HttpResponseMessage MockHttpRequestHandler(
             HttpRequestMessage req,
             CancellationToken ct)
         {
@@ -3078,7 +3078,7 @@ public class ClientTest
         var realm = $"https://{host}/token";
         var expectedToken = "good_token";
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(
+        HttpResponseMessage MockHttpRequestHandler(
             HttpRequestMessage req,
             CancellationToken ct)
         {
@@ -3143,7 +3143,7 @@ public class ClientTest
         // invalid realm URL.
         var host = "myreg.io";
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(
+        HttpResponseMessage MockHttpRequestHandler(
             HttpRequestMessage req,
             CancellationToken ct)
         {
@@ -3184,7 +3184,7 @@ public class ClientTest
         // empty realm string.
         var host = "myreg.io";
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(
+        HttpResponseMessage MockHttpRequestHandler(
             HttpRequestMessage req,
             CancellationToken ct)
         {
@@ -3224,7 +3224,7 @@ public class ClientTest
         // relative realm URL.
         var host = "myreg.io";
 
-        async Task<HttpResponseMessage> MockHttpRequestHandler(
+        HttpResponseMessage MockHttpRequestHandler(
             HttpRequestMessage req,
             CancellationToken ct)
         {
