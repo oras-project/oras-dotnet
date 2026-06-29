@@ -117,27 +117,11 @@ public class Scope : IComparable<Scope>
     internal static bool TryParse(ReadOnlySpan<char> scopeSpan, [NotNullWhen(true)] out Scope? scope)
     {
         scope = null;
-        scopeSpan = scopeSpan.Trim();
-        if (scopeSpan.IsEmpty)
-        {
-            return false;
-        }
-
-        var firstSeparator = scopeSpan.IndexOf(':');
-        if (firstSeparator < 0 || scopeSpan[..firstSeparator].Trim().IsEmpty)
-        {
-            return false;
-        }
-
-        var remainingScope = scopeSpan[(firstSeparator + 1)..];
-        var secondSeparator = remainingScope.IndexOf(':');
-        if (secondSeparator < 0 || remainingScope[..secondSeparator].Trim().IsEmpty)
-        {
-            return false;
-        }
-
-        var actionSpan = remainingScope[(secondSeparator + 1)..];
-        if (actionSpan.Trim().IsEmpty || actionSpan.Contains(':'))
+        if (!TryGetScopeParts(
+                scopeSpan,
+                out var resourceType,
+                out var resourceName,
+                out var actionSpan))
         {
             return false;
         }
@@ -154,10 +138,58 @@ public class Scope : IComparable<Scope>
         }
 
         scope = new Scope(
-            scopeSpan[..firstSeparator].Trim().ToString(),
-            remainingScope[..secondSeparator].Trim().ToString(),
+            resourceType.ToString(),
+            resourceName.ToString(),
             actions);
         return true;
+    }
+
+    internal static bool IsParseable(ReadOnlySpan<char> scopeSpan)
+    {
+        return TryGetScopeParts(
+                scopeSpan,
+                out _,
+                out _,
+                out var actionSpan)
+            && AreActionsParseable(actionSpan);
+    }
+
+    private static bool TryGetScopeParts(
+        ReadOnlySpan<char> scopeSpan,
+        out ReadOnlySpan<char> resourceType,
+        out ReadOnlySpan<char> resourceName,
+        out ReadOnlySpan<char> actions)
+    {
+        resourceType = [];
+        resourceName = [];
+        actions = [];
+
+        scopeSpan = scopeSpan.Trim();
+        if (scopeSpan.IsEmpty)
+        {
+            return false;
+        }
+
+        var firstSeparator = scopeSpan.IndexOf(':');
+        if (firstSeparator < 0)
+        {
+            return false;
+        }
+
+        var remainingScope = scopeSpan[(firstSeparator + 1)..];
+        var secondSeparator = remainingScope.IndexOf(':');
+        if (secondSeparator < 0)
+        {
+            return false;
+        }
+
+        resourceType = scopeSpan[..firstSeparator].Trim();
+        resourceName = remainingScope[..secondSeparator].Trim();
+        actions = remainingScope[(secondSeparator + 1)..];
+        return !resourceType.IsEmpty
+            && !resourceName.IsEmpty
+            && !actions.Trim().IsEmpty
+            && !actions.Contains(':');
     }
 
     private static bool TryParseActions(
@@ -179,6 +211,28 @@ public class Scope : IComparable<Scope>
             }
 
             actions.Add(action.ToString());
+
+            if (separatorIndex < 0)
+            {
+                return true;
+            }
+
+            actionSpan = actionSpan[(separatorIndex + 1)..];
+        }
+    }
+
+    private static bool AreActionsParseable(ReadOnlySpan<char> actionSpan)
+    {
+        while (true)
+        {
+            var separatorIndex = actionSpan.IndexOf(',');
+            var action = separatorIndex < 0
+                ? actionSpan
+                : actionSpan[..separatorIndex];
+            if (action.Trim().IsEmpty)
+            {
+                return false;
+            }
 
             if (separatorIndex < 0)
             {

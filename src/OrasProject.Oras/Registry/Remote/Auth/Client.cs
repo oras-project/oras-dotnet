@@ -821,28 +821,14 @@ public class Client : IClient
         string? scopesString)
     {
         var structuredScopes = existingScopes;
-        var tokenRequestScopes = new List<string>();
         var hasOpaqueScopes = false;
         var copiedStructuredScopes = false;
 
         if (!string.IsNullOrWhiteSpace(scopesString))
         {
             var remainingScopes = scopesString.AsSpan();
-            while (!remainingScopes.IsEmpty)
+            while (TryReadNextScope(ref remainingScopes, out var scopeSpan))
             {
-                var separatorIndex = remainingScopes.IndexOf(' ');
-                var scopeSpan = separatorIndex < 0
-                    ? remainingScopes
-                    : remainingScopes[..separatorIndex];
-                remainingScopes = separatorIndex < 0
-                    ? []
-                    : remainingScopes[(separatorIndex + 1)..];
-
-                if (scopeSpan.IsEmpty)
-                {
-                    continue;
-                }
-
                 if (Scope.TryParse(scopeSpan, out var scope))
                 {
                     if (!copiedStructuredScopes)
@@ -855,13 +841,16 @@ public class Client : IClient
                 }
                 else
                 {
-                    tokenRequestScopes.Add(scopeSpan.ToString());
                     hasOpaqueScopes = true;
                 }
             }
         }
 
-        var cacheKey = PrependStructuredScopes(tokenRequestScopes, structuredScopes);
+        var tokenRequestScopes = BuildTokenRequestScopes(
+            structuredScopes,
+            scopesString,
+            hasOpaqueScopes,
+            out var cacheKey);
         return new MergedScopes(tokenRequestScopes, cacheKey, hasOpaqueScopes);
     }
 
@@ -875,45 +864,69 @@ public class Client : IClient
         return clonedScopes;
     }
 
-    private static string PrependStructuredScopes(
-        List<string> tokenRequestScopes,
-        SortedSet<Scope> structuredScopes)
+    private static List<string> BuildTokenRequestScopes(
+        SortedSet<Scope> structuredScopes,
+        string? scopesString,
+        bool hasOpaqueScopes,
+        out string cacheKey)
     {
-        if (structuredScopes.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        var opaqueScopeCount = tokenRequestScopes.Count;
-        var structuredScopeCount = structuredScopes.Count;
-        tokenRequestScopes.Capacity = Math.Max(
-            tokenRequestScopes.Capacity,
-            opaqueScopeCount + structuredScopeCount);
-
-        for (var i = 0; i < structuredScopeCount; i++)
-        {
-            tokenRequestScopes.Add(string.Empty);
-        }
-
-        for (var i = opaqueScopeCount - 1; i >= 0; i--)
-        {
-            tokenRequestScopes[i + structuredScopeCount] = tokenRequestScopes[i];
-        }
-
-        var cacheKeyBuilder = new StringBuilder();
-        var tokenScopeIndex = 0;
+        var tokenRequestScopes = new List<string>(structuredScopes.Count);
+        var cacheKeyBuilder = hasOpaqueScopes ? null : new StringBuilder();
         foreach (var scope in structuredScopes)
         {
             var scopeString = scope.ToString();
-            tokenRequestScopes[tokenScopeIndex++] = scopeString;
+            tokenRequestScopes.Add(scopeString);
+            if (cacheKeyBuilder == null)
+            {
+                continue;
+            }
+
             if (cacheKeyBuilder.Length > 0)
             {
                 cacheKeyBuilder.Append(' ');
             }
+
             cacheKeyBuilder.Append(scopeString);
         }
 
-        return cacheKeyBuilder.ToString();
+        if (hasOpaqueScopes && !string.IsNullOrWhiteSpace(scopesString))
+        {
+            var remainingScopes = scopesString.AsSpan();
+            while (TryReadNextScope(ref remainingScopes, out var scopeSpan))
+            {
+                if (!Scope.IsParseable(scopeSpan))
+                {
+                    tokenRequestScopes.Add(scopeSpan.ToString());
+                }
+            }
+        }
+
+        cacheKey = cacheKeyBuilder?.ToString() ?? string.Empty;
+        return tokenRequestScopes;
+    }
+
+    private static bool TryReadNextScope(
+        ref ReadOnlySpan<char> remainingScopes,
+        out ReadOnlySpan<char> scope)
+    {
+        while (!remainingScopes.IsEmpty)
+        {
+            var separatorIndex = remainingScopes.IndexOf(' ');
+            scope = separatorIndex < 0
+                ? remainingScopes
+                : remainingScopes[..separatorIndex];
+            remainingScopes = separatorIndex < 0
+                ? []
+                : remainingScopes[(separatorIndex + 1)..];
+
+            if (!scope.IsEmpty)
+            {
+                return true;
+            }
+        }
+
+        scope = [];
+        return false;
     }
 
     private readonly struct MergedScopes
