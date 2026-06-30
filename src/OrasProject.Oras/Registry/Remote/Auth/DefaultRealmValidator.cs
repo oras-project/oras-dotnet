@@ -30,9 +30,10 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 /// <item>Reject non-HTTP(S) schemes.</item>
 /// <item>Reject HTTP unless <see cref="AllowInsecureHttp"/> is true.</item>
 /// <item>Reject realm URLs containing userinfo.</item>
-/// <item>Allow if realm host matches the registry host (same host).</item>
-/// <item>Allow if realm host is in <see cref="TrustedRealmHosts"/>
-/// (empty by default).</item>
+/// <item>Allow if the realm host and effective port match the
+/// registry (same host and port).</item>
+/// <item>Allow if the realm host is in <see cref="TrustedRealmHosts"/>
+/// (empty by default) and the realm is on the scheme-default port.</item>
 /// <item>Default deny.</item>
 /// </list>
 /// </remarks>
