@@ -19,7 +19,7 @@ unless you supply your own. It applies these rules, in order:
 2. Reject `http` unless `AllowInsecureHttp` is enabled.
 3. Reject realm URLs containing userinfo (e.g. `https://user:pass@host/...`).
 4. **Allow** if the realm host matches the registry host (same host, port-aware).
-5. **Allow** if the realm host is in `TrustedRealmHosts`.
+5. **Allow** if the realm host is in `TrustedRealmHosts` and the realm is on the scheme-default port.
 6. Otherwise **deny**.
 
 > [!IMPORTANT]
