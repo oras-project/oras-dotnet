@@ -29,17 +29,44 @@ public static class RealmValidationExamples
     {
         ArgumentNullException.ThrowIfNull(httpClient);
 
-        // DefaultRealmValidator ships with auth.docker.io and
-        // gitlab.com pre-configured. You can override the trusted
-        // hosts to include your organization's auth endpoints.
+        // DefaultRealmValidator ships with NO trusted hosts: by default
+        // only realms on the same host as the registry are allowed. To
+        // trust a registry whose auth realm lives on a different host,
+        // list those auth hosts explicitly — for example your
+        // organization's auth endpoints.
         var validator = new DefaultRealmValidator
         {
             TrustedRealmHosts = new HashSet<string>
             {
-                "auth.docker.io",
-                "gitlab.com",
                 "login.mycompany.com",
                 "auth.internal.example.com",
+            }
+        };
+
+        return new Client(httpClient)
+        {
+            RealmValidator = validator
+        };
+    }
+
+    /// <summary>
+    /// Opts into well-known public registries whose auth realm host
+    /// differs from the registry host (Docker Hub, GitLab, NVIDIA NGC).
+    /// These are intentionally NOT trusted by default — the SDK is
+    /// host-agnostic — so callers enable them explicitly.
+    /// </summary>
+    public static Client CreateClientTrustingWellKnownPublicRegistries(
+        HttpClient httpClient)
+    {
+        ArgumentNullException.ThrowIfNull(httpClient);
+
+        var validator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>
+            {
+                "auth.docker.io",   // Docker Hub (registry-1.docker.io)
+                "gitlab.com",       // GitLab (registry.gitlab.com)
+                "authn.nvidia.com", // NVIDIA NGC (nvcr.io)
             }
         };
 

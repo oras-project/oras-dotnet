@@ -31,7 +31,8 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 /// <item>Reject HTTP unless <see cref="AllowInsecureHttp"/> is true.</item>
 /// <item>Reject realm URLs containing userinfo.</item>
 /// <item>Allow if realm host matches the registry host (same host).</item>
-/// <item>Allow if realm host is in <see cref="TrustedRealmHosts"/>.</item>
+/// <item>Allow if realm host is in <see cref="TrustedRealmHosts"/>
+/// (empty by default).</item>
 /// <item>Default deny.</item>
 /// </list>
 /// </remarks>
@@ -44,21 +45,27 @@ public sealed class DefaultRealmValidator : IRealmValidator
     public bool AllowInsecureHttp { get; init; }
 
     /// <summary>
-    /// Explicit set of trusted realm hostnames (case-insensitive).
-    /// Realms matching these hosts are allowed after basic URI safety
-    /// checks (scheme policy and userinfo rejection).
+    /// Explicit set of trusted realm hostnames (case-insensitive) whose
+    /// auth realm host differs from the registry host. Realms matching
+    /// these hosts are allowed after basic URI safety checks (scheme
+    /// policy and userinfo rejection).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Pre-populated with well-known registries whose auth realm
-    /// host differs from the registry host:
+    /// <b>Empty by default.</b> The validator ships with no trusted
+    /// hosts, so out of the box only realms on the <em>same host</em>
+    /// as the registry are allowed. The SDK is intentionally
+    /// host-agnostic and does not bake in trust for any specific
+    /// registry.
     /// </para>
-    /// <list type="bullet">
-    /// <item><c>auth.docker.io</c> — Docker Hub
-    /// (registry: registry-1.docker.io)</item>
-    /// <item><c>gitlab.com</c> — GitLab Container Registry
-    /// (registry: registry.gitlab.com)</item>
-    /// </list>
+    /// <para>
+    /// To allow a registry whose auth realm lives on a different host
+    /// (for example Docker Hub's <c>auth.docker.io</c>, GitLab's
+    /// <c>gitlab.com</c>, or NVIDIA NGC's <c>authn.nvidia.com</c>),
+    /// configure this set explicitly or supply a custom
+    /// <see cref="IRealmValidator"/>. See the realm-validation examples
+    /// and <c>docs/auth/realm-validation.md</c>.
+    /// </para>
     /// <para>
     /// Values are normalized (lowercased, trailing dots stripped)
     /// and frozen on assignment. Mutations to the original
@@ -75,10 +82,7 @@ public sealed class DefaultRealmValidator : IRealmValidator
             .ToFrozenSet(StringComparer.OrdinalIgnoreCase);
     }
 
-    private IReadOnlySet<string> _trustedRealmHosts =
-        FrozenSet.ToFrozenSet(
-            new[] { "auth.docker.io", "gitlab.com" },
-            StringComparer.OrdinalIgnoreCase);
+    private IReadOnlySet<string> _trustedRealmHosts = FrozenSet<string>.Empty;
 
     /// <inheritdoc/>
     public Task<bool> IsRealmAllowedAsync(
