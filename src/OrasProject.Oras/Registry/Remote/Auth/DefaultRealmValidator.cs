@@ -78,9 +78,9 @@ public sealed class DefaultRealmValidator : IRealmValidator
     }
 
     private IReadOnlySet<string> _trustedRealmHosts =
-        FrozenSet.ToFrozenSet(
-            new[] { "auth.docker.io", "gitlab.com", "authn.nvidia.com" },
-            StringComparer.OrdinalIgnoreCase);
+        new[] { "auth.docker.io", "gitlab.com", "authn.nvidia.com" }
+            .Select(NormalizeHost)
+            .ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc/>
     public Task<bool> IsRealmAllowedAsync(
