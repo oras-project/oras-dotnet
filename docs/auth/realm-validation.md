@@ -44,17 +44,16 @@ default** and must be opted into explicitly (see below).
 Add the realm's auth host(s) to `TrustedRealmHosts`:
 
 ```csharp
+using System.Collections.Immutable;
 using OrasProject.Oras.Registry.Remote.Auth;
 
 var validator = new DefaultRealmValidator
 {
-    TrustedRealmHosts = new HashSet<string>
-    {
-        "auth.docker.io",   // Docker Hub (registry-1.docker.io)
-        "gitlab.com",       // GitLab (registry.gitlab.com)
-        "authn.nvidia.com", // NVIDIA NGC (nvcr.io)
-        "login.mycompany.com", // your enterprise auth endpoint
-    }
+    TrustedRealmHosts = ImmutableHashSet.Create(
+        "auth.docker.io",       // Docker Hub (registry-1.docker.io)
+        "gitlab.com",           // GitLab (registry.gitlab.com)
+        "authn.nvidia.com",     // NVIDIA NGC (nvcr.io)
+        "login.mycompany.com")  // your enterprise auth endpoint
 };
 
 var client = new Client(httpClient)
@@ -62,6 +61,13 @@ var client = new Client(httpClient)
     RealmValidator = validator
 };
 ```
+
+`TrustedRealmHosts` accepts any `IReadOnlySet<string>`. Prefer an
+[`ImmutableHashSet<string>`](https://learn.microsoft.com/dotnet/api/system.collections.immutable.immutablehashset-1):
+the trusted-host allowlist is fixed configuration, so an immutable set makes
+that intent explicit and is safe to share across clients. The validator also
+snapshots the set on assignment, so later mutations to a mutable collection you
+passed in have no effect.
 
 Hostnames are normalized (lowercased, trailing dots stripped) and the match is
 case-insensitive. A trusted host is still required to be on the default port for

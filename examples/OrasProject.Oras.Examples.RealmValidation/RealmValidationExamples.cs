@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #region Usage
+using System.Collections.Immutable;
 using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Examples.RealmValidation;
@@ -34,13 +35,15 @@ public static class RealmValidationExamples
         // trust a registry whose auth realm lives on a different host,
         // list those auth hosts explicitly — for example your
         // organization's auth endpoints.
+        //
+        // Prefer an ImmutableHashSet<string> here: the trusted-host
+        // allowlist is fixed configuration, and an immutable set makes
+        // that intent explicit and is safe to share across clients.
         var validator = new DefaultRealmValidator
         {
-            TrustedRealmHosts = new HashSet<string>
-            {
+            TrustedRealmHosts = ImmutableHashSet.Create(
                 "login.mycompany.com",
-                "auth.internal.example.com",
-            }
+                "auth.internal.example.com")
         };
 
         return new Client(httpClient)
@@ -62,12 +65,10 @@ public static class RealmValidationExamples
 
         var validator = new DefaultRealmValidator
         {
-            TrustedRealmHosts = new HashSet<string>
-            {
-                "auth.docker.io",   // Docker Hub (registry-1.docker.io)
-                "gitlab.com",       // GitLab (registry.gitlab.com)
-                "authn.nvidia.com", // NVIDIA NGC (nvcr.io)
-            }
+            TrustedRealmHosts = ImmutableHashSet.Create(
+                "auth.docker.io",    // Docker Hub (registry-1.docker.io)
+                "gitlab.com",        // GitLab (registry.gitlab.com)
+                "authn.nvidia.com")  // NVIDIA NGC (nvcr.io)
         };
 
         return new Client(httpClient)
