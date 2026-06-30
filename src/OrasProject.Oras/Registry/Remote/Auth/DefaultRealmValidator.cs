@@ -58,6 +58,8 @@ public sealed class DefaultRealmValidator : IRealmValidator
     /// (registry: registry-1.docker.io)</item>
     /// <item><c>gitlab.com</c> — GitLab Container Registry
     /// (registry: registry.gitlab.com)</item>
+    /// <item><c>authn.nvidia.com</c> — NVIDIA NGC
+    /// (registry: nvcr.io)</item>
     /// </list>
     /// <para>
     /// Values are normalized (lowercased, trailing dots stripped)
@@ -77,7 +79,7 @@ public sealed class DefaultRealmValidator : IRealmValidator
 
     private IReadOnlySet<string> _trustedRealmHosts =
         FrozenSet.ToFrozenSet(
-            new[] { "auth.docker.io", "gitlab.com" },
+            new[] { "auth.docker.io", "gitlab.com", "authn.nvidia.com" },
             StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc/>

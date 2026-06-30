@@ -321,6 +321,25 @@ public class DefaultRealmValidatorTest
     }
 
     [Fact]
+    public async Task NvidiaRegistry_DefaultTrusted_Allowed()
+    {
+        // NVIDIA NGC: authn.nvidia.com is in the default trusted list.
+        var validator = new DefaultRealmValidator();
+        Assert.True(await validator.IsRealmAllowedAsync(
+            Reg("https://nvcr.io/v2/"),
+            Realm("https://authn.nvidia.com/token")));
+    }
+
+    [Fact]
+    public async Task NvidiaTrustedHost_NonDefaultPort_Rejected()
+    {
+        var validator = new DefaultRealmValidator();
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://nvcr.io/v2/"),
+            Realm("https://authn.nvidia.com:8443/token")));
+    }
+
+    [Fact]
     public async Task DataScheme_Rejected()
     {
         var validator = new DefaultRealmValidator();
