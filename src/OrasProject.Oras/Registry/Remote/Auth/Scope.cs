@@ -256,17 +256,8 @@ public class Scope : IComparable<Scope>
     {
         if (scopes.TryGetValue(newScope, out var existingScope))
         {
-            if (existingScope.Actions.Contains(ActionWildcard) || newScope.Actions.Contains(ActionWildcard))
-            {
-                // If either scope has the wildcard '*', clear and add '*'
-                existingScope.Actions.Clear();
-                existingScope.Actions.Add(ActionWildcard);
-            }
-            else
-            {
-                // Otherwise, union the actions
-                existingScope.Actions.UnionWith(newScope.Actions);
-            }
+            // Mutates the matched scope in place.
+            MergeActions(existingScope, newScope);
         }
         else
         {
@@ -274,6 +265,45 @@ public class Scope : IComparable<Scope>
             scopes.Add(newScope);
         }
         return scopes;
+    }
+
+    /// <summary>
+    /// AddOrMergeScopeCopyOnWrite merges <paramref name="newScope"/> into <paramref name="scopes"/> without
+    /// mutating any existing <see cref="Scope"/> instance: a matched scope is replaced with a merged clone. This
+    /// lets callers merge into a shallow set copy whose <see cref="Scope"/> instances are shared with another set.
+    /// </summary>
+    /// <param name="scopes">A sorted set of existing scopes.</param>
+    /// <param name="newScope">The new scope to add or merge.</param>
+    internal static void AddOrMergeScopeCopyOnWrite(SortedSet<Scope> scopes, Scope newScope)
+    {
+        if (scopes.TryGetValue(newScope, out var existingScope))
+        {
+            // Copy-on-write: replace the shared existing scope with a merged clone
+            // rather than mutating it in place.
+            scopes.Remove(existingScope);
+            var mergedScope = existingScope.Clone();
+            MergeActions(mergedScope, newScope);
+            scopes.Add(mergedScope);
+        }
+        else
+        {
+            scopes.Add(newScope);
+        }
+    }
+
+    private static void MergeActions(Scope target, Scope source)
+    {
+        if (target.Actions.Contains(ActionWildcard) || source.Actions.Contains(ActionWildcard))
+        {
+            // If either scope has the wildcard '*', clear and add '*'
+            target.Actions.Clear();
+            target.Actions.Add(ActionWildcard);
+        }
+        else
+        {
+            // Otherwise, union the actions
+            target.Actions.UnionWith(source.Actions);
+        }
     }
 
     /// <summary>

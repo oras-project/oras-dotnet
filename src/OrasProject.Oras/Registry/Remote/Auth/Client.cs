@@ -837,11 +837,13 @@ public class Client : IClient
                 {
                     if (!copiedStructuredScopes)
                     {
-                        structuredScopes = CloneStructuredScopes(existingScopes);
+                        // Copy before merging so an attacker-controllable challenge scope
+                        // cannot mutate the client's persisted scopes for this host.
+                        structuredScopes = new SortedSet<Scope>(existingScopes);
                         copiedStructuredScopes = true;
                     }
 
-                    Scope.AddOrMergeScope(structuredScopes, scope);
+                    Scope.AddOrMergeScopeCopyOnWrite(structuredScopes, scope);
                 }
                 else
                 {
@@ -858,16 +860,6 @@ public class Client : IClient
             tokenRequestScopes,
             cacheKey,
             hasOpaqueScopes: opaqueScopes != null);
-    }
-
-    private static SortedSet<Scope> CloneStructuredScopes(SortedSet<Scope> scopes)
-    {
-        var clonedScopes = new SortedSet<Scope>();
-        foreach (var scope in scopes)
-        {
-            clonedScopes.Add(scope.Clone());
-        }
-        return clonedScopes;
     }
 
     private static List<string> BuildTokenRequestScopes(
