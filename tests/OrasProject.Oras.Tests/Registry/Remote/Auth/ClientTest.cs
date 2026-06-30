@@ -2735,4 +2735,91 @@ public class ClientTest
                 cancellationToken: CancellationToken.None));
         Assert.Contains("not allowed", ex.Message);
     }
+
+    [Fact]
+    public async Task SendAsync_BearerAuth_IsolatesScopesByPartition()
+    {
+        // Arrange: one shared Client/ScopeManager serving two partitions against the same
+        // host. Each partition has a distinct repository scope; the token request issued for
+        // one partition must carry ONLY that partition's scope (no cross-partition bleed).
+        var host = "example.com";
+        var realm = "https://auth.example.com";
+        var authHost = "auth.example.com";
+        var service = "test_service";
+        var token = "access_token";
+
+        var tokenRequestScopes = new List<string>();
+
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken ct)
+        {
+            // Distribution token endpoint (GET) — no credentials configured.
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == authHost)
+            {
+                var query = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+                tokenRequestScopes.Add(query["scope"] ?? string.Empty);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent($"{{\"access_token\": \"{token}\"}}"),
+                    RequestMessage = req
+                };
+            }
+
+            // Registry endpoint: 200 only with the issued token, otherwise a Bearer challenge.
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Scheme == "Bearer"
+                    && req.Headers.Authorization.Parameter == token)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req };
+                }
+
+                var unauthorized = new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    RequestMessage = req
+                };
+                unauthorized.Headers.WwwAuthenticate.Add(new AuthenticationHeaderValue(
+                    "Bearer", $"realm=\"{realm}\",service=\"{service}\""));
+                return unauthorized;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object))
+        {
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    authHost
+                }
+            }
+        };
+
+        // Pre-seed distinct scopes per partition on the same host.
+        Assert.True(Scope.TryParse("repository:repo-a:pull", out var scopeA));
+        client.ScopeManager.SetScopeForRegistry(host, scopeA, "partition-a");
+        Assert.True(Scope.TryParse("repository:repo-b:pull", out var scopeB));
+        client.ScopeManager.SetScopeForRegistry(host, scopeB, "partition-b");
+
+        // Act: send a request for each partition against the same host.
+        using var requestA = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var responseA = await client.SendAsync(
+            requestA, partitionId: "partition-a", cancellationToken: CancellationToken.None);
+
+        using var requestB = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var responseB = await client.SendAsync(
+            requestB, partitionId: "partition-b", cancellationToken: CancellationToken.None);
+
+        // Assert: both succeed, and each partition's token request carried only its own scope.
+        Assert.Equal(HttpStatusCode.OK, responseA.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, responseB.StatusCode);
+
+        Assert.Equal(2, tokenRequestScopes.Count);
+        Assert.Equal("repository:repo-a:pull", tokenRequestScopes[0]);
+        Assert.DoesNotContain("repo-b", tokenRequestScopes[0]);
+        Assert.Equal("repository:repo-b:pull", tokenRequestScopes[1]);
+        Assert.DoesNotContain("repo-a", tokenRequestScopes[1]);
+    }
 }
