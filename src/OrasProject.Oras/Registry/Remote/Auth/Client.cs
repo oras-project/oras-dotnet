@@ -821,8 +821,12 @@ public class Client : IClient
         string? scopesString)
     {
         var structuredScopes = existingScopes;
-        var hasOpaqueScopes = false;
         var copiedStructuredScopes = false;
+
+        // Opaque (unparseable) challenge scopes are preserved verbatim, including
+        // duplicates and original order. The list is allocated lazily so the common
+        // structured-only case stays allocation-free.
+        List<string>? opaqueScopes = null;
 
         if (!string.IsNullOrWhiteSpace(scopesString))
         {
@@ -841,17 +845,19 @@ public class Client : IClient
                 }
                 else
                 {
-                    hasOpaqueScopes = true;
+                    (opaqueScopes ??= new()).Add(scopeSpan.ToString());
                 }
             }
         }
 
         var tokenRequestScopes = BuildTokenRequestScopes(
             structuredScopes,
-            scopesString,
-            hasOpaqueScopes,
+            opaqueScopes,
             out var cacheKey);
-        return new MergedScopes(tokenRequestScopes, cacheKey, hasOpaqueScopes);
+        return new MergedScopes(
+            tokenRequestScopes,
+            cacheKey,
+            hasOpaqueScopes: opaqueScopes != null);
     }
 
     private static SortedSet<Scope> CloneStructuredScopes(SortedSet<Scope> scopes)
@@ -866,12 +872,16 @@ public class Client : IClient
 
     private static List<string> BuildTokenRequestScopes(
         SortedSet<Scope> structuredScopes,
-        string? scopesString,
-        bool hasOpaqueScopes,
+        List<string>? opaqueScopes,
         out string cacheKey)
     {
-        var tokenRequestScopes = new List<string>(structuredScopes.Count);
-        var cacheKeyBuilder = hasOpaqueScopes ? null : new StringBuilder();
+        var opaqueScopeCount = opaqueScopes?.Count ?? 0;
+        var tokenRequestScopes =
+            new List<string>(structuredScopes.Count + opaqueScopeCount);
+
+        // The cache key is derived from structured scopes only. When opaque scopes
+        // are present the token is not cached, so the key is left empty.
+        var cacheKeyBuilder = opaqueScopeCount > 0 ? null : new StringBuilder();
         foreach (var scope in structuredScopes)
         {
             var scopeString = scope.ToString();
@@ -889,16 +899,9 @@ public class Client : IClient
             cacheKeyBuilder.Append(scopeString);
         }
 
-        if (hasOpaqueScopes && !string.IsNullOrWhiteSpace(scopesString))
+        if (opaqueScopes != null)
         {
-            var remainingScopes = scopesString.AsSpan();
-            while (TryReadNextScope(ref remainingScopes, out var scopeSpan))
-            {
-                if (!Scope.IsParseable(scopeSpan))
-                {
-                    tokenRequestScopes.Add(scopeSpan.ToString());
-                }
-            }
+            tokenRequestScopes.AddRange(opaqueScopes);
         }
 
         cacheKey = cacheKeyBuilder?.ToString() ?? string.Empty;

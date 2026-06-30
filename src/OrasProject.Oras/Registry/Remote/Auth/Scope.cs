@@ -144,16 +144,6 @@ public class Scope : IComparable<Scope>
         return true;
     }
 
-    internal static bool IsParseable(ReadOnlySpan<char> scopeSpan)
-    {
-        return TryGetScopeParts(
-                scopeSpan,
-                out _,
-                out _,
-                out var actionSpan)
-            && AreActionsParseable(actionSpan);
-    }
-
     private static bool TryGetScopeParts(
         ReadOnlySpan<char> scopeSpan,
         out ReadOnlySpan<char> resourceType,
@@ -211,28 +201,6 @@ public class Scope : IComparable<Scope>
             }
 
             actions.Add(action.ToString());
-
-            if (separatorIndex < 0)
-            {
-                return true;
-            }
-
-            actionSpan = actionSpan[(separatorIndex + 1)..];
-        }
-    }
-
-    private static bool AreActionsParseable(ReadOnlySpan<char> actionSpan)
-    {
-        while (true)
-        {
-            var separatorIndex = actionSpan.IndexOf(',');
-            var action = separatorIndex < 0
-                ? actionSpan
-                : actionSpan[..separatorIndex];
-            if (action.Trim().IsEmpty)
-            {
-                return false;
-            }
 
             if (separatorIndex < 0)
             {
