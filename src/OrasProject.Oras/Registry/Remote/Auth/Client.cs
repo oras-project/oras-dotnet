@@ -879,32 +879,25 @@ public class Client : IClient
         var tokenRequestScopes =
             new List<string>(structuredScopes.Count + opaqueScopeCount);
 
-        // The cache key is derived from structured scopes only. When opaque scopes
-        // are present the token is not cached, so the key is left empty.
-        var cacheKeyBuilder = opaqueScopeCount > 0 ? null : new StringBuilder();
         foreach (var scope in structuredScopes)
         {
-            var scopeString = scope.ToString();
-            tokenRequestScopes.Add(scopeString);
-            if (cacheKeyBuilder == null)
-            {
-                continue;
-            }
-
-            if (cacheKeyBuilder.Length > 0)
-            {
-                cacheKeyBuilder.Append(' ');
-            }
-
-            cacheKeyBuilder.Append(scopeString);
+            tokenRequestScopes.Add(scope.ToString());
         }
+
+        // The cache key is derived from structured scopes only and must match the
+        // single-space canonicalization used for the cached-token lookup. When opaque
+        // scopes are present the token is not cached, so the key is left empty. At this
+        // point tokenRequestScopes holds only the structured scopes, so it can be joined
+        // directly before the opaque scopes are appended.
+        cacheKey = opaqueScopeCount > 0
+            ? string.Empty
+            : string.Join(' ', tokenRequestScopes);
 
         if (opaqueScopes != null)
         {
             tokenRequestScopes.AddRange(opaqueScopes);
         }
 
-        cacheKey = cacheKeyBuilder?.ToString() ?? string.Empty;
         return tokenRequestScopes;
     }
 
