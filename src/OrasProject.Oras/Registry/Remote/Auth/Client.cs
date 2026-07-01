@@ -824,8 +824,8 @@ public class Client : IClient
         var copiedStructuredScopes = false;
 
         // Opaque (unparseable) challenge scopes are preserved verbatim, including
-        // duplicates and original order. The list is allocated lazily so the common
-        // structured-only case stays allocation-free.
+        // duplicates and original order. The opaque list is allocated lazily so
+        // the common structured-only case doesn't allocate it.
         List<string>? opaqueScopes = null;
 
         if (!string.IsNullOrWhiteSpace(scopesString))
