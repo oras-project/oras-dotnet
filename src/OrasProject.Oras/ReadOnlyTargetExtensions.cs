@@ -63,7 +63,7 @@ public static class ReadOnlyTargetExtensions
             throw new ArgumentNullException(nameof(srcRef));
         }
 
-        if (string.IsNullOrEmpty(dstRef))
+        if (string.IsNullOrWhiteSpace(dstRef))
         {
             dstRef = srcRef;
         }
