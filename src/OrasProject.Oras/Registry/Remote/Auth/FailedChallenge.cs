@@ -12,37 +12,48 @@
 // limitations under the License.
 
 using System;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 /// <summary>
-/// The context passed to a <see cref="ChallengeRecoveryHandler"/>: an HTTP 401 whose challenge the
-/// standard flow could not use, plus a credential-free probe primitive to re-derive a usable one.
-/// This is plain data; it holds no client reference.
+/// The context passed to a <see cref="ChallengeRecoveryHandler"/>: a read-only view of an HTTP 401
+/// whose challenge the standard flow could not use, plus a credential-free probe primitive to
+/// re-derive a usable one. This is plain data; it holds no client reference and does not expose the
+/// underlying (engine-owned) response object, so a handler can neither dispose nor mutate it.
 /// </summary>
 public sealed class FailedChallenge
 {
     private readonly Func<CancellationToken, Task<HttpResponseMessage>> _probe;
 
     internal FailedChallenge(
-        HttpResponseMessage unauthorizedResponse,
+        HttpStatusCode statusCode,
+        HttpResponseHeaders responseHeaders,
         string host,
         bool attachedCachedToken,
         bool canReplay,
         Func<CancellationToken, Task<HttpResponseMessage>> probe)
     {
-        UnauthorizedResponse = unauthorizedResponse;
+        StatusCode = statusCode;
+        ResponseHeaders = responseHeaders;
         Host = host;
         AttachedCachedToken = attachedCachedToken;
         CanReplay = canReplay;
         _probe = probe;
     }
 
-    /// <summary>The 401 response, including whatever (unusable) <c>WWW-Authenticate</c> it carried.</summary>
-    public HttpResponseMessage UnauthorizedResponse { get; }
+    /// <summary>The status code of the rejected response (an <see cref="HttpStatusCode.Unauthorized"/>).</summary>
+    public HttpStatusCode StatusCode { get; }
+
+    /// <summary>
+    /// The response headers of the rejected 401, including whatever (unusable) <c>WWW-Authenticate</c>
+    /// it carried. Provided for inspection only.
+    /// </summary>
+    public HttpResponseHeaders ResponseHeaders { get; }
 
     /// <summary>The registry authority (host, with port when non-default) that issued the challenge.</summary>
     public string Host { get; }

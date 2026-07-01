@@ -734,7 +734,7 @@ public class Client : IClient
 
         if (resolution.Response != null)
         {
-            response1.Dispose();
+            // ResolveStandardChallengeAsync disposed the original 401 before the token round-trip.
             return resolution.Response;
         }
 
@@ -774,6 +774,17 @@ public class Client : IClient
     /// only for genuine credential/token-endpoint failures (never for an unusable challenge), so a
     /// caller can distinguish "the registry withheld a usable challenge" from "authentication failed".
     /// </summary>
+    /// <remarks>
+    /// Disposal: on a <em>resolved</em> return this method disposes <paramref name="unauthorizedResponse"/>
+    /// before the credential/token round-trip (matching the client's long-standing eager-dispose
+    /// behavior); on an <em>unusable</em> return it leaves the response undisposed for the caller to
+    /// reuse (recovery) or return/dispose.
+    /// </remarks>
+    /// <param name="refreshAttemptedScopeKey">
+    /// When <c>true</c> (the recovery re-derive), the resolving token is also cached under
+    /// <paramref name="attemptedKey"/> so a stale token that provoked recovery is replaced and future
+    /// requests under that scope key don't re-enter recovery.
+    /// </param>
     private async Task<StandardAuthResult> ResolveStandardChallengeAsync(
         HttpRequestMessage originalRequest,
         HttpResponseMessage unauthorizedResponse,
@@ -781,7 +792,8 @@ public class Client : IClient
         string? partitionId,
         string attemptedKey,
         bool allowAutoRedirect,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool refreshAttemptedScopeKey = false)
     {
         var (schemeFromChallenge, parameters) =
             Challenge.ParseChallenge(unauthorizedResponse.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
@@ -791,6 +803,8 @@ public class Client : IClient
         {
             case Challenge.Scheme.Basic:
                 {
+                    // Usable challenge: release the original 401 before the credential round-trip.
+                    unauthorizedResponse.Dispose();
                     var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
                     Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken, partitionId);
 
@@ -831,6 +845,11 @@ public class Client : IClient
 
                         if (response2.StatusCode != HttpStatusCode.Unauthorized)
                         {
+                            if (refreshAttemptedScopeKey && !string.Equals(newKey, attemptedKey, StringComparison.Ordinal))
+                            {
+                                Cache.SetCache(host, schemeFromChallenge, attemptedKey, cachedToken, partitionId);
+                            }
+                            unauthorizedResponse.Dispose();
                             return StandardAuthResult.Resolved(response2);
                         }
                         response2.Dispose();
@@ -860,6 +879,9 @@ public class Client : IClient
                         service = string.Empty;
                     }
 
+                    // Usable challenge: release the original 401 before the token round-trip.
+                    unauthorizedResponse.Dispose();
+
                     // Try to fetch bearer token based on the challenge header
                     var bearerAuthToken = await FetchBearerAuthAsync(
                         host,
@@ -870,6 +892,13 @@ public class Client : IClient
                         cancellationToken
                     ).ConfigureAwait(false);
                     Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
+                    if (refreshAttemptedScopeKey && !string.Equals(newKey, attemptedKey, StringComparison.Ordinal))
+                    {
+                        // Recovery: the token cached under the originally attempted scope key was stale
+                        // (it provoked this 401). Overwrite it so future requests under that key succeed
+                        // directly instead of re-entering recovery.
+                        Cache.SetCache(host, schemeFromChallenge, attemptedKey, bearerAuthToken, partitionId);
+                    }
 
                     var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
@@ -883,10 +912,11 @@ public class Client : IClient
 
     /// <summary>
     /// Invokes the configured <see cref="ChallengeRecovery"/> handler for an unusable 401 and continues
-    /// from whatever it returns: a non-401 response is treated as success (e.g. anonymous access); a
-    /// fresh 401 is re-run through <see cref="ResolveStandardChallengeAsync"/> exactly once (using this
-    /// client's own collaborators). Returns the response to continue from, or <c>null</c> to give up.
-    /// The cold probe carries no token, so a recovered 401 cannot re-enter recovery — bounded to one pass.
+    /// from whatever it returns: a fresh 401 is re-run through <see cref="ResolveStandardChallengeAsync"/>
+    /// exactly once (using this client's own collaborators); a success (2xx) is returned as-is (e.g.
+    /// anonymous access); any other status is discarded so it does not mask the original 401. Returns the
+    /// response to continue from, or <c>null</c> to give up. The cold probe carries no token, so a
+    /// recovered 401 cannot re-enter recovery — bounded to one pass.
     /// </summary>
     private async Task<HttpResponseMessage?> InvokeChallengeRecoveryAsync(
         HttpRequestMessage originalRequest,
@@ -899,7 +929,8 @@ public class Client : IClient
         CancellationToken cancellationToken)
     {
         var context = new FailedChallenge(
-            unauthorizedResponse,
+            unauthorizedResponse.StatusCode,
+            unauthorizedResponse.Headers,
             host,
             attachedCachedToken,
             canReplay: CanReplayWithoutAuthorization(originalRequest),
@@ -911,30 +942,45 @@ public class Client : IClient
             return null;
         }
 
-        if (recovered.StatusCode != HttpStatusCode.Unauthorized)
+        if (recovered.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            // The recovery produced a fresh challenge. Re-derive auth from it once, with our own
+            // collaborators, and refresh the stale scope key so we don't re-enter recovery next time.
+            StandardAuthResult retry;
+            try
+            {
+                retry = await ResolveStandardChallengeAsync(
+                    originalRequest, recovered, host, partitionId, attemptedKey, allowAutoRedirect,
+                    cancellationToken, refreshAttemptedScopeKey: true)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                recovered.Dispose();
+                throw;
+            }
+
+            if (retry.Response == null)
+            {
+                // Still unusable after a cold re-derive — give up; the caller falls back to the 401.
+                recovered.Dispose();
+                return null;
+            }
+
+            // Resolved: ResolveStandardChallengeAsync already disposed the cold-probe 401.
+            return retry.Response;
+        }
+
+        if (recovered.IsSuccessStatusCode)
         {
             // The registry served the request without (usable) authorization, e.g. anonymous access.
             return recovered;
         }
 
-        // The recovery produced a fresh challenge. Re-derive auth from it once, with our collaborators.
-        StandardAuthResult retry;
-        try
-        {
-            retry = await ResolveStandardChallengeAsync(
-                originalRequest, recovered, host, partitionId, attemptedKey, allowAutoRedirect, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch
-        {
-            recovered.Dispose();
-            throw;
-        }
-
-        // Either a resolved response (return it) or still unusable (null → caller falls back). Either
-        // way the cold-probe 401 is superseded and can be released.
+        // A non-401, non-success cold response (e.g. 403/404/5xx) is not a recovery; returning it would
+        // mask the original 401, which is the more meaningful signal for an auth problem. Give up.
         recovered.Dispose();
-        return retry.Response;
+        return null;
     }
 
     /// <summary>

@@ -24,18 +24,21 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The client consults a recovery handler only after standard resolution of the 401 has failed to
-/// produce a usable challenge, and only for a request that carried a cached token
-/// (<see cref="FailedChallenge.AttachedCachedToken"/>) and is replayable
-/// (<see cref="FailedChallenge.CanReplay"/>). Credential and token-endpoint failures are surfaced as
-/// exceptions and never reach a recovery handler, so recovery cannot mask a real authentication error.
+/// The client consults a recovery handler whenever standard resolution of a 401 fails to produce a
+/// usable challenge — for <em>every</em> such 401, regardless of whether the request carried a cached
+/// token or is replayable. The handler is expected to <b>self-gate</b>: inspect
+/// <see cref="FailedChallenge.AttachedCachedToken"/> and <see cref="FailedChallenge.CanReplay"/> and
+/// return <c>null</c> when recovery does not apply. (The built-in
+/// <see cref="ChallengeRecoveries.ColdProbe"/> recovers only when both are <c>true</c>.) Credential and
+/// token-endpoint failures are surfaced as exceptions <em>before</em> any handler is consulted, so
+/// recovery cannot mask a real authentication error.
 /// </para>
 /// <para>
 /// Return a replacement response for the client to continue from — typically the result of
-/// <see cref="FailedChallenge.ProbeWithoutAuthorizationAsync"/>, which the client re-runs through the
-/// standard flow (so a recovered challenge is fetched/cached normally, and an already-successful
-/// response is returned as-is) — or <c>null</c> to give up, in which case the client falls back to its
-/// default behavior for the original 401.
+/// <see cref="FailedChallenge.ProbeWithoutAuthorizationAsync"/>. If that response is itself a fresh
+/// 401, the client re-runs it through the standard flow once (so a recovered challenge is
+/// fetched/cached normally); if it is a success, it is returned as-is. Return <c>null</c> to give up,
+/// in which case the client falls back to its default behavior for the original 401.
 /// </para>
 /// <para>See <see cref="ChallengeRecoveries.ColdProbe"/> for the built-in cold-probe recovery.</para>
 /// </remarks>
