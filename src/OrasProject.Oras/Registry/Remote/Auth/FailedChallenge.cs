@@ -59,8 +59,9 @@ public sealed class FailedChallenge
     public string Host { get; }
 
     /// <summary>
-    /// <c>true</c> when the failed attempt carried a cached token — i.e. this 401 is likely a
-    /// stale-token rejection rather than a first-time challenge.
+    /// <c>true</c> when the failed attempt carried a cached <em>bearer</em> token — i.e. this 401 is
+    /// likely a stale-token rejection rather than a first-time challenge. Cached Basic credentials are
+    /// not flagged, since a credential-free re-derive cannot remedy them.
     /// </summary>
     public bool AttachedCachedToken { get; }
 

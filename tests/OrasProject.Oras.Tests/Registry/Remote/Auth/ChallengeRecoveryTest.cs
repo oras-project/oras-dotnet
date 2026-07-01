@@ -524,4 +524,36 @@ public class ChallengeRecoveryTest
         VerifyColdProbe(mockHandler, Times.Once());
         VerifyTokenFetch(mockHandler, Times.Never());
     }
+
+    [Fact]
+    public async Task SendAsync_ChallengeRecovery_StaleBasicCredentials_DoesNotRecover()
+    {
+        // Arrange: a cached Basic credential provokes a no-challenge 401. Recovery must NOT fire — a
+        // credential-free cold probe cannot remedy Basic auth (the same credentials would just be
+        // re-sent), so the seam is scoped to stale Bearer tokens.
+        var host = NewHost();
+
+        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (IsTokenEndpoint(req)) return TokenResponse(req);
+            if (req.Headers.Authorization?.Scheme == "Basic") return Unauthorized(req, realm: null);
+            return Ok(req); // an errant cold probe (no auth) would look successful
+        }
+
+        var mockHandler = CustomHandler(Handler);
+        var client = new Client(new HttpClient(mockHandler.Object))
+        {
+            ChallengeRecovery = ChallengeRecoveries.ColdProbe
+        };
+        client.Cache.SetCache(host, Challenge.Scheme.Basic, string.Empty, "cached_basic_creds");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert: the 401 is returned unchanged; no cold probe (a 200 would have meant one ran).
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        VerifyColdProbe(mockHandler, Times.Never());
+        VerifyTokenFetch(mockHandler, Times.Never());
+    }
 }

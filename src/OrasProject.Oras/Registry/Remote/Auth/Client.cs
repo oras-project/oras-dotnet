@@ -277,7 +277,7 @@ public class Client : IClient
     /// standard give-up behavior. Set to <see cref="ChallengeRecoveries.ColdProbe"/> (or a custom
     /// handler) to opt in.
     /// </summary>
-    public ChallengeRecoveryHandler? ChallengeRecovery { get; init; }
+    public ChallengeRecoveryHandler? ChallengeRecovery { get; set; }
 
     /// <summary>
     /// ScopeManager is an instance to manage scopes.
@@ -691,7 +691,9 @@ public class Client : IClient
                         if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken, partitionId))
                         {
                             requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
-                            attachedCachedToken = true;
+                            // Not flagged as a recoverable cached token: a credential-free re-derive can't
+                            // help Basic auth (the same credentials are simply re-sent). Recovery targets
+                            // stale Bearer tokens.
                         }
 
                         break;
@@ -741,13 +743,15 @@ public class Client : IClient
         // Standard resolution dead-ended on a challenge it could not use. Consult the optional recovery
         // handler; it decides whether the failure is recoverable (e.g. a stale-token rejection) and, if
         // so, returns a response to continue from. Conformant registries never reach here.
-        if (ChallengeRecovery != null)
+        // Capture the handler once so a concurrent reconfiguration can't null it out mid-flight.
+        var challengeRecovery = ChallengeRecovery;
+        if (challengeRecovery != null)
         {
             HttpResponseMessage? recovered;
             try
             {
                 recovered = await InvokeChallengeRecoveryAsync(
-                    originalRequest, response1, host, partitionId, attemptedKey, attachedCachedToken, allowAutoRedirect, cancellationToken)
+                    challengeRecovery, originalRequest, response1, host, partitionId, attemptedKey, attachedCachedToken, allowAutoRedirect, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch
@@ -919,6 +923,7 @@ public class Client : IClient
     /// recovered 401 cannot re-enter recovery — bounded to one pass.
     /// </summary>
     private async Task<HttpResponseMessage?> InvokeChallengeRecoveryAsync(
+        ChallengeRecoveryHandler challengeRecovery,
         HttpRequestMessage originalRequest,
         HttpResponseMessage unauthorizedResponse,
         string host,
@@ -936,7 +941,7 @@ public class Client : IClient
             canReplay: CanReplayWithoutAuthorization(originalRequest),
             probe: ct => ProbeWithoutAuthorizationAsync(originalRequest, allowAutoRedirect, ct));
 
-        var recovered = await ChallengeRecovery!(context, cancellationToken).ConfigureAwait(false);
+        var recovered = await challengeRecovery(context, cancellationToken).ConfigureAwait(false);
         if (recovered == null)
         {
             return null;
@@ -1037,7 +1042,7 @@ public class Client : IClient
     /// The outcome of <see cref="ResolveStandardChallengeAsync"/>: either a resolved response, or the
     /// reason the challenge could not be used.
     /// </summary>
-    private readonly struct StandardAuthResult
+    private sealed class StandardAuthResult
     {
         private StandardAuthResult(HttpResponseMessage? response, ChallengeFailureKind failureKind, string? realm, Uri? realmUri)
         {
