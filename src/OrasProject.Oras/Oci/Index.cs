@@ -34,8 +34,17 @@ public class Index : Versioned
     public string? ArtifactType { get; set; }
 
     // Manifests references platform specific manifests.
+    // A null JSON value (e.g. `"manifests": null`) is coalesced to an empty
+    // list to mirror Go's nil-slice semantics and tolerate non-conformant
+    // registries that return null instead of an empty array.
     [JsonPropertyName("manifests")]
-    public required IList<Descriptor> Manifests { get; set; }
+    public required IList<Descriptor> Manifests
+    {
+        get => _manifests;
+        set => _manifests = value ?? [];
+    }
+
+    private IList<Descriptor> _manifests = [];
 
     [JsonPropertyName("subject")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]

@@ -132,6 +132,17 @@ public partial class ManifestSerializationTest
         }
         """;
 
+    // Some non-conformant registries return `"manifests": null` instead of an
+    // empty array when a subject has no referrers. This must be tolerated and
+    // coalesced to an empty list (mirrors Go's nil-slice semantics).
+    private const string NullManifestsIndexJson = """
+        {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "manifests": null
+        }
+        """;
+
     [Theory]
     [MemberData(nameof(IndexFieldFixtures))]
     public void Deserialize_Index_PreservesAllFields(
@@ -259,6 +270,21 @@ public partial class ManifestSerializationTest
         Assert.Contains("\"manifests\":[]", json);
     }
 
+    [Fact]
+    public void Deserialize_NullManifests_CoalescesToEmptyList()
+    {
+        var bytes = Encoding.UTF8.GetBytes(NullManifestsIndexJson);
+        var idx = OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
+
+        Assert.NotNull(idx.Manifests);
+        Assert.Empty(idx.Manifests);
+
+        // Enumeration must not throw (mirrors Go's nil-slice semantics).
+        foreach (var _ in idx.Manifests)
+        {
+        }
+    }
+
     public static IEnumerable<object[]> IndexFieldFixtures()
     {
         yield return new object[]
@@ -267,5 +293,7 @@ public partial class ManifestSerializationTest
             { FullIndexJson, 2, true };
         yield return new object[]
             { EmptyManifestsIndexJson, 0, false };
+        yield return new object[]
+            { NullManifestsIndexJson, 0, false };
     }
 }
