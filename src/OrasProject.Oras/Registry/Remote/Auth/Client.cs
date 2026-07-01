@@ -271,6 +271,15 @@ public class Client : IClient
     private IRealmValidator _realmValidator = new DefaultRealmValidator();
 
     /// <summary>
+    /// An optional recovery handler consulted when standard resolution of a 401 fails to produce a
+    /// usable challenge (e.g. a non-conformant registry that omits the challenge on a token-carrying
+    /// 401, or points its realm at a different host). Defaults to <c>null</c> — no recovery, i.e. the
+    /// standard give-up behavior. Set to <see cref="ChallengeRecoveries.ColdProbe"/> (or a custom
+    /// handler) to opt in.
+    /// </summary>
+    public ChallengeRecoveryHandler? ChallengeRecovery { get; init; }
+
+    /// <summary>
     /// ScopeManager is an instance to manage scopes.
     /// </summary>
     public ScopeManager ScopeManager { get; set; } = new();
@@ -670,6 +679,7 @@ public class Client : IClient
                     throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
         var attemptedKey = string.Empty;
+        var attachedCachedToken = false;
 
         // attempt to send request with cached auth token
         if (Cache.TryGetScheme(host, out var schemeFromCache, partitionId))
@@ -681,6 +691,7 @@ public class Client : IClient
                         if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken, partitionId))
                         {
                             requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
+                            attachedCachedToken = true;
                         }
 
                         break;
@@ -692,6 +703,7 @@ public class Client : IClient
                         if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken, partitionId))
                         {
                             requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                            attachedCachedToken = true;
                         }
                         break;
                     }
@@ -704,29 +716,95 @@ public class Client : IClient
             return response1;
         }
 
+        // Resolve the 401 through the standard challenge flow. This never throws for a structurally
+        // unusable challenge (it reports the reason instead); it DOES throw for credential/token
+        // failures, so those propagate and are never eligible for recovery.
+        StandardAuthResult resolution;
+        try
+        {
+            resolution = await ResolveStandardChallengeAsync(
+                originalRequest, response1, host, partitionId, attemptedKey, allowAutoRedirect, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+            response1.Dispose();
+            throw;
+        }
+
+        if (resolution.Response != null)
+        {
+            response1.Dispose();
+            return resolution.Response;
+        }
+
+        // Standard resolution dead-ended on a challenge it could not use. Consult the optional recovery
+        // handler; it decides whether the failure is recoverable (e.g. a stale-token rejection) and, if
+        // so, returns a response to continue from. Conformant registries never reach here.
+        if (ChallengeRecovery != null)
+        {
+            HttpResponseMessage? recovered;
+            try
+            {
+                recovered = await InvokeChallengeRecoveryAsync(
+                    originalRequest, response1, host, partitionId, attemptedKey, attachedCachedToken, allowAutoRedirect, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                response1.Dispose();
+                throw;
+            }
+
+            if (recovered != null)
+            {
+                response1.Dispose();
+                return recovered;
+            }
+        }
+
+        // No recovery configured, or recovery gave up: preserve the original behavior for this 401.
+        return HandleUnusableChallenge(response1, resolution, host);
+    }
+
+    /// <summary>
+    /// Runs the standard 401 challenge resolution: parse the <c>WWW-Authenticate</c> challenge and,
+    /// for a recognized scheme, fetch/replay credentials. Returns a resolved response on success, or a
+    /// <see cref="StandardAuthResult"/> describing why the challenge was structurally unusable. Throws
+    /// only for genuine credential/token-endpoint failures (never for an unusable challenge), so a
+    /// caller can distinguish "the registry withheld a usable challenge" from "authentication failed".
+    /// </summary>
+    private async Task<StandardAuthResult> ResolveStandardChallengeAsync(
+        HttpRequestMessage originalRequest,
+        HttpResponseMessage unauthorizedResponse,
+        string host,
+        string? partitionId,
+        string attemptedKey,
+        bool allowAutoRedirect,
+        CancellationToken cancellationToken)
+    {
         var (schemeFromChallenge, parameters) =
-            Challenge.ParseChallenge(response1.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
+            Challenge.ParseChallenge(unauthorizedResponse.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
 
         // Attempt again with credentials for recognized schemes
         switch (schemeFromChallenge)
         {
             case Challenge.Scheme.Basic:
                 {
-                    response1.Dispose();
                     var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
                     Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken, partitionId);
 
                     // Attempt again with basic token
                     var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
-                    return await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                    var basicResponse = await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                    return StandardAuthResult.Resolved(basicResponse);
                 }
             case Challenge.Scheme.Bearer:
                 {
-                    response1.Dispose();
                     if (parameters == null)
                     {
-                        throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
+                        return StandardAuthResult.Unusable(ChallengeFailureKind.MissingParameters);
                     }
 
                     var existingScopes = ScopeManager.GetScopesForHost(host);
@@ -753,33 +831,27 @@ public class Client : IClient
 
                         if (response2.StatusCode != HttpStatusCode.Unauthorized)
                         {
-                            return response2;
+                            return StandardAuthResult.Resolved(response2);
                         }
                         response2.Dispose();
                     }
 
                     if (!parameters.TryGetValue("realm", out var realm))
                     {
-                        // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
-                        throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
+                        // 'realm' is required as it specifies the token endpoint URL for Bearer auth.
+                        return StandardAuthResult.Unusable(ChallengeFailureKind.MissingRealm);
                     }
 
                     // Validate realm URL before sending credentials.
-                    if (!Uri.TryCreate(
-                            realm, UriKind.Absolute,
-                            out var realmUri))
+                    if (!Uri.TryCreate(realm, UriKind.Absolute, out var realmUri))
                     {
-                        throw new AuthenticationException(
-                            $"Invalid realm URL: '{realm}'");
+                        return StandardAuthResult.Unusable(ChallengeFailureKind.InvalidRealm, realm);
                     }
 
                     var registryUri = originalRequest.RequestUri!;
-                    if (!await RealmValidator.IsRealmAllowedAsync(
-                            registryUri, realmUri, cancellationToken)
-                        .ConfigureAwait(false))
+                    if (!await RealmValidator.IsRealmAllowedAsync(registryUri, realmUri, cancellationToken).ConfigureAwait(false))
                     {
-                        throw new AuthenticationException(
-                            $"Authentication realm '{realmUri}' is not allowed for registry '{registryUri.Authority}'.");
+                        return StandardAuthResult.Unusable(ChallengeFailureKind.DeniedRealm, realm, realmUri);
                     }
 
                     if (!parameters.TryGetValue("service", out var service))
@@ -801,11 +873,175 @@ public class Client : IClient
 
                     var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
-                    return await SendRequestAsync(requestAttempt3, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                    var bearerResponse = await SendRequestAsync(requestAttempt3, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                    return StandardAuthResult.Resolved(bearerResponse);
                 }
             default:
-                return response1;
+                return StandardAuthResult.Unusable(ChallengeFailureKind.NoUsableScheme);
         }
+    }
+
+    /// <summary>
+    /// Invokes the configured <see cref="ChallengeRecovery"/> handler for an unusable 401 and continues
+    /// from whatever it returns: a non-401 response is treated as success (e.g. anonymous access); a
+    /// fresh 401 is re-run through <see cref="ResolveStandardChallengeAsync"/> exactly once (using this
+    /// client's own collaborators). Returns the response to continue from, or <c>null</c> to give up.
+    /// The cold probe carries no token, so a recovered 401 cannot re-enter recovery — bounded to one pass.
+    /// </summary>
+    private async Task<HttpResponseMessage?> InvokeChallengeRecoveryAsync(
+        HttpRequestMessage originalRequest,
+        HttpResponseMessage unauthorizedResponse,
+        string host,
+        string? partitionId,
+        string attemptedKey,
+        bool attachedCachedToken,
+        bool allowAutoRedirect,
+        CancellationToken cancellationToken)
+    {
+        var context = new FailedChallenge(
+            unauthorizedResponse,
+            host,
+            attachedCachedToken,
+            canReplay: CanReplayWithoutAuthorization(originalRequest),
+            probe: ct => ProbeWithoutAuthorizationAsync(originalRequest, allowAutoRedirect, ct));
+
+        var recovered = await ChallengeRecovery!(context, cancellationToken).ConfigureAwait(false);
+        if (recovered == null)
+        {
+            return null;
+        }
+
+        if (recovered.StatusCode != HttpStatusCode.Unauthorized)
+        {
+            // The registry served the request without (usable) authorization, e.g. anonymous access.
+            return recovered;
+        }
+
+        // The recovery produced a fresh challenge. Re-derive auth from it once, with our collaborators.
+        StandardAuthResult retry;
+        try
+        {
+            retry = await ResolveStandardChallengeAsync(
+                originalRequest, recovered, host, partitionId, attemptedKey, allowAutoRedirect, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+            recovered.Dispose();
+            throw;
+        }
+
+        // Either a resolved response (return it) or still unusable (null → caller falls back). Either
+        // way the cold-probe 401 is superseded and can be released.
+        recovered.Dispose();
+        return retry.Response;
+    }
+
+    /// <summary>
+    /// Re-sends <paramref name="originalRequest"/> with no <c>Authorization</c> header to elicit a
+    /// fresh challenge from a registry that withheld a usable one for a cached token.
+    /// </summary>
+    private async Task<HttpResponseMessage> ProbeWithoutAuthorizationAsync(
+        HttpRequestMessage originalRequest,
+        bool allowAutoRedirect,
+        CancellationToken cancellationToken)
+    {
+        var probe = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+        probe.Headers.Authorization = null;
+        return await SendRequestAsync(probe, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="request"/> can be safely re-sent without authorization — restricted to
+    /// idempotent GET/HEAD so a probe never replays a mutating request.
+    /// </summary>
+    private static bool CanReplayWithoutAuthorization(HttpRequestMessage request)
+        => request.Method == HttpMethod.Get || request.Method == HttpMethod.Head;
+
+    /// <summary>
+    /// Reproduces the client's default behavior for a structurally unusable challenge when no recovery
+    /// applies: an unrecognized scheme yields the original 401; a malformed Bearer challenge throws the
+    /// same exception the standard flow has always thrown.
+    /// </summary>
+    private static HttpResponseMessage HandleUnusableChallenge(
+        HttpResponseMessage unauthorizedResponse, StandardAuthResult resolution, string host)
+    {
+        switch (resolution.FailureKind)
+        {
+            case ChallengeFailureKind.MissingParameters:
+                unauthorizedResponse.Dispose();
+                throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
+            case ChallengeFailureKind.MissingRealm:
+                unauthorizedResponse.Dispose();
+                throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
+            case ChallengeFailureKind.InvalidRealm:
+                unauthorizedResponse.Dispose();
+                throw new AuthenticationException($"Invalid realm URL: '{resolution.Realm}'");
+            case ChallengeFailureKind.DeniedRealm:
+                unauthorizedResponse.Dispose();
+                throw new AuthenticationException(
+                    $"Authentication realm '{resolution.RealmUri}' is not allowed for registry '{host}'.");
+            default:
+                // NoUsableScheme: no recognized challenge scheme; return the original 401 to the caller.
+                return unauthorizedResponse;
+        }
+    }
+
+    /// <summary>
+    /// The outcome of <see cref="ResolveStandardChallengeAsync"/>: either a resolved response, or the
+    /// reason the challenge could not be used.
+    /// </summary>
+    private readonly struct StandardAuthResult
+    {
+        private StandardAuthResult(HttpResponseMessage? response, ChallengeFailureKind failureKind, string? realm, Uri? realmUri)
+        {
+            Response = response;
+            FailureKind = failureKind;
+            Realm = realm;
+            RealmUri = realmUri;
+        }
+
+        /// <summary>The resolved response, or <c>null</c> when the challenge was unusable.</summary>
+        public HttpResponseMessage? Response { get; }
+
+        /// <summary>Why the challenge was unusable; <see cref="ChallengeFailureKind.None"/> when resolved.</summary>
+        public ChallengeFailureKind FailureKind { get; }
+
+        /// <summary>The raw realm value, when relevant to the failure.</summary>
+        public string? Realm { get; }
+
+        /// <summary>The parsed realm URI, when relevant to the failure.</summary>
+        public Uri? RealmUri { get; }
+
+        public static StandardAuthResult Resolved(HttpResponseMessage response)
+            => new(response, ChallengeFailureKind.None, null, null);
+
+        public static StandardAuthResult Unusable(ChallengeFailureKind failureKind, string? realm = null, Uri? realmUri = null)
+            => new(null, failureKind, realm, realmUri);
+    }
+
+    /// <summary>
+    /// The reason the standard flow could not use a 401's challenge.
+    /// </summary>
+    private enum ChallengeFailureKind
+    {
+        /// <summary>The challenge was resolved; not a failure.</summary>
+        None,
+
+        /// <summary>No recognized authentication scheme in the challenge (e.g. no challenge at all).</summary>
+        NoUsableScheme,
+
+        /// <summary>A Bearer challenge with no parameters.</summary>
+        MissingParameters,
+
+        /// <summary>A Bearer challenge missing the required <c>realm</c> parameter.</summary>
+        MissingRealm,
+
+        /// <summary>A Bearer challenge whose <c>realm</c> is not an absolute URI.</summary>
+        InvalidRealm,
+
+        /// <summary>A Bearer challenge whose <c>realm</c> was rejected by the realm validator.</summary>
+        DeniedRealm,
     }
 
     /// <summary>
