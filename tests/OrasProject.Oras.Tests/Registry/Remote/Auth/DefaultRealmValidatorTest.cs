@@ -299,25 +299,57 @@ public class DefaultRealmValidatorTest
             Realm("http://myreg.io/token")));
     }
 
-    [Fact]
-    public async Task TrustedHostNotAffectedBySchemeBlock()
+    [Theory]
+    [InlineData(
+        "https://registry-1.docker.io/v2/",
+        "https://auth.docker.io/token",
+        "auth.docker.io")]
+    [InlineData(
+        "https://registry.gitlab.com/v2/",
+        "https://gitlab.com/jwt/auth",
+        "gitlab.com")]
+    [InlineData(
+        "https://nvcr.io/v2/",
+        "https://authn.nvidia.com/token",
+        "authn.nvidia.com")]
+    public async Task WellKnownPublicRegistry_RejectedByDefault_AllowedWhenConfigured(
+        string registry, string realm, string trustedHost)
     {
-        // Docker Hub: auth.docker.io is in the default trusted
-        // list — works without explicit TrustedRealmHosts.
-        var validator = new DefaultRealmValidator();
-        Assert.True(await validator.IsRealmAllowedAsync(
-            Reg("https://registry-1.docker.io/v2/"),
-            Realm("https://auth.docker.io/token")));
+        // Default ships with no trusted hosts: well-known public
+        // registries whose auth realm is on a different host are
+        // rejected until explicitly opted in.
+        var defaultValidator = new DefaultRealmValidator();
+        Assert.False(await defaultValidator.IsRealmAllowedAsync(
+            Reg(registry), Realm(realm)));
+
+        // Opt in by configuring the realm's auth host.
+        var configured = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            {
+                trustedHost
+            }
+        };
+        Assert.True(await configured.IsRealmAllowedAsync(
+            Reg(registry), Realm(realm)));
     }
 
     [Fact]
-    public async Task GitLabRegistry_DefaultTrusted_Allowed()
+    public async Task TrustedHost_NonDefaultPort_Rejected()
     {
-        // GitLab: gitlab.com is in the default trusted list.
-        var validator = new DefaultRealmValidator();
-        Assert.True(await validator.IsRealmAllowedAsync(
-            Reg("https://registry.gitlab.com/v2/"),
-            Realm("https://gitlab.com/jwt/auth")));
+        // A configured trusted host must still be on the default port.
+        var validator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            {
+                "auth.example.com"
+            }
+        };
+        Assert.False(await validator.IsRealmAllowedAsync(
+            Reg("https://registry.example.com/v2/"),
+            Realm("https://auth.example.com:8443/token")));
     }
 
     [Fact]
@@ -452,21 +484,35 @@ public class DefaultRealmValidatorTest
     public async Task UserinfoOnTrustedHost_Rejected()
     {
         // Userinfo check fires before trusted host check.
-        var validator = new DefaultRealmValidator();
+        var validator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            {
+                "auth.example.com"
+            }
+        };
         Assert.False(await validator.IsRealmAllowedAsync(
-            Reg("https://registry-1.docker.io/v2/"),
+            Reg("https://registry.example.com/v2/"),
             Realm(
-                "https://user@auth.docker.io/token")));
+                "https://user@auth.example.com/token")));
     }
 
     [Fact]
     public async Task HttpOnTrustedHost_RejectedByDefault()
     {
         // HTTP scheme block applies even to trusted hosts.
-        var validator = new DefaultRealmValidator();
+        var validator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            {
+                "auth.example.com"
+            }
+        };
         Assert.False(await validator.IsRealmAllowedAsync(
-            Reg("https://registry-1.docker.io/v2/"),
-            Realm("http://auth.docker.io/token")));
+            Reg("https://registry.example.com/v2/"),
+            Realm("http://auth.example.com/token")));
     }
 
     [Fact]
@@ -483,12 +529,19 @@ public class DefaultRealmValidatorTest
     [Fact]
     public async Task SuperstringHostname_Rejected()
     {
-        // "auth.docker.io.evil.com" is NOT "auth.docker.io"
-        var validator = new DefaultRealmValidator();
+        // "auth.example.com.evil.com" is NOT "auth.example.com"
+        var validator = new DefaultRealmValidator
+        {
+            TrustedRealmHosts = new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase)
+            {
+                "auth.example.com"
+            }
+        };
         Assert.False(await validator.IsRealmAllowedAsync(
-            Reg("https://registry-1.docker.io/v2/"),
+            Reg("https://registry.example.com/v2/"),
             Realm(
-                "https://auth.docker.io.evil.com/tok"
+                "https://auth.example.com.evil.com/tok"
                 )));
     }
 
