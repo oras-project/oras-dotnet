@@ -13,7 +13,6 @@
 
 using OrasProject.Oras.Content.Exceptions;
 using System;
-using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
@@ -21,28 +20,42 @@ namespace OrasProject.Oras.Content;
 
 internal static partial class Digest
 {
-    // Regular expression pattern for validating digest strings
-    // The pattern matches the following format:
-    // <algorithm>:<base64url-encoded digest>
-    // Explanation:
-    // - ^[a-z0-9]+: The algorithm part, consisting of lowercase letters
-    //          and digits, followed by a colon.
-    // - (?:[.+_-][a-z0-9]+)*: Optional segments of a dot, plus, underscore,
-    //           or hyphen followed by lowercase letters and digits.
-    // - :[a-zA-Z0-9=_-]+$: The digest part, consisting of base64url-encoded
-    //          characters (letters, digits, equals, underscore, hyphen).
-    // For more details, refer to the distribution specification:
+    // Registered algorithm identifiers per OCI image-spec v1.1.1.
+    internal const string AlgorithmSha256 = "sha256";
+    internal const string AlgorithmSha512 = "sha512";
+
+    // Validation error constants for programmatic consumption.
+    internal const string ErrDigestEmpty = "Invalid digest. Digest string is empty.";
+    internal const string ErrDigestInvalidFormat = "Invalid digest format.";
+    internal const string ErrSha256InvalidEncoded = "Invalid sha256 digest. Encoded portion must be exactly 64 lowercase hex characters.";
+    internal const string ErrSha512InvalidEncoded = "Invalid sha512 digest. Encoded portion must be exactly 128 lowercase hex characters.";
+
+    // General digest grammar per OCI image-spec v1.1.1:
+    //   digest            ::= algorithm ":" encoded
+    //   algorithm         ::= algorithm-component (algorithm-separator algorithm-component)*
+    //   algorithm-component ::= [a-z0-9]+
+    //   algorithm-separator ::= [+._-]
+    //   encoded           ::= [a-zA-Z0-9=_-]+
     // https://github.com/opencontainers/image-spec/blob/v1.1.1/descriptor.md#digests
     [GeneratedRegex(@"^[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[a-zA-Z0-9=_-]+$", RegexOptions.Compiled)]
     private static partial Regex DigestRegex();
 
-    // List of registered and supported algorithms as per the specification
-    private static readonly HashSet<string> _supportedAlgorithms = ["sha256", "sha512"];
+    // SHA-256 encoded portion: exactly 64 lowercase hex characters.
+    // Per OCI image-spec v1.1.1: "the encoded portion MUST match /[a-f0-9]{64}/"
+    [GeneratedRegex(@"^[a-f0-9]{64}$", RegexOptions.Compiled)]
+    private static partial Regex Sha256EncodedRegex();
+
+    // SHA-512 encoded portion: exactly 128 lowercase hex characters.
+    // Per OCI image-spec v1.1.1: "the encoded portion MUST match /[a-f0-9]{128}/"
+    [GeneratedRegex(@"^[a-f0-9]{128}$", RegexOptions.Compiled)]
+    private static partial Regex Sha512EncodedRegex();
 
     /// <summary>
-    /// Verifies the digest header and throws an exception if it is invalid.
+    /// Verifies the digest string and throws an exception if it is invalid.
     /// </summary>
-    /// <param name="digest"></param>
+    /// <param name="digest">The digest string to validate.</param>
+    /// <returns>The validated digest string.</returns>
+    /// <exception cref="InvalidDigestException">Thrown when the digest is invalid.</exception>
     internal static string Validate(string digest)
     {
         return TryValidate(digest, out var error)
@@ -50,25 +63,53 @@ internal static partial class Digest
             : throw new InvalidDigestException(error);
     }
 
+    /// <summary>
+    /// Validates a digest string per OCI image-spec v1.1.1.
+    /// Registered algorithms (sha256, sha512) are validated strictly.
+    /// Unrecognized algorithms pass if they match the general grammar.
+    /// </summary>
+    /// <param name="digest">The digest string to validate.</param>
+    /// <param name="error">When this method returns false, contains the validation error.</param>
+    /// <returns>true if valid; otherwise, false.</returns>
     internal static bool TryValidate(string digest, out string error)
     {
         if (string.IsNullOrEmpty(digest))
         {
-            error = "Digest is null or empty";
+            error = ErrDigestEmpty;
             return false;
         }
 
         if (!DigestRegex().IsMatch(digest))
         {
-            error = $"Invalid digest: {digest}";
+            error = $"{ErrDigestInvalidFormat} The digest '{digest}' does not match the required grammar.";
             return false;
         }
 
-        var algorithm = digest.Split(':')[0];
-        if (!_supportedAlgorithms.Contains(algorithm))
+        var colonIndex = digest.IndexOf(':');
+        var algorithm = digest[..colonIndex];
+        var encoded = digest[(colonIndex + 1)..];
+
+        // For registered algorithms, enforce per-algorithm encoded format
+        // per OCI image-spec v1.1.1 descriptor.md#registered-algorithms.
+        // Unrecognized algorithms pass validation if they match the general
+        // grammar per spec: "Implementations SHOULD allow digests with
+        // unrecognized algorithms to pass validation if they comply with
+        // the above grammar."
+        if (algorithm == AlgorithmSha256)
         {
-            error = $"Unrecognized, unregistered or unsupported digest algorithm: {algorithm}";
-            return false;
+            if (!Sha256EncodedRegex().IsMatch(encoded))
+            {
+                error = $"{ErrSha256InvalidEncoded} Got '{digest}'.";
+                return false;
+            }
+        }
+        else if (algorithm == AlgorithmSha512)
+        {
+            if (!Sha512EncodedRegex().IsMatch(encoded))
+            {
+                error = $"{ErrSha512InvalidEncoded} Got '{digest}'.";
+                return false;
+            }
         }
 
         error = string.Empty;
@@ -78,12 +119,12 @@ internal static partial class Digest
     /// <summary>
     /// Generates a SHA-256 digest from a byte array.
     /// </summary>
-    /// <param name="content"></param>
-    /// <returns></returns>
+    /// <param name="content">The content to hash.</param>
+    /// <returns>The digest string in the format "sha256:&lt;hex&gt;".</returns>
     internal static string ComputeSha256(byte[] content)
     {
         var hash = SHA256.HashData(content);
-        var output = $"sha256:{Convert.ToHexString(hash)}";
-        return output.ToLower();
+        var output = $"{AlgorithmSha256}:{Convert.ToHexString(hash)}";
+        return output.ToLowerInvariant();
     }
 }
