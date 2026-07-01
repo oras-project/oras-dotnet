@@ -17,12 +17,12 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using OrasProject.Oras.Registry.Remote.Auth;
+using OrasProject.Oras.Serialization;
 
 namespace OrasProject.Oras.Registry.Remote;
 
@@ -144,13 +144,13 @@ public class Registry : IRegistry
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
         var data = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var repositories = JsonSerializer.Deserialize<RepositoryList>(data);
-        return (repositories.Repositories, response.ParseLink());
+        var repositories = OciJsonSerializer.Deserialize<RepositoryList>(data);
+        return (repositories.Repositories ?? Array.Empty<string>(), response.ParseLink());
     }
 
     internal struct RepositoryList
     {
         [JsonPropertyName("repositories")]
-        public string[] Repositories { get; set; }
+        public string[]? Repositories { get; set; }
     }
 }

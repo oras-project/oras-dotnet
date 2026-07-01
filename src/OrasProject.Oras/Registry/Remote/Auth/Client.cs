@@ -15,6 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -68,39 +69,92 @@ public class Client : IClient
         HttpClient? httpClient = null,
         ICredentialProvider? credentialProvider = null,
         ICache? cache = null)
-        : this(httpClient, null, credentialProvider, cache)
+        : this(httpClient, null, credentialProvider, null, cache)
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the Client class with separate HttpClient instances for redirect control.
+    /// Initializes a new instance of the Client class with separate
+    /// HttpClient instances for redirect control.
     /// </summary>
     /// <param name="httpClient">
-    /// Optional HttpClient to use for standard requests that follow redirects.
-    /// If not provided, uses <see cref="DefaultHttpClient.Instance"/>.
+    /// Optional HttpClient to use for standard requests that follow
+    /// redirects.  If not provided, uses
+    /// <see cref="DefaultHttpClient.Instance"/>.
     /// </param>
     /// <param name="noRedirectHttpClient">
-    /// Optional HttpClient configured with <c>AllowAutoRedirect = false</c> for capturing redirect locations.
-    /// If not provided, uses <see cref="DefaultHttpClient.NoRedirectInstance"/>.
+    /// Optional HttpClient configured with
+    /// <c>AllowAutoRedirect = false</c> for capturing redirect
+    /// locations.  If not provided, uses
+    /// <see cref="DefaultHttpClient.NoRedirectInstance"/>.
     /// <para>
-    /// <strong>Advanced Usage:</strong> To apply consistent HTTP configuration (timeouts, proxy, headers) 
-    /// across both redirect and no-redirect scenarios, provide both <paramref name="httpClient"/> and 
-    /// <paramref name="noRedirectHttpClient"/> with the same base configuration but different redirect settings.
-    /// This is useful with IHttpClientFactory or custom HttpClient management.
+    /// <strong>Advanced Usage:</strong> To apply consistent HTTP
+    /// configuration (timeouts, proxy, headers) across both redirect
+    /// and no-redirect scenarios, provide both
+    /// <paramref name="httpClient"/> and
+    /// <paramref name="noRedirectHttpClient"/> with the same base
+    /// configuration but different redirect settings.  This is useful
+    /// with IHttpClientFactory or custom HttpClient management.
     /// </para>
     /// </param>
-    /// <param name="credentialProvider">Optional credential provider for registry authentication.</param>
-    /// <param name="cache">Optional cache for storing authentication tokens.</param>
+    /// <param name="credentialProvider">
+    /// Optional credential provider for registry authentication.
+    /// </param>
+    /// <param name="cache">
+    /// Optional cache for storing authentication tokens.
+    /// </param>
     public Client(
         HttpClient? httpClient,
         HttpClient? noRedirectHttpClient,
         ICredentialProvider? credentialProvider,
         ICache? cache)
+        : this(httpClient, noRedirectHttpClient, credentialProvider,
+            null, cache)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the Client class with separate
+    /// HttpClient instances for redirect control and an optional
+    /// access-token provider.
+    /// </summary>
+    /// <param name="httpClient">
+    /// Optional HttpClient to use for standard requests that follow
+    /// redirects.  If not provided, uses
+    /// <see cref="DefaultHttpClient.Instance"/>.
+    /// </param>
+    /// <param name="noRedirectHttpClient">
+    /// Optional HttpClient configured with
+    /// <c>AllowAutoRedirect = false</c> for capturing redirect
+    /// locations.  If not provided, uses
+    /// <see cref="DefaultHttpClient.NoRedirectInstance"/>.
+    /// </param>
+    /// <param name="credentialProvider">
+    /// Optional credential provider for registry authentication.
+    /// </param>
+    /// <param name="accessTokenProvider">
+    /// Optional access-token provider.  When set, the client calls
+    /// this provider first during Bearer authentication.  If it
+    /// returns <c>null</c> or whitespace, the client falls through to
+    /// credential-based authentication via
+    /// <paramref name="credentialProvider"/>.
+    /// </param>
+    /// <param name="cache">
+    /// Optional cache for storing authentication tokens.
+    /// </param>
+    public Client(
+        HttpClient? httpClient,
+        HttpClient? noRedirectHttpClient,
+        ICredentialProvider? credentialProvider,
+        IAccessTokenProvider? accessTokenProvider,
+        ICache? cache)
     {
         CredentialProvider = credentialProvider;
+        AccessTokenProvider = accessTokenProvider;
         _cache = cache;
         BaseClient = httpClient ?? DefaultHttpClient.Instance;
-        NoRedirectClient = noRedirectHttpClient ?? DefaultHttpClient.NoRedirectInstance;
+        NoRedirectClient =
+            noRedirectHttpClient ?? DefaultHttpClient.NoRedirectInstance;
     }
 
     /// <summary>
@@ -108,6 +162,15 @@ public class Client : IClient
     /// credentials for accessing remote registries.
     /// </summary>
     public ICredentialProvider? CredentialProvider { get; init; }
+
+    /// <summary>
+    /// AccessTokenProvider provides pre-resolved access tokens for
+    /// Bearer authentication.  When set, the client calls this provider
+    /// first during Bearer auth.  If it returns <c>null</c> or
+    /// whitespace, the client falls through to credential-based
+    /// authentication via <see cref="CredentialProvider"/>.
+    /// </summary>
+    public IAccessTokenProvider? AccessTokenProvider { get; init; }
 
     /// <summary>
     /// BaseClient is an instance of HttpClient to send http requests that follow redirects.
@@ -182,6 +245,32 @@ public class Client : IClient
     private const string _defaultClientId = "oras-dotnet";
 
     /// <summary>
+    /// Maximum size (4 MB) for buffering non-seekable request content.
+    /// In practice only manifest-sized payloads flow through this path.
+    /// </summary>
+    internal const long MaxBufferSize = 4 * 1024 * 1024;
+
+    /// <summary>
+    /// Validates realm URLs before sending credentials to them.
+    /// Default: a <see cref="DefaultRealmValidator"/> instance with
+    /// secure defaults.
+    /// </summary>
+    /// <remarks>
+    /// This property is init-only and cannot be null. To use a
+    /// different validator, set it during construction. To disable
+    /// validation (not recommended), provide an implementation
+    /// that always returns <c>true</c>.
+    /// </remarks>
+    public IRealmValidator RealmValidator
+    {
+        get => _realmValidator;
+        init => _realmValidator = value
+            ?? throw new ArgumentNullException(nameof(value));
+    }
+
+    private IRealmValidator _realmValidator = new DefaultRealmValidator();
+
+    /// <summary>
     /// ScopeManager is an instance to manage scopes.
     /// </summary>
     public ScopeManager ScopeManager { get; set; } = new();
@@ -253,6 +342,10 @@ public class Client : IClient
     /// <exception cref="KeyNotFoundException">
     /// Thrown if required parameters (e.g., "realm") are missing in the authentication challenge.
     /// </exception>
+    /// <exception cref="AuthenticationException">
+    /// Thrown when the realm URL is invalid or not allowed by
+    /// <see cref="RealmValidator"/>.
+    /// </exception>
     public Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage originalRequest,
         string? partitionId = null,
@@ -290,20 +383,36 @@ public class Client : IClient
     }
 
     /// <summary>
-    /// Fetches a OAuth2 access token for accessing a registry.
+    /// Fetches a bearer access token for accessing a registry.
     ///
-    /// If credential is empty or refreshToken is not set and OAuth2 authentication is not forced,
-    /// the method would fetch anonymous token with a Http Get request
-    /// otherwise, it would fetch OAuth2 token with a Http Post request.
+    /// When an <see cref="AccessTokenProvider"/> is configured it is
+    /// consulted first.  If it returns a non-whitespace token, that
+    /// token is used directly — bypassing credential resolution
+    /// entirely.  Otherwise, the existing credential-based flow is
+    /// used: if credential is empty or refreshToken is not set and
+    /// OAuth2 authentication is not forced, the method would fetch
+    /// anonymous token with a Http Get request otherwise, it would
+    /// fetch OAuth2 token with a Http Post request.
     /// </summary>
     /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="realm">The authentication realm to use.</param>
-    /// <param name="service">The service name for which the token is requested.</param>
-    /// <param name="scopes">The scopes of access requested for the token.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <param name="service">
+    /// The service name for which the token is requested.
+    /// </param>
+    /// <param name="scopes">
+    /// The scopes of access requested for the token.
+    /// </param>
+    /// <param name="forceRefresh">
+    /// When <see langword="true"/>, instructs the provider to bypass
+    /// any cached token and acquire a fresh one. This is always set
+    /// after a 401 response indicates the current token is stale.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token to monitor for cancellation requests.
+    /// </param>
     /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains the bearer
-    /// authentication token as a string.
+    /// A task that represents the asynchronous operation. The task
+    /// result contains the bearer authentication token as a string.
     /// </returns>
     /// <exception cref="AuthenticationException">
     /// Thrown when credentials are missing or invalid.
@@ -313,8 +422,31 @@ public class Client : IClient
         string realm,
         string service,
         IList<string> scopes,
+        bool forceRefresh = false,
         CancellationToken cancellationToken = default)
     {
+        // When an AccessTokenProvider is configured, try it first.
+        // It returns a ready-to-use scoped token without exposing raw
+        // credentials in-process.
+        if (AccessTokenProvider != null)
+        {
+            var readOnlyScopes = scopes as IReadOnlyList<string>
+                ?? (IReadOnlyList<string>)scopes.ToArray();
+            var accessToken =
+                await AccessTokenProvider.ResolveAccessTokenAsync(
+                    registry,
+                    realm,
+                    service,
+                    readOnlyScopes,
+                    forceRefresh,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(accessToken))
+            {
+                return accessToken;
+            }
+        }
+
         var credential = await ResolveCredentialAsync(registry, cancellationToken)
             .ConfigureAwait(false);
         if (!string.IsNullOrEmpty(credential.AccessToken))
@@ -524,6 +656,16 @@ public class Client : IClient
         {
             return await SendRequestAsync(originalRequest, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
         }
+
+        // Buffer non-seekable content upfront so auth retries can
+        // rewind it.  Skips when Content-Length exceeds 4 MB (to
+        // avoid consuming large non-seekable streams).  Unknown-
+        // length content is buffered; if it turns out to exceed
+        // the cap AND is non-seekable, throws immediately.
+        await BufferNonSeekableContentAsync(
+            originalRequest, cancellationToken)
+            .ConfigureAwait(false);
+
         var host = originalRequest.RequestUri?.Authority ??
                     throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
@@ -621,6 +763,25 @@ public class Client : IClient
                         // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
                         throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
                     }
+
+                    // Validate realm URL before sending credentials.
+                    if (!Uri.TryCreate(
+                            realm, UriKind.Absolute,
+                            out var realmUri))
+                    {
+                        throw new AuthenticationException(
+                            $"Invalid realm URL: '{realm}'");
+                    }
+
+                    var registryUri = originalRequest.RequestUri!;
+                    if (!await RealmValidator.IsRealmAllowedAsync(
+                            registryUri, realmUri, cancellationToken)
+                        .ConfigureAwait(false))
+                    {
+                        throw new AuthenticationException(
+                            $"Authentication realm '{realmUri}' is not allowed for registry '{registryUri.Authority}'.");
+                    }
+
                     if (!parameters.TryGetValue("service", out var service))
                     {
                         // some registries may omit the `service` parameter; use an empty string when absent.
@@ -633,6 +794,7 @@ public class Client : IClient
                         realm,
                         service,
                         newScopes.Select(newScope => newScope.ToString()).ToList(),
+                        forceRefresh: true,
                         cancellationToken
                     ).ConfigureAwait(false);
                     Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
@@ -662,5 +824,68 @@ public class Client : IClient
     {
         var client = allowAutoRedirect ? BaseClient : NoRedirectClient;
         return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Buffers non-seekable request content in place so that auth
+    /// retries can rewind the body.  Uses the built-in
+    /// <see cref="HttpContent.LoadIntoBufferAsync(long)"/> which
+    /// handles both known and unknown Content-Length, enforces the
+    /// size cap, and makes the stream seekable after completion.
+    /// Seekable content that exceeds the buffer size is left
+    /// untouched (it can be rewound directly without buffering).
+    /// Non-seekable content with a declared Content-Length over the
+    /// limit is also left untouched — the first send proceeds but
+    /// a 401 retry would fail because the body cannot be replayed.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="HttpContent.LoadIntoBufferAsync(long)"/> on
+    /// .NET 8 does not accept a <see cref="CancellationToken"/>;
+    /// the token is only used in the catch-path stream check.
+    /// With the 4 MB cap, buffering completes quickly in practice.
+    /// </remarks>
+    private static async Task BufferNonSeekableContentAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        var content = request.Content;
+        if (content == null)
+        {
+            return;
+        }
+
+        // If Content-Length is declared and exceeds the cap, skip
+        // buffering to avoid partially consuming a non-seekable
+        // stream.  Seekable streams will still work (rewind on
+        // retry); non-seekable ones accept the limitation.
+        if (content.Headers.ContentLength > MaxBufferSize)
+        {
+            return;
+        }
+
+        try
+        {
+            await content.LoadIntoBufferAsync(MaxBufferSize)
+                .ConfigureAwait(false);
+        }
+        catch (HttpRequestException)
+        {
+            // Content exceeds MaxBufferSize (unknown length that
+            // turned out to be too large).  If the stream is
+            // seekable, rewind and continue — the retry path can
+            // replay the body directly.  If not seekable, the
+            // stream is partially consumed and unrecoverable;
+            // rethrow so the caller gets a clear size error rather
+            // than a confusing "stream already consumed" later.
+            var stream = await content
+                .ReadAsStreamAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (!stream.CanSeek)
+            {
+                throw;
+            }
+
+            stream.Position = 0;
+        }
     }
 }

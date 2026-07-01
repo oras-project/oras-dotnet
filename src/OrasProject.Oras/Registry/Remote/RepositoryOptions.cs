@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using OrasProject.Oras.Content;
 using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Registry.Remote;
@@ -93,7 +94,7 @@ public struct RepositoryOptions
     /// </summary>
     public long MaxMetadataBytes
     {
-        get => _maxMetadataBytes == 0 ? _defaultMaxMetadataBytes : _maxMetadataBytes;
+        get => _maxMetadataBytes == 0 ? OciLimits.MaxManifestBytes : _maxMetadataBytes;
         set
         {
             if (value <= 0)
@@ -105,11 +106,4 @@ public struct RepositoryOptions
     }
 
     private long _maxMetadataBytes;
-
-    /// <summary>
-    /// _defaultMaxMetadataBytes specifies the default limit on how many response
-    /// bytes are allowed in the server's response to the metadata APIs.
-    /// See also: Repository.MaxMetadataBytes
-    /// </summary>
-    private const long _defaultMaxMetadataBytes = 4 * 1024 * 1024; // 4 MiB
 }
