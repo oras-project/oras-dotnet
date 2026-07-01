@@ -144,7 +144,8 @@ public class Registry : IRegistry
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
         var data = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var repositories = OciJsonSerializer.Deserialize<RepositoryList>(data);
+        var repositories = OciJsonSerializer.Deserialize(
+            data, OciJsonSerializerContext.OciDefault.RepositoryList);
         return (repositories.Repositories ?? Array.Empty<string>(), response.ParseLink());
     }
 
