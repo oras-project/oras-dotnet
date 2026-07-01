@@ -36,7 +36,10 @@ internal sealed class OciStringConverter : JsonConverter<string>
         string value,
         JsonSerializerOptions options)
     {
-        var escaped = OciJsonSerializer.EscapeJsonString(value);
-        writer.WriteRawValue($"\"{escaped}\"");
+        if (OciJsonSerializer.NeedsEscaping(value))
+        {
+            value = OciJsonSerializer.EscapeJsonString(value);
+        }
+        writer.WriteRawValue(string.Concat("\"", value, "\""));
     }
 }
