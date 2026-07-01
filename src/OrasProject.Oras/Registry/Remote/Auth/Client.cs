@@ -271,6 +271,24 @@ public class Client : IClient
     private IRealmValidator _realmValidator = new DefaultRealmValidator();
 
     /// <summary>
+    /// Resolves the authorization used to retry a request after an HTTP 401 response.
+    /// Defaults to <see cref="DefaultAuthChallengeHandler"/>, which performs the standard
+    /// OCI distribution flow. Provide a custom handler to recover from registries whose
+    /// token-carrying 401 is unusable (e.g., a missing or wrong-host challenge).
+    /// </summary>
+    /// <remarks>
+    /// This property is init-only and cannot be null.
+    /// </remarks>
+    public IAuthChallengeHandler AuthChallengeHandler
+    {
+        get => _authChallengeHandler;
+        init => _authChallengeHandler = value
+            ?? throw new ArgumentNullException(nameof(value));
+    }
+
+    private IAuthChallengeHandler _authChallengeHandler = new DefaultAuthChallengeHandler();
+
+    /// <summary>
     /// ScopeManager is an instance to manage scopes.
     /// </summary>
     public ScopeManager ScopeManager { get; set; } = new();
@@ -669,7 +687,9 @@ public class Client : IClient
         var host = originalRequest.RequestUri?.Authority ??
                     throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
         var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
-        var attemptedKey = string.Empty;
+        var requestedScopes = ScopeManager.GetScopesStringForHost(host);
+        var attemptedKey = string.Join(" ", requestedScopes);
+        var attachedCachedToken = false;
 
         // attempt to send request with cached auth token
         if (Cache.TryGetScheme(host, out var schemeFromCache, partitionId))
@@ -681,18 +701,19 @@ public class Client : IClient
                         if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken, partitionId))
                         {
                             requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
+                            attachedCachedToken = true;
                         }
 
                         break;
                     }
                 case Challenge.Scheme.Bearer:
                     {
-                        var scopes = ScopeManager.GetScopesStringForHost(host);
-                        attemptedKey = string.Join(" ", scopes);
                         if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken, partitionId))
                         {
                             requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                            attachedCachedToken = true;
                         }
+
                         break;
                     }
             }
@@ -704,107 +725,99 @@ public class Client : IClient
             return response1;
         }
 
-        var (schemeFromChallenge, parameters) =
-            Challenge.ParseChallenge(response1.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
-
-        // Attempt again with credentials for recognized schemes
-        switch (schemeFromChallenge)
+        // Parse the original challenge once. Degrade to Unknown on malformed input so a
+        // non-conformant challenge still reaches the handler (which may recover) rather than
+        // throwing. The parsed result is shared by the cache shortcut below and the context.
+        Challenge.Scheme schemeFromChallenge;
+        Dictionary<string, string>? challengeParameters;
+        try
         {
-            case Challenge.Scheme.Basic:
-                {
-                    response1.Dispose();
-                    var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken, partitionId);
+            (schemeFromChallenge, challengeParameters) = Challenge.ParseChallenge(
+                response1.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            (schemeFromChallenge, challengeParameters) = (Challenge.Scheme.Unknown, null);
+        }
 
-                    // Attempt again with basic token
+        var challengeContext = new AuthChallengeContext(
+            this,
+            originalRequest,
+            response1,
+            host,
+            partitionId,
+            attachedCachedToken,
+            requestedScopes,
+            allowAutoRedirect,
+            schemeFromChallenge,
+            challengeParameters);
+
+        // From here every path either hands response1 back to the caller (a null resolution, or
+        // the non-401 return above) or disposes it — including on any exception or cancellation.
+        try
+        {
+            // Scope-changed cache shortcut: when the challenge implies a different scope key than
+            // attempt-1 used and a token is already cached for it, try that token before acquiring
+            // a new one. This is a cache optimization owned by the client; token acquisition (and
+            // any recovery for non-conformant registries) is delegated to the handler below.
+            if (schemeFromChallenge == Challenge.Scheme.Bearer && challengeParameters != null)
+            {
+                var (_, newKey) = challengeContext.MergeChallengeScopes(
+                    challengeParameters.GetValueOrDefault("scope"));
+                if (newKey != attemptedKey &&
+                    Cache.TryGetToken(host, Challenge.Scheme.Bearer, newKey, out var cachedToken, partitionId))
+                {
                     var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                    requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
-                    return await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                    requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
+                    var response2 = await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                    if (response2.StatusCode != HttpStatusCode.Unauthorized)
+                    {
+                        response1.Dispose();
+                        return response2;
+                    }
+
+                    response2.Dispose();
                 }
-            case Challenge.Scheme.Bearer:
-                {
-                    response1.Dispose();
-                    if (parameters == null)
-                    {
-                        throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
-                    }
+            }
 
-                    var existingScopes = ScopeManager.GetScopesForHost(host);
-                    var newScopes = new SortedSet<Scope>(existingScopes);
-                    if (parameters.TryGetValue("scope", out var scopesString))
-                    {
-                        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            if (Scope.TryParse(scopeStr, out var scope))
-                            {
-                                Scope.AddOrMergeScope(newScopes, scope);
-                            }
-                        }
-                    }
-
-                    // Attempt to send request when the scope changes and a token cache hits
-                    var newKey = string.Join(" ", newScopes);
-                    if (newKey != attemptedKey &&
-                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken, partitionId))
-                    {
-                        var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                        requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                        var response2 = await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-
-                        if (response2.StatusCode != HttpStatusCode.Unauthorized)
-                        {
-                            return response2;
-                        }
-                        response2.Dispose();
-                    }
-
-                    if (!parameters.TryGetValue("realm", out var realm))
-                    {
-                        // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
-                        throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
-                    }
-
-                    // Validate realm URL before sending credentials.
-                    if (!Uri.TryCreate(
-                            realm, UriKind.Absolute,
-                            out var realmUri))
-                    {
-                        throw new AuthenticationException(
-                            $"Invalid realm URL: '{realm}'");
-                    }
-
-                    var registryUri = originalRequest.RequestUri!;
-                    if (!await RealmValidator.IsRealmAllowedAsync(
-                            registryUri, realmUri, cancellationToken)
-                        .ConfigureAwait(false))
-                    {
-                        throw new AuthenticationException(
-                            $"Authentication realm '{realmUri}' is not allowed for registry '{registryUri.Authority}'.");
-                    }
-
-                    if (!parameters.TryGetValue("service", out var service))
-                    {
-                        // some registries may omit the `service` parameter; use an empty string when absent.
-                        service = string.Empty;
-                    }
-
-                    // Try to fetch bearer token based on the challenge header
-                    var bearerAuthToken = await FetchBearerAuthAsync(
-                        host,
-                        realm,
-                        service,
-                        newScopes.Select(newScope => newScope.ToString()).ToList(),
-                        forceRefresh: true,
-                        cancellationToken
-                    ).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
-
-                    var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                    requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
-                    return await SendRequestAsync(requestAttempt3, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-                }
-            default:
+            // Delegate the "401 -> authorization" decision (token acquisition and any recovery for
+            // non-conformant registries) to the configured handler.
+            var resolution = await AuthChallengeHandler
+                .ResolveAuthorizationAsync(challengeContext, cancellationToken)
+                .ConfigureAwait(false);
+            if (resolution == null)
+            {
+                // No authorization could be produced; hand the original 401 back to the caller.
                 return response1;
+            }
+
+            if (resolution.Scheme is not Challenge.Scheme.Basic and not Challenge.Scheme.Bearer)
+            {
+                throw new InvalidOperationException(
+                    $"The authentication challenge handler returned an unsupported scheme '{resolution.Scheme}'.");
+            }
+
+            if (string.IsNullOrEmpty(resolution.Token))
+            {
+                throw new InvalidOperationException(
+                    "The authentication challenge handler returned an empty token.");
+            }
+
+            if (resolution.Cache)
+            {
+                Cache.SetCache(host, resolution.Scheme, resolution.CacheScopeKey, resolution.Token, partitionId);
+            }
+
+            var schemeName = resolution.Scheme == Challenge.Scheme.Basic ? "Basic" : "Bearer";
+            var retryRequest = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+            retryRequest.Headers.Authorization = new AuthenticationHeaderValue(schemeName, resolution.Token);
+            response1.Dispose();
+            return await SendRequestAsync(retryRequest, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            response1.Dispose();
+            throw;
         }
     }
 
@@ -817,7 +830,7 @@ public class Client : IClient
     /// <param name="allowAutoRedirect">Whether to allow automatic redirect following. Default is true.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The HTTP response message.</returns>
-    private async Task<HttpResponseMessage> SendRequestAsync(
+    internal async Task<HttpResponseMessage> SendRequestAsync(
         HttpRequestMessage request,
         bool allowAutoRedirect = true,
         CancellationToken cancellationToken = default)
