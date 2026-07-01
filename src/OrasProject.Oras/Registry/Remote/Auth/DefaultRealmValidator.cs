@@ -55,9 +55,9 @@ public sealed class DefaultRealmValidator : IRealmValidator
     /// <para>
     /// <b>Empty by default.</b> The validator ships with no trusted
     /// hosts, so out of the box only realms on the <em>same host</em>
-    /// as the registry are allowed. The SDK is intentionally
-    /// host-agnostic and does not bake in trust for any specific
-    /// registry.
+    /// (and effective port) as the registry are allowed. The SDK is
+    /// intentionally host-agnostic and does not bake in trust for any
+    /// specific registry.
     /// </para>
     /// <para>
     /// To allow a registry whose auth realm lives on a different host
