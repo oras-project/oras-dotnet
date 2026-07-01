@@ -13,6 +13,7 @@
 
 using OrasProject.Oras.Content.Exceptions;
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Registry.Exceptions;
 using OrasProject.Oras.Registry.Remote;
 using static OrasProject.Oras.Tests.Remote.Util.Util;
 using static OrasProject.Oras.Tests.Remote.Util.RandomDataGenerator;
@@ -36,6 +37,16 @@ public class ReferrersTest
         var desc = RandomDescriptor();
         desc.Digest = "sha123321";
         Assert.Throws<InvalidDigestException>(() => Referrers.BuildReferrersTag(desc));
+    }
+
+    [Fact]
+    public void BuildReferrersTag_ShouldThrowInvalidReferenceException_WhenTagIsInvalid()
+    {
+        var desc = RandomDescriptor();
+        // A digest with '+' in the algorithm produces a valid digest per OCI grammar
+        // but an invalid tag after ':' -> '-' replacement ('+' is not in [\w.-])
+        desc.Digest = "multihash+base58:QmRZxt2b1FVZPNqd8hsiykDL3TdBDeTSPX9Kv46HmX4Rg8";
+        Assert.Throws<InvalidReferenceException>(() => Referrers.BuildReferrersTag(desc));
     }
 
     [Fact]

@@ -13,6 +13,7 @@
 
 using System.Text;
 using System.Text.Json;
+using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Serialization;
 using Xunit;
@@ -129,5 +130,170 @@ public partial class ManifestSerializationTest
 
         Assert.NotNull(descriptor);
         Assert.Equal(1024, descriptor!.Size);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("invalid")]
+    [InlineData(":44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")]
+    public void Descriptor_Validate_InvalidDigest_ThrowsInvalidDescriptorException(string invalidDigest)
+    {
+        var descriptor = new Descriptor
+        {
+            MediaType = "application/vnd.oci.image.layer.v1.tar+gzip",
+            Digest = invalidDigest
+        };
+
+        Assert.Throws<InvalidDescriptorException>(() => descriptor.Validate());
+    }
+
+    // Per OCI image-spec v1.1.1: sha256 encoded MUST match /[a-f0-9]{64}/
+    [Theory]
+    [InlineData("sha256:tooshort")]
+    [InlineData("sha256:44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A")] // uppercase not allowed
+    [InlineData("sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8")] // 63 chars
+    [InlineData("sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8aa")] // 65 chars
+    [InlineData("sha512:tooshort")]
+    [InlineData("sha512:cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3")] // 127 chars
+    public void Descriptor_Validate_InvalidRegisteredDigest_ThrowsInvalidDescriptorException(string invalidDigest)
+    {
+        var descriptor = new Descriptor
+        {
+            MediaType = "application/vnd.oci.image.layer.v1.tar+gzip",
+            Digest = invalidDigest
+        };
+
+        Assert.Throws<InvalidDescriptorException>(() => descriptor.Validate());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Descriptor_TryValidate_EmptyMediaType_ReturnsFalse(string mediaType)
+    {
+        var descriptor = new Descriptor
+        {
+            MediaType = mediaType,
+            Digest = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        };
+
+        var result = descriptor.TryValidate(out var error);
+
+        Assert.False(result);
+        Assert.Equal(Descriptor.ErrMediaTypeEmpty, error);
+    }
+
+    [Fact]
+    public void Descriptor_TryValidate_NegativeSize_ReturnsFalse()
+    {
+        var descriptor = new Descriptor
+        {
+            MediaType = "application/vnd.oci.image.layer.v1.tar+gzip",
+            Digest = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            Size = -1
+        };
+
+        var result = descriptor.TryValidate(out var error);
+
+        Assert.False(result);
+        Assert.Equal(Descriptor.ErrSizeNegative, error);
+    }
+
+    [Theory]
+    [InlineData("invalid")]
+    [InlineData(":44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")]
+    public void Descriptor_TryValidate_InvalidDigestFormat_ErrorContainsDigest(string invalidDigest)
+    {
+        var descriptor = new Descriptor
+        {
+            MediaType = "application/vnd.oci.image.layer.v1.tar+gzip",
+            Digest = invalidDigest
+        };
+
+        var result = descriptor.TryValidate(out var error);
+
+        Assert.False(result);
+        Assert.Contains(invalidDigest, error);
+    }
+
+    [Theory]
+    [InlineData("sha256:tooshort")]
+    [InlineData("sha256:44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A")]
+    [InlineData("sha512:tooshort")]
+    public void Descriptor_TryValidate_InvalidRegisteredDigest_ErrorContainsDigest(string invalidDigest)
+    {
+        var descriptor = new Descriptor
+        {
+            MediaType = "application/vnd.oci.image.layer.v1.tar+gzip",
+            Digest = invalidDigest
+        };
+
+        var result = descriptor.TryValidate(out var error);
+
+        Assert.False(result);
+        Assert.Contains(invalidDigest, error);
+    }
+
+    [Fact]
+    public void Descriptor_TryValidate_EmptyDigest_ReturnsFalse()
+    {
+        var descriptor = new Descriptor
+        {
+            MediaType = "application/vnd.oci.image.layer.v1.tar+gzip",
+            Digest = ""
+        };
+
+        var result = descriptor.TryValidate(out var error);
+
+        Assert.False(result);
+        Assert.NotEmpty(error);
+    }
+
+    // Per OCI spec: unrecognized algorithms SHOULD pass if they match the general grammar
+    [Theory]
+    [InlineData("multihash+base58:QmRZxt2b1FVZPNqd8hsiykDL3TdBDeTSPX9Kv46HmX4Gx8")]
+    [InlineData("sha256+b64u:LCa0a2j_xo_5m0U8HTBBNBNCLXBkg7-g-YpeiGJm564")]
+    public void Descriptor_TryValidate_UnrecognizedAlgorithm_ReturnsTrue(string digest)
+    {
+        var descriptor = new Descriptor
+        {
+            MediaType = "application/vnd.oci.image.layer.v1.tar+gzip",
+            Digest = digest
+        };
+
+        var result = descriptor.TryValidate(out var error);
+
+        Assert.True(result);
+        Assert.Empty(error);
+    }
+
+    [Theory]
+    [InlineData("sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")]
+    [InlineData("sha512:cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e")]
+    public void Descriptor_TryValidate_ValidDigest_ReturnsTrue(string validDigest)
+    {
+        var descriptor = new Descriptor
+        {
+            MediaType = "application/vnd.oci.image.layer.v1.tar+gzip",
+            Digest = validDigest
+        };
+
+        var result = descriptor.TryValidate(out var error);
+
+        Assert.True(result);
+        Assert.Empty(error);
+    }
+
+    [Fact]
+    public void Descriptor_Validate_ValidDescriptor_DoesNotThrow()
+    {
+        var descriptor = new Descriptor
+        {
+            MediaType = "application/vnd.oci.image.layer.v1.tar+gzip",
+            Digest = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            Size = 1024
+        };
+
+        descriptor.Validate(); // should not throw
     }
 }

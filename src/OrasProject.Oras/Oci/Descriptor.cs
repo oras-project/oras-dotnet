@@ -14,15 +14,20 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using OrasProject.Oras.Exceptions;
 
 namespace OrasProject.Oras.Oci;
 
 /// <summary>
 /// Descriptor describes a content addressable blob.
-/// Specification: https://github.com/opencontainers/image-spec/blob/v1.1.0/descriptor.md
+/// Specification: https://github.com/opencontainers/image-spec/blob/v1.1.1/descriptor.md
 /// </summary>
 public class Descriptor
 {
+    // Validation error constants for programmatic consumption.
+    internal const string ErrMediaTypeEmpty = "Invalid descriptor. The 'mediaType' property must not be empty.";
+    internal const string ErrSizeNegative = "Invalid descriptor. The 'size' property must be non-negative.";
+
     [JsonPropertyName("mediaType")]
     public required string MediaType { get; set; }
 
@@ -75,7 +80,47 @@ public class Descriptor
 
     internal static bool IsNullOrInvalid(Descriptor? descriptor)
     {
-        return descriptor == null || string.IsNullOrWhiteSpace(descriptor.Digest) || string.IsNullOrWhiteSpace(descriptor.MediaType);
+        return descriptor == null || string.IsNullOrWhiteSpace(descriptor.Digest) || string.IsNullOrWhiteSpace(descriptor.MediaType) || descriptor.Size < 0;
+    }
+
+    /// <summary>
+    /// Validates the descriptor per OCI image-spec v1.1.1 requirements.
+    /// Checks mediaType (non-empty), size (non-negative), and digest format.
+    /// </summary>
+    /// <param name="error">When this method returns false, contains the validation error message.</param>
+    /// <returns>true if the descriptor is valid; otherwise, false.</returns>
+    public bool TryValidate(out string error)
+    {
+        if (string.IsNullOrWhiteSpace(MediaType))
+        {
+            error = ErrMediaTypeEmpty;
+            return false;
+        }
+
+        if (Size < 0)
+        {
+            error = ErrSizeNegative;
+            return false;
+        }
+
+        return Content.Digest.TryValidate(Digest, out error);
+    }
+
+    /// <summary>
+    /// Validates the descriptor per OCI image-spec v1.1.1 requirements.
+    /// Checks mediaType (non-empty), size (non-negative), and digest format.
+    /// </summary>
+    /// <remarks>
+    /// In performance-sensitive code paths, prefer <see cref="TryValidate"/> to avoid
+    /// the cost of exception allocation and stack unwinding on invalid input.
+    /// </remarks>
+    /// <exception cref="InvalidDescriptorException">Thrown when validation fails.</exception>
+    public void Validate()
+    {
+        if (!TryValidate(out var error))
+        {
+            throw new InvalidDescriptorException(error);
+        }
     }
 
     /// <summary>
