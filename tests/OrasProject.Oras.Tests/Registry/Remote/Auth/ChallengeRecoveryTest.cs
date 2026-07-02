@@ -556,4 +556,78 @@ public class ChallengeRecoveryTest
         VerifyColdProbe(mockHandler, Times.Never());
         VerifyTokenFetch(mockHandler, Times.Never());
     }
+
+    [Fact]
+    public async Task SendAsync_ChallengeRecovery_AnonymousColdProbeRedirect_ReturnsRedirect()
+    {
+        // Arrange: a stale token provokes a no-challenge 401, but the resource is served anonymously via
+        // a redirect (e.g. a blob-location 307). The redirect must be returned to the caller — callers
+        // like GetBlobLocationAsync (allowAutoRedirect:false) treat 3xx as the successful outcome.
+        var host = NewHost();
+
+        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (IsTokenEndpoint(req)) return TokenResponse(req);
+            var token = req.Headers.Authorization?.Parameter;
+            if (token == _staleToken) return Unauthorized(req, realm: null);
+            var redirect = new HttpResponseMessage(HttpStatusCode.TemporaryRedirect) { RequestMessage = req };
+            redirect.Headers.Location = new Uri($"https://cdn.example.com{_requestPath}");
+            return redirect; // cold probe (no auth) → 307 with a location
+        }
+
+        var mockHandler = CustomHandler(Handler);
+        var client = new Client(new HttpClient(mockHandler.Object))
+        {
+            ChallengeRecovery = ChallengeRecoveries.ColdProbe
+        };
+        SeedStaleToken(client, host);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert: the 307 (not the original 401) is returned; the probe fired once; no token fetch.
+        Assert.Equal(HttpStatusCode.TemporaryRedirect, response.StatusCode);
+        VerifyStaleTokenSent(mockHandler);
+        VerifyColdProbe(mockHandler, Times.Once());
+        VerifyTokenFetch(mockHandler, Times.Never());
+    }
+
+    [Fact]
+    public async Task SendAsync_ChallengeRecovery_RecoveredTokenForbidden_DoesNotBecomeSticky()
+    {
+        // Arrange: recovery re-derives a token that the registry then rejects with 403 (not a success).
+        // The stale scope key must NOT be refreshed with that token, so a second request re-enters
+        // recovery rather than silently attaching a non-working token.
+        var host = NewHost();
+        var coldRealm = $"https://{host}/token";
+
+        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (IsTokenEndpoint(req)) return TokenResponse(req);
+            var token = req.Headers.Authorization?.Parameter;
+            if (token == _freshToken) return new HttpResponseMessage(HttpStatusCode.Forbidden) { RequestMessage = req };
+            if (token == _staleToken) return Unauthorized(req, realm: null);
+            return Unauthorized(req, coldRealm); // cold probe → usable challenge
+        }
+
+        var mockHandler = CustomHandler(Handler);
+        var client = new Client(new HttpClient(mockHandler.Object))
+        {
+            ChallengeRecovery = ChallengeRecoveries.ColdProbe
+        };
+        SeedStaleToken(client, host);
+
+        // Act: two requests.
+        using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+        var response1 = await client.SendAsync(request1, cancellationToken: CancellationToken.None);
+        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+        var response2 = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
+
+        // Assert: both get 403, and recovery ran on BOTH (cold probe twice) — the 403 token was never
+        // made sticky under the stale scope key.
+        Assert.Equal(HttpStatusCode.Forbidden, response1.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response2.StatusCode);
+        VerifyColdProbe(mockHandler, Times.Exactly(2));
+    }
 }

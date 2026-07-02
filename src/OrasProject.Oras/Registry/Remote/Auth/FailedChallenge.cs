@@ -12,9 +12,9 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -32,14 +32,14 @@ public sealed class FailedChallenge
 
     internal FailedChallenge(
         HttpStatusCode statusCode,
-        HttpResponseHeaders responseHeaders,
+        IReadOnlyList<string> wwwAuthenticateChallenges,
         string host,
         bool attachedCachedToken,
         bool canReplay,
         Func<CancellationToken, Task<HttpResponseMessage>> probe)
     {
         StatusCode = statusCode;
-        ResponseHeaders = responseHeaders;
+        WwwAuthenticateChallenges = wwwAuthenticateChallenges;
         Host = host;
         AttachedCachedToken = attachedCachedToken;
         CanReplay = canReplay;
@@ -50,10 +50,10 @@ public sealed class FailedChallenge
     public HttpStatusCode StatusCode { get; }
 
     /// <summary>
-    /// The response headers of the rejected 401, including whatever (unusable) <c>WWW-Authenticate</c>
-    /// it carried. Provided for inspection only.
+    /// An immutable snapshot of the rejected 401's <c>WWW-Authenticate</c> challenge value(s) — empty
+    /// when the registry sent none. Provided for inspection; mutating it cannot affect the engine.
     /// </summary>
-    public HttpResponseHeaders ResponseHeaders { get; }
+    public IReadOnlyList<string> WwwAuthenticateChallenges { get; }
 
     /// <summary>The registry authority (host, with port when non-default) that issued the challenge.</summary>
     public string Host { get; }
