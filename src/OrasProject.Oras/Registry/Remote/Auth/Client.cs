@@ -725,7 +725,13 @@ public class Client : IClient
         try
         {
             resolution = await ResolveStandardChallengeAsync(
-                originalRequest, response1, host, partitionId, attemptedKey, allowAutoRedirect, cancellationToken)
+                originalRequest: originalRequest,
+                unauthorizedResponse: response1,
+                host: host,
+                partitionId: partitionId,
+                attemptedKey: attemptedKey,
+                allowAutoRedirect: allowAutoRedirect,
+                cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
         catch
@@ -749,7 +755,14 @@ public class Client : IClient
             try
             {
                 recovered = await InvokeChallengeRecoveryAsync(
-                    originalRequest, response1, host, partitionId, attemptedKey, attachedCachedToken, allowAutoRedirect, cancellationToken)
+                    originalRequest: originalRequest,
+                    unauthorizedResponse: response1,
+                    host: host,
+                    partitionId: partitionId,
+                    attemptedKey: attemptedKey,
+                    attachedCachedToken: attachedCachedToken,
+                    allowAutoRedirect: allowAutoRedirect,
+                    cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
             catch
@@ -766,7 +779,10 @@ public class Client : IClient
         }
 
         // No recovery configured, or recovery gave up: preserve the original behavior for this 401.
-        return HandleUnusableChallenge(response1, resolution, host);
+        return HandleUnusableChallenge(
+            unauthorizedResponse: response1,
+            resolution: resolution,
+            host: host);
     }
 
     /// <summary>
@@ -853,7 +869,14 @@ public class Client : IClient
                         if (response2.StatusCode != HttpStatusCode.Unauthorized)
                         {
                             RefreshAttemptedScopeKeyIfNeeded(
-                                refreshAttemptedScopeKey, response2.StatusCode, host, schemeFromChallenge, attemptedKey, newKey, cachedToken, partitionId);
+                                refresh: refreshAttemptedScopeKey,
+                                resolvedStatus: response2.StatusCode,
+                                host: host,
+                                scheme: schemeFromChallenge,
+                                attemptedKey: attemptedKey,
+                                newKey: newKey,
+                                token: cachedToken,
+                                partitionId: partitionId);
                             return StandardAuthResult.Resolved(response2);
                         }
                         response2.Dispose();
@@ -898,7 +921,14 @@ public class Client : IClient
                     requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
                     var bearerResponse = await SendRequestAsync(requestAttempt3, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
                     RefreshAttemptedScopeKeyIfNeeded(
-                        refreshAttemptedScopeKey, bearerResponse.StatusCode, host, schemeFromChallenge, attemptedKey, newKey, bearerAuthToken, partitionId);
+                        refresh: refreshAttemptedScopeKey,
+                        resolvedStatus: bearerResponse.StatusCode,
+                        host: host,
+                        scheme: schemeFromChallenge,
+                        attemptedKey: attemptedKey,
+                        newKey: newKey,
+                        token: bearerAuthToken,
+                        partitionId: partitionId);
                     return StandardAuthResult.Resolved(bearerResponse);
                 }
             default:
@@ -926,12 +956,15 @@ public class Client : IClient
         CancellationToken cancellationToken)
     {
         var context = new FailedChallenge(
-            unauthorizedResponse.StatusCode,
-            unauthorizedResponse.Headers.WwwAuthenticate.Select(h => h.ToString()).ToArray(),
-            host,
-            attachedCachedToken,
+            statusCode: unauthorizedResponse.StatusCode,
+            wwwAuthenticateChallenges: unauthorizedResponse.Headers.WwwAuthenticate.Select(h => h.ToString()).ToArray(),
+            host: host,
+            attachedCachedToken: attachedCachedToken,
             canReplay: CanReplayWithoutAuthorization(originalRequest),
-            probe: ct => ProbeWithoutAuthorizationAsync(originalRequest, allowAutoRedirect, ct));
+            probe: ct => ProbeWithoutAuthorizationAsync(
+                originalRequest: originalRequest,
+                allowAutoRedirect: allowAutoRedirect,
+                cancellationToken: ct));
 
         var recovered = await ChallengeRecovery!(context, cancellationToken).ConfigureAwait(false);
         if (recovered == null)
@@ -947,8 +980,14 @@ public class Client : IClient
             try
             {
                 retry = await ResolveStandardChallengeAsync(
-                    originalRequest, recovered, host, partitionId, attemptedKey, allowAutoRedirect,
-                    cancellationToken, refreshAttemptedScopeKey: true)
+                    originalRequest: originalRequest,
+                    unauthorizedResponse: recovered,
+                    host: host,
+                    partitionId: partitionId,
+                    attemptedKey: attemptedKey,
+                    allowAutoRedirect: allowAutoRedirect,
+                    cancellationToken: cancellationToken,
+                    refreshAttemptedScopeKey: true)
                     .ConfigureAwait(false);
             }
             catch
