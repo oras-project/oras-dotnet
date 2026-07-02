@@ -233,19 +233,28 @@ public class ChallengeRecoveryTest
         VerifyColdProbe(mockHandler, Times.Never());
     }
 
-    [Fact]
-    public async Task SendAsync_ChallengeRecovery_AnonymousColdProbe_ReturnsResponseWithoutTokenFetch()
+    [Theory]
+    [InlineData(HttpStatusCode.OK, HttpStatusCode.OK)]                               // anonymous success → returned
+    [InlineData(HttpStatusCode.Found, HttpStatusCode.Found)]                         // 302 redirect → returned
+    [InlineData(HttpStatusCode.TemporaryRedirect, HttpStatusCode.TemporaryRedirect)] // 307 (blob location) → returned
+    [InlineData(HttpStatusCode.Forbidden, HttpStatusCode.Unauthorized)]              // 403 → give up (original 401)
+    [InlineData(HttpStatusCode.NotFound, HttpStatusCode.Unauthorized)]               // 404 → give up (original 401)
+    [InlineData(HttpStatusCode.InternalServerError, HttpStatusCode.Unauthorized)]    // 5xx → give up (original 401)
+    public async Task SendAsync_ChallengeRecovery_ColdProbeStatus_DeterminesOutcome(
+        HttpStatusCode coldProbeStatus, HttpStatusCode expectedStatus)
     {
-        // Arrange: a stale token provokes a no-challenge 401, but the resource is actually served
-        // anonymously — the cold probe returns 200 directly, so no token is fetched.
+        // Arrange: a stale token provokes a no-challenge 401; the credential-free cold probe comes back
+        // with `coldProbeStatus`. A 2xx success or 3xx redirect is a genuine recovery and is returned
+        // as-is (e.g. an anonymous 200, or a blob-location 307 for an allowAutoRedirect:false caller);
+        // any other status is discarded so the original 401 is surfaced rather than masked. The probe
+        // never yields a fresh challenge, so no token is fetched.
         var host = NewHost();
 
         HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
         {
             if (IsTokenEndpoint(req)) return TokenResponse(req);
-            var token = req.Headers.Authorization?.Parameter;
-            if (token == _staleToken) return Unauthorized(req, realm: null);
-            return Ok(req); // cold probe (no auth) → anonymous 200
+            if (req.Headers.Authorization?.Parameter == _staleToken) return Unauthorized(req, realm: null);
+            return new HttpResponseMessage(coldProbeStatus) { RequestMessage = req }; // cold probe (no auth)
         }
 
         var mockHandler = CustomHandler(Handler);
@@ -259,8 +268,8 @@ public class ChallengeRecoveryTest
         // Act
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
-        // Assert: the anonymous 200 is returned, and no token endpoint was contacted.
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        // Assert
+        Assert.Equal(expectedStatus, response.StatusCode);
         VerifyStaleTokenSent(mockHandler);
         VerifyColdProbe(mockHandler, Times.Once());
         VerifyTokenFetch(mockHandler, Times.Never());
@@ -361,12 +370,15 @@ public class ChallengeRecoveryTest
         VerifyTokenFetch(mockHandler, Times.Never());
     }
 
-    [Fact]
-    public async Task SendAsync_ChallengeRecovery_AfterRecovery_SecondRequestSkipsColdProbe()
+    [Theory]
+    [InlineData(HttpStatusCode.OK, 1)]        // token worked → sticky; the 2nd request skips recovery
+    [InlineData(HttpStatusCode.Forbidden, 2)] // token rejected (403) → not sticky; 2nd request re-probes
+    public async Task SendAsync_ChallengeRecovery_StickyOnlyAfterWorkingToken(
+        HttpStatusCode recoveredTokenStatus, int expectedColdProbes)
     {
-        // Arrange: dhi.io-style stale-token-no-challenge. After the first request recovers, the fresh
-        // token must replace the stale one under the originally attempted scope key, so a second request
-        // succeeds directly without re-attaching the stale token or re-probing.
+        // Arrange: a stale token provokes a no-challenge 401; recovery derives a fresh token that the
+        // registry answers with `recoveredTokenStatus`. The stale scope key is replaced only when that
+        // token actually worked (2xx/3xx), so a follow-up request re-enters recovery iff it didn't.
         var host = NewHost();
         var coldRealm = $"https://{host}/token";
 
@@ -374,9 +386,9 @@ public class ChallengeRecoveryTest
         {
             if (IsTokenEndpoint(req)) return TokenResponse(req);
             var token = req.Headers.Authorization?.Parameter;
-            if (token == _freshToken) return Ok(req);
+            if (token == _freshToken) return new HttpResponseMessage(recoveredTokenStatus) { RequestMessage = req };
             if (token == _staleToken) return Unauthorized(req, realm: null);
-            return Unauthorized(req, coldRealm);
+            return Unauthorized(req, coldRealm); // cold probe → usable challenge
         }
 
         var mockHandler = CustomHandler(Handler);
@@ -386,18 +398,17 @@ public class ChallengeRecoveryTest
         };
         SeedStaleToken(client, host);
 
-        // Act: first request recovers; second request reuses the refreshed cache.
+        // Act: two identical requests.
         using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
         var response1 = await client.SendAsync(request1, cancellationToken: CancellationToken.None);
         using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
         var response2 = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
 
-        // Assert: both succeed; the stale token was sent only once (first attempt) and the cold probe
-        // fired only once — the second request used the now-cached fresh token directly.
-        Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
-        VerifyStaleTokenSent(mockHandler); // Times.Once across both requests
-        VerifyColdProbe(mockHandler, Times.Once());
+        // Assert: both requests resolve to the same status; recovery cold-probed once (sticky) or on
+        // both requests (not sticky), per whether the recovered token worked.
+        Assert.Equal(recoveredTokenStatus, response1.StatusCode);
+        Assert.Equal(recoveredTokenStatus, response2.StatusCode);
+        VerifyColdProbe(mockHandler, Times.Exactly(expectedColdProbes));
     }
 
     [Fact]
@@ -493,39 +504,6 @@ public class ChallengeRecoveryTest
     }
 
     [Fact]
-    public async Task SendAsync_ChallengeRecovery_NonSuccessColdProbe_ReturnsOriginal401()
-    {
-        // Arrange: stale-token no-challenge 401; the cold probe yields a non-401, non-success response
-        // (404). That is not a recovery — the original 401 must be surfaced, not the 404.
-        var host = NewHost();
-
-        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
-        {
-            if (IsTokenEndpoint(req)) return TokenResponse(req);
-            var token = req.Headers.Authorization?.Parameter;
-            if (token == _staleToken) return Unauthorized(req, realm: null);
-            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req }; // cold → 404
-        }
-
-        var mockHandler = CustomHandler(Handler);
-        var client = new Client(new HttpClient(mockHandler.Object))
-        {
-            ChallengeRecovery = ChallengeRecoveries.ColdProbe
-        };
-        SeedStaleToken(client, host);
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
-
-        // Act
-        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
-
-        // Assert: the original 401 (not the cold 404) is returned; the probe fired once; no token fetch.
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        VerifyStaleTokenSent(mockHandler);
-        VerifyColdProbe(mockHandler, Times.Once());
-        VerifyTokenFetch(mockHandler, Times.Never());
-    }
-
-    [Fact]
     public async Task SendAsync_ChallengeRecovery_StaleBasicCredentials_DoesNotRecover()
     {
         // Arrange: a cached Basic credential provokes a no-challenge 401. Recovery must NOT fire — a
@@ -555,80 +533,6 @@ public class ChallengeRecoveryTest
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         VerifyColdProbe(mockHandler, Times.Never());
         VerifyTokenFetch(mockHandler, Times.Never());
-    }
-
-    [Fact]
-    public async Task SendAsync_ChallengeRecovery_AnonymousColdProbeRedirect_ReturnsRedirect()
-    {
-        // Arrange: a stale token provokes a no-challenge 401, but the resource is served anonymously via
-        // a redirect (e.g. a blob-location 307). The redirect must be returned to the caller — callers
-        // like GetBlobLocationAsync (allowAutoRedirect:false) treat 3xx as the successful outcome.
-        var host = NewHost();
-
-        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
-        {
-            if (IsTokenEndpoint(req)) return TokenResponse(req);
-            var token = req.Headers.Authorization?.Parameter;
-            if (token == _staleToken) return Unauthorized(req, realm: null);
-            var redirect = new HttpResponseMessage(HttpStatusCode.TemporaryRedirect) { RequestMessage = req };
-            redirect.Headers.Location = new Uri($"https://cdn.example.com{_requestPath}");
-            return redirect; // cold probe (no auth) → 307 with a location
-        }
-
-        var mockHandler = CustomHandler(Handler);
-        var client = new Client(new HttpClient(mockHandler.Object))
-        {
-            ChallengeRecovery = ChallengeRecoveries.ColdProbe
-        };
-        SeedStaleToken(client, host);
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
-
-        // Act
-        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
-
-        // Assert: the 307 (not the original 401) is returned; the probe fired once; no token fetch.
-        Assert.Equal(HttpStatusCode.TemporaryRedirect, response.StatusCode);
-        VerifyStaleTokenSent(mockHandler);
-        VerifyColdProbe(mockHandler, Times.Once());
-        VerifyTokenFetch(mockHandler, Times.Never());
-    }
-
-    [Fact]
-    public async Task SendAsync_ChallengeRecovery_RecoveredTokenForbidden_DoesNotBecomeSticky()
-    {
-        // Arrange: recovery re-derives a token that the registry then rejects with 403 (not a success).
-        // The stale scope key must NOT be refreshed with that token, so a second request re-enters
-        // recovery rather than silently attaching a non-working token.
-        var host = NewHost();
-        var coldRealm = $"https://{host}/token";
-
-        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
-        {
-            if (IsTokenEndpoint(req)) return TokenResponse(req);
-            var token = req.Headers.Authorization?.Parameter;
-            if (token == _freshToken) return new HttpResponseMessage(HttpStatusCode.Forbidden) { RequestMessage = req };
-            if (token == _staleToken) return Unauthorized(req, realm: null);
-            return Unauthorized(req, coldRealm); // cold probe → usable challenge
-        }
-
-        var mockHandler = CustomHandler(Handler);
-        var client = new Client(new HttpClient(mockHandler.Object))
-        {
-            ChallengeRecovery = ChallengeRecoveries.ColdProbe
-        };
-        SeedStaleToken(client, host);
-
-        // Act: two requests.
-        using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
-        var response1 = await client.SendAsync(request1, cancellationToken: CancellationToken.None);
-        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
-        var response2 = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
-
-        // Assert: both get 403, and recovery ran on BOTH (cold probe twice) — the 403 token was never
-        // made sticky under the stale scope key.
-        Assert.Equal(HttpStatusCode.Forbidden, response1.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, response2.StatusCode);
-        VerifyColdProbe(mockHandler, Times.Exactly(2));
     }
 
     [Fact]
