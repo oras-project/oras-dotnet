@@ -34,8 +34,8 @@ public class ChallengeRecoveryTest
 {
     private const string _staleToken = "stale_bearer_token";
     private const string _freshToken = "fresh_access_token";
-    private const string _requestPath = "/v2/redis/manifests/8.6.4";
-    private const string _scope = "repository:redis:pull";
+    private const string _requestPath = "/v2/app/manifests/v1";
+    private const string _scope = "repository:app:pull";
 
     // The default Client cache is a process-wide shared MemoryCache. Use a unique host per test so
     // cache entries never collide across tests running in parallel.
@@ -107,7 +107,7 @@ public class ChallengeRecoveryTest
     [Fact]
     public async Task SendAsync_ChallengeRecovery_NoChallengeOnStaleToken_ColdProbeRecovers()
     {
-        // Arrange: dhi.io-style — a stale cached token provokes a 401 with NO WWW-Authenticate
+        // Arrange: a stale cached token provokes a 401 with NO WWW-Authenticate
         // challenge, but a credential-free request to the same URL yields a usable Bearer challenge.
         var host = NewHost();
         var coldRealm = $"https://{host}/token";
@@ -142,7 +142,7 @@ public class ChallengeRecoveryTest
     [Fact]
     public async Task SendAsync_NoChallengeOnStaleToken_WithoutRecovery_ReturnsOriginal401()
     {
-        // Arrange: identical to the dhi case, but recovery is NOT configured (default).
+        // Arrange: identical to the no-challenge case, but recovery is NOT configured (default).
         var host = NewHost();
 
         HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
@@ -172,10 +172,10 @@ public class ChallengeRecoveryTest
     [Fact]
     public async Task SendAsync_ChallengeRecovery_DeniedRealmOnStaleToken_ColdProbeRecovers()
     {
-        // Arrange: nvcr.io-style — a stale cached token provokes a 401 whose realm points at a foreign
+        // Arrange: a stale cached token provokes a 401 whose realm points at a foreign
         // host (rejected by the realm validator), but a cold request yields a same-host (allowed) realm.
         var host = NewHost();
-        var foreignRealm = "https://authn.nvidia.com/token";
+        var foreignRealm = "https://foreign-auth.example.com/token";
         var coldRealm = $"https://{host}/token";
 
         HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
@@ -208,9 +208,9 @@ public class ChallengeRecoveryTest
     [Fact]
     public async Task SendAsync_DeniedRealmOnStaleToken_WithoutRecovery_Throws()
     {
-        // Arrange: identical to the nvcr case, but recovery is NOT configured (default).
+        // Arrange: identical to the foreign-realm case, but recovery is NOT configured (default).
         var host = NewHost();
-        var foreignRealm = "https://authn.nvidia.com/token";
+        var foreignRealm = "https://foreign-auth.example.com/token";
 
         HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
         {
