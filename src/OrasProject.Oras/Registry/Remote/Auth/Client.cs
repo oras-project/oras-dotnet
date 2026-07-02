@@ -718,6 +718,14 @@ public class Client : IClient
             return response1;
         }
 
+        // Snapshot the 401's details for a possible recovery handler now, while the response is still
+        // alive: the standard flow below disposes the 401 up front for recognized schemes. Only pay the
+        // (tiny) snapshot cost when a recovery handler is actually configured.
+        var failedStatusCode = response1.StatusCode;
+        var failedChallenges = ChallengeRecovery != null
+            ? Array.AsReadOnly(response1.Headers.WwwAuthenticate.Select(header => header.ToString()).ToArray())
+            : null;
+
         // Resolve the 401 through the standard challenge flow. This never throws for a structurally
         // unusable challenge (it reports the reason instead); it DOES throw for credential/token
         // failures, so those propagate and are never eligible for recovery.
@@ -755,8 +763,9 @@ public class Client : IClient
             try
             {
                 recovered = await InvokeChallengeRecoveryAsync(
+                    failedStatusCode: failedStatusCode,
+                    wwwAuthenticateChallenges: failedChallenges!,
                     originalRequest: originalRequest,
-                    unauthorizedResponse: response1,
                     host: host,
                     partitionId: partitionId,
                     attemptedKey: attemptedKey,
@@ -793,15 +802,17 @@ public class Client : IClient
     /// caller can distinguish "the registry withheld a usable challenge" from "authentication failed".
     /// </summary>
     /// <remarks>
-    /// Disposal: on a <em>resolved</em> return this method disposes <paramref name="unauthorizedResponse"/>
-    /// before the credential/token round-trip (matching the client's long-standing eager-dispose
-    /// behavior); on an <em>unusable</em> return it leaves the response undisposed for the caller to
-    /// reuse (recovery) or return/dispose.
+    /// Disposal: for a recognized scheme (Basic or Bearer) this method disposes
+    /// <paramref name="unauthorizedResponse"/> up front, before the credential/token round-trip (matching
+    /// the client's long-standing eager-dispose behavior) — whether the outcome is resolved or a
+    /// structurally-unusable Bearer challenge. Only the <see cref="ChallengeFailureKind.NoUsableScheme"/>
+    /// outcome leaves the response undisposed, so the caller can return it or hand it to the fallback.
     /// </remarks>
     /// <param name="refreshAttemptedScopeKey">
-    /// When <c>true</c> (the recovery re-derive), the resolving token is also cached under
-    /// <paramref name="attemptedKey"/> so a stale token that provoked recovery is replaced and future
-    /// requests under that scope key don't re-enter recovery.
+    /// When <c>true</c> (the recovery re-derive, gated on a stale token having been attached), a token
+    /// obtained from a successful (2xx/3xx) response is also cached under <paramref name="attemptedKey"/>
+    /// so the stale token that provoked recovery is replaced and future requests under that scope key
+    /// don't re-enter recovery.
     /// </param>
     private async Task<StandardAuthResult> ResolveStandardChallengeAsync(
         HttpRequestMessage originalRequest,
@@ -946,8 +957,9 @@ public class Client : IClient
     /// recovered 401 cannot re-enter recovery — bounded to one pass.
     /// </summary>
     private async Task<HttpResponseMessage?> InvokeChallengeRecoveryAsync(
+        HttpStatusCode failedStatusCode,
+        IReadOnlyList<string> wwwAuthenticateChallenges,
         HttpRequestMessage originalRequest,
-        HttpResponseMessage unauthorizedResponse,
         string host,
         string? partitionId,
         string attemptedKey,
@@ -956,8 +968,8 @@ public class Client : IClient
         CancellationToken cancellationToken)
     {
         var context = new FailedChallenge(
-            statusCode: unauthorizedResponse.StatusCode,
-            wwwAuthenticateChallenges: unauthorizedResponse.Headers.WwwAuthenticate.Select(h => h.ToString()).ToArray(),
+            statusCode: failedStatusCode,
+            wwwAuthenticateChallenges: wwwAuthenticateChallenges,
             host: host,
             attachedCachedToken: attachedCachedToken,
             canReplay: CanReplayWithoutAuthorization(originalRequest),
@@ -987,7 +999,7 @@ public class Client : IClient
                     attemptedKey: attemptedKey,
                     allowAutoRedirect: allowAutoRedirect,
                     cancellationToken: cancellationToken,
-                    refreshAttemptedScopeKey: true)
+                    refreshAttemptedScopeKey: attachedCachedToken)
                     .ConfigureAwait(false);
             }
             catch

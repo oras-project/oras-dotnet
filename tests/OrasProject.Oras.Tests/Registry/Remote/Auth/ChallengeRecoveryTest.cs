@@ -630,4 +630,51 @@ public class ChallengeRecoveryTest
         Assert.Equal(HttpStatusCode.Forbidden, response2.StatusCode);
         VerifyColdProbe(mockHandler, Times.Exactly(2));
     }
+
+    [Fact]
+    public async Task SendAsync_ChallengeRecovery_CustomHandlerFirstContact_DoesNotPoisonEmptyScopeKey()
+    {
+        // Arrange: a custom handler recovers a first-contact 401 (no cached token was attached, so the
+        // attempted scope key is empty). The freshly derived token must NOT be cached under that empty
+        // key, or later no-scope requests would silently attach a scoped token. So each such request
+        // re-enters recovery instead. (The built-in ColdProbe never hits this — it self-gates on
+        // AttachedCachedToken — but a custom handler can, so the engine must not refresh the key.)
+        var host = NewHost();
+        var coldRealm = $"https://{host}/token";
+        var recoveryCalls = 0;
+
+        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (IsTokenEndpoint(req)) return TokenResponse(req);
+            var token = req.Headers.Authorization?.Parameter;
+            if (token == _freshToken) return Ok(req);
+            return Unauthorized(req, realm: null); // first (no-auth) attempt → no-challenge 401
+        }
+
+        var mockHandler = CustomHandler(Handler);
+        var client = new Client(new HttpClient(mockHandler.Object))
+        {
+            // A custom handler that synthesizes a usable challenge regardless of the gating signals.
+            ChallengeRecovery = (context, ct) =>
+            {
+                recoveryCalls++;
+                var challenge = new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                challenge.Headers.WwwAuthenticate.Add(new AuthenticationHeaderValue(
+                    "Bearer", $"realm=\"{coldRealm}\",service=\"registry\",scope=\"{_scope}\""));
+                return Task.FromResult<HttpResponseMessage?>(challenge);
+            }
+        };
+        // No stale token seeded → attachedCachedToken is false and the attempted key is empty.
+
+        using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+        var response1 = await client.SendAsync(request1, cancellationToken: CancellationToken.None);
+        using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+        var response2 = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
+
+        // Assert: both succeed, but recovery ran on BOTH requests — the empty scope key was never
+        // poisoned with the scoped token (which would have let the second request skip recovery).
+        Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
+        Assert.Equal(2, recoveryCalls);
+    }
 }

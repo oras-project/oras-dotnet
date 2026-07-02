@@ -50,8 +50,8 @@ public sealed class FailedChallenge
     public HttpStatusCode StatusCode { get; }
 
     /// <summary>
-    /// An immutable snapshot of the rejected 401's <c>WWW-Authenticate</c> challenge value(s) — empty
-    /// when the registry sent none. Provided for inspection; mutating it cannot affect the engine.
+    /// A read-only snapshot of the rejected 401's <c>WWW-Authenticate</c> challenge value(s) — empty
+    /// when the registry sent none. Provided for inspection.
     /// </summary>
     public IReadOnlyList<string> WwwAuthenticateChallenges { get; }
 
