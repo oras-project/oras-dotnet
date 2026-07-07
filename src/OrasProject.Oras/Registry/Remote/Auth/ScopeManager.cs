@@ -46,12 +46,13 @@ public class ScopeManager
     /// </summary>
     /// <param name="registry"></param>
     /// <param name="partitionId">
-    /// Optional scope partition identifier. When provided, scopes are isolated by this ID,
-    /// mirroring the token <see cref="Cache"/> partitioning. A null or empty value (the default)
-    /// selects the default partition.
+    /// Scope partition identifier isolating scopes per ID, mirroring the token
+    /// <see cref="Cache"/> partitioning. A null or empty value selects the default partition.
+    /// Required (pass null explicitly for the default) so a forgotten argument cannot silently
+    /// bleed scope state across partitions.
     /// </param>
     /// <returns></returns>
-    public SortedSet<Scope> GetScopesForHost(string registry, string? partitionId = null)
+    public SortedSet<Scope> GetScopesForHost(string registry, string? partitionId)
     {
         return Scopes.TryGetValue(GetScopeKey(registry, partitionId), out var scopes) ? scopes : new();
     }
@@ -63,11 +64,12 @@ public class ScopeManager
     /// </summary>
     /// <param name="registry"></param>
     /// <param name="partitionId">
-    /// Optional scope partition identifier. A null or empty value (the default) selects the
-    /// default partition.
+    /// Scope partition identifier. A null or empty value selects the default partition. Required
+    /// (pass null explicitly for the default) so a forgotten argument cannot silently bleed scope
+    /// state across partitions.
     /// </param>
     /// <returns></returns>
-    public List<string> GetScopesStringForHost(string registry, string? partitionId = null)
+    public List<string> GetScopesStringForHost(string registry, string? partitionId)
     {
         return Scopes.TryGetValue(GetScopeKey(registry, partitionId), out var scopes)
             ? scopes.Select(scope => scope.ToString()).ToList()
@@ -136,10 +138,11 @@ public class ScopeManager
     /// <param name="registry"></param>
     /// <param name="scope"></param>
     /// <param name="partitionId">
-    /// Optional scope partition identifier. A null or empty value (the default) selects the
-    /// default partition.
+    /// Scope partition identifier. A null or empty value selects the default partition. Required
+    /// (pass null explicitly for the default) so a forgotten argument cannot silently bleed scope
+    /// state across partitions.
     /// </param>
-    public static void SetScopeForRegistry(IClient client, string registry, Scope scope, string? partitionId = null)
+    public static void SetScopeForRegistry(IClient client, string registry, Scope scope, string? partitionId)
     {
         if (client is Client authClient)
         {
@@ -156,10 +159,11 @@ public class ScopeManager
     /// <param name="registry">The registry for which the scope is being set.</param>
     /// <param name="scope">The scope to be set for the registry, including its actions.</param>
     /// <param name="partitionId">
-    /// Optional scope partition identifier. A null or empty value (the default) selects the
-    /// default partition, preserving the original unpartitioned behavior.
+    /// Scope partition identifier. A null or empty value selects the default partition, preserving
+    /// the original unpartitioned behavior. Required (pass null explicitly for the default) so a
+    /// forgotten argument cannot silently bleed scope state across partitions.
     /// </param>
-    public void SetScopeForRegistry(string registry, Scope scope, string? partitionId = null)
+    public void SetScopeForRegistry(string registry, Scope scope, string? partitionId)
     {
         if (scope.Actions.Contains(Scope.ActionWildcard))
         {

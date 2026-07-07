@@ -32,8 +32,8 @@ public class ScopeManagerTest
         );
 
         // Act
-        scopeManager.SetScopeForRegistry("registry1", scope);
-        var result = scopeManager.GetScopesForHost("registry1");
+        scopeManager.SetScopeForRegistry("registry1", scope, null);
+        var result = scopeManager.GetScopesForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -66,11 +66,11 @@ public class ScopeManagerTest
         );
 
         // Act
-        scopeManager.SetScopeForRegistry("registry1", scope1);
-        scopeManager.SetScopeForRegistry("registry1", scope2);
-        scopeManager.SetScopeForRegistry("registry1", scope3);
+        scopeManager.SetScopeForRegistry("registry1", scope1, null);
+        scopeManager.SetScopeForRegistry("registry1", scope2, null);
+        scopeManager.SetScopeForRegistry("registry1", scope3, null);
 
-        var result = scopeManager.GetScopesForHost("registry1");
+        var result = scopeManager.GetScopesForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -107,11 +107,11 @@ public class ScopeManagerTest
         );
 
         // Act
-        scopeManager.SetScopeForRegistry("registry1", scope1);
-        scopeManager.SetScopeForRegistry("registry1", scope2);
-        scopeManager.SetScopeForRegistry("registry1", scope3);
+        scopeManager.SetScopeForRegistry("registry1", scope1, null);
+        scopeManager.SetScopeForRegistry("registry1", scope2, null);
+        scopeManager.SetScopeForRegistry("registry1", scope3, null);
 
-        var results = scopeManager.GetScopesForHost("registry1");
+        var results = scopeManager.GetScopesForHost("registry1", null);
 
         string[] expectedResources = ["registry", "catalog", "repository", "repo1"];
         string[] expectedActions = [Scope.ActionWildcard, Scope.ActionPull];
@@ -137,9 +137,9 @@ public class ScopeManagerTest
         var scope2 = new Scope("repository", "repo1", new() { Scope.ActionPush });
 
         // Act
-        scopeManager.SetScopeForRegistry("registry1", scope1);
-        scopeManager.SetScopeForRegistry("registry1", scope2);
-        var result = scopeManager.GetScopesForHost("registry1");
+        scopeManager.SetScopeForRegistry("registry1", scope1, null);
+        scopeManager.SetScopeForRegistry("registry1", scope2, null);
+        var result = scopeManager.GetScopesForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -171,9 +171,9 @@ public class ScopeManagerTest
         var scope2 = new Scope("repository", "repo1", new() { Scope.ActionWildcard });
 
         // Act
-        scopeManager.SetScopeForRegistry("registry1", scope1);
-        scopeManager.SetScopeForRegistry("registry1", scope2);
-        var result = scopeManager.GetScopesForHost("registry1");
+        scopeManager.SetScopeForRegistry("registry1", scope1, null);
+        scopeManager.SetScopeForRegistry("registry1", scope2, null);
+        var result = scopeManager.GetScopesForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -190,9 +190,9 @@ public class ScopeManagerTest
         var scope = new Scope("repository", "repo1", new() { Scope.ActionPull });
 
         // Act
-        scopeManager.SetScopeForRegistry("registry1", scope);
-        scopeManager.SetScopeForRegistry("registry1", scope);
-        var result = scopeManager.GetScopesForHost("registry1");
+        scopeManager.SetScopeForRegistry("registry1", scope, null);
+        scopeManager.SetScopeForRegistry("registry1", scope, null);
+        var result = scopeManager.GetScopesForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -210,9 +210,9 @@ public class ScopeManagerTest
         var scope2 = new Scope("repository", "repo2", new() { Scope.ActionPush });
 
         // Act
-        scopeManager.SetScopeForRegistry("registry1", scope1);
-        scopeManager.SetScopeForRegistry("registry1", scope2);
-        var result = scopeManager.GetScopesForHost("registry1");
+        scopeManager.SetScopeForRegistry("registry1", scope1, null);
+        scopeManager.SetScopeForRegistry("registry1", scope2, null);
+        var result = scopeManager.GetScopesForHost("registry1", null);
 
         // Assert
         Assert.Equal(2, result.Count);
@@ -233,10 +233,10 @@ public class ScopeManagerTest
             "repo1",
             new() { Scope.ActionPush, Scope.ActionPull }
         );
-        scopeManager.SetScopeForRegistry("registry1", scope);
+        scopeManager.SetScopeForRegistry("registry1", scope, null);
 
         // Act
-        var result = scopeManager.GetScopesStringForHost("registry1");
+        var result = scopeManager.GetScopesStringForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -252,7 +252,7 @@ public class ScopeManagerTest
         var scopeManager = new ScopeManager();
 
         // Act
-        var result = scopeManager.GetScopesStringForHost("empty-registry");
+        var result = scopeManager.GetScopesStringForHost("empty-registry", null);
 
         // Assert
         Assert.NotNull(result);
@@ -267,10 +267,10 @@ public class ScopeManagerTest
         // Arrange
         var scopeManager = new ScopeManager();
         var scope = new Scope("repository", "repo1", new() { Scope.ActionPush, Scope.ActionPull, Scope.ActionDelete });
-        scopeManager.SetScopeForRegistry("registry1", scope);
+        scopeManager.SetScopeForRegistry("registry1", scope, null);
 
         // Act
-        var result = scopeManager.GetScopesStringForHost("registry1");
+        var result = scopeManager.GetScopesStringForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -311,13 +311,13 @@ public class ScopeManagerTest
             "catalog",
             new() { Scope.ActionPush, Scope.ActionPull, Scope.ActionDelete, Scope.ActionWildcard }
         );
-        scopeManager.SetScopeForRegistry("registry1", scope1);
-        scopeManager.SetScopeForRegistry("registry1", scope2);
-        scopeManager.SetScopeForRegistry("registry1", scope3);
-        scopeManager.SetScopeForRegistry("registry1", scope4);
+        scopeManager.SetScopeForRegistry("registry1", scope1, null);
+        scopeManager.SetScopeForRegistry("registry1", scope2, null);
+        scopeManager.SetScopeForRegistry("registry1", scope3, null);
+        scopeManager.SetScopeForRegistry("registry1", scope4, null);
 
         // Act
-        var result = scopeManager.GetScopesStringForHost("registry1");
+        var result = scopeManager.GetScopesStringForHost("registry1", null);
 
         // Assert
         Assert.Equal(4, result.Count);
@@ -340,10 +340,10 @@ public class ScopeManagerTest
             "repo1",
             new() { Scope.ActionWildcard, Scope.ActionPull, Scope.ActionDelete }
         );
-        scopeManager.SetScopeForRegistry("registry1", scope);
+        scopeManager.SetScopeForRegistry("registry1", scope, null);
 
         // Act
-        var result = scopeManager.GetScopesStringForHost("registry1");
+        var result = scopeManager.GetScopesStringForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -359,7 +359,7 @@ public class ScopeManagerTest
         var scopeManager = new ScopeManager();
 
         // Act
-        var result = scopeManager.GetScopesForHost("nonexistent-registry");
+        var result = scopeManager.GetScopesForHost("nonexistent-registry", null);
 
         // Assert
         Assert.NotNull(result);
@@ -380,7 +380,7 @@ public class ScopeManagerTest
 
         // Act
         scopeManager.SetActionsForRepository(reference, null, Scope.Action.Pull);
-        var result = scopeManager.GetScopesForHost("registry1");
+        var result = scopeManager.GetScopesForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -405,7 +405,7 @@ public class ScopeManagerTest
 
         // Act
         scopeManager.SetActionsForRepository(reference, null, Scope.Action.Pull, Scope.Action.Push, Scope.Action.Push);
-        var result = scopeManager.GetScopesForHost("registry1");
+        var result = scopeManager.GetScopesForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -432,7 +432,7 @@ public class ScopeManagerTest
 
         // Act
         scopeManager.SetActionsForRepository(reference, null, Scope.Action.All, Scope.Action.Pull);
-        var result = scopeManager.GetScopesForHost("registry1");
+        var result = scopeManager.GetScopesForHost("registry1", null);
 
         // Assert
         Assert.Single(result);
@@ -468,7 +468,7 @@ public class ScopeManagerTest
         ScopeManager.SetActionsForRepository(client, reference, null, Scope.Action.Pull, Scope.Action.Push);
 
         // Assert
-        var scopes = client.ScopeManager.GetScopesForHost("registry1");
+        var scopes = client.ScopeManager.GetScopesForHost("registry1", null);
         Assert.Single(scopes);
         var scope = scopes.First();
         Assert.Equal("repository", scope.ResourceType);
@@ -489,7 +489,7 @@ public class ScopeManagerTest
         ScopeManager.SetActionsForRepository(client, reference, null, Scope.Action.All);
 
         // Assert
-        var scopes = client.ScopeManager.GetScopesForHost("registry1");
+        var scopes = client.ScopeManager.GetScopesForHost("registry1", null);
         Assert.Single(scopes);
         var scope = scopes.First();
         Assert.Single(scope.Actions);
@@ -505,7 +505,7 @@ public class ScopeManagerTest
 
         // Act / Assert
         var ex = Record.Exception(() =>
-            ScopeManager.SetScopeForRegistry(httpClient, "registry1", scope));
+            ScopeManager.SetScopeForRegistry(httpClient, "registry1", scope, null));
 
         // no exception, no scopes stored anywhere
         Assert.Null(ex);
@@ -519,10 +519,10 @@ public class ScopeManagerTest
         var scope = new Scope("repository", "repo1", new() { Scope.ActionPull, Scope.ActionPush });
 
         // Act
-        ScopeManager.SetScopeForRegistry(client, "registry1", scope);
+        ScopeManager.SetScopeForRegistry(client, "registry1", scope, null);
 
         // Assert
-        var scopes = client.ScopeManager.GetScopesForHost("registry1");
+        var scopes = client.ScopeManager.GetScopesForHost("registry1", null);
         Assert.Single(scopes);
         var result = scopes.First();
         Assert.Equal("repository", result.ResourceType);
@@ -540,11 +540,11 @@ public class ScopeManagerTest
         var s2 = new Scope("repository", "repo1", new() { Scope.ActionPush });
 
         // Act
-        ScopeManager.SetScopeForRegistry(client, "registry1", s1);
-        ScopeManager.SetScopeForRegistry(client, "registry1", s2);
+        ScopeManager.SetScopeForRegistry(client, "registry1", s1, null);
+        ScopeManager.SetScopeForRegistry(client, "registry1", s2, null);
 
         // Assert
-        var scopes = client.ScopeManager.GetScopesForHost("registry1");
+        var scopes = client.ScopeManager.GetScopesForHost("registry1", null);
         Assert.Single(scopes);
         var merged = scopes.First();
         Assert.Contains(Scope.ActionPull, merged.Actions);
@@ -560,11 +560,11 @@ public class ScopeManagerTest
         var s2 = new Scope("repository", "repo1", new() { Scope.ActionWildcard });
 
         // Act
-        ScopeManager.SetScopeForRegistry(client, "registry1", s1);
-        ScopeManager.SetScopeForRegistry(client, "registry1", s2);
+        ScopeManager.SetScopeForRegistry(client, "registry1", s1, null);
+        ScopeManager.SetScopeForRegistry(client, "registry1", s2, null);
 
         // Assert
-        var scopes = client.ScopeManager.GetScopesForHost("registry1");
+        var scopes = client.ScopeManager.GetScopesForHost("registry1", null);
         Assert.Single(scopes);
         var updated = scopes.First();
         Assert.Single(updated.Actions);
@@ -604,11 +604,11 @@ public class ScopeManagerTest
         var namedScope = new Scope("repository", "repo-named", new() { Scope.ActionPull });
 
         // Act: default (no partition) vs a named partition on the same host.
-        scopeManager.SetScopeForRegistry("registry1", defaultScope);
+        scopeManager.SetScopeForRegistry("registry1", defaultScope, null);
         scopeManager.SetScopeForRegistry("registry1", namedScope, "partition-a");
 
         // Assert
-        var defaultScopes = scopeManager.GetScopesForHost("registry1");
+        var defaultScopes = scopeManager.GetScopesForHost("registry1", null);
         Assert.Single(defaultScopes);
         Assert.Contains(defaultScope, defaultScopes);
         Assert.DoesNotContain(namedScope, defaultScopes);
@@ -630,14 +630,11 @@ public class ScopeManagerTest
         scopeManager.SetScopeForRegistry("registry1", scope, null);
 
         // Assert: null and "" both select the default partition (consistent with Cache).
-        var viaNoArg = scopeManager.GetScopesForHost("registry1");
         var viaNull = scopeManager.GetScopesForHost("registry1", null);
         var viaEmpty = scopeManager.GetScopesForHost("registry1", string.Empty);
 
-        Assert.Single(viaNoArg);
         Assert.Single(viaNull);
         Assert.Single(viaEmpty);
-        Assert.Contains(scope, viaNoArg);
         Assert.Contains(scope, viaNull);
         Assert.Contains(scope, viaEmpty);
     }
@@ -665,18 +662,18 @@ public class ScopeManagerTest
     }
 
     [Fact]
-    public void GetScopesStringForHost_DefaultPartition_OmittedPartitionMatchesNull()
+    public void GetScopesStringForHost_NullAndEmptyPartition_SelectSameDefaultPartition()
     {
         // Arrange
         var scopeManager = new ScopeManager();
         var scope = new Scope("repository", "repo1", new() { Scope.ActionPull, Scope.ActionPush });
-        scopeManager.SetScopeForRegistry("registry1", scope);
+        scopeManager.SetScopeForRegistry("registry1", scope, null);
 
-        // Act / Assert: omitting partitionId (defaulting to null) selects the default partition.
-        var omitted = scopeManager.GetScopesStringForHost("registry1");
+        // Act / Assert: null and "" both select the default partition.
         var nullPartition = scopeManager.GetScopesStringForHost("registry1", null);
+        var emptyPartition = scopeManager.GetScopesStringForHost("registry1", string.Empty);
 
-        Assert.Equal(omitted, nullPartition);
+        Assert.Equal(nullPartition, emptyPartition);
         Assert.Single(nullPartition);
         Assert.Equal("repository:repo1:pull,push", nullPartition.First());
     }
@@ -737,7 +734,7 @@ public class ScopeManagerTest
         scopeManager.SetActionsForRepository(reference, null, Scope.Action.Pull, Scope.Action.Push);
 
         // Assert: present in the default partition, absent from a named partition.
-        var defaultScopes = scopeManager.GetScopesForHost("registry1");
+        var defaultScopes = scopeManager.GetScopesForHost("registry1", null);
         Assert.Single(defaultScopes);
         Assert.Contains(Scope.ActionPull, defaultScopes.First().Actions);
         Assert.Contains(Scope.ActionPush, defaultScopes.First().Actions);

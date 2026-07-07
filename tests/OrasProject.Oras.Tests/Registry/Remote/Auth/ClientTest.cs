@@ -902,9 +902,9 @@ public class ClientTest
         var client = new Client(new HttpClient(mockHandler.Object));
         client.Cache.SetCache(host, Challenge.Scheme.Bearer, string.Join(" ", scopes), token);
         Assert.True(Scope.TryParse(scopes[0], out var scope1));
-        client.ScopeManager.SetScopeForRegistry(host, scope1);
+        client.ScopeManager.SetScopeForRegistry(host, scope1, null);
         Assert.True(Scope.TryParse(scopes[1], out var scope2));
-        client.ScopeManager.SetScopeForRegistry(host, scope2);
+        client.ScopeManager.SetScopeForRegistry(host, scope2, null);
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"] = ["newBar"];
         client.CustomHeaders["key1"] = ["value1"];
@@ -1156,7 +1156,7 @@ public class ClientTest
         };
         // Populate scope manager to ensure scopes passed into token request
         Assert.True(Scope.TryParse(scopes[0], out var scope));
-        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.ScopeManager.SetScopeForRegistry(host, scope, null);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
@@ -1204,7 +1204,7 @@ public class ClientTest
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
         Assert.True(Scope.TryParse(scopes[0], out var scope));
-        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.ScopeManager.SetScopeForRegistry(host, scope, null);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
@@ -1605,9 +1605,9 @@ public class ClientTest
         var client = new Client(new HttpClient(handler.Object));
         // Inject scopes for the authority so the client builds the same key
         Assert.True(Scope.TryParse(scopes[0], out var s1));
-        client.ScopeManager.SetScopeForRegistry(authority, s1);
+        client.ScopeManager.SetScopeForRegistry(authority, s1, null);
         Assert.True(Scope.TryParse(scopes[1], out var s2));
-        client.ScopeManager.SetScopeForRegistry(authority, s2);
+        client.ScopeManager.SetScopeForRegistry(authority, s2, null);
 
         // Inject mocked ICache to supply pre-cached token
         var cacheMock = new Mock<ICache>(MockBehavior.Strict);
