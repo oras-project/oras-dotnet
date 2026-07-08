@@ -3649,6 +3649,66 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     }
 
     [Fact]
+    public async Task Repository_ReferrersByApi_NullManifests_ReturnsEmpty()
+    {
+        // Some non-conformant registries return `"manifests": null` instead of `[]`
+        // for a subject with no referrers. FetchReferrersByApi must tolerate this and
+        // yield an empty sequence rather than throwing a NullReferenceException.
+        var nullManifestsIndex = """
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.oci.image.index.v1+json",
+                "manifests": null
+            }
+            """;
+        var indexBytes = Encoding.UTF8.GetBytes(nullManifestsIndex);
+
+        var desc = RandomDescriptor();
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/referrers/{desc.Digest}")
+            {
+                res.Content = new ByteArrayContent(indexBytes);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [desc.Digest]);
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockedHttpHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+
+        // no artifact type specified
+        var returnedReferrers = new List<Descriptor>();
+        await foreach (var referrer in repo.FetchReferrersByApi(desc, cancellationToken))
+        {
+            returnedReferrers.Add(referrer);
+        }
+        Assert.Empty(returnedReferrers);
+
+        // with a client-side artifact type filter, exercising the FilterReferrers path
+        var filteredReferrers = new List<Descriptor>();
+        await foreach (var referrer in repo.FetchReferrersByApi(desc, "doc/example", cancellationToken))
+        {
+            filteredReferrers.Add(referrer);
+        }
+        Assert.Empty(filteredReferrers);
+    }
+
+    [Fact]
     public async Task Repository_ReferrersByApi_SinglePageWithServerSideFilter_Successfully()
     {
         var expectedReferrersList = new List<Descriptor>

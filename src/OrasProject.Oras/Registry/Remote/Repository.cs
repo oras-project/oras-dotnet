@@ -606,7 +606,11 @@ public class Repository : IRepository
             // Set ReferrerState to Supported
             SetReferrersState(true);
 
-            var referrers = referrersIndex.Manifests;
+            // A spec-conformant registry returns an empty `manifests` array when there are
+            // no referrers, but some registries return `null`. Coalesce here so the null
+            // stays out of the model (SDK authors can still set/serialize null) while
+            // enumeration below is safe.
+            var referrers = referrersIndex.Manifests ?? Array.Empty<Descriptor>();
             // If artifactType is specified, apply any filters based on the artifact type
             if (!string.IsNullOrEmpty(artifactType))
             {
@@ -689,7 +693,10 @@ public class Repository : IRepository
             var index = OciJsonSerializer.Deserialize<Index>(indexBytes)
                 ?? throw new JsonException(
                     $"Error deserializing index manifest for referrersTag {referrersTag}");
-            return (result.Descriptor, index.Manifests);
+            // Coalesce a non-conformant `null` manifests value to an empty list so callers
+            // (tag-schema fallback, referrers index update) can enumerate safely, while the
+            // model itself remains free to hold/round-trip null.
+            return (result.Descriptor, index.Manifests ?? ImmutableArray<Descriptor>.Empty);
         }
         catch (NotFoundException)
         {

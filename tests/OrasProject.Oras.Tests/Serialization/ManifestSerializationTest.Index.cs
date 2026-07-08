@@ -132,6 +132,14 @@ public partial class ManifestSerializationTest
         }
         """;
 
+    private const string NullManifestsIndexJson = """
+        {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "manifests": null
+        }
+        """;
+
     [Theory]
     [MemberData(nameof(IndexFieldFixtures))]
     public void Deserialize_Index_PreservesAllFields(
@@ -257,6 +265,32 @@ public partial class ManifestSerializationTest
         var json = Encoding.UTF8.GetString(bytes);
 
         Assert.Contains("\"manifests\":[]", json);
+    }
+
+    [Fact]
+    public void Deserialize_NullManifests_PreservesNull()
+    {
+        // The OCI spec does not forbid a null `manifests` value. Coalescing it on the
+        // model would stop an SDK author from producing/round-tripping null, so
+        // deserialization leaves it null; consumers guard against it instead.
+        var bytes = Encoding.UTF8.GetBytes(NullManifestsIndexJson);
+        var idx = OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
+
+        Assert.Null(idx.Manifests);
+    }
+
+    [Fact]
+    public void Serialize_NullManifests_WritesNullNotEmptyArray()
+    {
+        // Round-trip: a null `manifests` value must serialize back to `null`, never `[]`.
+        var bytes = Encoding.UTF8.GetBytes(NullManifestsIndexJson);
+        var idx = OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
+
+        var serialized = OciJsonSerializer.SerializeToUtf8Bytes(idx);
+        var json = Encoding.UTF8.GetString(serialized);
+
+        Assert.Contains("\"manifests\":null", json);
+        Assert.DoesNotContain("\"manifests\":[]", json);
     }
 
     public static IEnumerable<object[]> IndexFieldFixtures()
