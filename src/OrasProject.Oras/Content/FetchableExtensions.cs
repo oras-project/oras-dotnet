@@ -64,7 +64,7 @@ public static class FetchableExtensions
                         // Note: Subject field only works for Oci Index Manifest
                         descriptors.Add(index.Subject);
                     }
-                    descriptors.AddRange(index.Manifests);
+                    descriptors.AddRange(index.Manifests ?? Array.Empty<Descriptor>());
                     return descriptors;
                 }
         }

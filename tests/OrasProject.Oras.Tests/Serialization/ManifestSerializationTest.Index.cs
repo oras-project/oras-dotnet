@@ -270,9 +270,9 @@ public partial class ManifestSerializationTest
     [Fact]
     public void Deserialize_NullManifests_PreservesNull()
     {
-        // The OCI spec does not forbid a null `manifests` value. Coalescing it on the
-        // model would stop an SDK author from producing/round-tripping null, so
-        // deserialization leaves it null; consumers guard against it instead.
+        // Some registries emit a null `manifests` value. The model preserves it as-is
+        // rather than normalizing to [], so an SDK author can round-trip exactly what
+        // was received; consumers guard against null instead.
         var bytes = Encoding.UTF8.GetBytes(NullManifestsIndexJson);
         var idx = OciJsonSerializer.Deserialize<OciIndex>(bytes)!;
 
