@@ -27,48 +27,87 @@ public class ScopeManager
     private ConcurrentDictionary<string, SortedSet<Scope>> Scopes { get; } = new();
 
     /// <summary>
-    /// GetScopesForHost returns a sorted set of scopes for the given registry if found,
-    /// otherwise, returns empty sorted set.
+    /// GetScopeKey generates the storage key for scope state from the registry host and an
+    /// optional <paramref name="partitionId"/>, mirroring <see cref="Cache"/>'s partitioning
+    /// scheme. Pipe (|) is used as the delimiter since it cannot appear in registry hostnames.
+    /// When <paramref name="partitionId"/> is null or empty, the key is the registry alone,
+    /// preserving the default (unpartitioned) behavior.
+    /// </summary>
+    /// <param name="registry">The registry host.</param>
+    /// <param name="partitionId">Optional scope partition identifier.</param>
+    /// <returns>A composite key isolating scope state per (partitionId, registry).</returns>
+    private static string GetScopeKey(string registry, string? partitionId) =>
+        string.IsNullOrEmpty(partitionId) ? registry : $"{partitionId}|{registry}";
+
+    /// <summary>
+    /// GetScopesForHost returns a sorted set of scopes for the given registry within the scope
+    /// partition identified by <paramref name="partitionId"/> if found, otherwise, returns an
+    /// empty sorted set. Scope state is isolated per (partitionId, registry).
     /// </summary>
     /// <param name="registry"></param>
+    /// <param name="partitionId">
+    /// Scope partition identifier isolating scopes per ID, mirroring the token
+    /// <see cref="Cache"/> partitioning. A null or empty value selects the default partition.
+    /// Required (pass null explicitly for the default) so a forgotten argument cannot silently
+    /// bleed scope state across partitions.
+    /// </param>
     /// <returns></returns>
-    public SortedSet<Scope> GetScopesForHost(string registry)
+    public SortedSet<Scope> GetScopesForHost(string registry, string? partitionId)
     {
-        return Scopes.TryGetValue(registry, out var scopes) ? scopes : new();
+        return Scopes.TryGetValue(GetScopeKey(registry, partitionId), out var scopes) ? scopes : new();
     }
 
     /// <summary>
-    /// GetScopesStringForHost returns a list of scopes string for the given registry if found,
-    /// otherwise, returns empty list.
+    /// GetScopesStringForHost returns a list of scope strings for the given registry within the
+    /// scope partition identified by <paramref name="partitionId"/> if found, otherwise, returns
+    /// empty list. Scope state is isolated per (partitionId, registry).
     /// </summary>
     /// <param name="registry"></param>
+    /// <param name="partitionId">
+    /// Scope partition identifier. A null or empty value selects the default partition. Required
+    /// (pass null explicitly for the default) so a forgotten argument cannot silently bleed scope
+    /// state across partitions.
+    /// </param>
     /// <returns></returns>
-    public List<string> GetScopesStringForHost(string registry)
+    public List<string> GetScopesStringForHost(string registry, string? partitionId)
     {
-        return Scopes.TryGetValue(registry, out var scopes)
+        return Scopes.TryGetValue(GetScopeKey(registry, partitionId), out var scopes)
             ? scopes.Select(scope => scope.ToString()).ToList()
             : new();
     }
 
     /// <summary>
-    /// SetActionsForRepository sets actions for the given repository if the client is auth.Client.
+    /// SetActionsForRepository sets actions for the given repository within the scope partition
+    /// identified by <paramref name="partitionId"/> if the client is auth.Client.
     /// </summary>
     /// <param name="client"></param>
     /// <param name="reference"></param>
+    /// <param name="partitionId">
+    /// Scope partition identifier. A null or empty value selects the default partition.
+    /// </param>
     /// <param name="actions"></param>
-    public static void SetActionsForRepository(IClient client, Reference reference, params Scope.Action[] actions)
+    public static void SetActionsForRepository(
+        IClient client,
+        Reference reference,
+        string? partitionId,
+        params Scope.Action[] actions)
     {
         if (client is Client authClient)
         {
-            authClient.ScopeManager.SetActionsForRepository(reference, actions);
+            authClient.ScopeManager.SetActionsForRepository(reference, partitionId, actions);
         }
     }
 
     /// <summary>
-    /// SetActionsForRepository sets the actions for a repository by creating a scope and associating it with the specified registry.
+    /// SetActionsForRepository sets the actions for a repository by creating a scope and
+    /// associating it with the specified registry within the scope partition identified by
+    /// <paramref name="partitionId"/>.
     /// </summary>
     /// <param name="reference">
     /// The reference object containing the registry and repository information.
+    /// </param>
+    /// <param name="partitionId">
+    /// Scope partition identifier. A null or empty value selects the default partition.
     /// </param>
     /// <param name="actions">
     /// The actions to be associated with the repository scope.
@@ -76,50 +115,84 @@ public class ScopeManager
     /// <exception cref="ArgumentNullException">
     /// Thrown when the registry or repository in the <paramref name="reference"/> is null.
     /// </exception>
-    public void SetActionsForRepository(Reference reference, params Scope.Action[] actions)
+    public void SetActionsForRepository(Reference reference, string? partitionId, params Scope.Action[] actions)
     {
-        var registry = reference.Registry ?? throw new ArgumentNullException(reference.Registry);
-        var repository = reference.Repository ?? throw new ArgumentNullException(reference.Repository);
+        var registry = reference.Registry
+            ?? throw new ArgumentNullException(nameof(reference), "Reference.Registry is null.");
+        var repository = reference.Repository
+            ?? throw new ArgumentNullException(nameof(reference), "Reference.Repository is null.");
 
         var scope = new Scope(
             resourceType: "repository",
             resourceName: repository,
             actions: actions.Select(Scope.ActionToString).ToHashSet(StringComparer.OrdinalIgnoreCase));
 
-        SetScopeForRegistry(registry, scope);
+        SetScopeForRegistry(registry, scope, partitionId);
     }
 
     /// <summary>
-    /// SetScopeForRegistry sets scope for the given registry when the client is auth.Client.
+    /// SetScopeForRegistry sets scope for the given registry within the scope partition
+    /// identified by <paramref name="partitionId"/> when the client is auth.Client.
     /// </summary>
     /// <param name="client"></param>
     /// <param name="registry"></param>
     /// <param name="scope"></param>
-    public static void SetScopeForRegistry(IClient client, string registry, Scope scope)
+    /// <param name="partitionId">
+    /// Scope partition identifier. A null or empty value selects the default partition. Required
+    /// (pass null explicitly for the default) so a forgotten argument cannot silently bleed scope
+    /// state across partitions.
+    /// </param>
+    public static void SetScopeForRegistry(IClient client, string registry, Scope scope, string? partitionId)
     {
         if (client is Client authClient)
         {
-            authClient.ScopeManager.SetScopeForRegistry(registry, scope);
+            authClient.ScopeManager.SetScopeForRegistry(registry, scope, partitionId);
         }
     }
 
     /// <summary>
-    /// SetScopeForRegistry sets the scope for a specific registry. If the scope contains the "All" action, 
-    /// it ensures that only the "All" action is retained. Otherwise, it merges the actions 
-    /// of the provided scope with any existing scope for the registry.
+    /// SetScopeForRegistry sets the scope for a specific registry within the scope partition
+    /// identified by <paramref name="partitionId"/>. If the scope contains the "All" action, it
+    /// ensures that only the "All" action is retained. Otherwise, it merges the actions of the
+    /// provided scope with any existing scope for the (partitionId, registry).
     /// </summary>
     /// <param name="registry">The registry for which the scope is being set.</param>
     /// <param name="scope">The scope to be set for the registry, including its actions.</param>
-    public void SetScopeForRegistry(string registry, Scope scope)
+    /// <param name="partitionId">
+    /// Scope partition identifier. A null or empty value selects the default partition, preserving
+    /// the original unpartitioned behavior. Required (pass null explicitly for the default) so a
+    /// forgotten argument cannot silently bleed scope state across partitions.
+    /// </param>
+    public void SetScopeForRegistry(string registry, Scope scope, string? partitionId)
     {
-        if (scope.Actions.Contains(Scope.ActionWildcard))
-        {
-            scope.Actions.Clear();
-            scope.Actions.Add(Scope.ActionWildcard);
-        }
+        Scopes.AddOrUpdate(GetScopeKey(registry, partitionId),
+            _ => new SortedSet<Scope> { CloneAndNormalizeScope(scope) },
+            (_, existingScopes) =>
+            {
+                var updatedScopes = CloneScopes(existingScopes);
+                Scope.AddOrMergeScope(updatedScopes, CloneAndNormalizeScope(scope));
+                return updatedScopes;
+            });
+    }
 
-        Scopes.AddOrUpdate(registry,
-            new SortedSet<Scope> { scope },
-            (_, existingScopes) => Scope.AddOrMergeScope(existingScopes, scope));
+    private static SortedSet<Scope> CloneScopes(SortedSet<Scope> scopes)
+    {
+        var clonedScopes = new SortedSet<Scope>();
+        foreach (var scope in scopes)
+        {
+            clonedScopes.Add(scope.Clone());
+        }
+        return clonedScopes;
+    }
+
+    private static Scope CloneAndNormalizeScope(Scope scope)
+    {
+        var clonedScope = scope.Clone();
+        if (clonedScope.Actions.Contains(Scope.ActionWildcard))
+        {
+            clonedScope.Actions.Clear();
+            clonedScope.Actions.Add(Scope.ActionWildcard);
+        }
+        return clonedScope;
     }
 }

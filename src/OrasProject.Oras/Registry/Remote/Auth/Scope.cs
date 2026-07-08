@@ -73,6 +73,14 @@ public class Scope : IComparable<Scope>
         Actions = actions;
     }
 
+    internal Scope Clone()
+    {
+        return new Scope(
+            ResourceType,
+            ResourceName,
+            new HashSet<string>(Actions, Actions.Comparer));
+    }
+
     /// <summary>
     /// ToString converts the scope to its string representation in the format:
     /// "ResourceType:ResourceName:Action1,Action2,...".
@@ -97,27 +105,110 @@ public class Scope : IComparable<Scope>
     /// <returns><c>true</c> if the parsing succeeded; otherwise, <c>false</c>.</returns>
     public static bool TryParse(string scopeStr, [NotNullWhen(true)] out Scope? scope)
     {
-        scope = null;
         if (string.IsNullOrWhiteSpace(scopeStr))
         {
+            scope = null;
             return false;
         }
 
-        var parts = scopeStr.Split(':', StringSplitOptions.TrimEntries);
-        if (parts.Length != 3)
+        return TryParse(scopeStr.AsSpan(), out scope);
+    }
+
+    internal static bool TryParse(ReadOnlySpan<char> scopeSpan, [NotNullWhen(true)] out Scope? scope)
+    {
+        scope = null;
+        if (!TryGetScopeParts(
+                scopeSpan,
+                out var resourceType,
+                out var resourceName,
+                out var actionSpan))
         {
             return false;
         }
 
-        var actions = parts[2].Split(',', StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!TryParseActions(actionSpan, out var actions))
+        {
+            return false;
+        }
+
         if (actions.Contains(ActionWildcard))
         {
             actions.Clear();
             actions.Add(ActionWildcard);
         }
 
-        scope = new Scope(parts[0], parts[1], actions);
+        scope = new Scope(
+            resourceType.ToString(),
+            resourceName.ToString(),
+            actions);
         return true;
+    }
+
+    private static bool TryGetScopeParts(
+        ReadOnlySpan<char> scopeSpan,
+        out ReadOnlySpan<char> resourceType,
+        out ReadOnlySpan<char> resourceName,
+        out ReadOnlySpan<char> actions)
+    {
+        resourceType = [];
+        resourceName = [];
+        actions = [];
+
+        scopeSpan = scopeSpan.Trim();
+        if (scopeSpan.IsEmpty)
+        {
+            return false;
+        }
+
+        var firstSeparator = scopeSpan.IndexOf(':');
+        if (firstSeparator < 0)
+        {
+            return false;
+        }
+
+        var remainingScope = scopeSpan[(firstSeparator + 1)..];
+        var secondSeparator = remainingScope.IndexOf(':');
+        if (secondSeparator < 0)
+        {
+            return false;
+        }
+
+        resourceType = scopeSpan[..firstSeparator].Trim();
+        resourceName = remainingScope[..secondSeparator].Trim();
+        actions = remainingScope[(secondSeparator + 1)..];
+        return !resourceType.IsEmpty
+            && !resourceName.IsEmpty
+            && !actions.Trim().IsEmpty
+            && !actions.Contains(':');
+    }
+
+    private static bool TryParseActions(
+        ReadOnlySpan<char> actionSpan,
+        [NotNullWhen(true)] out HashSet<string>? actions)
+    {
+        actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        while (true)
+        {
+            var separatorIndex = actionSpan.IndexOf(',');
+            var action = separatorIndex < 0
+                ? actionSpan
+                : actionSpan[..separatorIndex];
+            action = action.Trim();
+            if (action.IsEmpty)
+            {
+                actions = null;
+                return false;
+            }
+
+            actions.Add(action.ToString());
+
+            if (separatorIndex < 0)
+            {
+                return true;
+            }
+
+            actionSpan = actionSpan[(separatorIndex + 1)..];
+        }
     }
 
     /// <summary>
@@ -165,17 +256,8 @@ public class Scope : IComparable<Scope>
     {
         if (scopes.TryGetValue(newScope, out var existingScope))
         {
-            if (existingScope.Actions.Contains(ActionWildcard) || newScope.Actions.Contains(ActionWildcard))
-            {
-                // If either scope has the wildcard '*', clear and add '*'
-                existingScope.Actions.Clear();
-                existingScope.Actions.Add(ActionWildcard);
-            }
-            else
-            {
-                // Otherwise, union the actions
-                existingScope.Actions.UnionWith(newScope.Actions);
-            }
+            // Mutates the matched scope in place.
+            MergeActions(existingScope, newScope);
         }
         else
         {
@@ -183,6 +265,45 @@ public class Scope : IComparable<Scope>
             scopes.Add(newScope);
         }
         return scopes;
+    }
+
+    /// <summary>
+    /// AddOrMergeScopeCopyOnWrite merges <paramref name="newScope"/> into <paramref name="scopes"/> without
+    /// mutating any existing <see cref="Scope"/> instance: a matched scope is replaced with a merged clone. This
+    /// lets callers merge into a shallow set copy whose <see cref="Scope"/> instances are shared with another set.
+    /// </summary>
+    /// <param name="scopes">A sorted set of existing scopes.</param>
+    /// <param name="newScope">The new scope to add or merge.</param>
+    internal static void AddOrMergeScopeCopyOnWrite(SortedSet<Scope> scopes, Scope newScope)
+    {
+        if (scopes.TryGetValue(newScope, out var existingScope))
+        {
+            // Copy-on-write: replace the shared existing scope with a merged clone
+            // rather than mutating it in place.
+            scopes.Remove(existingScope);
+            var mergedScope = existingScope.Clone();
+            MergeActions(mergedScope, newScope);
+            scopes.Add(mergedScope);
+        }
+        else
+        {
+            scopes.Add(newScope);
+        }
+    }
+
+    private static void MergeActions(Scope target, Scope source)
+    {
+        if (target.Actions.Contains(ActionWildcard) || source.Actions.Contains(ActionWildcard))
+        {
+            // If either scope has the wildcard '*', clear and add '*'
+            target.Actions.Clear();
+            target.Actions.Add(ActionWildcard);
+        }
+        else
+        {
+            // Otherwise, union the actions
+            target.Actions.UnionWith(source.Actions);
+        }
     }
 
     /// <summary>

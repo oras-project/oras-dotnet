@@ -112,6 +112,26 @@ public class ScopeTest
         Assert.Null(scope);
     }
 
+    [Theory]
+    [InlineData(":my-repo:pull")]
+    [InlineData("   :my-repo:pull")]
+    [InlineData("repository::pull")]
+    [InlineData("repository:   :pull")]
+    [InlineData("repository:my-repo:")]
+    [InlineData("repository:my-repo:   ")]
+    [InlineData("repository:my-repo:pull,")]
+    [InlineData("repository:my-repo:,pull")]
+    [InlineData("repository:my-repo:pull,,push")]
+    public void TryParse_ScopeStringWithEmptyComponents_ReturnsFalse(string scopeStr)
+    {
+        // Act
+        bool result = Scope.TryParse(scopeStr, out var scope);
+
+        // Assert
+        Assert.False(result);
+        Assert.Null(scope);
+    }
+
     [Fact]
     public void EqualsInSortedSet_DifferentScopeInstancesWithSameValues_ReturnsTrue()
     {
@@ -226,6 +246,45 @@ public class ScopeTest
         Assert.Equal(2, scopes.Count);
         Assert.Contains(scopes, s => s.ToString() == "repository:my-repo:*");
         Assert.Contains(scopes, s => s.ToString() == "registry:catalog:*");
+    }
+
+    [Fact]
+    public void AddOrMergeScopeCopyOnWrite_MergeMatchingScope_DoesNotMutateSharedScope()
+    {
+        // Arrange: a "stored" set and a shallow copy that shares the same Scope instance.
+        var storedScope = new Scope("repository", "my-repo", new HashSet<string> { Scope.ActionPull });
+        var storedScopes = new SortedSet<Scope> { storedScope };
+        var workingScopes = new SortedSet<Scope>(storedScopes);
+        var challengeScope = new Scope("repository", "my-repo", new HashSet<string> { Scope.ActionPush });
+
+        // Act
+        Scope.AddOrMergeScopeCopyOnWrite(workingScopes, challengeScope);
+
+        // Assert: the working copy is merged...
+        Assert.Single(workingScopes);
+        Assert.Equal("repository:my-repo:pull,push", workingScopes.First().ToString());
+        // ...but the shared/stored scope instance is untouched.
+        Assert.Equal("repository:my-repo:pull", storedScope.ToString());
+        Assert.Equal("repository:my-repo:pull", storedScopes.First().ToString());
+    }
+
+    [Fact]
+    public void AddOrMergeScopeCopyOnWrite_AddNonMatchingScope_AddsToSet()
+    {
+        // Arrange
+        var scopes = new SortedSet<Scope>
+        {
+            new Scope("repository", "repo-a", new HashSet<string> { Scope.ActionPull })
+        };
+        var newScope = new Scope("repository", "repo-b", new HashSet<string> { Scope.ActionPull });
+
+        // Act
+        Scope.AddOrMergeScopeCopyOnWrite(scopes, newScope);
+
+        // Assert
+        Assert.Equal(2, scopes.Count);
+        Assert.Contains(scopes, s => s.ToString() == "repository:repo-a:pull");
+        Assert.Contains(scopes, s => s.ToString() == "repository:repo-b:pull");
     }
 
     [Theory]

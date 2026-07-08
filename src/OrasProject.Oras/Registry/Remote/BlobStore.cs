@@ -42,7 +42,11 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// <exception cref="Exceptions.ResponseException"></exception>
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(
+            Repository.Options.Client,
+            Repository.Options.Reference,
+            Repository.Options.PartitionId,
+            Scope.Action.Pull);
         var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -105,7 +109,11 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         FetchOptions options,
         CancellationToken cancellationToken = default)
     {
-        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(
+            Repository.Options.Client,
+            Repository.Options.Reference,
+            Repository.Options.PartitionId,
+            Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
@@ -183,7 +191,12 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     {
         // pushing usually requires both pull and push actions.
         // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
-        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
+        ScopeManager.SetActionsForRepository(
+            Repository.Options.Client,
+            Repository.Options.Reference,
+            Repository.Options.PartitionId,
+            Scope.Action.Pull,
+            Scope.Action.Push);
         var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
         using var requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
         using (var response = await Repository.Options.Client.SendAsync(
@@ -230,7 +243,11 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         ResolveOptions options,
         CancellationToken cancellationToken = default)
     {
-        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(
+            Repository.Options.Client,
+            Repository.Options.Reference,
+            Repository.Options.PartitionId,
+            Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var refDigest = remoteReference.Digest;
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
@@ -266,7 +283,11 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// <exception cref="Exceptions.ResponseException">Thrown when the request fails</exception>
     public async Task<Uri?> GetBlobLocationAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(
+            Repository.Options.Client,
+            Repository.Options.Reference,
+            Repository.Options.PartitionId,
+            Scope.Action.Pull);
         var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryBlob();
 
@@ -371,12 +392,21 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     {
         // pushing usually requires both pull and push actions.
         // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
-        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
+        ScopeManager.SetActionsForRepository(
+            Repository.Options.Client,
+            Repository.Options.Reference,
+            Repository.Options.PartitionId,
+            Scope.Action.Pull,
+            Scope.Action.Push);
 
         // We also need pull access to the source repo.
         if (Reference.TryParse(fromRepository, out var fromReference))
         {
-            ScopeManager.SetActionsForRepository(Repository.Options.Client, fromReference, Scope.Action.Pull);
+            ScopeManager.SetActionsForRepository(
+                Repository.Options.Client,
+                fromReference,
+                Repository.Options.PartitionId,
+                Scope.Action.Pull);
         }
 
         var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
