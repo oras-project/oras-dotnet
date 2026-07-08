@@ -902,9 +902,9 @@ public class ClientTest
         var client = new Client(new HttpClient(mockHandler.Object));
         client.Cache.SetCache(host, Challenge.Scheme.Bearer, string.Join(" ", scopes), token);
         Assert.True(Scope.TryParse(scopes[0], out var scope1));
-        client.ScopeManager.SetScopeForRegistry(host, scope1);
+        client.ScopeManager.SetScopeForRegistry(host, scope1, null);
         Assert.True(Scope.TryParse(scopes[1], out var scope2));
-        client.ScopeManager.SetScopeForRegistry(host, scope2);
+        client.ScopeManager.SetScopeForRegistry(host, scope2, null);
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"] = ["newBar"];
         client.CustomHeaders["key1"] = ["value1"];
@@ -1156,7 +1156,7 @@ public class ClientTest
         };
         // Populate scope manager to ensure scopes passed into token request
         Assert.True(Scope.TryParse(scopes[0], out var scope));
-        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.ScopeManager.SetScopeForRegistry(host, scope, null);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
@@ -1246,7 +1246,7 @@ public class ClientTest
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
         Assert.True(Scope.TryParse(structuredScope, out var scope));
-        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.ScopeManager.SetScopeForRegistry(host, scope, null);
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
@@ -1331,7 +1331,7 @@ public class ClientTest
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
         Assert.True(Scope.TryParse(structuredScope, out var scope));
-        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.ScopeManager.SetScopeForRegistry(host, scope, null);
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
@@ -1416,7 +1416,7 @@ public class ClientTest
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
         Assert.True(Scope.TryParse(structuredScope, out var scope));
-        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.ScopeManager.SetScopeForRegistry(host, scope, null);
 
         // Act
         using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
@@ -1498,7 +1498,7 @@ public class ClientTest
             accessTokenProvider: mockProvider.Object,
             cache: null);
         Assert.True(Scope.TryParse(structuredScope, out var scope));
-        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.ScopeManager.SetScopeForRegistry(host, scope, null);
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
@@ -1589,7 +1589,7 @@ public class ClientTest
         foreach (var scopeString in expectedScopes)
         {
             Assert.True(Scope.TryParse(scopeString, out var scope));
-            client.ScopeManager.SetScopeForRegistry(host, scope);
+            client.ScopeManager.SetScopeForRegistry(host, scope, null);
         }
 
         // Act
@@ -1680,7 +1680,7 @@ public class ClientTest
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
         Assert.True(Scope.TryParse(structuredScope, out var scope));
-        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.ScopeManager.SetScopeForRegistry(host, scope, null);
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
         // Act
@@ -1691,7 +1691,7 @@ public class ClientTest
         Assert.Equal(1, tokenRequestCount);
         Assert.Equal(
             new[] { structuredScope },
-            client.ScopeManager.GetScopesStringForHost(host));
+            client.ScopeManager.GetScopesStringForHost(host, null));
     }
 
     [Fact]
@@ -1727,7 +1727,7 @@ public class ClientTest
 
         var client = new Client(new HttpClient(CustomHandler(MockHttpRequestHandler).Object));
         Assert.True(Scope.TryParse(scopes[0], out var scope));
-        client.ScopeManager.SetScopeForRegistry(host, scope);
+        client.ScopeManager.SetScopeForRegistry(host, scope, null);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
 
@@ -2128,9 +2128,9 @@ public class ClientTest
         var client = new Client(new HttpClient(handler.Object));
         // Inject scopes for the authority so the client builds the same key
         Assert.True(Scope.TryParse(scopes[0], out var s1));
-        client.ScopeManager.SetScopeForRegistry(authority, s1);
+        client.ScopeManager.SetScopeForRegistry(authority, s1, null);
         Assert.True(Scope.TryParse(scopes[1], out var s2));
-        client.ScopeManager.SetScopeForRegistry(authority, s2);
+        client.ScopeManager.SetScopeForRegistry(authority, s2, null);
 
         // Inject mocked ICache to supply pre-cached token
         var cacheMock = new Mock<ICache>(MockBehavior.Strict);
@@ -3256,5 +3256,92 @@ public class ClientTest
             () => client.SendAsync(request,
                 cancellationToken: CancellationToken.None));
         Assert.Contains("Invalid realm URL", ex.Message);
+    }
+
+    [Fact]
+    public async Task SendAsync_BearerAuth_IsolatesScopesByPartition()
+    {
+        // Arrange: one shared Client/ScopeManager serving two partitions against the same
+        // host. Each partition has a distinct repository scope; the token request issued for
+        // one partition must carry ONLY that partition's scope (no cross-partition bleed).
+        var host = "example.com";
+        var realm = "https://auth.example.com";
+        var authHost = "auth.example.com";
+        var service = "test_service";
+        var token = "access_token";
+
+        var tokenRequestScopes = new List<string>();
+
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req, CancellationToken ct)
+        {
+            // Distribution token endpoint (GET) — no credentials configured.
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == authHost)
+            {
+                var query = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+                tokenRequestScopes.Add(query["scope"] ?? string.Empty);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent($"{{\"access_token\": \"{token}\"}}"),
+                    RequestMessage = req
+                };
+            }
+
+            // Registry endpoint: 200 only with the issued token, otherwise a Bearer challenge.
+            if (req.Method == HttpMethod.Get && req.RequestUri?.Host == host)
+            {
+                if (req.Headers.Authorization?.Scheme == "Bearer"
+                    && req.Headers.Authorization.Parameter == token)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { RequestMessage = req };
+                }
+
+                var unauthorized = new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    RequestMessage = req
+                };
+                unauthorized.Headers.WwwAuthenticate.Add(new AuthenticationHeaderValue(
+                    "Bearer", $"realm=\"{realm}\",service=\"{service}\""));
+                return unauthorized;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound) { RequestMessage = req };
+        }
+
+        var mockHandler = CustomHandler(MockHttpRequestHandler);
+        var client = new Client(new HttpClient(mockHandler.Object))
+        {
+            RealmValidator = new DefaultRealmValidator
+            {
+                TrustedRealmHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    authHost
+                }
+            }
+        };
+
+        // Pre-seed distinct scopes per partition on the same host.
+        Assert.True(Scope.TryParse("repository:repo-a:pull", out var scopeA));
+        client.ScopeManager.SetScopeForRegistry(host, scopeA, "partition-a");
+        Assert.True(Scope.TryParse("repository:repo-b:pull", out var scopeB));
+        client.ScopeManager.SetScopeForRegistry(host, scopeB, "partition-b");
+
+        // Act: send a request for each partition against the same host.
+        using var requestA = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var responseA = await client.SendAsync(
+            requestA, partitionId: "partition-a", cancellationToken: CancellationToken.None);
+
+        using var requestB = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
+        using var responseB = await client.SendAsync(
+            requestB, partitionId: "partition-b", cancellationToken: CancellationToken.None);
+
+        // Assert: both succeed, and each partition's token request carried only its own scope.
+        Assert.Equal(HttpStatusCode.OK, responseA.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, responseB.StatusCode);
+
+        Assert.Equal(2, tokenRequestScopes.Count);
+        Assert.Equal("repository:repo-a:pull", tokenRequestScopes[0]);
+        Assert.DoesNotContain("repo-b", tokenRequestScopes[0]);
+        Assert.Equal("repository:repo-b:pull", tokenRequestScopes[1]);
+        Assert.DoesNotContain("repo-a", tokenRequestScopes[1]);
     }
 }
