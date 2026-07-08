@@ -17,7 +17,6 @@ using OrasProject.Oras.Registry.Remote.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -606,10 +605,10 @@ public class Repository : IRepository
             // Set ReferrerState to Supported
             SetReferrersState(true);
 
-            // A spec-conformant registry returns an empty `manifests` array when there are
-            // no referrers, but some registries return `null`. Coalesce here so the null
-            // stays out of the model (SDK authors can still set/serialize null) while
-            // enumeration below is safe.
+            // A spec-conformant registry returns an empty `manifests` array when there
+            // are no referrers, but some return `null`, which System.Text.Json leaves as
+            // a null `Manifests`. Coalesce to an empty list for the local enumeration
+            // below; the deserialized index is left unchanged.
             var referrers = referrersIndex.Manifests ?? Array.Empty<Descriptor>();
             // If artifactType is specified, apply any filters based on the artifact type
             if (!string.IsNullOrEmpty(artifactType))
@@ -693,14 +692,14 @@ public class Repository : IRepository
             var index = OciJsonSerializer.Deserialize<Index>(indexBytes)
                 ?? throw new JsonException(
                     $"Error deserializing index manifest for referrersTag {referrersTag}");
-            // Coalesce a non-conformant `null` manifests value to an empty list so callers
-            // (tag-schema fallback, referrers index update) can enumerate safely, while the
-            // model itself remains free to hold/round-trip null.
-            return (result.Descriptor, index.Manifests ?? ImmutableArray<Descriptor>.Empty);
+            // A non-conformant `null` manifests value is left as null by deserialization;
+            // coalesce to an empty list here so callers (tag-schema fallback, referrers
+            // index update) can enumerate the returned list safely.
+            return (result.Descriptor, index.Manifests ?? Array.Empty<Descriptor>());
         }
         catch (NotFoundException)
         {
-            return (null, ImmutableArray<Descriptor>.Empty);
+            return (null, Array.Empty<Descriptor>());
         }
     }
 
