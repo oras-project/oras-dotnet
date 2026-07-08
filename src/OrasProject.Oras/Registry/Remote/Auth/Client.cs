@@ -687,7 +687,7 @@ public class Client : IClient
                     }
                 case Challenge.Scheme.Bearer:
                     {
-                        var scopes = ScopeManager.GetScopesStringForHost(host);
+                        var scopes = ScopeManager.GetScopesStringForHost(host, partitionId);
                         attemptedKey = string.Join(" ", scopes);
                         if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken, partitionId))
                         {
@@ -729,7 +729,7 @@ public class Client : IClient
                         throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
                     }
 
-                    var existingScopes = ScopeManager.GetScopesForHost(host);
+                    var existingScopes = ScopeManager.GetScopesForHost(host, partitionId);
                     var mergedScopes = MergeChallengeScopes(
                         existingScopes,
                         parameters.TryGetValue("scope", out var scopesString)
