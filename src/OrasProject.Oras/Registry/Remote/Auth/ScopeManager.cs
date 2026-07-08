@@ -165,14 +165,34 @@ public class ScopeManager
     /// </param>
     public void SetScopeForRegistry(string registry, Scope scope, string? partitionId)
     {
-        if (scope.Actions.Contains(Scope.ActionWildcard))
-        {
-            scope.Actions.Clear();
-            scope.Actions.Add(Scope.ActionWildcard);
-        }
-
         Scopes.AddOrUpdate(GetScopeKey(registry, partitionId),
-            new SortedSet<Scope> { scope },
-            (_, existingScopes) => Scope.AddOrMergeScope(existingScopes, scope));
+            _ => new SortedSet<Scope> { CloneAndNormalizeScope(scope) },
+            (_, existingScopes) =>
+            {
+                var updatedScopes = CloneScopes(existingScopes);
+                Scope.AddOrMergeScope(updatedScopes, CloneAndNormalizeScope(scope));
+                return updatedScopes;
+            });
+    }
+
+    private static SortedSet<Scope> CloneScopes(SortedSet<Scope> scopes)
+    {
+        var clonedScopes = new SortedSet<Scope>();
+        foreach (var scope in scopes)
+        {
+            clonedScopes.Add(scope.Clone());
+        }
+        return clonedScopes;
+    }
+
+    private static Scope CloneAndNormalizeScope(Scope scope)
+    {
+        var clonedScope = scope.Clone();
+        if (clonedScope.Actions.Contains(Scope.ActionWildcard))
+        {
+            clonedScope.Actions.Clear();
+            clonedScope.Actions.Add(Scope.ActionWildcard);
+        }
+        return clonedScope;
     }
 }

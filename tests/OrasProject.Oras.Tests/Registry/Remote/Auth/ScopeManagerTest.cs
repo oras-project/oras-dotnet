@@ -146,19 +146,6 @@ public class ScopeManagerTest
         var mergedScope = result.First();
         Assert.Contains(Scope.ActionPull, mergedScope.Actions);
         Assert.Contains(Scope.ActionPush, mergedScope.Actions);
-
-        var newScopes = new SortedSet<Scope>
-        {
-            scope1,
-            scope2
-        };
-
-        result.UnionWith(newScopes);
-        Assert.Single(result);
-        mergedScope = result.First();
-        Assert.Contains(Scope.ActionPull, mergedScope.Actions);
-        Assert.Contains(Scope.ActionPush, mergedScope.Actions);
-
     }
 
     [Fact]
@@ -198,6 +185,25 @@ public class ScopeManagerTest
         Assert.Single(result);
         Assert.Contains(scope, result);
 
+    }
+
+    [Fact]
+    public void SetScopeForRegistry_DoesNotMutatePreviouslyReturnedScopeSet()
+    {
+        // Arrange
+        var scopeManager = new ScopeManager();
+        var pullScope = new Scope("repository", "repo1", new() { Scope.ActionPull });
+        var pushScope = new Scope("repository", "repo1", new() { Scope.ActionPush });
+
+        // Act
+        scopeManager.SetScopeForRegistry("registry1", pullScope, null);
+        var previousScopes = scopeManager.GetScopesForHost("registry1", null);
+        scopeManager.SetScopeForRegistry("registry1", pushScope, null);
+        var currentScopes = scopeManager.GetScopesForHost("registry1", null);
+
+        // Assert
+        Assert.Equal("repository:repo1:pull", previousScopes.First().ToString());
+        Assert.Equal("repository:repo1:pull,push", currentScopes.First().ToString());
     }
 
     [Fact]
