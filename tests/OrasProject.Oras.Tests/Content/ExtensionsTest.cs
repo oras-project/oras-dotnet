@@ -142,14 +142,11 @@ public class ExtensionsTest
     }
 
     [Fact]
-    public async Task GetSuccessorsAsync_ImageManifestWithNullConfig_SkipsConfig()
+    public async Task GetSuccessorsAsync_ImageManifestWithNullConfig_Throws()
     {
-        // A non-conformant manifest may send "config": null. GetSuccessorsAsync must skip
-        // it (rather than propagate a null successor) and return the layers, without throwing.
+        // Per the OCI spec, config is required. A manifest with "config": null is rejected at
+        // deserialization, so GetSuccessorsAsync surfaces a JsonException.
         var (manifest, _) = RandomManifest();
-        manifest.Layers.Add(RandomDescriptor());
-        manifest.Layers.Add(RandomDescriptor());
-        var expectedLayerDigests = manifest.Layers.Select(layer => layer.Digest).ToList();
         manifest.Config = null!;   // simulate "config": null on the wire
 
         var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
@@ -188,61 +185,8 @@ public class ExtensionsTest
         });
 
         var cancellationToken = new CancellationToken();
-        var successors = (await repo.GetSuccessorsAsync(manifestDesc, cancellationToken)).ToList();
-
-        Assert.Equal(expectedLayerDigests.Count, successors.Count);
-        Assert.Equal(expectedLayerDigests, successors.Select(s => s.Digest).ToList());
-    }
-
-    [Fact]
-    public async Task GetSuccessorsAsync_ImageManifestWithInvalidConfig_KeepsConfig()
-    {
-        // Only a *null* config is treated as absent. A present-but-invalid config (empty
-        // digest/mediaType) must still be returned as a successor so it fails loudly
-        // through existing validation, exactly as before this change.
-        var (manifest, _) = RandomManifest();
-        manifest.Config = new Descriptor { MediaType = "", Digest = "", Size = 0 };
-
-        var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
-        var manifestDesc = new Descriptor
-        {
-            MediaType = MediaType.ImageManifest,
-            Digest = ComputeSha256(manifestBytes),
-            Size = manifestBytes.Length
-        };
-
-        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req,
-            CancellationToken cancellationToken = default)
-        {
-            var res = new HttpResponseMessage { RequestMessage = req };
-            if (req.Method == HttpMethod.Get &&
-                req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
-            {
-                if (!req.Headers.Accept.Contains(new MediaTypeWithQualityHeaderValue(MediaType.ImageManifest)))
-                {
-                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
-                }
-                res.Content = new ByteArrayContent(manifestBytes);
-                res.Content.Headers.Add("Content-Type", manifestDesc.MediaType);
-                res.Headers.Add(_dockerContentDigestHeader, manifestDesc.Digest);
-                res.StatusCode = HttpStatusCode.OK;
-                return res;
-            }
-            return new HttpResponseMessage(HttpStatusCode.Forbidden);
-        }
-
-        var repo = new Repository(new RepositoryOptions()
-        {
-            Reference = Reference.Parse("localhost:5000/test"),
-            Client = CustomClient(MockHttpRequestHandler),
-            PlainHttp = true,
-        });
-
-        var cancellationToken = new CancellationToken();
-        var successors = (await repo.GetSuccessorsAsync(manifestDesc, cancellationToken)).ToList();
-
-        // config is present (first successor) even though it is invalid — not skipped
-        Assert.Equal(string.Empty, successors[0].Digest);
+        await Assert.ThrowsAsync<JsonException>(
+            () => repo.GetSuccessorsAsync(manifestDesc, cancellationToken));
     }
 
     [Fact]

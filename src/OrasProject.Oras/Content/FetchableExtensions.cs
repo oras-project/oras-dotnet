@@ -48,15 +48,10 @@ public static class FetchableExtensions
                         // Note: Subject field only works for Oci Image Manifest
                         descriptors.Add(manifest.Subject);
                     }
-                    // A non-conformant manifest may send "config": null or "layers": null.
-                    // Treat a null as absent here (per-API) rather than propagating it into
-                    // the successor graph, where downstream consumers would throw. A
-                    // present-but-invalid config is left in place so it still fails through
-                    // existing validation. The deserialized manifest is left unchanged.
-                    if (manifest.Config is not null)
-                    {
-                        descriptors.Add(manifest.Config);
-                    }
+                    descriptors.Add(manifest.Config);
+                    // A non-conformant registry may send "layers": null instead of an empty
+                    // array (a valid, spec-permitted state); treat null as empty. Config is
+                    // guaranteed valid by Manifest deserialization validation.
                     descriptors.AddRange(manifest.Layers.NullToEmpty());
                     return descriptors;
                 }

@@ -291,7 +291,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 }
                 subject = imageManifest.Subject;
                 desc.ArtifactType = string.IsNullOrEmpty(imageManifest.ArtifactType)
-                    ? imageManifest.Config?.MediaType
+                    ? imageManifest.Config.MediaType
                     : imageManifest.ArtifactType;
                 desc.Annotations = imageManifest.Annotations;
                 break;
