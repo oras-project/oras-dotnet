@@ -49,10 +49,11 @@ public static class FetchableExtensions
                         descriptors.Add(manifest.Subject);
                     }
                     // A non-conformant manifest may send "config": null or "layers": null.
-                    // Treat both as absent here (per-API) rather than propagating nulls into
-                    // the successor graph, where downstream consumers would throw. The
-                    // deserialized manifest is left unchanged.
-                    if (!Descriptor.IsNullOrInvalid(manifest.Config))
+                    // Treat a null as absent here (per-API) rather than propagating it into
+                    // the successor graph, where downstream consumers would throw. A
+                    // present-but-invalid config is left in place so it still fails through
+                    // existing validation. The deserialized manifest is left unchanged.
+                    if (manifest.Config is not null)
                     {
                         descriptors.Add(manifest.Config);
                     }
