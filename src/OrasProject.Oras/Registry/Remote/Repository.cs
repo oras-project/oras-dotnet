@@ -618,10 +618,9 @@ public class Repository : IRepository
             SetReferrersState(true);
 
             // A spec-conformant registry returns an empty `manifests` array when there
-            // are no referrers, but some return `null`, which System.Text.Json leaves as
-            // a null `Manifests`. Coalesce to an empty list for the local enumeration
-            // below; the deserialized index is left unchanged.
-            var referrers = referrersIndex.Manifests ?? Array.Empty<Descriptor>();
+            // are no referrers, but some return `null`. Treat that null as empty for the
+            // local enumeration below (per-API); the deserialized index is left unchanged.
+            var referrers = referrersIndex.Manifests.NullToEmpty();
             // If artifactType is specified, apply any filters based on the artifact type
             if (!string.IsNullOrEmpty(artifactType))
             {
@@ -709,9 +708,9 @@ public class Repository : IRepository
                 ?? throw new JsonException(
                     $"Error deserializing index manifest for referrersTag {referrersTag}");
             // A non-conformant `null` manifests value is left as null by deserialization;
-            // coalesce to an empty list here so callers (tag-schema fallback, referrers
+            // treat it as empty here (per-API) so callers (tag-schema fallback, referrers
             // index update) can enumerate the returned list safely.
-            return (result.Descriptor, index.Manifests ?? Array.Empty<Descriptor>());
+            return (result.Descriptor, index.Manifests.NullToEmpty());
         }
         catch (NotFoundException)
         {

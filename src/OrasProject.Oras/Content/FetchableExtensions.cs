@@ -48,8 +48,15 @@ public static class FetchableExtensions
                         // Note: Subject field only works for Oci Image Manifest
                         descriptors.Add(manifest.Subject);
                     }
-                    descriptors.Add(manifest.Config);
-                    descriptors.AddRange(manifest.Layers);
+                    // A non-conformant manifest may send "config": null or "layers": null.
+                    // Treat both as absent here (per-API) rather than propagating nulls into
+                    // the successor graph, where downstream consumers would throw. The
+                    // deserialized manifest is left unchanged.
+                    if (!Descriptor.IsNullOrInvalid(manifest.Config))
+                    {
+                        descriptors.Add(manifest.Config);
+                    }
+                    descriptors.AddRange(manifest.Layers.NullToEmpty());
                     return descriptors;
                 }
             case Docker.MediaType.ManifestList:
@@ -64,7 +71,7 @@ public static class FetchableExtensions
                         // Note: Subject field only works for Oci Index Manifest
                         descriptors.Add(index.Subject);
                     }
-                    descriptors.AddRange(index.Manifests ?? Array.Empty<Descriptor>());
+                    descriptors.AddRange(index.Manifests.NullToEmpty());
                     return descriptors;
                 }
         }
