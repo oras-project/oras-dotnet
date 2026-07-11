@@ -20,7 +20,10 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 /// <summary>
 /// Attempts to recover from an HTTP 401 whose challenge the standard authentication flow could not
 /// use — for example a registry that omits the <c>WWW-Authenticate</c> challenge when a stale token
-/// is presented, or returns one whose realm points at a different host.
+/// is presented, or one whose challenge is followed to its token endpoint only for that endpoint to
+/// reject the token request with a 401 (a challenge derived from a stale cached token that the
+/// registry cannot honor). In both cases a credential-free request to the same URL yields a usable
+/// challenge.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -29,9 +32,12 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 /// token or is replayable. The handler is expected to <b>self-gate</b>: inspect
 /// <see cref="FailedChallenge.AttachedCachedToken"/> and <see cref="FailedChallenge.CanReplay"/> and
 /// return <c>null</c> when recovery does not apply. (The built-in
-/// <see cref="ChallengeRecoveries.ColdProbe"/> recovers only when both are <c>true</c>.) Credential and
-/// token-endpoint failures are surfaced as exceptions <em>before</em> any handler is consulted, so
-/// recovery cannot mask a real authentication error.
+/// <see cref="ChallengeRecoveries.ColdProbe"/> recovers only when both are <c>true</c>.) Genuine
+/// credential failures, and any non-401 token-endpoint failure, are surfaced as exceptions
+/// <em>before</em> any handler is consulted, so recovery cannot mask a real authentication error. The
+/// one token-endpoint outcome offered to recovery is a <b>401</b> from following the challenge's realm
+/// — the stale-token failure this seam exists to tolerate; if recovery declines, that exact exception
+/// is rethrown unchanged.
 /// </para>
 /// <para>
 /// Return a replacement response for the client to continue from — typically the result of

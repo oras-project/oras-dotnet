@@ -21,11 +21,13 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Mime;
+using System.Runtime.ExceptionServices;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using OrasProject.Oras.Registry.Remote.Exceptions;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
@@ -273,7 +275,8 @@ public class Client : IClient
     /// <summary>
     /// An optional recovery handler consulted when standard resolution of a 401 fails to produce a
     /// usable challenge (e.g. a non-conformant registry that omits the challenge on a token-carrying
-    /// 401, or points its realm at a different host). Defaults to <c>null</c> — no recovery, i.e. the
+    /// 401, or one whose challenge is followed to its token endpoint only to be rejected there with a
+    /// 401). Defaults to <c>null</c> — no recovery, i.e. the
     /// standard give-up behavior. Set to <see cref="ChallengeRecoveries.ColdProbe"/> (or a custom
     /// handler) to opt in.
     /// </summary>
@@ -462,26 +465,38 @@ public class Client : IClient
         {
             return credential.AccessToken;
         }
-        if (credential.IsEmpty() ||
-            (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
+        // The calls below follow the challenge to its token endpoint (the realm). Scope any 401 from
+        // that round-trip into a distinct marker so the standard resolver can offer it to an optional
+        // challenge-recovery handler instead of failing outright. A cached out-of-band token from an
+        // AccessTokenProvider (handled above) is deliberately excluded — it does not follow the
+        // challenge — and non-401 token-endpoint errors propagate unchanged.
+        try
         {
-            return await FetchDistributionTokenAsync(
+            if (credential.IsEmpty() ||
+                (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
+            {
+                return await FetchDistributionTokenAsync(
+                    realm,
+                    service,
+                    scopes,
+                    credential.Username,
+                    credential.Password,
+                    cancellationToken
+                ).ConfigureAwait(false);
+            }
+
+            return await FetchOauth2TokenAsync(
                 realm,
                 service,
                 scopes,
-                credential.Username,
-                credential.Password,
+                credential,
                 cancellationToken
             ).ConfigureAwait(false);
         }
-
-        return await FetchOauth2TokenAsync(
-            realm,
-            service,
-            scopes,
-            credential,
-            cancellationToken
-        ).ConfigureAwait(false);
+        catch (ResponseException e) when (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            throw new TokenEndpointUnauthorizedException(e);
+        }
     }
 
     /// <summary>
@@ -797,9 +812,12 @@ public class Client : IClient
     /// <summary>
     /// Runs the standard 401 challenge resolution: parse the <c>WWW-Authenticate</c> challenge and,
     /// for a recognized scheme, fetch/replay credentials. Returns a resolved response on success, or a
-    /// <see cref="StandardAuthResult"/> describing why the challenge was structurally unusable. Throws
-    /// only for genuine credential/token-endpoint failures (never for an unusable challenge), so a
-    /// caller can distinguish "the registry withheld a usable challenge" from "authentication failed".
+    /// <see cref="StandardAuthResult"/> describing why the challenge was structurally unusable. A 401
+    /// from following the challenge's token endpoint is reported as
+    /// <see cref="ChallengeFailureKind.TokenEndpointUnauthorized"/> (carrying the original exception for
+    /// verbatim rethrow), not thrown, so recovery can act on it. It still throws for other genuine
+    /// credential/token-endpoint failures, so a caller can distinguish "the registry withheld a usable
+    /// challenge" from "authentication failed".
     /// </summary>
     /// <remarks>
     /// Disposal: for a recognized scheme (Basic or Bearer) this method disposes
@@ -920,14 +938,31 @@ public class Client : IClient
                     }
 
                     // Try to fetch bearer token based on the challenge header
-                    var bearerAuthToken = await FetchBearerAuthAsync(
-                        host,
-                        realm,
-                        service,
-                        mergedScopes.TokenRequestScopes,
-                        forceRefresh: true,
-                        cancellationToken
-                    ).ConfigureAwait(false);
+                    string bearerAuthToken;
+                    try
+                    {
+                        bearerAuthToken = await FetchBearerAuthAsync(
+                            host,
+                            realm,
+                            service,
+                            mergedScopes.TokenRequestScopes,
+                            forceRefresh: true,
+                            cancellationToken
+                        ).ConfigureAwait(false);
+                    }
+                    catch (TokenEndpointUnauthorizedException e)
+                    {
+                        // We followed the challenge to its token endpoint and it returned 401. Report it
+                        // as an unusable challenge (rather than throwing) so an optional recovery handler
+                        // can act — e.g. a registry that 401s a token request derived from a stale-token
+                        // challenge, yet yields a usable challenge to a credential-free cold probe. If no
+                        // recovery is configured or it declines, the original exception is rethrown as-is.
+                        return StandardAuthResult.Unusable(
+                            ChallengeFailureKind.TokenEndpointUnauthorized,
+                            realm,
+                            realmUri,
+                            ExceptionDispatchInfo.Capture(e.ResponseException));
+                    }
                     if (!mergedScopes.HasOpaqueScopes)
                     {
                         Cache.SetCache(
@@ -1233,6 +1268,13 @@ public class Client : IClient
                 unauthorizedResponse.Dispose();
                 throw new AuthenticationException(
                     $"Authentication realm '{resolution.RealmUri}' is not allowed for registry '{host}'.");
+            case ChallengeFailureKind.TokenEndpointUnauthorized:
+                // We followed the challenge to its token endpoint and it returned 401. With no recovery
+                // (or a recovery that declined), preserve the original behavior: rethrow the exact
+                // token-endpoint exception, with its original stack, that the standard flow always threw.
+                unauthorizedResponse.Dispose();
+                resolution.TokenEndpointException!.Throw();
+                throw resolution.TokenEndpointException.SourceException; // unreachable; Throw() always throws
             default:
                 // NoUsableScheme: no recognized challenge scheme; return the original 401 to the caller.
                 return unauthorizedResponse;
@@ -1245,12 +1287,18 @@ public class Client : IClient
     /// </summary>
     private sealed class StandardAuthResult
     {
-        private StandardAuthResult(HttpResponseMessage? response, ChallengeFailureKind failureKind, string? realm, Uri? realmUri)
+        private StandardAuthResult(
+            HttpResponseMessage? response,
+            ChallengeFailureKind failureKind,
+            string? realm,
+            Uri? realmUri,
+            ExceptionDispatchInfo? tokenEndpointException)
         {
             Response = response;
             FailureKind = failureKind;
             Realm = realm;
             RealmUri = realmUri;
+            TokenEndpointException = tokenEndpointException;
         }
 
         /// <summary>The resolved response, or <c>null</c> when the challenge was unusable.</summary>
@@ -1265,11 +1313,22 @@ public class Client : IClient
         /// <summary>The parsed realm URI, when relevant to the failure.</summary>
         public Uri? RealmUri { get; }
 
-        public static StandardAuthResult Resolved(HttpResponseMessage response)
-            => new(response, ChallengeFailureKind.None, null, null);
+        /// <summary>
+        /// The captured token-endpoint exception for a
+        /// <see cref="ChallengeFailureKind.TokenEndpointUnauthorized"/> failure, rethrown verbatim when
+        /// recovery does not apply; <c>null</c> for all other outcomes.
+        /// </summary>
+        public ExceptionDispatchInfo? TokenEndpointException { get; }
 
-        public static StandardAuthResult Unusable(ChallengeFailureKind failureKind, string? realm = null, Uri? realmUri = null)
-            => new(null, failureKind, realm, realmUri);
+        public static StandardAuthResult Resolved(HttpResponseMessage response)
+            => new(response, ChallengeFailureKind.None, null, null, null);
+
+        public static StandardAuthResult Unusable(
+            ChallengeFailureKind failureKind,
+            string? realm = null,
+            Uri? realmUri = null,
+            ExceptionDispatchInfo? tokenEndpointException = null)
+            => new(null, failureKind, realm, realmUri, tokenEndpointException);
     }
 
     /// <summary>
@@ -1294,6 +1353,34 @@ public class Client : IClient
 
         /// <summary>A Bearer challenge whose <c>realm</c> was rejected by the realm validator.</summary>
         DeniedRealm,
+
+        /// <summary>
+        /// The challenge was structurally usable and its realm was followed, but the token endpoint
+        /// rejected the token request with a 401 (e.g. a non-conformant registry that cannot mint a
+        /// token for a challenge it derived from a stale cached token). Distinct from the failure kinds
+        /// above, which never contacted the token endpoint.
+        /// </summary>
+        TokenEndpointUnauthorized,
+    }
+
+    /// <summary>
+    /// Internal marker raised when following a 401's challenge to its token endpoint itself returns a
+    /// 401. It carries the original <see cref="Exceptions.ResponseException"/> so the standard resolver
+    /// can convert it into a <see cref="ChallengeFailureKind.TokenEndpointUnauthorized"/> result
+    /// (offering it to an optional recovery handler) while still rethrowing the exact original error
+    /// when recovery does not apply. Scoped to the realm round-trip only — an out-of-band
+    /// AccessTokenProvider 401 is excluded.
+    /// </summary>
+    private sealed class TokenEndpointUnauthorizedException : Exception
+    {
+        public TokenEndpointUnauthorizedException(ResponseException responseException)
+            : base(responseException.Message, responseException)
+        {
+            ResponseException = responseException;
+        }
+
+        /// <summary>The original token-endpoint 401 exception, rethrown verbatim when recovery declines.</summary>
+        public ResponseException ResponseException { get; }
     }
 
     /// <summary>
