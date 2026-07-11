@@ -159,6 +159,66 @@ public class ManifestStoreTest
     }
 
     [Fact]
+    public async Task ManifestStore_PullReferrersIndexList_NullManifests_ReturnsEmpty()
+    {
+        // A non-conformant registry may return `"manifests": null` for the referrers
+        // index. PullReferrersIndexList must coalesce this to an empty list so the
+        // tag-schema fallback and referrers index update paths can enumerate safely.
+        var nullManifestsIndex = """
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.oci.image.index.v1+json",
+                "manifests": null
+            }
+            """;
+        var expectedIndexBytes = Encoding.UTF8.GetBytes(nullManifestsIndex);
+        var expectedIndexDesc = new Descriptor()
+        {
+            Digest = ComputeSha256(expectedIndexBytes),
+            MediaType = MediaType.ImageIndex,
+            Size = expectedIndexBytes.Length
+        };
+
+        HttpResponseMessage MockedHttpHandler(HttpRequestMessage req, CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{expectedIndexDesc.Digest}")
+            {
+                if (req.Headers.TryGetValues("Accept", out IEnumerable<string>? values)
+                    && !values.Contains(MediaType.ImageIndex))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                res.Content = new ByteArrayContent(expectedIndexBytes);
+                res.Content.Headers.Add("Content-Type", [MediaType.ImageIndex]);
+                res.Headers.Add(_dockerContentDigestHeader, [expectedIndexDesc.Digest]);
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockedHttpHandler),
+            PlainHttp = true,
+        });
+        var cancellationToken = new CancellationToken();
+        var (receivedDesc, receivedManifests) =
+            await repo.PullReferrersIndexList(expectedIndexDesc.Digest, cancellationToken);
+        Assert.NotNull(receivedDesc);
+        Assert.True(AreDescriptorsEqual(expectedIndexDesc, receivedDesc));
+        Assert.NotNull(receivedManifests);
+        Assert.Empty(receivedManifests);
+    }
+
+    [Fact]
     public async Task ManifestStore_PushAsyncWithoutSubject()
     {
         // first push with image manifest

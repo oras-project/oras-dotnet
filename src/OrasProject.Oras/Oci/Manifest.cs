@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace OrasProject.Oras.Oci;
@@ -20,7 +21,7 @@ namespace OrasProject.Oras.Oci;
 /// Manifest describes an image or artifact.
 /// Specification: https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md
 /// </summary>
-public class Manifest : Versioned
+public class Manifest : Versioned, IJsonOnDeserialized
 {
     [JsonPropertyName("mediaType")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -43,4 +44,19 @@ public class Manifest : Versioned
     [JsonPropertyName("annotations")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public IDictionary<string, string>? Annotations { get; set; }
+
+    /// <summary>
+    /// Validates spec-required fields after deserialization. Per the OCI image manifest
+    /// spec, <c>config</c> is REQUIRED and must be a valid descriptor. System.Text.Json's
+    /// <c>required</c> only enforces key presence, so a <c>"config": null</c> (or a
+    /// present-but-empty descriptor) would otherwise slip through — reject it here.
+    /// </summary>
+    void IJsonOnDeserialized.OnDeserialized()
+    {
+        if (Descriptor.IsNullOrInvalid(Config))
+        {
+            throw new JsonException(
+                "Image manifest 'config' is required and must be a valid descriptor.");
+        }
+    }
 }
