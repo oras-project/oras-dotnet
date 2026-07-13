@@ -95,7 +95,11 @@ public class Registry : IRegistry
     {
         if (Scope.TryParse(Scope.ScopeRegistryCatalog, out var scope))
         {
-            ScopeManager.SetScopeForRegistry(RepositoryOptions.Client, RepositoryOptions.Reference.Registry, scope);
+            ScopeManager.SetScopeForRegistry(
+                RepositoryOptions.Client,
+                RepositoryOptions.Reference.Registry,
+                scope,
+                RepositoryOptions.PartitionId);
         }
 
         var url = new UriFactory(_opts).BuildRegistryCatalog();

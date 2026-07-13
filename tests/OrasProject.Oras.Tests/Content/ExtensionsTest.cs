@@ -92,6 +92,104 @@ public class ExtensionsTest
     }
 
     [Fact]
+    public async Task GetSuccessorsAsync_ImageManifestWithNullLayers_ReturnsConfigOnly()
+    {
+        // A non-conformant manifest may send "layers": null. GetSuccessorsAsync must
+        // treat it as empty and return just the config, without throwing.
+        var (manifest, _) = RandomManifest();
+        manifest.Layers = null!;   // simulate "layers": null on the wire
+
+        var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSha256(manifestBytes),
+            Size = manifestBytes.Length
+        };
+
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage { RequestMessage = req };
+            if (req.Method == HttpMethod.Get &&
+                req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+            {
+                if (!req.Headers.Accept.Contains(new MediaTypeWithQualityHeaderValue(MediaType.ImageManifest)))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                res.Content = new ByteArrayContent(manifestBytes);
+                res.Content.Headers.Add("Content-Type", manifestDesc.MediaType);
+                res.Headers.Add(_dockerContentDigestHeader, manifestDesc.Digest);
+                res.StatusCode = HttpStatusCode.OK;
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.Forbidden);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHttpRequestHandler),
+            PlainHttp = true,
+        });
+
+        var cancellationToken = new CancellationToken();
+        var successors = (await repo.GetSuccessorsAsync(manifestDesc, cancellationToken)).ToList();
+
+        Assert.Single(successors);
+        Assert.Equal(manifest.Config.Digest, successors[0].Digest);
+    }
+
+    [Fact]
+    public async Task GetSuccessorsAsync_ImageManifestWithNullConfig_Throws()
+    {
+        // Per the OCI spec, config is required. A manifest with "config": null is rejected at
+        // deserialization, so GetSuccessorsAsync surfaces a JsonException.
+        var (manifest, _) = RandomManifest();
+        manifest.Config = null!;   // simulate "config": null on the wire
+
+        var manifestBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(manifest));
+        var manifestDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageManifest,
+            Digest = ComputeSha256(manifestBytes),
+            Size = manifestBytes.Length
+        };
+
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage { RequestMessage = req };
+            if (req.Method == HttpMethod.Get &&
+                req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{manifestDesc.Digest}")
+            {
+                if (!req.Headers.Accept.Contains(new MediaTypeWithQualityHeaderValue(MediaType.ImageManifest)))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+                res.Content = new ByteArrayContent(manifestBytes);
+                res.Content.Headers.Add("Content-Type", manifestDesc.MediaType);
+                res.Headers.Add(_dockerContentDigestHeader, manifestDesc.Digest);
+                res.StatusCode = HttpStatusCode.OK;
+                return res;
+            }
+            return new HttpResponseMessage(HttpStatusCode.Forbidden);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHttpRequestHandler),
+            PlainHttp = true,
+        });
+
+        var cancellationToken = new CancellationToken();
+        await Assert.ThrowsAsync<JsonException>(
+            () => repo.GetSuccessorsAsync(manifestDesc, cancellationToken));
+    }
+
+    [Fact]
     public async Task GetSuccessorsAsync_IndexManifestWithSubject_ReturnsSubjectConfigAndLayers()
     {
         // Oci Index Manifest
@@ -150,6 +248,70 @@ public class ExtensionsTest
         Assert.Equal(expectedIndexManifest.Manifests[0].Digest, actualIndexManifestSuccessors[1].Digest);
         Assert.Equal(expectedIndexManifest.Manifests[1].Digest, actualIndexManifestSuccessors[2].Digest);
         Assert.Equal(expectedIndexManifest.Manifests[2].Digest, actualIndexManifestSuccessors[3].Digest);
+    }
+
+    [Fact]
+    public async Task GetSuccessorsAsync_IndexManifestWithNullManifests_ReturnsEmpty()
+    {
+        // A non-conformant registry may return `"manifests": null` for an index.
+        // GetSuccessorsAsync must tolerate this and return no successors rather than
+        // throwing when enumerating the manifests list.
+        var nullManifestsIndex = """
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.oci.image.index.v1+json",
+                "manifests": null
+            }
+            """;
+        var indexBytes = Encoding.UTF8.GetBytes(nullManifestsIndex);
+        var indexDesc = new Descriptor
+        {
+            MediaType = MediaType.ImageIndex,
+            Digest = ComputeSha256(indexBytes),
+            Size = indexBytes.Length
+        };
+
+        HttpResponseMessage MockHttpRequestHandler(HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            var res = new HttpResponseMessage
+            {
+                RequestMessage = req
+            };
+
+            if (req.Method == HttpMethod.Get &&
+                req.RequestUri?.AbsolutePath == $"/v2/test/manifests/{indexDesc.Digest}")
+            {
+                if (!req.Headers.Accept.Contains(new MediaTypeWithQualityHeaderValue(MediaType.ImageIndex)))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                }
+
+                res.Content = new ByteArrayContent(indexBytes);
+                res.Content.Headers.Add("Content-Type", MediaType.ImageIndex);
+                res.Headers.Add(_dockerContentDigestHeader, indexDesc.Digest);
+
+                res.StatusCode = HttpStatusCode.OK;
+                return res;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.Forbidden);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHttpRequestHandler),
+            PlainHttp = true,
+        });
+
+        // act
+        var cancellationToken = new CancellationToken();
+        var actualSuccessors =
+            (await repo.GetSuccessorsAsync(indexDesc, cancellationToken)).ToList();
+
+        // assert
+        Assert.Empty(actualSuccessors);
     }
 
     [Fact]

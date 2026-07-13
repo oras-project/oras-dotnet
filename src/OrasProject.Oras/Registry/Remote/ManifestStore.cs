@@ -41,7 +41,11 @@ public class ManifestStore(Repository repository) : IManifestStore
     /// <exception cref="Exception"></exception>
     public async Task<Stream> FetchAsync(Descriptor target, CancellationToken cancellationToken = default)
     {
-        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(
+            Repository.Options.Client,
+            Repository.Options.Reference,
+            Repository.Options.PartitionId,
+            Scope.Action.Pull);
         var remoteReference = Repository.ParseReferenceFromDigest(target.Digest);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -109,7 +113,11 @@ public class ManifestStore(Repository repository) : IManifestStore
         FetchOptions options,
         CancellationToken cancellationToken = default)
     {
-        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(
+            Repository.Options.Client,
+            Repository.Options.Reference,
+            Repository.Options.PartitionId,
+            Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -282,7 +290,9 @@ public class ManifestStore(Repository repository) : IManifestStore
                     return;
                 }
                 subject = imageManifest.Subject;
-                desc.ArtifactType = string.IsNullOrEmpty(imageManifest.ArtifactType) ? imageManifest.Config.MediaType : imageManifest.ArtifactType;
+                desc.ArtifactType = string.IsNullOrEmpty(imageManifest.ArtifactType)
+                    ? imageManifest.Config.MediaType
+                    : imageManifest.ArtifactType;
                 desc.Annotations = imageManifest.Annotations;
                 break;
             default:
@@ -356,7 +366,12 @@ public class ManifestStore(Repository repository) : IManifestStore
     {
         // pushing usually requires both pull and push actions.
         // Reference: https://github.com/distribution/distribution/blob/v2.7.1/registry/handlers/app.go#L921-L930
-        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull, Scope.Action.Push);
+        ScopeManager.SetActionsForRepository(
+            Repository.Options.Client,
+            Repository.Options.Reference,
+            Repository.Options.PartitionId,
+            Scope.Action.Pull,
+            Scope.Action.Push);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         var request = new HttpRequestMessage(HttpMethod.Put, url)
         {
@@ -398,7 +413,11 @@ public class ManifestStore(Repository repository) : IManifestStore
         ResolveOptions options,
         CancellationToken cancellationToken = default)
     {
-        ScopeManager.SetActionsForRepository(Repository.Options.Client, Repository.Options.Reference, Scope.Action.Pull);
+        ScopeManager.SetActionsForRepository(
+            Repository.Options.Client,
+            Repository.Options.Reference,
+            Repository.Options.PartitionId,
+            Scope.Action.Pull);
         var remoteReference = Repository.ParseReference(reference);
         var url = new UriFactory(remoteReference, Repository.Options.PlainHttp).BuildRepositoryManifest();
         using var request = new HttpRequestMessage(HttpMethod.Head, url);

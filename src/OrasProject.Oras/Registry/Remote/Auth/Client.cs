@@ -687,7 +687,7 @@ public class Client : IClient
                     }
                 case Challenge.Scheme.Bearer:
                     {
-                        var scopes = ScopeManager.GetScopesStringForHost(host);
+                        var scopes = ScopeManager.GetScopesStringForHost(host, partitionId);
                         attemptedKey = string.Join(" ", scopes);
                         if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken, partitionId))
                         {
@@ -729,23 +729,22 @@ public class Client : IClient
                         throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
                     }
 
-                    var existingScopes = ScopeManager.GetScopesForHost(host);
-                    var newScopes = new SortedSet<Scope>(existingScopes);
-                    if (parameters.TryGetValue("scope", out var scopesString))
-                    {
-                        foreach (var scopeStr in scopesString.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            if (Scope.TryParse(scopeStr, out var scope))
-                            {
-                                Scope.AddOrMergeScope(newScopes, scope);
-                            }
-                        }
-                    }
+                    var existingScopes = ScopeManager.GetScopesForHost(host, partitionId);
+                    var mergedScopes = MergeChallengeScopes(
+                        existingScopes,
+                        parameters.TryGetValue("scope", out var scopesString)
+                            ? scopesString
+                            : null);
 
                     // Attempt to send request when the scope changes and a token cache hits
-                    var newKey = string.Join(" ", newScopes);
-                    if (newKey != attemptedKey &&
-                        Cache.TryGetToken(host, schemeFromChallenge, newKey, out var cachedToken, partitionId))
+                    if (!mergedScopes.HasOpaqueScopes
+                        && mergedScopes.CacheKey != attemptedKey
+                        && Cache.TryGetToken(
+                            host,
+                            schemeFromChallenge,
+                            mergedScopes.CacheKey,
+                            out var cachedToken,
+                            partitionId))
                     {
                         var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                         requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
@@ -767,7 +766,8 @@ public class Client : IClient
                     // Validate realm URL before sending credentials.
                     if (!Uri.TryCreate(
                             realm, UriKind.Absolute,
-                            out var realmUri))
+                            out var realmUri)
+                        || string.IsNullOrEmpty(realmUri.Host))
                     {
                         throw new AuthenticationException(
                             $"Invalid realm URL: '{realm}'");
@@ -793,11 +793,19 @@ public class Client : IClient
                         host,
                         realm,
                         service,
-                        newScopes.Select(newScope => newScope.ToString()).ToList(),
+                        mergedScopes.TokenRequestScopes,
                         forceRefresh: true,
                         cancellationToken
                     ).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, newKey, bearerAuthToken, partitionId);
+                    if (!mergedScopes.HasOpaqueScopes)
+                    {
+                        Cache.SetCache(
+                            host,
+                            schemeFromChallenge,
+                            mergedScopes.CacheKey,
+                            bearerAuthToken,
+                            partitionId);
+                    }
 
                     var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
@@ -806,6 +814,126 @@ public class Client : IClient
             default:
                 return response1;
         }
+    }
+
+    private static MergedScopes MergeChallengeScopes(
+        SortedSet<Scope> existingScopes,
+        string? scopesString)
+    {
+        var structuredScopes = existingScopes;
+        var copiedStructuredScopes = false;
+
+        // Opaque (unparseable) challenge scopes are preserved verbatim, including
+        // duplicates and original order. The opaque list is allocated lazily so
+        // the common structured-only case doesn't allocate it.
+        List<string>? opaqueScopes = null;
+
+        if (!string.IsNullOrWhiteSpace(scopesString))
+        {
+            var remainingScopes = scopesString.AsSpan();
+            while (TryReadNextScope(ref remainingScopes, out var scopeSpan))
+            {
+                if (Scope.TryParse(scopeSpan, out var scope))
+                {
+                    if (!copiedStructuredScopes)
+                    {
+                        // Copy before merging so an attacker-controllable challenge scope
+                        // cannot mutate the client's persisted scopes for this host.
+                        structuredScopes = new SortedSet<Scope>(existingScopes);
+                        copiedStructuredScopes = true;
+                    }
+
+                    Scope.AddOrMergeScopeCopyOnWrite(structuredScopes, scope);
+                }
+                else
+                {
+                    (opaqueScopes ??= new()).Add(scopeSpan.ToString());
+                }
+            }
+        }
+
+        var tokenRequestScopes = BuildTokenRequestScopes(
+            structuredScopes,
+            opaqueScopes,
+            out var cacheKey);
+        return new MergedScopes(
+            tokenRequestScopes,
+            cacheKey,
+            hasOpaqueScopes: opaqueScopes != null);
+    }
+
+    private static List<string> BuildTokenRequestScopes(
+        SortedSet<Scope> structuredScopes,
+        List<string>? opaqueScopes,
+        out string cacheKey)
+    {
+        var opaqueScopeCount = opaqueScopes?.Count ?? 0;
+        var tokenRequestScopes =
+            new List<string>(structuredScopes.Count + opaqueScopeCount);
+
+        foreach (var scope in structuredScopes)
+        {
+            tokenRequestScopes.Add(scope.ToString());
+        }
+
+        // The cache key is derived from structured scopes only and must match the
+        // single-space canonicalization used for the cached-token lookup. When opaque
+        // scopes are present the token is not cached, so the key is left empty. At this
+        // point tokenRequestScopes holds only the structured scopes, so it can be joined
+        // directly before the opaque scopes are appended.
+        cacheKey = opaqueScopeCount > 0
+            ? string.Empty
+            : string.Join(' ', tokenRequestScopes);
+
+        if (opaqueScopes != null)
+        {
+            tokenRequestScopes.AddRange(opaqueScopes);
+        }
+
+        return tokenRequestScopes;
+    }
+
+    private static bool TryReadNextScope(
+        ref ReadOnlySpan<char> remainingScopes,
+        out ReadOnlySpan<char> scope)
+    {
+        while (!remainingScopes.IsEmpty)
+        {
+            var separatorIndex = remainingScopes.IndexOf(' ');
+            scope = separatorIndex < 0
+                ? remainingScopes
+                : remainingScopes[..separatorIndex];
+            remainingScopes = separatorIndex < 0
+                ? []
+                : remainingScopes[(separatorIndex + 1)..];
+
+            if (!scope.IsEmpty)
+            {
+                return true;
+            }
+        }
+
+        scope = [];
+        return false;
+    }
+
+    private readonly struct MergedScopes
+    {
+        public MergedScopes(
+            List<string> tokenRequestScopes,
+            string cacheKey,
+            bool hasOpaqueScopes)
+        {
+            TokenRequestScopes = tokenRequestScopes;
+            CacheKey = cacheKey;
+            HasOpaqueScopes = hasOpaqueScopes;
+        }
+
+        public List<string> TokenRequestScopes { get; }
+
+        public string CacheKey { get; }
+
+        public bool HasOpaqueScopes { get; }
     }
 
     /// <summary>

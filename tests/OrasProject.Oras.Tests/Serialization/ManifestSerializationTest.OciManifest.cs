@@ -13,6 +13,7 @@
 
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Serialization;
 using Xunit;
@@ -240,6 +241,41 @@ public partial class ManifestSerializationTest
         Assert.Null(m.ArtifactType);
         Assert.Null(m.Subject);
         Assert.Null(m.Annotations);
+    }
+
+    [Fact]
+    public void Deserialize_NullConfig_Throws()
+    {
+        // Per the OCI spec, config is REQUIRED. `required` only enforces key presence, so a
+        // null value is rejected by the manifest's post-deserialization validation.
+        var json = """
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "config": null,
+                "layers": []
+            }
+            """;
+        var ex = Assert.Throws<JsonException>(
+            () => OciJsonSerializer.Deserialize<Manifest>(Encoding.UTF8.GetBytes(json)));
+        Assert.Contains("config", ex.Message);
+    }
+
+    [Fact]
+    public void Deserialize_InvalidConfig_Throws()
+    {
+        // A present-but-invalid config (empty digest/mediaType) is also rejected.
+        var json = """
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "config": { "mediaType": "", "digest": "", "size": 0 },
+                "layers": []
+            }
+            """;
+        var ex = Assert.Throws<JsonException>(
+            () => OciJsonSerializer.Deserialize<Manifest>(Encoding.UTF8.GetBytes(json)));
+        Assert.Contains("config", ex.Message);
     }
 
     public static IEnumerable<object[]> OciManifestFieldFixtures()
