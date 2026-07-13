@@ -322,7 +322,8 @@ public class Repository : IRepository
         }
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         var limitedStreamContent = await stream.ReadStreamWithLimitAsync(_opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
-        var tagList = OciJsonSerializer.Deserialize<TagList>(limitedStreamContent);
+        var tagList = OciJsonSerializer.Deserialize(
+            limitedStreamContent, OciJsonSerializerContext.OciDefault.TagList);
         return (tagList.Tags ?? Array.Empty<string>(), response.ParseLink());
     }
 
@@ -385,7 +386,11 @@ public class Repository : IRepository
         {
             if (remoteReference.Registry != _opts.Reference.Registry || remoteReference.Repository != _opts.Reference.Repository)
             {
-                throw new InvalidReferenceException($"Mismatch between received {JsonSerializer.Serialize(remoteReference)} and expected {JsonSerializer.Serialize(_opts.Reference)}");
+                throw new InvalidReferenceException(
+                    $"Mismatch between received "
+                    + $"{JsonSerializer.Serialize(remoteReference, OciJsonSerializerContext.OciDefault.Reference)}"
+                    + $" and expected "
+                    + $"{JsonSerializer.Serialize(_opts.Reference, OciJsonSerializerContext.OciDefault.Reference)}");
             }
         }
         else
@@ -609,7 +614,8 @@ public class Repository : IRepository
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             var limitedStreamContent = await stream.ReadStreamWithLimitAsync(
                 _opts.MaxMetadataBytes, cancellationToken).ConfigureAwait(false);
-            var referrersIndex = OciJsonSerializer.Deserialize<Index>(limitedStreamContent)
+            var referrersIndex = OciJsonSerializer.Deserialize(
+                limitedStreamContent, OciJsonSerializerContext.OciDefault.Index)
                 ?? throw new InvalidResponseException(
                     $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}"
                     + ": failed to decode response");
@@ -704,7 +710,8 @@ public class Repository : IRepository
             result.Descriptor.LimitSize(Options.MaxMetadataBytes);
             using var stream = result.Stream;
             var indexBytes = await stream.ReadAllAsync(result.Descriptor, cancellationToken).ConfigureAwait(false);
-            var index = OciJsonSerializer.Deserialize<Index>(indexBytes)
+            var index = OciJsonSerializer.Deserialize(
+                indexBytes, OciJsonSerializerContext.OciDefault.Index)
                 ?? throw new JsonException(
                     $"Error deserializing index manifest for referrersTag {referrersTag}");
             // A non-conformant `null` manifests value is left as null by deserialization;

@@ -60,7 +60,8 @@ public class Index : Versioned
         IList<Descriptor> manifests)
     {
         var index = new Index(manifests);
-        var indexContent = OciJsonSerializer.SerializeToUtf8Bytes(index);
+        var indexContent = OciJsonSerializer.SerializeToUtf8Bytes(
+            index, OciJsonSerializerContext.OciDefault.Index);
         return (Descriptor.Create(indexContent, Oci.MediaType.ImageIndex), indexContent);
     }
 }

@@ -269,7 +269,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         {
             case MediaType.ImageIndex:
                 var indexManifest = await OciJsonSerializer
-                    .DeserializeAsync<Index>(content, cancellationToken)
+                    .DeserializeAsync(content, OciJsonSerializerContext.OciDefault.Index, cancellationToken)
                     .ConfigureAwait(false)
                     ?? throw new JsonException("Failed to deserialize index");
                 if (indexManifest.Subject == null)
@@ -282,7 +282,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 break;
             case MediaType.ImageManifest:
                 var imageManifest = await OciJsonSerializer
-                    .DeserializeAsync<Manifest>(content, cancellationToken)
+                    .DeserializeAsync(content, OciJsonSerializerContext.OciDefault.Manifest, cancellationToken)
                     .ConfigureAwait(false)
                     ?? throw new JsonException("Failed to deserialize manifest");
                 if (imageManifest.Subject == null)
@@ -504,7 +504,7 @@ public class ManifestStore(Repository repository) : IManifestStore
         {
             case MediaType.ImageManifest:
                 var imageManifest = await OciJsonSerializer
-                    .DeserializeAsync<Manifest>(manifestContent, cancellationToken)
+                    .DeserializeAsync(manifestContent, OciJsonSerializerContext.OciDefault.Manifest, cancellationToken)
                     .ConfigureAwait(false);
                 if (imageManifest?.Subject == null)
                 {
@@ -515,7 +515,7 @@ public class ManifestStore(Repository repository) : IManifestStore
                 break;
             case MediaType.ImageIndex:
                 var imageIndex = await OciJsonSerializer
-                    .DeserializeAsync<Index>(manifestContent, cancellationToken)
+                    .DeserializeAsync(manifestContent, OciJsonSerializerContext.OciDefault.Index, cancellationToken)
                     .ConfigureAwait(false);
                 if (imageIndex?.Subject == null)
                 {
