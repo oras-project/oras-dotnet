@@ -21,10 +21,10 @@ using System.Threading.Tasks;
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 /// <summary>
-/// The context passed to a <see cref="ChallengeRecoveryHandler"/>: a read-only view of an HTTP 401
+/// The context passed to an <see cref="IChallengeRecovery"/>: a read-only view of an HTTP 401
 /// whose challenge the standard flow could not use, plus a credential-free probe primitive to
 /// re-derive a usable one. This is plain data; it holds no client reference and does not expose the
-/// underlying (engine-owned) response object, so a handler can neither dispose nor mutate it.
+/// underlying (engine-owned) response object, so a recovery cannot dispose or mutate it.
 /// </summary>
 public sealed class FailedChallenge
 {

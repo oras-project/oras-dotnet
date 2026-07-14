@@ -273,14 +273,14 @@ public class Client : IClient
     private IRealmValidator _realmValidator = new DefaultRealmValidator();
 
     /// <summary>
-    /// An optional recovery handler consulted when standard resolution of a 401 fails to produce a
-    /// usable challenge (e.g. a non-conformant registry that omits the challenge on a token-carrying
+    /// An optional recovery implementation consulted when standard resolution of a 401 fails to produce
+    /// a usable challenge (e.g. a non-conformant registry that omits the challenge on a token-carrying
     /// 401, or one whose challenge is followed to its token endpoint only to be rejected there with a
     /// 401). Defaults to <c>null</c> — no recovery, i.e. the
     /// standard give-up behavior. Set to <see cref="ChallengeRecoveries.ColdProbe"/> (or a custom
-    /// handler) to opt in.
+    /// <see cref="IChallengeRecovery"/>) to opt in.
     /// </summary>
-    public ChallengeRecoveryHandler? ChallengeRecovery { get; init; }
+    public IChallengeRecovery? ChallengeRecovery { get; init; }
 
     /// <summary>
     /// ScopeManager is an instance to manage scopes.
@@ -1143,7 +1143,7 @@ public class Client : IClient
                 allowAutoRedirect: allowAutoRedirect,
                 cancellationToken: ct));
 
-        var recovered = await ChallengeRecovery!(context, cancellationToken).ConfigureAwait(false);
+        var recovered = await ChallengeRecovery!.RecoverAsync(context, cancellationToken).ConfigureAwait(false);
         if (recovered == null)
         {
             return null;

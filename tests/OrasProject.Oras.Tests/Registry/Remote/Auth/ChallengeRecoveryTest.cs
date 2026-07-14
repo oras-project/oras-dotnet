@@ -568,7 +568,8 @@ public class ChallengeRecoveryTest
         var mockHandler = CustomHandler(Handler);
         var client = new Client(new HttpClient(mockHandler.Object))
         {
-            ChallengeRecovery = (context, ct) => throw new InvalidOperationException("recovery boom")
+            ChallengeRecovery = new DelegateChallengeRecovery(
+                (context, ct) => throw new InvalidOperationException("recovery boom"))
         };
         SeedStaleToken(client, host);
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
@@ -665,15 +666,15 @@ public class ChallengeRecoveryTest
         var mockHandler = CustomHandler(Handler);
         var client = new Client(new HttpClient(mockHandler.Object))
         {
-            // A custom handler that synthesizes a usable challenge regardless of the gating signals.
-            ChallengeRecovery = (context, ct) =>
+            // A custom recovery that synthesizes a usable challenge regardless of the gating signals.
+            ChallengeRecovery = new DelegateChallengeRecovery((context, ct) =>
             {
                 recoveryCalls++;
                 var challenge = new HttpResponseMessage(HttpStatusCode.Unauthorized);
                 challenge.Headers.WwwAuthenticate.Add(new AuthenticationHeaderValue(
                     "Bearer", $"realm=\"{coldRealm}\",service=\"registry\",scope=\"{_scope}\""));
                 return Task.FromResult<HttpResponseMessage?>(challenge);
-            }
+            })
         };
         // No stale token seeded → attachedCachedToken is false and the attempted key is empty.
 
@@ -687,5 +688,22 @@ public class ChallengeRecoveryTest
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
         Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
         Assert.Equal(2, recoveryCalls);
+    }
+
+    /// <summary>
+    /// Test adapter that turns a lambda into an <see cref="IChallengeRecovery"/>, so tests can express
+    /// ad-hoc recovery strategies inline.
+    /// </summary>
+    private sealed class DelegateChallengeRecovery : IChallengeRecovery
+    {
+        private readonly Func<FailedChallenge, CancellationToken, Task<HttpResponseMessage?>> _recover;
+
+        public DelegateChallengeRecovery(
+            Func<FailedChallenge, CancellationToken, Task<HttpResponseMessage?>> recover)
+            => _recover = recover;
+
+        public Task<HttpResponseMessage?> RecoverAsync(
+            FailedChallenge context, CancellationToken cancellationToken = default)
+            => _recover(context, cancellationToken);
     }
 }

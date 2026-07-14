@@ -11,10 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 /// <summary>
-/// Built-in <see cref="ChallengeRecoveryHandler"/> strategies.
+/// Built-in <see cref="IChallengeRecovery"/> strategies.
 /// </summary>
 public static class ChallengeRecoveries
 {
@@ -24,8 +28,21 @@ public static class ChallengeRecoveries
     /// request is replayable; the client then re-runs the recovered response through its standard
     /// flow. This is host-agnostic — it keys off the shape of the failure, not registry names.
     /// </summary>
-    public static ChallengeRecoveryHandler ColdProbe { get; } = static async (context, cancellationToken) =>
-        context.AttachedCachedToken && context.CanReplay
+    public static IChallengeRecovery ColdProbe { get; } = new ColdProbeChallengeRecovery();
+}
+
+/// <summary>
+/// The built-in cold-probe recovery exposed by <see cref="ChallengeRecoveries.ColdProbe"/>: re-derives
+/// the challenge from a credential-free request when the failed attempt carried a cached token and the
+/// request is replayable; otherwise declines (returns <c>null</c>). Host-agnostic.
+/// </summary>
+internal sealed class ColdProbeChallengeRecovery : IChallengeRecovery
+{
+    /// <inheritdoc/>
+    public async Task<HttpResponseMessage?> RecoverAsync(
+        FailedChallenge context,
+        CancellationToken cancellationToken = default)
+        => context.AttachedCachedToken && context.CanReplay
             ? await context.ProbeWithoutAuthorizationAsync(cancellationToken).ConfigureAwait(false)
             : null;
 }

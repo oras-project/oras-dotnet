@@ -48,9 +48,16 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 /// </para>
 /// <para>See <see cref="ChallengeRecoveries.ColdProbe"/> for the built-in cold-probe recovery.</para>
 /// </remarks>
-/// <param name="context">The failed 401 exchange, plus a credential-free probe primitive.</param>
-/// <param name="cancellationToken">A token to cancel the operation.</param>
-/// <returns>A replacement response to continue from, or <c>null</c> to give up.</returns>
-public delegate Task<HttpResponseMessage?> ChallengeRecoveryHandler(
-    FailedChallenge context,
-    CancellationToken cancellationToken);
+public interface IChallengeRecovery
+{
+    /// <summary>
+    /// Attempts to recover from the failed 401 challenge described by <paramref name="context"/>,
+    /// returning a replacement response for the client to continue from, or <c>null</c> to give up.
+    /// </summary>
+    /// <param name="context">The failed 401 exchange, plus a credential-free probe primitive.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A replacement response to continue from, or <c>null</c> to give up.</returns>
+    Task<HttpResponseMessage?> RecoverAsync(
+        FailedChallenge context,
+        CancellationToken cancellationToken = default);
+}
