@@ -108,7 +108,7 @@ internal class UriFactory : UriBuilder
     /// Format: {scheme}://{registry}/v2/{repository}/referrers/{digest}
     /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The URL for listing all referrers of the referenced content.</returns>
     public Uri BuildReferrersUrl()
     {
         return BuildReferrersUrl(string.Empty);
@@ -119,8 +119,8 @@ internal class UriFactory : UriBuilder
     /// Format: {scheme}://{registry}/v2/{repository}/referrers/{digest}?artifactType={artifactType}
     /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     /// </summary>
-    /// <param name="artifactType"></param>
-    /// <returns></returns>
+    /// <param name="artifactType">The artifact type used to filter the referrers; ignored when empty.</param>
+    /// <returns>The URL for listing referrers of the referenced content, optionally filtered by artifact type.</returns>
     public Uri BuildReferrersUrl(string artifactType)
     {
         var builder = NewRepositoryBaseBuilder();

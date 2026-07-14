@@ -175,12 +175,15 @@ internal static class HttpResponseMessageExtensions
     /// <summary>
     /// Returns a descriptor generated from the response.
     /// </summary>
-    /// <param name="response"></param>
-    /// <param name="reference"></param>
-    /// <param name="maxBytes"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    /// <exception cref="Exception"></exception>
+    /// <param name="response">The HTTP response to generate the descriptor from.</param>
+    /// <param name="reference">The reference associated with the requested content.</param>
+    /// <param name="maxBytes">The maximum allowed content size, in bytes.</param>
+    /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+    /// <returns>The descriptor describing the response content.</returns>
+    /// <exception cref="HttpIOException">
+    /// Thrown when the response has an invalid Content-Type header, a missing Content-Length,
+    /// or when the content digest cannot be validated.
+    /// </exception>
     public static async Task<Descriptor> GenerateDescriptorAsync(this HttpResponseMessage response, Reference reference, long maxBytes, CancellationToken cancellationToken = default)
     {
         // 1. Validate Content-Type

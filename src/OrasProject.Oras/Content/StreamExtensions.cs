@@ -30,11 +30,11 @@ public static class StreamExtensions
     /// <summary>
     /// Reads and verifies the content from a stream
     /// </summary>
-    /// <param name="stream"></param>
-    /// <param name="descriptor"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    /// <exception cref="InvalidDescriptorSizeException"></exception>
+    /// <param name="stream">The stream to read the content from.</param>
+    /// <param name="descriptor">The descriptor describing the expected size and digest of the content.</param>
+    /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+    /// <returns>The content read from the stream.</returns>
+    /// <exception cref="InvalidDescriptorSizeException">Thrown when the descriptor size is negative.</exception>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
     /// <exception cref="MismatchedDigestException"></exception>
     public static async Task<byte[]> ReadAllAsync(this Stream stream, Descriptor descriptor, CancellationToken cancellationToken = default)
@@ -73,10 +73,10 @@ public static class StreamExtensions
     /// Reads the content from a stream up to a specified byte limit.
     /// Throws SizeLimitExceededException if the content exceeds the limit.
     /// </summary>
-    /// <param name="stream"></param>
-    /// <param name="maxBytes"></param>
-    /// <param name="cancellationToken"></param>
-    /// <exception cref="SizeLimitExceededException"></exception>
+    /// <param name="stream">The stream to read the content from.</param>
+    /// <param name="maxBytes">The maximum number of bytes to read.</param>
+    /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+    /// <exception cref="SizeLimitExceededException">Thrown when the content exceeds <paramref name="maxBytes"/>.</exception>
     internal static async Task<byte[]> ReadStreamWithLimitAsync(
         this Stream stream,
         long maxBytes,
