@@ -15,17 +15,33 @@ using System;
 
 namespace OrasProject.Oras.Exceptions;
 
+/// <summary>
+/// SizeLimitExceededException is thrown when content exceeds an allowed size limit.
+/// </summary>
 public class SizeLimitExceededException : Exception
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SizeLimitExceededException"/> class.
+    /// </summary>
     public SizeLimitExceededException()
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SizeLimitExceededException"/> class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
     public SizeLimitExceededException(string? message)
         : base(message)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SizeLimitExceededException"/> class with a specified error message
+    /// and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="inner">The exception that is the cause of the current exception.</param>
     public SizeLimitExceededException(string? message, Exception? inner)
         : base(message, inner)
     {

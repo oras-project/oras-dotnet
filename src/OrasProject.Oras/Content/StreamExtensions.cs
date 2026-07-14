@@ -21,6 +21,9 @@ using System.Threading;
 using System.Threading.Tasks;
 namespace OrasProject.Oras.Content;
 
+/// <summary>
+/// StreamExtensions provides extension helpers for reading and verifying stream content.
+/// </summary>
 public static class StreamExtensions
 {
     private const int _defaultBufferSize = 8192; // 8 KB, standard for stream I/O
@@ -29,6 +32,7 @@ public static class StreamExtensions
     /// </summary>
     /// <param name="stream"></param>
     /// <param name="descriptor"></param>
+    /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="InvalidDescriptorSizeException"></exception>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
@@ -71,6 +75,7 @@ public static class StreamExtensions
     /// </summary>
     /// <param name="stream"></param>
     /// <param name="maxBytes"></param>
+    /// <param name="cancellationToken"></param>
     /// <exception cref="SizeLimitExceededException"></exception>
     internal static async Task<byte[]> ReadStreamWithLimitAsync(
         this Stream stream,

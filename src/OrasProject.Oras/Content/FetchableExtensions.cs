@@ -22,6 +22,9 @@ using Index = OrasProject.Oras.Oci.Index;
 namespace OrasProject.Oras.Content;
 
 
+/// <summary>
+/// FetchableExtensions provides extension helpers for fetching successors of a node.
+/// </summary>
 public static class FetchableExtensions
 {
     /// <summary>

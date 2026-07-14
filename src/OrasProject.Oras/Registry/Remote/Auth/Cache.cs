@@ -18,6 +18,9 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
+/// <summary>
+/// Cache is the default in-memory implementation of <see cref="ICache"/>.
+/// </summary>
 public sealed class Cache : ICache
 {
     #region private members

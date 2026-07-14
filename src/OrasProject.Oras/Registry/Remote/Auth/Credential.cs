@@ -13,4 +13,11 @@
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
+/// <summary>
+/// Credential represents the credentials used to access a remote registry.
+/// </summary>
+/// <param name="Username">The username for basic authentication.</param>
+/// <param name="Password">The password for basic authentication.</param>
+/// <param name="RefreshToken">The refresh token (identity token) for OAuth2 authentication.</param>
+/// <param name="AccessToken">The access token (bearer token) for token-based authentication.</param>
 public record struct Credential(string? Username = null, string? Password = null, string? RefreshToken = null, string? AccessToken = null);

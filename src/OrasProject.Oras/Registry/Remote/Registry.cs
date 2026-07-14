@@ -26,20 +26,42 @@ using OrasProject.Oras.Serialization;
 
 namespace OrasProject.Oras.Registry.Remote;
 
+/// <summary>
+/// Registry provides access to a remote registry that implements the Docker Registry
+/// HTTP API V2 or the OCI Distribution Specification.
+/// </summary>
 public class Registry : IRegistry
 {
+    /// <summary>
+    /// Gets the options used to access repositories in this registry.
+    /// </summary>
     public RepositoryOptions RepositoryOptions => _opts;
 
     private RepositoryOptions _opts;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Registry"/> class for the given
+    /// registry host, using the default HTTP client.
+    /// </summary>
+    /// <param name="registry">The registry host, e.g. <c>registry.example.com</c>.</param>
     public Registry(string registry) : this(registry, new PlainClient()) { }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Registry"/> class for the given
+    /// registry host, using the specified HTTP client.
+    /// </summary>
+    /// <param name="registry">The registry host, e.g. <c>registry.example.com</c>.</param>
+    /// <param name="client">The client used to send HTTP requests.</param>
     public Registry(string registry, IClient client) => _opts = new()
     {
         Reference = new Reference(registry),
         Client = client,
     };
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Registry"/> class from the given options.
+    /// </summary>
+    /// <param name="options">The repository options used to access the registry.</param>
     public Registry(RepositoryOptions options) => _opts = options;
 
     /// <summary>

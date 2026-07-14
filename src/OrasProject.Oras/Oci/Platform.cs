@@ -23,20 +23,35 @@ namespace OrasProject.Oras.Oci;
 /// </summary>
 public class Platform
 {
+    /// <summary>
+    /// Architecture is the CPU architecture the image runs on, e.g. <c>amd64</c>.
+    /// </summary>
     [JsonPropertyName("architecture")]
     public required string Architecture { get; set; }
 
+    /// <summary>
+    /// Os is the operating system the image runs on, e.g. <c>linux</c>.
+    /// </summary>
     [JsonPropertyName("os")]
     public required string Os { get; set; }
 
+    /// <summary>
+    /// OsVersion is an optional version of the operating system.
+    /// </summary>
     [JsonPropertyName("os.version")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? OsVersion { get; set; }
 
+    /// <summary>
+    /// OsFeatures is an optional list of required operating system features.
+    /// </summary>
     [JsonPropertyName("os.features")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public IList<string>? OsFeatures { get; set; }
 
+    /// <summary>
+    /// Variant is an optional variant of the CPU architecture, e.g. <c>v7</c>.
+    /// </summary>
     [JsonPropertyName("variant")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? Variant { get; set; }

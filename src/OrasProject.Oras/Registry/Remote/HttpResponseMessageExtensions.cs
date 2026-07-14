@@ -54,7 +54,7 @@ internal static class HttpResponseMessageExtensions
 
     /// <summary>
     /// Returns the URL of the response's "Link" header, if present.
-    ///  The link header is of the form <link>; rel="next"
+    ///  The link header is of the form {link}; rel="next"
     /// </summary>
     /// <returns>next link or null if not present</returns>
     public static Uri? ParseLink(this HttpResponseMessage response)
@@ -178,6 +178,7 @@ internal static class HttpResponseMessageExtensions
     /// <param name="response"></param>
     /// <param name="reference"></param>
     /// <param name="maxBytes"></param>
+    /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
     public static async Task<Descriptor> GenerateDescriptorAsync(this HttpResponseMessage response, Reference reference, long maxBytes, CancellationToken cancellationToken = default)
