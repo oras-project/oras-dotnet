@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.Linq;
 using OrasProject.Oras.Content;
 using OrasProject.Oras.Oci;
+using OrasProject.Oras.Registry.Exceptions;
 
 namespace OrasProject.Oras.Registry.Remote;
 
@@ -37,9 +38,26 @@ internal static class Referrers
         Delete,
     }
 
+    /// <summary>
+    /// Builds a referrers tag from a descriptor's digest by replacing ':' with '-'.
+    /// Validates both the digest format and the resulting tag format.
+    /// </summary>
+    /// <param name="descriptor">The descriptor whose digest is used to build the tag.</param>
+    /// <returns>The referrers tag string.</returns>
+    /// <exception cref="OrasProject.Oras.Content.Exceptions.InvalidDigestException">Thrown if the digest is invalid.</exception>
+    /// <exception cref="InvalidReferenceException">Thrown if the resulting tag is not a valid OCI tag.</exception>
     internal static string BuildReferrersTag(Descriptor descriptor)
     {
-        return Digest.Validate(descriptor.Digest).Replace(':', '-');
+        if (!Digest.TryValidate(descriptor.Digest, out var digestError))
+        {
+            throw new Content.Exceptions.InvalidDigestException(digestError);
+        }
+        var tag = descriptor.Digest.Replace(':', '-');
+        if (!Reference.TryValidateTag(tag, out var tagError))
+        {
+            throw new InvalidReferenceException(tagError);
+        }
+        return tag;
     }
 
     /// <summary>
