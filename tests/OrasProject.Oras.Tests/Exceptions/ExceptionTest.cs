@@ -65,4 +65,12 @@ public class ExceptionTest
         await Assert.ThrowsAsync<InvalidDateTimeFormatException>(() => throw new InvalidDateTimeFormatException("Invalid date time format"));
         await Assert.ThrowsAsync<InvalidDateTimeFormatException>(() => throw new InvalidDateTimeFormatException("Invalid date time format", null));
     }
+
+    [Fact]
+    public async Task InvalidDescriptorException()
+    {
+        await Assert.ThrowsAsync<InvalidDescriptorException>(() => throw new InvalidDescriptorException());
+        await Assert.ThrowsAsync<InvalidDescriptorException>(() => throw new InvalidDescriptorException("Invalid descriptor"));
+        await Assert.ThrowsAsync<InvalidDescriptorException>(() => throw new InvalidDescriptorException("Invalid descriptor", null));
+    }
 }

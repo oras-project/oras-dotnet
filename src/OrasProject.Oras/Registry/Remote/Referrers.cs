@@ -37,6 +37,9 @@ internal static class Referrers
         Delete,
     }
 
+    // Note: This method assumes the digest uses a registered algorithm (sha256/sha512).
+    // Digests with unrecognized algorithms containing separators (e.g. '+') in the
+    // algorithm component may produce tags that are not valid OCI references.
     internal static string BuildReferrersTag(Descriptor descriptor)
     {
         return Digest.Validate(descriptor.Digest).Replace(':', '-');
