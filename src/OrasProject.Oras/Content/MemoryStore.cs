@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Content;
 
-public class MemoryStore : ITarget, IReadOnlyGraphStorage
+public class MemoryStore : ITarget, IReadOnlyGraphTarget
 {
     private readonly MemoryStorage _storage = new();
     private readonly MemoryTagStore _tagResolver = new();
