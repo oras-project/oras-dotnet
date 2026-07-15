@@ -54,7 +54,7 @@ internal static class HttpResponseMessageExtensions
 
     /// <summary>
     /// Returns the URL of the response's "Link" header, if present.
-    ///  The link header is of the form {link}; rel="next"
+    ///  The link header is of the form &lt;{link}&gt;; rel="next"
     /// </summary>
     /// <returns>next link or null if not present</returns>
     public static Uri? ParseLink(this HttpResponseMessage response)
