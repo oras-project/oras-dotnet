@@ -780,6 +780,11 @@ public class Client : IClient
                 recovered = await InvokeChallengeRecoveryAsync(
                     failedStatusCode: failedStatusCode,
                     wwwAuthenticateChallenges: failedChallenges!,
+                    unauthorizedResponseToBuffer:
+                        resolution.FailureKind == ChallengeFailureKind.NoUsableScheme
+                            && originalRequest.Method != HttpMethod.Head
+                            ? response1
+                            : null,
                     originalRequest: originalRequest,
                     host: host,
                     partitionId: partitionId,
@@ -903,6 +908,7 @@ public class Client : IClient
                                 scheme: schemeFromChallenge,
                                 attemptedKey: attemptedKey,
                                 newKey: mergedScopes.CacheKey,
+                                hasOpaqueScopes: mergedScopes.HasOpaqueScopes,
                                 token: cachedToken,
                                 partitionId: partitionId);
                             return StandardAuthResult.Resolved(response2);
@@ -983,6 +989,7 @@ public class Client : IClient
                         scheme: schemeFromChallenge,
                         attemptedKey: attemptedKey,
                         newKey: mergedScopes.CacheKey,
+                        hasOpaqueScopes: mergedScopes.HasOpaqueScopes,
                         token: bearerAuthToken,
                         partitionId: partitionId);
                     return StandardAuthResult.Resolved(bearerResponse);
@@ -1124,6 +1131,7 @@ public class Client : IClient
     private async Task<HttpResponseMessage?> InvokeChallengeRecoveryAsync(
         HttpStatusCode failedStatusCode,
         IReadOnlyList<string> wwwAuthenticateChallenges,
+        HttpResponseMessage? unauthorizedResponseToBuffer,
         HttpRequestMessage originalRequest,
         string host,
         string? partitionId,
@@ -1137,9 +1145,12 @@ public class Client : IClient
             wwwAuthenticateChallenges: wwwAuthenticateChallenges,
             host: host,
             attachedCachedToken: attachedCachedToken,
-            canReplay: CanReplayWithoutAuthorization(originalRequest),
+            canReplay: CanReplayWithoutAuthorization(
+                originalRequest,
+                unauthorizedResponseToBuffer),
             probe: ct => ProbeWithoutAuthorizationAsync(
                 originalRequest: originalRequest,
+                unauthorizedResponseToBuffer: unauthorizedResponseToBuffer,
                 allowAutoRedirect: allowAutoRedirect,
                 cancellationToken: ct));
 
@@ -1148,6 +1159,11 @@ public class Client : IClient
         {
             return null;
         }
+
+        // Custom recoveries may synthesize a response rather than sending an HTTP request. Preserve
+        // an explicitly supplied RequestMessage, but provide the original request when it is absent so
+        // downstream response parsing has the method/URI context it expects.
+        recovered.RequestMessage ??= originalRequest;
 
         if (recovered.StatusCode == HttpStatusCode.Unauthorized)
         {
@@ -1199,24 +1215,51 @@ public class Client : IClient
 
     /// <summary>
     /// Re-sends <paramref name="originalRequest"/> with no <c>Authorization</c> header to elicit a
-    /// fresh challenge from a registry that withheld a usable one for a cached token.
+    /// fresh challenge from a registry that withheld a usable one for a cached token. When the
+    /// original no-challenge 401 is still alive, buffers its bounded content first so the response
+    /// releases its connection before the same-host probe.
     /// </summary>
     private async Task<HttpResponseMessage> ProbeWithoutAuthorizationAsync(
         HttpRequestMessage originalRequest,
+        HttpResponseMessage? unauthorizedResponseToBuffer,
         bool allowAutoRedirect,
         CancellationToken cancellationToken)
     {
+        if (unauthorizedResponseToBuffer != null)
+        {
+            await unauthorizedResponseToBuffer.Content
+                .LoadIntoBufferAsync(MaxBufferSize)
+                .ConfigureAwait(false);
+        }
+
         var probe = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
         probe.Headers.Authorization = null;
         return await SendRequestAsync(probe, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Whether <paramref name="request"/> can be safely re-sent without authorization — restricted to
-    /// idempotent GET/HEAD so a probe never replays a mutating request.
+    /// Whether <paramref name="request"/> can be safely re-sent without authorization: the request is
+    /// an idempotent GET/HEAD, and any still-live 401 content can be bounded-buffered to release its
+    /// connection before the same-host probe.
     /// </summary>
-    private static bool CanReplayWithoutAuthorization(HttpRequestMessage request)
-        => request.Method == HttpMethod.Get || request.Method == HttpMethod.Head;
+    private static bool CanReplayWithoutAuthorization(
+        HttpRequestMessage request,
+        HttpResponseMessage? unauthorizedResponseToBuffer)
+    {
+        if (request.Method != HttpMethod.Get && request.Method != HttpMethod.Head)
+        {
+            return false;
+        }
+
+        if (unauthorizedResponseToBuffer == null)
+        {
+            return true;
+        }
+
+        var contentLength = unauthorizedResponseToBuffer.Content.Headers.ContentLength;
+        return contentLength.HasValue
+            && contentLength.Value <= MaxBufferSize;
+    }
 
     /// <summary>Whether <paramref name="statusCode"/> is a 2xx success or a 3xx redirect (200–399).</summary>
     private static bool IsSuccessOrRedirect(HttpStatusCode statusCode)
@@ -1225,7 +1268,7 @@ public class Client : IClient
     /// <summary>
     /// Recovery only: once a token has demonstrably worked (a 2xx/3xx final response), replace the stale
     /// token cached under the originally attempted scope key so future requests under that key succeed
-    /// directly instead of re-entering recovery. No-op unless the key actually changed.
+    /// directly instead of re-entering recovery. No-op for opaque scopes or unless the key changed.
     /// </summary>
     private void RefreshAttemptedScopeKeyIfNeeded(
         bool refresh,
@@ -1234,11 +1277,13 @@ public class Client : IClient
         Challenge.Scheme scheme,
         string attemptedKey,
         string newKey,
+        bool hasOpaqueScopes,
         string token,
         string? partitionId)
     {
         if (refresh
             && IsSuccessOrRedirect(resolvedStatus)
+            && !hasOpaqueScopes
             && !string.Equals(newKey, attemptedKey, StringComparison.Ordinal))
         {
             Cache.SetCache(host, scheme, attemptedKey, token, partitionId);

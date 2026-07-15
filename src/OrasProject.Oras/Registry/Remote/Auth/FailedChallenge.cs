@@ -67,7 +67,8 @@ public sealed class FailedChallenge
 
     /// <summary>
     /// <c>true</c> when the original request can be safely re-sent without authorization
-    /// (an idempotent GET/HEAD). <see cref="ProbeWithoutAuthorizationAsync"/> requires it.
+    /// (an idempotent GET/HEAD whose failed response can release its connection before the probe).
+    /// <see cref="ProbeWithoutAuthorizationAsync"/> requires it.
     /// </summary>
     public bool CanReplay { get; }
 

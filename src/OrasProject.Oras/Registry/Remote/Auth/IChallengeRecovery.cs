@@ -56,7 +56,10 @@ public interface IChallengeRecovery
     /// </summary>
     /// <param name="context">The failed 401 exchange, plus a credential-free probe primitive.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>A replacement response to continue from, or <c>null</c> to give up.</returns>
+    /// <returns>
+    /// A replacement response to continue from, or <c>null</c> to give up. If the returned response
+    /// has no <see cref="HttpResponseMessage.RequestMessage"/>, the client assigns the original request.
+    /// </returns>
     Task<HttpResponseMessage?> RecoverAsync(
         FailedChallenge context,
         CancellationToken cancellationToken = default);
