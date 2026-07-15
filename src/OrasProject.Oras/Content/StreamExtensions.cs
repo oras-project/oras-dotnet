@@ -35,8 +35,8 @@ public static class StreamExtensions
     /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
     /// <returns>The content read from the stream.</returns>
     /// <exception cref="InvalidDescriptorSizeException">Thrown when the descriptor size is negative.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"></exception>
-    /// <exception cref="MismatchedDigestException"></exception>
+    /// <exception cref="MismatchedSizeException">Thrown when the content length does not match the descriptor size.</exception>
+    /// <exception cref="MismatchedDigestException">Thrown when the content digest does not match the descriptor digest.</exception>
     public static async Task<byte[]> ReadAllAsync(this Stream stream, Descriptor descriptor, CancellationToken cancellationToken = default)
     {
         if (descriptor.Size < 0)
