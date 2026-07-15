@@ -59,16 +59,36 @@ public class ResponseException : HttpRequestException
     /// </remarks>
     public override string Message => _formattedMessage;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ResponseException"/> class from an HTTP response.
+    /// </summary>
+    /// <param name="response">The HTTP response that caused the exception.</param>
+    /// <param name="responseBody">The response body, used to parse registry errors.</param>
     public ResponseException(HttpResponseMessage response, string? responseBody = null)
         : this(response, responseBody, null)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ResponseException"/> class with a specified error message.
+    /// </summary>
+    /// <param name="response">The HTTP response that caused the exception.</param>
+    /// <param name="responseBody">The response body, used to parse registry errors.</param>
+    /// <param name="message">The message that describes the error.</param>
     public ResponseException(HttpResponseMessage response, string? responseBody, string? message)
         : this(response, responseBody, response.StatusCode == HttpStatusCode.Unauthorized ? HttpRequestError.UserAuthenticationError : HttpRequestError.Unknown, message, null)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ResponseException"/> class with a specified
+    /// HTTP request error, error message, and inner exception.
+    /// </summary>
+    /// <param name="response">The HTTP response that caused the exception.</param>
+    /// <param name="responseBody">The response body, used to parse registry errors.</param>
+    /// <param name="httpRequestError">The HTTP request error associated with the response.</param>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="inner">The exception that is the cause of the current exception.</param>
     public ResponseException(HttpResponseMessage response, string? responseBody, HttpRequestError httpRequestError, string? message, Exception? inner)
         : base(httpRequestError, message, inner, response.StatusCode)
     {

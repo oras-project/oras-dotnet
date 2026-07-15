@@ -27,6 +27,9 @@ using Index = OrasProject.Oras.Oci.Index;
 
 namespace OrasProject.Oras.Registry.Remote;
 
+/// <summary>
+/// ManifestStore provides access to the manifests of a remote repository.
+/// </summary>
 public class ManifestStore(Repository repository) : IManifestStore
 {
     private Repository Repository { get; } = repository ?? throw new ArgumentNullException(nameof(repository));
@@ -392,6 +395,12 @@ public class ManifestStore(Repository repository) : IManifestStore
         response.VerifyContentDigest(expected.Digest);
     }
 
+    /// <summary>
+    /// Resolves the given reference to its descriptor.
+    /// </summary>
+    /// <param name="reference">The tag or digest to resolve.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The descriptor of the resolved manifest.</returns>
     public async Task<Descriptor> ResolveAsync(string reference, CancellationToken cancellationToken = default)
         => await ResolveAsync(reference, new ResolveOptions(), cancellationToken).ConfigureAwait(false);
 

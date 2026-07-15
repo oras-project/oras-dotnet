@@ -23,24 +23,42 @@ namespace OrasProject.Oras.Oci;
 /// </summary>
 public class Manifest : Versioned, IJsonOnDeserialized
 {
+    /// <summary>
+    /// MediaType specifies the type of this document data structure.
+    /// </summary>
     [JsonPropertyName("mediaType")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? MediaType { get; set; }
 
+    /// <summary>
+    /// ArtifactType is the type of an artifact when the manifest is used for an artifact.
+    /// </summary>
     [JsonPropertyName("artifactType")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? ArtifactType { get; set; }
 
+    /// <summary>
+    /// Config references a configuration object for a container, by digest.
+    /// </summary>
     [JsonPropertyName("config")]
     public required Descriptor Config { get; set; }
 
+    /// <summary>
+    /// Layers is an indexed list of layers referenced by the manifest.
+    /// </summary>
     [JsonPropertyName("layers")]
     public required IList<Descriptor> Layers { get; set; }
 
+    /// <summary>
+    /// Subject is an optional link to another manifest that this manifest refers to.
+    /// </summary>
     [JsonPropertyName("subject")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public Descriptor? Subject { get; set; }
 
+    /// <summary>
+    /// Annotations contains arbitrary metadata for the image manifest.
+    /// </summary>
     [JsonPropertyName("annotations")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public IDictionary<string, string>? Annotations { get; set; }

@@ -26,8 +26,9 @@ internal class MemoryGraph : IPredecessorFindable
     /// <summary>
     /// Returns the nodes directly pointing to the current node.
     /// </summary>
-    /// <param name="node"></param>
-    /// <returns></returns>
+    /// <param name="node">The node whose predecessors are requested.</param>
+    /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+    /// <returns>The descriptors of the nodes directly pointing to <paramref name="node"/>.</returns>
     public Task<IEnumerable<Descriptor>> GetPredecessorsAsync(Descriptor node, CancellationToken cancellationToken = default)
     {
         var key = node.BasicDescriptor;

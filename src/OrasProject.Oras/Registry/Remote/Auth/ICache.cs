@@ -13,6 +13,9 @@
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
+/// <summary>
+/// ICache caches authentication schemes and tokens for registry hosts.
+/// </summary>
 public interface ICache
 {
     /// <summary>

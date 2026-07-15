@@ -20,6 +20,9 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Content;
 
+/// <summary>
+/// MemoryStore is an in-memory implementation of a content-addressable target store.
+/// </summary>
 public class MemoryStore : ITarget, IReadOnlyGraphStorage
 {
     private readonly MemoryStorage _storage = new();

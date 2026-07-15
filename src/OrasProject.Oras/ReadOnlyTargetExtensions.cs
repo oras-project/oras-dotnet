@@ -20,6 +20,9 @@ using OrasProject.Oras.Registry;
 
 namespace OrasProject.Oras;
 
+/// <summary>
+/// ReadOnlyTargetExtensions provides extension helpers for copying from read-only targets.
+/// </summary>
 public static class ReadOnlyTargetExtensions
 {
     /// <summary>

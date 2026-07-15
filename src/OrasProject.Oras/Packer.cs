@@ -26,6 +26,9 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras;
 
+/// <summary>
+/// Packer provides helpers to pack content into OCI image manifests.
+/// </summary>
 public static partial class Packer
 {
     /// <summary>
@@ -43,8 +46,14 @@ public static partial class Packer
     /// </summary>
     private const string _errMissingArtifactType = "missing artifact type";
 
+    /// <summary>
+    /// MediaTypeUnknownConfig is the default config media type used when none is specified.
+    /// </summary>
     public const string MediaTypeUnknownConfig = "application/vnd.unknown.config.v1+json";
 
+    /// <summary>
+    /// MediaTypeUnknownArtifact is the default artifact type used when none is specified.
+    /// </summary>
     public const string MediaTypeUnknownArtifact = "application/vnd.unknown.artifact.v1";
 
     /// <summary>
@@ -52,11 +61,16 @@ public static partial class Packer
     /// </summary>
     public enum ManifestVersion
     {
-        // Version1_0 represents the OCI Image Manifest defined in image-spec v1.0.2.
-        // Reference: https://github.com/opencontainers/image-spec/blob/v1.0.2/manifest.md
+        /// <summary>
+        /// Version1_0 represents the OCI Image Manifest defined in image-spec v1.0.2.
+        /// Reference: https://github.com/opencontainers/image-spec/blob/v1.0.2/manifest.md
+        /// </summary>
         Version1_0 = 1,
-        // Version1_1 represents the OCI Image Manifest defined in image-spec v1.1.1.
-        // Reference: https://github.com/opencontainers/image-spec/blob/v1.1.1/manifest.md
+
+        /// <summary>
+        /// Version1_1 represents the OCI Image Manifest defined in image-spec v1.1.1.
+        /// Reference: https://github.com/opencontainers/image-spec/blob/v1.1.1/manifest.md
+        /// </summary>
         Version1_1 = 2
     }
 

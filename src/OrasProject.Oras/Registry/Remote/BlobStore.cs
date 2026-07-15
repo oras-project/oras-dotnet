@@ -27,6 +27,9 @@ using OrasProject.Oras.Registry.Remote.Auth;
 
 namespace OrasProject.Oras.Registry.Remote;
 
+/// <summary>
+/// BlobStore provides access to the blobs of a remote repository.
+/// </summary>
 public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvider, IMounter
 {
     private Repository Repository { get; } = repository ?? throw new ArgumentNullException(nameof(repository));
@@ -267,7 +270,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// <summary>
     /// GetBlobLocationAsync retrieves the location URL for a blob without downloading its content.
     /// Most OCI Distribution Spec v1.1.1 registries return a redirect with a blob location in the header
-    /// instead of returning the content directly on a /v2/<name>/blobs/<digest> request.
+    /// instead of returning the content directly on a /v2/{name}/blobs/{digest} request.
     /// This method makes an authenticated request without following redirects to capture the location URL.
     /// 
     /// Returns null if the registry returns the content directly (HTTP 200) instead of a redirect.

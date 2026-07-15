@@ -31,7 +31,7 @@ public interface IBlobLocationProvider
     /// <summary>
     /// GetBlobLocationAsync retrieves the location URL for a blob without downloading its content.
     /// Most OCI Distribution Spec v1.1.1 registries return a redirect with a blob location in the header
-    /// instead of returning the content directly on a /v2/<name>/blobs/<digest> request.
+    /// instead of returning the content directly on a /v2/{name}/blobs/{digest} request.
     /// This method captures that location URL.
     /// 
     /// Returns null if the registry returns the content directly (HTTP 200) instead of a redirect.

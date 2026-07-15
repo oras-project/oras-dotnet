@@ -18,8 +18,11 @@ using System.Linq;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
-// Scope is defined as: <ResourceType>:<ResourceName>:<Action>,<Action>,<Action>...
-// Ref: https://distribution.github.io/distribution/spec/auth/scope/
+/// <summary>
+/// Scope represents an authorization scope in the form
+/// <c>{ResourceType}:{ResourceName}:{Action},{Action},...</c>.
+/// Reference: https://distribution.github.io/distribution/spec/auth/scope/
+/// </summary>
 public class Scope : IComparable<Scope>
 {
     /// <summary>
@@ -61,10 +64,27 @@ public class Scope : IComparable<Scope>
 
     internal const string ActionDelete = "delete";
 
+    /// <summary>
+    /// Gets the resource type of the scope, e.g. <c>repository</c>.
+    /// </summary>
     public required string ResourceType { get; init; }
+
+    /// <summary>
+    /// Gets the resource name of the scope, e.g. the repository name.
+    /// </summary>
     public required string ResourceName { get; init; }
+
+    /// <summary>
+    /// Gets the set of actions granted by the scope, e.g. <c>pull</c> and <c>push</c>.
+    /// </summary>
     public required HashSet<string> Actions { get; init; }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Scope"/> class.
+    /// </summary>
+    /// <param name="resourceType">The resource type of the scope.</param>
+    /// <param name="resourceName">The resource name of the scope.</param>
+    /// <param name="actions">The set of actions granted by the scope.</param>
     [SetsRequiredMembers]
     public Scope(string resourceType, string resourceName, HashSet<string> actions)
     {

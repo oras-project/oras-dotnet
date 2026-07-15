@@ -17,8 +17,14 @@ using System.Collections.Generic;
 
 namespace OrasProject.Oras;
 
+/// <summary>
+/// PackManifestOptions contains optional parameters for packing a manifest.
+/// </summary>
 public struct PackManifestOptions
 {
+    /// <summary>
+    /// Gets an empty set of options.
+    /// </summary>
     public static PackManifestOptions None { get; }
 
     /// <summary>

@@ -15,17 +15,33 @@ using System;
 
 namespace OrasProject.Oras.Registry.Remote.Exceptions;
 
+/// <summary>
+/// ReferrersStateAlreadySetException is thrown when the referrers state has already been set.
+/// </summary>
 public class ReferrersStateAlreadySetException : Exception
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ReferrersStateAlreadySetException"/> class.
+    /// </summary>
     public ReferrersStateAlreadySetException()
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ReferrersStateAlreadySetException"/> class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
     public ReferrersStateAlreadySetException(string? message)
         : base(message)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ReferrersStateAlreadySetException"/> class with a specified error message
+    /// and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="inner">The exception that is the cause of the current exception.</param>
     public ReferrersStateAlreadySetException(string? message, Exception? inner)
         : base(message, inner)
     {

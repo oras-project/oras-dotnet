@@ -20,6 +20,9 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Content;
 
+/// <summary>
+/// ReadOnlyStorageExtensions provides extension helpers for read-only storage.
+/// </summary>
 public static class ReadOnlyStorageExtensions
 {
     /// <summary>

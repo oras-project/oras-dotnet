@@ -17,6 +17,9 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry;
 
+/// <summary>
+/// IRegistry represents a remote registry that provides access to its repositories.
+/// </summary>
 public interface IRegistry
 {
     /// <summary>

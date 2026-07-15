@@ -60,6 +60,9 @@ public class Repository : IRepository
     public async Task<Uri?> GetBlobLocationAsync(Descriptor descriptor, CancellationToken cancellationToken = default)
         => await ((IBlobLocationProvider)Blobs).GetBlobLocationAsync(descriptor, cancellationToken).ConfigureAwait(false);
 
+    /// <summary>
+    /// Gets the options used to access the remote repository.
+    /// </summary>
     public RepositoryOptions Options => _opts;
 
     private int _referrersState = (int)Referrers.ReferrersState.Unknown;

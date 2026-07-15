@@ -18,6 +18,9 @@ using System.Linq;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
+/// <summary>
+/// ScopeManager tracks authorization scopes required for registry requests.
+/// </summary>
 public class ScopeManager
 {
     /// <summary>

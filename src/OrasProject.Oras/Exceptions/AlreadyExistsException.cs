@@ -21,15 +21,28 @@ namespace OrasProject.Oras.Exceptions;
 /// </summary>
 public class AlreadyExistsException : IOException
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AlreadyExistsException"/> class.
+    /// </summary>
     public AlreadyExistsException()
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AlreadyExistsException"/> class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
     public AlreadyExistsException(string? message)
         : base(message)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AlreadyExistsException"/> class with a specified error message
+    /// and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="inner">The exception that is the cause of the current exception.</param>
     public AlreadyExistsException(string? message, Exception? inner)
         : base(message, inner)
     {

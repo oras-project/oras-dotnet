@@ -13,6 +13,9 @@
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
+/// <summary>
+/// CredentialExtensions provides extension helpers for <see cref="Credential"/>.
+/// </summary>
 public static class CredentialExtensions
 {
     /// <summary>
