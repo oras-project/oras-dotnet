@@ -62,6 +62,16 @@ public class ChallengeRecoveryTest
         return response;
     }
 
+    // Builds a 401 whose Bearer challenge is malformed: the realm's opening quote is never closed, so
+    // Challenge.ParseChallenge throws when the client parses it.
+    private static HttpResponseMessage UnauthorizedMalformed(HttpRequestMessage req, string realm)
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.Unauthorized) { RequestMessage = req };
+        response.Headers.WwwAuthenticate.Add(
+            new AuthenticationHeaderValue("Bearer", $"realm=\"{realm}"));
+        return response;
+    }
+
     private static bool IsTokenEndpoint(HttpRequestMessage req)
         => req.RequestUri!.AbsolutePath.EndsWith("/token");
 
@@ -925,6 +935,111 @@ public class ChallengeRecoveryTest
         VerifyColdProbe(mockHandler, Times.Once());
     }
 
+    [Fact]
+    public async Task SendAsync_ChallengeRecovery_MalformedChallengeOnStaleToken_ColdProbeRecovers()
+    {
+        // Arrange: the stale-token attempt draws a 401 whose WWW-Authenticate is malformed (an
+        // unterminated quoted value). A malformed challenge is itself unusable, so recovery must treat it
+        // as terminal and cold-probe rather than surfacing the parse error to the caller.
+        var host = NewHost();
+        var coldRealm = $"https://{host}/token";
+
+        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (IsTokenEndpoint(req)) return TokenResponse(req);
+            var token = req.Headers.Authorization?.Parameter;
+            if (token == _freshToken) return Ok(req);
+            if (token == _staleToken) return UnauthorizedMalformed(req, coldRealm);
+            return Unauthorized(req, coldRealm); // cold probe (no auth) → a usable challenge
+        }
+
+        var mockHandler = CustomHandler(Handler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+        SeedStaleToken(client, host);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert: the malformed challenge is recovered exactly like a no-challenge 401.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        VerifyStaleTokenSent(mockHandler);
+        VerifyColdProbe(mockHandler, Times.Once());
+        VerifyFreshTokenSent(mockHandler);
+    }
+
+    [Fact]
+    public async Task SendAsync_MalformedChallenge_WithoutStaleToken_SurfacesParseError()
+    {
+        // Arrange: no stale token is cached, so this request is not recovery-eligible. A malformed
+        // challenge must still surface its parse error (the pre-recovery behavior) rather than being
+        // swallowed, and the client must not reach the token endpoint.
+        var host = NewHost();
+        var coldRealm = $"https://{host}/token";
+
+        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (IsTokenEndpoint(req)) return TokenResponse(req);
+            return UnauthorizedMalformed(req, coldRealm);
+        }
+
+        var mockHandler = CustomHandler(Handler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+        // No stale token seeded → attempt 1 carries no Authorization and is not recovery-eligible.
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+
+        // Act + Assert: the malformed challenge's parse error propagates unchanged, before any token fetch.
+        await Assert.ThrowsAsync<FormatException>(
+            () => client.SendAsync(request, cancellationToken: CancellationToken.None));
+        VerifyTokenFetch(mockHandler, Times.Never());
+    }
+
+    [Fact]
+    public async Task SendAsync_ChallengeRecovery_KeyRefreshThrows_DisposesRecoveredResponse()
+    {
+        // Arrange: recovery derives a working token under an expanded scope, then refreshes the stale
+        // attempted key. If that post-send cache write throws (e.g. a custom ICache implementation), the
+        // just-received response must be disposed rather than leaked before the exception propagates.
+        var host = NewHost();
+        var coldRealm = $"https://{host}/token";
+        const string expandedScope = "repository:app:pull,push";
+        var recoveredContent = new DisposalTrackingContent();
+
+        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (IsTokenEndpoint(req)) return TokenResponse(req);
+            var token = req.Headers.Authorization?.Parameter;
+            if (token == _freshToken)
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    RequestMessage = req,
+                    Content = recoveredContent
+                };
+            }
+            if (token == _staleToken) return Unauthorized(req, realm: null);
+            return Unauthorized(req, coldRealm, expandedScope); // cold probe → expanded challenge
+        }
+
+        var mockHandler = CustomHandler(Handler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+        // Throw only on the post-send refresh of the stale attempted key (_scope) with the fresh token;
+        // the stale-token seed and the expanded-scope write must still pass through to the real cache.
+        client.Cache = new ThrowingCache(
+            client.Cache,
+            (scopeKey, token) => scopeKey == _scope && token == _freshToken);
+        Assert.True(Scope.TryParse(_scope, out var attemptedScope));
+        client.ScopeManager.SetScopeForRegistry(host, attemptedScope, null);
+        client.Cache.SetCache(host, Challenge.Scheme.Bearer, _scope, _staleToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+
+        // Act + Assert: the cache failure propagates, and the recovered response was disposed, not leaked.
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.SendAsync(request, cancellationToken: CancellationToken.None));
+        Assert.True(recoveredContent.WasDisposed);
+        VerifyColdProbe(mockHandler, Times.Once());
+    }
+
     private sealed class DisposalTrackingContent : HttpContent
     {
         public bool WasDisposed { get; private set; }
@@ -943,6 +1058,45 @@ public class ChallengeRecoveryTest
             WasDisposed = true;
             base.Dispose(disposing);
         }
+    }
+
+    // An ICache decorator that fails a targeted SetCache to exercise disposal on a post-send cache-write
+    // failure; all other operations delegate to the wrapped cache.
+    private sealed class ThrowingCache : ICache
+    {
+        private readonly ICache _inner;
+        private readonly Func<string, string, bool> _shouldThrow;
+
+        public ThrowingCache(ICache inner, Func<string, string, bool> shouldThrow)
+        {
+            _inner = inner;
+            _shouldThrow = shouldThrow;
+        }
+
+        public bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? partitionId = null)
+            => _inner.TryGetScheme(registry, out scheme, partitionId);
+
+        public void SetCache(
+            string registry,
+            Challenge.Scheme scheme,
+            string scopeKey,
+            string token,
+            string? partitionId = null)
+        {
+            if (_shouldThrow(scopeKey, token))
+            {
+                throw new InvalidOperationException("Simulated cache write failure.");
+            }
+            _inner.SetCache(registry, scheme, scopeKey, token, partitionId);
+        }
+
+        public bool TryGetToken(
+            string registry,
+            Challenge.Scheme scheme,
+            string scopeKey,
+            out string token,
+            string? partitionId = null)
+            => _inner.TryGetToken(registry, scheme, scopeKey, out token, partitionId);
     }
 
     private sealed class LargeDeclaredLengthContent : HttpContent

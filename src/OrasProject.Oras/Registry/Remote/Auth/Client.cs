@@ -835,8 +835,20 @@ public class Client : IClient
         CancellationToken cancellationToken,
         bool refreshAttemptedScopeKey = false)
     {
-        var (schemeFromChallenge, parameters) =
-            Challenge.ParseChallenge(unauthorizedResponse.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
+        Challenge.Scheme schemeFromChallenge;
+        Dictionary<string, string>? parameters;
+        try
+        {
+            (schemeFromChallenge, parameters) = Challenge.ParseChallenge(
+                unauthorizedResponse.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
+        }
+        catch (Exception e) when (e is FormatException or ArgumentException)
+        {
+            // A malformed WWW-Authenticate header is itself an unusable challenge: dispose the 401
+            // and report it as terminal so an eligible stale-token GET/HEAD can still cold-probe.
+            unauthorizedResponse.Dispose();
+            return StandardAuthResult.Terminal(ExceptionDispatchInfo.Capture(e));
+        }
 
         // Attempt again with credentials for recognized schemes
         switch (schemeFromChallenge)
@@ -909,6 +921,22 @@ public class Client : IClient
                         }
                     }
 
+                    StandardAuthResult ResolvedWithKeyRefresh(HttpResponseMessage response, string token)
+                    {
+                        // Dispose the just-received response if the post-send key refresh throws
+                        // (e.g. a custom ICache.SetCache) so recovery never leaks it.
+                        try
+                        {
+                            RefreshAttemptedKey(response.StatusCode, token);
+                        }
+                        catch
+                        {
+                            response.Dispose();
+                            throw;
+                        }
+                        return StandardAuthResult.Resolved(response);
+                    }
+
                     // Attempt to send request when the scope changes and a token cache hits
                     if (!mergedScopes.HasOpaqueScopes
                         && mergedScopes.CacheKey != attemptedKey
@@ -930,10 +958,7 @@ public class Client : IClient
 
                         if (response2.StatusCode != HttpStatusCode.Unauthorized)
                         {
-                            RefreshAttemptedKey(
-                                statusCode: response2.StatusCode,
-                                token: cachedToken);
-                            return StandardAuthResult.Resolved(response: response2);
+                            return ResolvedWithKeyRefresh(response2, cachedToken);
                         }
                         response2.Dispose();
                     }
@@ -1007,10 +1032,7 @@ public class Client : IClient
                         request: requestAttempt3,
                         allowAutoRedirect: allowAutoRedirect,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
-                    RefreshAttemptedKey(
-                        statusCode: bearerResponse.StatusCode,
-                        token: bearerAuthToken);
-                    return StandardAuthResult.Resolved(response: bearerResponse);
+                    return ResolvedWithKeyRefresh(bearerResponse, bearerAuthToken);
                 }
             default:
                 return StandardAuthResult.NoUsableScheme();
