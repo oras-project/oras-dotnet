@@ -24,30 +24,50 @@ namespace OrasProject.Oras.Oci;
 /// </summary>
 public class Index : Versioned
 {
-    // MediaType specifies the type of this document data structure e.g. `application/vnd.oci.image.index.v1+json`
+    /// <summary>
+    /// MediaType specifies the type of this document data structure.
+    /// </summary>
     [JsonPropertyName("mediaType")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? MediaType { get; set; }
 
+    /// <summary>
+    /// ArtifactType is the type of an artifact when the index is used for an artifact.
+    /// </summary>
     [JsonPropertyName("artifactType")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? ArtifactType { get; set; }
 
-    // Manifests references platform specific manifests.
+    /// <summary>
+    /// Manifests references platform-specific manifests.
+    /// </summary>
     [JsonPropertyName("manifests")]
     public required IList<Descriptor> Manifests { get; set; }
 
+    /// <summary>
+    /// Subject is an optional link to another manifest that this index refers to.
+    /// </summary>
     [JsonPropertyName("subject")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public Descriptor? Subject { get; set; }
 
-    // Annotations contains arbitrary metadata for the image index.
+    /// <summary>
+    /// Annotations contains arbitrary metadata for the image index.
+    /// </summary>
     [JsonPropertyName("annotations")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public IDictionary<string, string>? Annotations { get; set; }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Index"/> class.
+    /// </summary>
     public Index() { }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Index"/> class for the given manifests,
+    /// with the OCI image index media type and schema version 2.
+    /// </summary>
+    /// <param name="manifests">The platform-specific manifests referenced by the index.</param>
     [SetsRequiredMembers]
     public Index(IList<Descriptor> manifests)
     {

@@ -22,6 +22,9 @@ using Index = OrasProject.Oras.Oci.Index;
 namespace OrasProject.Oras.Content;
 
 
+/// <summary>
+/// FetchableExtensions provides extension helpers for fetching successors of a node.
+/// </summary>
 public static class FetchableExtensions
 {
     /// <summary>
@@ -49,7 +52,10 @@ public static class FetchableExtensions
                         descriptors.Add(manifest.Subject);
                     }
                     descriptors.Add(manifest.Config);
-                    descriptors.AddRange(manifest.Layers);
+                    // A non-conformant registry may send "layers": null instead of an empty
+                    // array (a valid, spec-permitted state); treat null as empty. Config is
+                    // guaranteed valid by Manifest deserialization validation.
+                    descriptors.AddRange(manifest.Layers.NullToEmpty());
                     return descriptors;
                 }
             case Docker.MediaType.ManifestList:
@@ -64,7 +70,7 @@ public static class FetchableExtensions
                         // Note: Subject field only works for Oci Index Manifest
                         descriptors.Add(index.Subject);
                     }
-                    descriptors.AddRange(index.Manifests);
+                    descriptors.AddRange(index.Manifests.NullToEmpty());
                     return descriptors;
                 }
         }

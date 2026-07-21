@@ -17,19 +17,37 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using OrasProject.Oras.Serialization;
 
+/// <summary>
+/// ErrorCode enumerates the error codes returned by a registry.
+/// </summary>
 public enum ErrorCode
 {
+    /// <summary>
+    /// NAME_UNKNOWN indicates the repository name is not known to the registry.
+    /// </summary>
     NAME_UNKNOWN
 }
 
+/// <summary>
+/// Error represents a single error entry returned by a registry response.
+/// </summary>
 public class Error
 {
+    /// <summary>
+    /// Code is the registry error code.
+    /// </summary>
     [JsonPropertyName("code")]
     public required string Code { get; set; }
 
+    /// <summary>
+    /// Message is a human-readable description of the error.
+    /// </summary>
     [JsonPropertyName("message")]
     public required string Message { get; set; }
 
+    /// <summary>
+    /// Detail contains optional structured details about the error.
+    /// </summary>
     [JsonPropertyName("detail")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public JsonElement? Detail { get; set; }

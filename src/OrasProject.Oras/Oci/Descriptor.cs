@@ -23,35 +23,66 @@ namespace OrasProject.Oras.Oci;
 /// </summary>
 public class Descriptor
 {
+    /// <summary>
+    /// MediaType is the media type of the object this descriptor refers to.
+    /// </summary>
     [JsonPropertyName("mediaType")]
     public required string MediaType { get; set; }
 
+    /// <summary>
+    /// Digest is the digest of the targeted content.
+    /// </summary>
     [JsonPropertyName("digest")]
     public required string Digest { get; set; }
 
+    /// <summary>
+    /// Size specifies the size in bytes of the blob.
+    /// </summary>
     [JsonPropertyName("size")]
     public long Size { get; set; }
 
+    /// <summary>
+    /// Urls specifies a list of URLs from which this object may be downloaded.
+    /// </summary>
     [JsonPropertyName("urls")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public IList<string>? Urls { get; set; }
 
+    /// <summary>
+    /// Annotations contains arbitrary metadata relating to the targeted content.
+    /// </summary>
     [JsonPropertyName("annotations")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public IDictionary<string, string>? Annotations { get; set; }
 
+    /// <summary>
+    /// Data is an embedding of the targeted content, encoded as a byte array.
+    /// </summary>
     [JsonPropertyName("data")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public byte[]? Data { get; set; }
 
+    /// <summary>
+    /// Platform describes the platform which the image in the manifest runs on.
+    /// </summary>
     [JsonPropertyName("platform")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public Platform? Platform { get; set; }
 
+    /// <summary>
+    /// ArtifactType is the type of an artifact when the descriptor points to an artifact.
+    /// </summary>
     [JsonPropertyName("artifactType")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? ArtifactType { get; set; }
 
+    /// <summary>
+    /// Creates a <see cref="Descriptor"/> for the given content and media type,
+    /// computing the digest and size from the supplied data.
+    /// </summary>
+    /// <param name="data">The content to describe.</param>
+    /// <param name="mediaType">The media type of the content.</param>
+    /// <returns>A descriptor identifying the content.</returns>
     public static Descriptor Create(Span<byte> data, string mediaType)
     {
         byte[] byteData = data.ToArray();
@@ -63,6 +94,9 @@ public class Descriptor
         };
     }
 
+    /// <summary>
+    /// Gets a descriptor for the empty JSON object (<c>{}</c>).
+    /// </summary>
     public static Descriptor Empty => new()
     {
         MediaType = Oci.MediaType.EmptyJson,

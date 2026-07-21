@@ -16,6 +16,9 @@ using System.Collections.Generic;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
+/// <summary>
+/// Challenge provides helpers for parsing registry authentication challenges.
+/// </summary>
 public static class Challenge
 {
     /// <summary>

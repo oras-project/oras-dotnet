@@ -16,6 +16,9 @@ using System.Threading.Tasks;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
+/// <summary>
+/// ICredentialProvider resolves credentials for a registry host.
+/// </summary>
 public interface ICredentialProvider
 {
     /// <summary>

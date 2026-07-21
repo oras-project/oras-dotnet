@@ -21,6 +21,9 @@ namespace OrasProject.Oras.Oci;
 /// </summary>
 public class Versioned
 {
+    /// <summary>
+    /// SchemaVersion is the schema version of the document.
+    /// </summary>
     [JsonPropertyName("schemaVersion")]
     public int SchemaVersion { get; set; }
 }

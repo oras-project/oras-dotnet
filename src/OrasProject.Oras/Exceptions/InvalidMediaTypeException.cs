@@ -20,15 +20,28 @@ namespace OrasProject.Oras.Exceptions;
 /// </summary>
 public class InvalidMediaTypeException : FormatException
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InvalidMediaTypeException"/> class.
+    /// </summary>
     public InvalidMediaTypeException()
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InvalidMediaTypeException"/> class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
     public InvalidMediaTypeException(string? message)
         : base(message)
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InvalidMediaTypeException"/> class with a specified error message
+    /// and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="inner">The exception that is the cause of the current exception.</param>
     public InvalidMediaTypeException(string? message, Exception? inner)
         : base(message, inner)
     {

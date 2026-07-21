@@ -21,6 +21,9 @@ using OrasProject.Oras.Oci;
 
 namespace OrasProject.Oras.Content;
 
+/// <summary>
+/// ReadOnlyGraphStorageExtensions provides extension helpers for read-only graph storage.
+/// </summary>
 public static class ReadOnlyGraphStorageExtensions
 {
     /// <summary>

@@ -17,7 +17,6 @@ using OrasProject.Oras.Registry.Remote.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -61,6 +60,9 @@ public class Repository : IRepository
     public async Task<Uri?> GetBlobLocationAsync(Descriptor descriptor, CancellationToken cancellationToken = default)
         => await ((IBlobLocationProvider)Blobs).GetBlobLocationAsync(descriptor, cancellationToken).ConfigureAwait(false);
 
+    /// <summary>
+    /// Gets the options used to access the remote repository.
+    /// </summary>
     public RepositoryOptions Options => _opts;
 
     private int _referrersState = (int)Referrers.ReferrersState.Unknown;
@@ -618,7 +620,10 @@ public class Repository : IRepository
             // Set ReferrerState to Supported
             SetReferrersState(true);
 
-            var referrers = referrersIndex.Manifests;
+            // A spec-conformant registry returns an empty `manifests` array when there
+            // are no referrers, but some return `null`. Treat that null as empty for the
+            // local enumeration below (per-API); the deserialized index is left unchanged.
+            var referrers = referrersIndex.Manifests.NullToEmpty();
             // If artifactType is specified, apply any filters based on the artifact type
             if (!string.IsNullOrEmpty(artifactType))
             {
@@ -705,11 +710,14 @@ public class Repository : IRepository
             var index = OciJsonSerializer.Deserialize<Index>(indexBytes)
                 ?? throw new JsonException(
                     $"Error deserializing index manifest for referrersTag {referrersTag}");
-            return (result.Descriptor, index.Manifests);
+            // A non-conformant `null` manifests value is left as null by deserialization;
+            // treat it as empty here (per-API) so callers (tag-schema fallback, referrers
+            // index update) can enumerate the returned list safely.
+            return (result.Descriptor, index.Manifests.NullToEmpty());
         }
         catch (NotFoundException)
         {
-            return (null, ImmutableArray<Descriptor>.Empty);
+            return (null, Array.Empty<Descriptor>());
         }
     }
 

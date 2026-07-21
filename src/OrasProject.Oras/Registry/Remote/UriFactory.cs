@@ -33,7 +33,7 @@ internal class UriFactory : UriBuilder
 
     /// <summary>
     /// Builds the URL for accessing the base API.
-    /// Format: <scheme>://<registry>/v2/
+    /// Format: {scheme}://{registry}/v2/
     /// Reference: https://docs.docker.com/registry/spec/api/#base
     /// </summary>
     public Uri BuildRegistryBase() => new UriBuilder(_base)
@@ -43,7 +43,7 @@ internal class UriFactory : UriBuilder
 
     /// <summary>
     /// Builds the URL for accessing the catalog API.
-    /// Format: <scheme>://<registry>/v2/_catalog
+    /// Format: {scheme}://{registry}/v2/_catalog
     /// Reference: https://docs.docker.com/registry/spec/api/#catalog
     /// </summary>
     public Uri BuildRegistryCatalog() => new UriBuilder(_base)
@@ -53,7 +53,7 @@ internal class UriFactory : UriBuilder
 
     /// <summary>
     /// Builds the URL for accessing the tag list API.
-    /// Format: <scheme>://<registry>/v2/<repository>/tags/list
+    /// Format: {scheme}://{registry}/v2/{repository}/tags/list
     /// Reference: https://docs.docker.com/registry/spec/api/#tags
     /// </summary>
     public Uri BuildRepositoryTagList()
@@ -65,7 +65,7 @@ internal class UriFactory : UriBuilder
 
     /// <summary>
     /// Builds the URL for accessing the manifest API.
-    /// Format: <scheme>://<registry>/v2/<repository>/manifests/<digest_or_tag>
+    /// Format: {scheme}://{registry}/v2/{repository}/manifests/{digest_or_tag}
     /// Reference: https://docs.docker.com/registry/spec/api/#manifest
     /// </summary>
     public Uri BuildRepositoryManifest()
@@ -81,7 +81,7 @@ internal class UriFactory : UriBuilder
 
     /// <summary>
     /// Builds the URL for accessing the blob API.
-    /// Format: <scheme>://<registry>/v2/<repository>/blobs/<digest>
+    /// Format: {scheme}://{registry}/v2/{repository}/blobs/{digest}
     /// Reference: https://docs.docker.com/registry/spec/api/#blob
     /// </summary>
     public Uri BuildRepositoryBlob()
@@ -93,7 +93,7 @@ internal class UriFactory : UriBuilder
 
     /// <summary>
     /// Builds the URL for accessing the blob upload API.
-    /// Format: <scheme>://<registry>/v2/<repository>/blobs/uploads/
+    /// Format: {scheme}://{registry}/v2/{repository}/blobs/uploads/
     /// Reference: https://docs.docker.com/registry/spec/api/#initiate-blob-upload
     /// </summary>
     public Uri BuildRepositoryBlobUpload()
@@ -105,10 +105,10 @@ internal class UriFactory : UriBuilder
 
     /// <summary>
     /// BuildReferrersUrl builds the URL for accessing referrers API
-    /// Format: <scheme>://<registry>/v2/<repository>/referrers/<digest>
+    /// Format: {scheme}://{registry}/v2/{repository}/referrers/{digest}
     /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The URL for listing all referrers of the referenced content.</returns>
     public Uri BuildReferrersUrl()
     {
         return BuildReferrersUrl(string.Empty);
@@ -116,11 +116,11 @@ internal class UriFactory : UriBuilder
 
     /// <summary>
     /// BuildReferrersUrl builds the URL for accessing referrers API
-    /// Format: <scheme>://<registry>/v2/<repository>/referrers/<digest>?artifactType=<artifactType>
+    /// Format: {scheme}://{registry}/v2/{repository}/referrers/{digest}?artifactType={artifactType}
     /// Reference: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#listing-referrers
     /// </summary>
-    /// <param name="artifactType"></param>
-    /// <returns></returns>
+    /// <param name="artifactType">The artifact type used to filter the referrers; ignored when empty.</param>
+    /// <returns>The URL for listing referrers of the referenced content, optionally filtered by artifact type.</returns>
     public Uri BuildReferrersUrl(string artifactType)
     {
         var builder = NewRepositoryBaseBuilder();
@@ -137,7 +137,7 @@ internal class UriFactory : UriBuilder
 
     /// <summary>
     /// Generates a UriBuilder with the base endpoint of the remote repository.
-    /// Format: <scheme>://<registry>/v2/<repository>
+    /// Format: {scheme}://{registry}/v2/{repository}
     /// </summary>
     /// <returns>Repository-scoped base UriBuilder</returns>
     protected UriBuilder NewRepositoryBaseBuilder()
