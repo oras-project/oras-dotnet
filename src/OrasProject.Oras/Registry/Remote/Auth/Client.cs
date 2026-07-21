@@ -818,13 +818,13 @@ public class Client : IClient
     /// the client's long-standing eager-dispose behavior, whether the outcome is resolved or terminal.
     /// A no-usable-scheme outcome leaves the response undisposed, so the caller can return it or hand it
     /// to the fallback.
+    /// <para>
+    /// When <paramref name="refreshAttemptedScopeKey"/> is <c>true</c> (the recovery re-derive, gated on
+    /// a stale token having been attached), a token obtained from a successful (2xx/3xx) response is also
+    /// cached under <paramref name="attemptedKey"/> so the stale token that provoked recovery is replaced
+    /// and future requests under that scope key don't re-enter recovery.
+    /// </para>
     /// </remarks>
-    /// <param name="refreshAttemptedScopeKey">
-    /// When <c>true</c> (the recovery re-derive, gated on a stale token having been attached), a token
-    /// obtained from a successful (2xx/3xx) response is also cached under <paramref name="attemptedKey"/>
-    /// so the stale token that provoked recovery is replaced and future requests under that scope key
-    /// don't re-enter recovery.
-    /// </param>
     private async Task<StandardAuthResult> ResolveStandardChallengeAsync(
         HttpRequestMessage originalRequest,
         HttpResponseMessage unauthorizedResponse,
