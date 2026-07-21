@@ -142,6 +142,54 @@ public class ChallengeRecoveryTest
     }
 
     [Fact]
+    public async Task SendAsync_ChallengeRecovery_ColdProbeCopiesRequestMetadata()
+    {
+        // Arrange: a cold OCI request is fresh and bodyless, while retaining the headers, options, and
+        // HTTP version needed to request the same representation.
+        var host = NewHost();
+        var optionKey = new HttpRequestOptionsKey<string>("test-option");
+
+        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
+        {
+            if (req.Headers.Authorization?.Parameter == _staleToken)
+            {
+                return Unauthorized(req, realm: null);
+            }
+
+            Assert.Equal(HttpMethod.Get, req.Method);
+            Assert.Equal($"https://{host}{_requestPath}", req.RequestUri!.ToString());
+            Assert.Equal(HttpVersion.Version20, req.Version);
+            Assert.Equal(HttpVersionPolicy.RequestVersionOrLower, req.VersionPolicy);
+            Assert.Contains("application/test", req.Headers.Accept.Select(value => value.MediaType));
+            Assert.True(req.Options.TryGetValue(optionKey, out var optionValue));
+            Assert.Equal("test-value", optionValue);
+            Assert.Null(req.Content);
+            return Ok(req);
+        }
+
+        var mockHandler = CustomHandler(Handler);
+        var client = new Client(new HttpClient(mockHandler.Object));
+        SeedStaleToken(client, host);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}")
+        {
+            Version = HttpVersion.Version20,
+            VersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+        };
+        request.Headers.Accept.ParseAdd("application/test");
+        request.Options.Set(optionKey, "test-value");
+
+        // Act
+        using var response = await client.SendAsync(
+            request,
+            cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        VerifyStaleTokenSent(mockHandler);
+        VerifyColdProbe(mockHandler, Times.Once());
+    }
+
+    [Fact]
     public async Task SendAsync_ChallengeRecovery_DeniedRealmOnStaleToken_ColdProbeRecovers()
     {
         // Arrange: a stale cached token provokes a 401 whose realm points at a foreign
@@ -175,20 +223,18 @@ public class ChallengeRecoveryTest
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.OK, HttpStatusCode.OK)]                               // anonymous success → returned
-    [InlineData(HttpStatusCode.Found, HttpStatusCode.Found)]                         // 302 redirect → returned
-    [InlineData(HttpStatusCode.TemporaryRedirect, HttpStatusCode.TemporaryRedirect)] // 307 (blob location) → returned
-    [InlineData(HttpStatusCode.Forbidden, HttpStatusCode.Unauthorized)]              // 403 → give up (original 401)
-    [InlineData(HttpStatusCode.NotFound, HttpStatusCode.Unauthorized)]               // 404 → give up (original 401)
-    [InlineData(HttpStatusCode.InternalServerError, HttpStatusCode.Unauthorized)]    // 5xx → give up (original 401)
-    public async Task SendAsync_ChallengeRecovery_ColdProbeStatus_DeterminesOutcome(
-        HttpStatusCode coldProbeStatus, HttpStatusCode expectedStatus)
+    [InlineData(HttpStatusCode.OK)]
+    [InlineData(HttpStatusCode.Found)]
+    [InlineData(HttpStatusCode.TemporaryRedirect)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task SendAsync_ChallengeRecovery_ColdProbeTerminalStatus_IsReturned(
+        HttpStatusCode coldProbeStatus)
     {
         // Arrange: a stale token provokes a no-challenge 401; the credential-free cold probe comes back
-        // with `coldProbeStatus`. A 2xx success or 3xx redirect is a genuine recovery and is returned
-        // as-is (e.g. an anonymous 200, or a blob-location 307 for an allowAutoRedirect:false caller);
-        // any other status is discarded so the original 401 is surfaced rather than masked. The probe
-        // never yields a fresh challenge, so no token is fetched.
+        // with `coldProbeStatus`. Once entered, the cold path is authoritative, so any terminal response
+        // is returned as-is and no token is fetched.
         var host = NewHost();
 
         HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
@@ -207,7 +253,7 @@ public class ChallengeRecoveryTest
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert
-        Assert.Equal(expectedStatus, response.StatusCode);
+        Assert.Equal(coldProbeStatus, response.StatusCode);
         VerifyStaleTokenSent(mockHandler);
         VerifyColdProbe(mockHandler, Times.Once());
         VerifyTokenFetch(mockHandler, Times.Never());
@@ -264,9 +310,8 @@ public class ChallengeRecoveryTest
     public async Task SendAsync_ChallengeRecovery_TokenEndpoint401_ColdProbeAlsoFails_GivesUpAndRethrows()
     {
         // Arrange: a stale token yields a usable (allowed) challenge, but following it to the token
-        // endpoint returns 401. Recovery is offered this failure and cold-probes once; here the cold
-        // probe's challenge dead-ends at the same 401 token endpoint, so recovery gives up and rethrows
-        // the original token-endpoint exception — attempted exactly once, but never masked.
+        // endpoint returns 401. The cold probe produces the same challenge, whose token endpoint is the
+        // authoritative terminal failure.
         var host = NewHost();
 
         HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
@@ -282,11 +327,12 @@ public class ChallengeRecoveryTest
         SeedStaleToken(client, host);
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
 
-        // Act + Assert: the original token-endpoint 401 surfaces; recovery cold-probed exactly once (bounded).
+        // Act + Assert: callers receive the public ResponseException from the terminal cold token request.
         await Assert.ThrowsAsync<ResponseException>(
             () => client.SendAsync(request, cancellationToken: CancellationToken.None));
         VerifyStaleTokenSent(mockHandler);
         VerifyColdProbe(mockHandler, Times.Once());
+        VerifyTokenFetch(mockHandler, Times.Exactly(2));
     }
 
     [Fact]
@@ -410,8 +456,7 @@ public class ChallengeRecoveryTest
     public async Task SendAsync_ChallengeRecovery_ColdProbeAlsoUnusable_GivesUpAfterSingleProbe()
     {
         // Arrange: pathological upstream — both the stale-token attempt AND the cold probe return a
-        // no-challenge 401. Recovery must probe exactly once, then give up and return the original 401
-        // (no infinite loop).
+        // no-challenge 401. Recovery must probe exactly once, then return the cold path's terminal 401.
         var host = NewHost();
 
         HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
@@ -428,7 +473,7 @@ public class ChallengeRecoveryTest
         // Act
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
-        // Assert: original 401 returned; exactly one cold probe (bounded); no token fetch.
+        // Assert: terminal cold 401 returned; exactly one cold probe (bounded); no token fetch.
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         VerifyStaleTokenSent(mockHandler);
         VerifyColdProbe(mockHandler, Times.Once());
@@ -477,10 +522,10 @@ public class ChallengeRecoveryTest
     }
 
     [Fact]
-    public async Task SendAsync_ChallengeRecovery_NonReplayableRequest_DoesNotColdProbe()
+    public async Task SendAsync_ChallengeRecovery_NonPullMethod_DoesNotColdProbe()
     {
-        // Arrange: a POST (non-idempotent) with a stale token hits a no-challenge 401. ColdProbe must
-        // decline (CanReplay=false) rather than replay a mutating request without authorization.
+        // Arrange: a POST with a stale token hits a no-challenge 401. Built-in recovery is deliberately
+        // limited to the GET/HEAD methods used by OCI pull operations.
         var host = NewHost();
 
         HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
@@ -502,41 +547,10 @@ public class ChallengeRecoveryTest
         // Act
         var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
-        // Assert: the 401 is returned unchanged; ColdProbe declined without replaying.
+        // Assert: the 401 is returned unchanged; no credential-free POST was sent.
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         VerifyColdProbe(mockHandler, Times.Never());
         VerifyTokenFetch(mockHandler, Times.Never());
-    }
-
-    [Fact]
-    public async Task SendAsync_ChallengeRecovery_GetWithOversizedContent_DoesNotColdProbe()
-    {
-        // Arrange: a GET body above the buffering cap is not known to be replayable. The first request
-        // may proceed, but recovery must not clone and resend it without authorization.
-        var host = NewHost();
-
-        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
-            => req.Headers.Authorization?.Parameter == _staleToken
-                ? Unauthorized(req, realm: null)
-                : Ok(req);
-
-        var mockHandler = CustomHandler(Handler);
-        var client = new Client(new HttpClient(mockHandler.Object));
-        SeedStaleToken(client, host);
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}")
-        {
-            Content = new OversizedRequestContent()
-        };
-
-        // Act
-        using var response = await client.SendAsync(
-            request,
-            cancellationToken: CancellationToken.None);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        VerifyStaleTokenSent(mockHandler);
-        VerifyColdProbe(mockHandler, Times.Never());
     }
 
     [Fact]
@@ -581,6 +595,48 @@ public class ChallengeRecoveryTest
         Assert.Equal([defaultToken], observedTokens);
         VerifyStaleTokenSent(noRedirectHandler, Times.Never());
         VerifyColdProbe(noRedirectHandler, Times.Never());
+    }
+
+    [Fact]
+    public async Task SendAsync_ChallengeRecovery_BaseClientDefaultAuthorization_PreservesNoRedirectBypass()
+    {
+        // Arrange: preserve the existing behavior where BaseClient default authorization bypasses SDK
+        // authentication even when the request itself uses the no-redirect client.
+        var host = NewHost();
+        List<string?> observedTokens = [];
+
+        HttpResponseMessage NoRedirectHandler(HttpRequestMessage req, CancellationToken ct)
+        {
+            observedTokens.Add(req.Headers.Authorization?.Parameter);
+            return Unauthorized(req, realm: null);
+        }
+
+        HttpResponseMessage BaseHandler(HttpRequestMessage req, CancellationToken ct)
+            => throw new InvalidOperationException("The redirecting client must not be used.");
+
+        var baseHandler = CustomHandler(BaseHandler);
+        var baseClient = new HttpClient(baseHandler.Object);
+        baseClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", "base-client-token");
+        var noRedirectHandler = CustomHandler(NoRedirectHandler);
+        var client = new Client(
+            baseClient,
+            new HttpClient(noRedirectHandler.Object),
+            credentialProvider: null,
+            cache: null);
+        SeedStaleToken(client, host);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+
+        // Act
+        using var response = await client.SendAsync(
+            request,
+            allowAutoRedirect: false,
+            cancellationToken: CancellationToken.None);
+
+        // Assert: the SDK cache was bypassed, preserving the pre-existing behavior.
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal([null], observedTokens);
+        VerifyStaleTokenSent(noRedirectHandler, Times.Never());
     }
 
     [Fact]
@@ -733,13 +789,13 @@ public class ChallengeRecoveryTest
     }
 
     [Fact]
-    public async Task SendAsync_ChallengeRecovery_NoChallenge_Buffers401BeforeColdProbe()
+    public async Task SendAsync_ChallengeRecovery_NoChallenge_DisposesFirst401BeforeColdProbe()
     {
-        // Arrange: ResponseHeadersRead leaves an unread 401 body holding its HTTP/1.1 connection.
-        // Recovery must buffer the bounded body before issuing a same-host cold probe.
+        // Arrange: the first no-challenge 401 owns an unread, unknown-length body. Once the cold path is
+        // selected, that response must be disposed rather than buffered or preserved.
         var host = NewHost();
         var coldRealm = $"https://{host}/token";
-        var unauthorizedContent = new TrackingContent();
+        var unauthorizedContent = new DisposalTrackingContent();
 
         HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
         {
@@ -753,7 +809,7 @@ public class ChallengeRecoveryTest
                 return response;
             }
 
-            Assert.True(unauthorizedContent.WasBuffered);
+            Assert.True(unauthorizedContent.WasDisposed);
             return Unauthorized(req, coldRealm);
         }
 
@@ -767,48 +823,15 @@ public class ChallengeRecoveryTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.True(unauthorizedContent.WasBuffered);
+        Assert.True(unauthorizedContent.WasDisposed);
         VerifyColdProbe(mockHandler, Times.Once());
-    }
-
-    [Fact]
-    public async Task SendAsync_ChallengeRecovery_NoChallengeWithUnboundedBody_ColdProbeDeclines()
-    {
-        // Arrange: an unknown-length body cannot be bounded-buffered without risking unbounded memory.
-        // Mark the exchange non-replayable so ColdProbe declines instead of holding the connection and
-        // deadlocking a bounded same-host connection pool.
-        var host = NewHost();
-
-        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
-        {
-            if (req.Headers.Authorization?.Parameter == _staleToken)
-            {
-                var response = Unauthorized(req, realm: null);
-                response.Content = new UnknownLengthContent();
-                return response;
-            }
-
-            return Ok(req); // an unsafe cold probe would turn the result into 200
-        }
-
-        var mockHandler = CustomHandler(Handler);
-        var client = new Client(new HttpClient(mockHandler.Object));
-        SeedStaleToken(client, host);
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
-
-        // Act
-        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
-
-        // Assert: preserve the original 401 and issue no credential-free probe.
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        VerifyColdProbe(mockHandler, Times.Never());
     }
 
     [Fact]
     public async Task SendAsync_ChallengeRecovery_HeadWithLargeDeclaredLength_ColdProbeRecovers()
     {
-        // Arrange: HEAD responses can advertise the GET representation's large Content-Length but
-        // cannot carry a response body. Do not treat that metadata as an unbufferable 401 body.
+        // Arrange: HEAD responses can advertise the GET representation's large Content-Length. Recovery
+        // disposes that failed response and does not attempt to buffer the advertised representation.
         var host = NewHost();
         var coldRealm = $"https://{host}/token";
 
@@ -840,32 +863,10 @@ public class ChallengeRecoveryTest
         VerifyColdProbe(mockHandler, Times.Once());
     }
 
-    private sealed class TrackingContent : HttpContent
+    private sealed class DisposalTrackingContent : HttpContent
     {
-        private readonly byte[] _content = [1, 2, 3];
+        public bool WasDisposed { get; private set; }
 
-        public TrackingContent()
-        {
-            Headers.ContentLength = _content.Length;
-        }
-
-        public bool WasBuffered { get; private set; }
-
-        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
-        {
-            WasBuffered = true;
-            return stream.WriteAsync(_content, 0, _content.Length);
-        }
-
-        protected override bool TryComputeLength(out long length)
-        {
-            length = _content.Length;
-            return true;
-        }
-    }
-
-    private sealed class UnknownLengthContent : HttpContent
-    {
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
             => Task.CompletedTask;
 
@@ -873,6 +874,12 @@ public class ChallengeRecoveryTest
         {
             length = 0;
             return false;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            WasDisposed = true;
+            base.Dispose(disposing);
         }
     }
 
@@ -885,23 +892,6 @@ public class ChallengeRecoveryTest
 
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
             => throw new InvalidOperationException("HEAD response content must not be buffered.");
-
-        protected override bool TryComputeLength(out long length)
-        {
-            length = Client.MaxBufferSize + 1;
-            return true;
-        }
-    }
-
-    private sealed class OversizedRequestContent : HttpContent
-    {
-        public OversizedRequestContent()
-        {
-            Headers.ContentLength = Client.MaxBufferSize + 1;
-        }
-
-        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
-            => throw new InvalidOperationException("Oversized request content must not be buffered.");
 
         protected override bool TryComputeLength(out long length)
         {

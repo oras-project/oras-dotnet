@@ -485,7 +485,7 @@ public class Client : IClient
         }
         catch (ResponseException e) when (e.StatusCode == HttpStatusCode.Unauthorized)
         {
-            throw new TokenEndpointUnauthorizedException(e);
+            throw new TokenEndpointUnauthorizedMarkerException(e);
         }
     }
 
@@ -666,9 +666,10 @@ public class Client : IClient
         }
 
         originalRequest.AddDefaultUserAgent();
-        var selectedClient = allowAutoRedirect ? BaseClient : NoRedirectClient;
         if (originalRequest.Headers.Authorization != null
-            || selectedClient.DefaultRequestHeaders.Authorization != null)
+            || BaseClient.DefaultRequestHeaders.Authorization != null
+            || (!allowAutoRedirect
+                && NoRedirectClient.DefaultRequestHeaders.Authorization != null))
         {
             return await SendRequestAsync(originalRequest, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
         }
@@ -678,7 +679,7 @@ public class Client : IClient
         // avoid consuming large non-seekable streams).  Unknown-
         // length content is buffered; if it turns out to exceed
         // the cap AND is non-seekable, throws immediately.
-        var requestContentReplayable = await BufferNonSeekableContentAsync(
+        await BufferNonSeekableContentAsync(
             originalRequest, cancellationToken)
             .ConfigureAwait(false);
 
@@ -754,44 +755,56 @@ public class Client : IClient
             return resolution.Response;
         }
 
-        // Standard resolution dead-ended on a challenge it could not use. If the rejected request
-        // carried a cached bearer token, re-derive the challenge once without authorization. This
-        // fallback runs only after normal resolution fails, so conformant registries and legitimate
-        // credentialed flows do not incur an extra request.
-        if (attachedCachedBearerToken)
+        // Standard resolution dead-ended on a challenge it could not use. For a cached bearer token on
+        // an OCI pull request, discard that failed response and derive a fresh challenge from a bodyless,
+        // credential-free request. This cold path is authoritative once entered.
+        if (attachedCachedBearerToken
+            && (originalRequest.Method == HttpMethod.Get
+                || originalRequest.Method == HttpMethod.Head))
         {
-            HttpResponseMessage? recovered;
+            response1.Dispose();
+
+            var coldResponse = await ProbeWithoutAuthorizationAsync(
+                originalRequest: originalRequest,
+                allowRegistryRedirects: allowAutoRedirect,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (coldResponse.StatusCode != HttpStatusCode.Unauthorized)
+            {
+                return coldResponse;
+            }
+
+            StandardAuthResult coldResolution;
             try
             {
-                recovered = await TryRecoverChallengeAsync(
-                    unauthorizedResponseToBuffer:
-                        resolution.FailureKind == ChallengeFailureKind.NoUsableScheme
-                            && originalRequest.Method != HttpMethod.Head
-                            ? response1
-                            : null,
+                coldResolution = await ResolveStandardChallengeAsync(
                     originalRequest: originalRequest,
-                    requestContentReplayable: requestContentReplayable,
+                    unauthorizedResponse: coldResponse,
                     host: host,
                     partitionId: partitionId,
                     attemptedKey: attemptedKey,
                     allowAutoRedirect: allowAutoRedirect,
-                    cancellationToken: cancellationToken)
+                    cancellationToken: cancellationToken,
+                    refreshAttemptedScopeKey: true)
                     .ConfigureAwait(false);
             }
             catch
             {
-                response1.Dispose();
+                coldResponse.Dispose();
                 throw;
             }
 
-            if (recovered != null)
+            if (coldResolution.Response != null)
             {
-                response1.Dispose();
-                return recovered;
+                return coldResolution.Response;
             }
+
+            return HandleUnusableChallenge(
+                unauthorizedResponse: coldResponse,
+                resolution: coldResolution,
+                host: host);
         }
 
-        // Recovery did not apply or gave up: preserve the original behavior for this 401.
+        // Cold challenge recovery does not apply: preserve the original behavior for this 401.
         return HandleUnusableChallenge(
             unauthorizedResponse: response1,
             resolution: resolution,
@@ -852,9 +865,7 @@ public class Client : IClient
                 }
             case Challenge.Scheme.Bearer:
                 {
-                    // Usable recognized scheme: release the original 401 up front (matching the client's
-                    // long-standing eager dispose). Its status and headers remain readable afterward for
-                    // the recovery path.
+                    // Usable recognized scheme: release the 401 before the token round-trip.
                     unauthorizedResponse.Dispose();
 
                     if (parameters == null)
@@ -868,6 +879,26 @@ public class Client : IClient
                         parameters.TryGetValue("scope", out var scopesString)
                             ? scopesString
                             : null);
+
+                    void RefreshAttemptedKey(HttpStatusCode statusCode, string token)
+                    {
+                        if (refreshAttemptedScopeKey
+                            && !string.IsNullOrEmpty(attemptedKey)
+                            && IsSuccessOrRedirect(statusCode)
+                            && !mergedScopes.HasOpaqueScopes
+                            && !string.Equals(
+                                mergedScopes.CacheKey,
+                                attemptedKey,
+                                StringComparison.Ordinal))
+                        {
+                            Cache.SetCache(
+                                host,
+                                Challenge.Scheme.Bearer,
+                                attemptedKey,
+                                token,
+                                partitionId);
+                        }
+                    }
 
                     // Attempt to send request when the scope changes and a token cache hits
                     if (!mergedScopes.HasOpaqueScopes
@@ -885,16 +916,7 @@ public class Client : IClient
 
                         if (response2.StatusCode != HttpStatusCode.Unauthorized)
                         {
-                            RefreshAttemptedScopeKeyIfNeeded(
-                                refresh: refreshAttemptedScopeKey,
-                                resolvedStatus: response2.StatusCode,
-                                host: host,
-                                scheme: schemeFromChallenge,
-                                attemptedKey: attemptedKey,
-                                newKey: mergedScopes.CacheKey,
-                                hasOpaqueScopes: mergedScopes.HasOpaqueScopes,
-                                token: cachedToken,
-                                partitionId: partitionId);
+                            RefreshAttemptedKey(response2.StatusCode, cachedToken);
                             return StandardAuthResult.Resolved(response2);
                         }
                         response2.Dispose();
@@ -940,11 +962,11 @@ public class Client : IClient
                             cancellationToken
                         ).ConfigureAwait(false);
                     }
-                    catch (TokenEndpointUnauthorizedException e)
+                    catch (TokenEndpointUnauthorizedMarkerException e)
                     {
                         // We followed the challenge to its token endpoint and it returned 401. Report it
                         // as unusable so built-in recovery can cold-probe a challenge derived from a stale
-                        // cached token. If recovery declines, the original exception is rethrown as-is.
+                        // cached token. Terminal handling always surfaces the captured public exception.
                         return StandardAuthResult.Unusable(
                             ChallengeFailureKind.TokenEndpointUnauthorized,
                             realm,
@@ -964,16 +986,7 @@ public class Client : IClient
                     var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
                     requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
                     var bearerResponse = await SendRequestAsync(requestAttempt3, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-                    RefreshAttemptedScopeKeyIfNeeded(
-                        refresh: refreshAttemptedScopeKey,
-                        resolvedStatus: bearerResponse.StatusCode,
-                        host: host,
-                        scheme: schemeFromChallenge,
-                        attemptedKey: attemptedKey,
-                        newKey: mergedScopes.CacheKey,
-                        hasOpaqueScopes: mergedScopes.HasOpaqueScopes,
-                        token: bearerAuthToken,
-                        partitionId: partitionId);
+                    RefreshAttemptedKey(bearerResponse.StatusCode, bearerAuthToken);
                     return StandardAuthResult.Resolved(bearerResponse);
                 }
             default:
@@ -1102,177 +1115,40 @@ public class Client : IClient
     }
 
     /// <summary>
-    /// Re-derives an unusable challenge without authorization and continues from the cold response. A
-    /// fresh 401 is re-run through <see cref="ResolveStandardChallengeAsync"/> exactly once; a success or
-    /// redirect (2xx/3xx) is returned as-is; any other status is discarded so it does not mask the
-    /// original 401. The cold probe carries no token, so recovery is bounded to one pass.
-    /// </summary>
-    private async Task<HttpResponseMessage?> TryRecoverChallengeAsync(
-        HttpResponseMessage? unauthorizedResponseToBuffer,
-        HttpRequestMessage originalRequest,
-        bool requestContentReplayable,
-        string host,
-        string? partitionId,
-        string attemptedKey,
-        bool allowAutoRedirect,
-        CancellationToken cancellationToken)
-    {
-        if (!CanReplayWithoutAuthorization(
-                originalRequest,
-                requestContentReplayable,
-                unauthorizedResponseToBuffer))
-        {
-            return null;
-        }
-
-        var recovered = await ProbeWithoutAuthorizationAsync(
-            originalRequest: originalRequest,
-            unauthorizedResponseToBuffer: unauthorizedResponseToBuffer,
-            allowAutoRedirect: allowAutoRedirect,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        recovered.RequestMessage ??= originalRequest;
-
-        if (recovered.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            // The recovery produced a fresh challenge. Re-derive auth from it once, with our own
-            // collaborators, and refresh the stale scope key so we don't re-enter recovery next time.
-            StandardAuthResult retry;
-            try
-            {
-                retry = await ResolveStandardChallengeAsync(
-                    originalRequest: originalRequest,
-                    unauthorizedResponse: recovered,
-                    host: host,
-                    partitionId: partitionId,
-                    attemptedKey: attemptedKey,
-                    allowAutoRedirect: allowAutoRedirect,
-                    cancellationToken: cancellationToken,
-                    refreshAttemptedScopeKey: true)
-                    .ConfigureAwait(false);
-            }
-            catch
-            {
-                recovered.Dispose();
-                throw;
-            }
-
-            if (retry.Response == null)
-            {
-                // Still unusable after a cold re-derive — give up; the caller falls back to the 401.
-                recovered.Dispose();
-                return null;
-            }
-
-            // Resolved: ResolveStandardChallengeAsync already disposed the cold-probe 401.
-            return retry.Response;
-        }
-
-        if (IsSuccessOrRedirect(recovered.StatusCode))
-        {
-            // The registry served the request without (usable) authorization: a success, or a redirect
-            // (e.g. an anonymous blob-location 307 for a caller that captures redirects).
-            return recovered;
-        }
-
-        // A non-401, non-success/redirect cold response (e.g. 403/404/5xx) is not a recovery; returning it
-        // would mask the original 401, which is the more meaningful signal for an auth problem. Give up.
-        recovered.Dispose();
-        return null;
-    }
-
-    /// <summary>
-    /// Re-sends <paramref name="originalRequest"/> with no <c>Authorization</c> header to elicit a
-    /// fresh challenge from a registry that withheld a usable one for a cached token. When the
-    /// original no-challenge 401 is still alive, buffers its bounded content first so the response
-    /// releases its connection before the same-host probe.
+    /// Sends a fresh, bodyless copy of an OCI GET or HEAD request without authorization to elicit the
+    /// challenge that the registry serves to a cold client.
     /// </summary>
     private async Task<HttpResponseMessage> ProbeWithoutAuthorizationAsync(
         HttpRequestMessage originalRequest,
-        HttpResponseMessage? unauthorizedResponseToBuffer,
-        bool allowAutoRedirect,
+        bool allowRegistryRedirects,
         CancellationToken cancellationToken)
     {
-        if (unauthorizedResponseToBuffer != null)
+        var probe = new HttpRequestMessage(
+            originalRequest.Method,
+            originalRequest.RequestUri)
         {
-            await BufferResponseContentAsync(
-                    unauthorizedResponseToBuffer,
-                    cancellationToken)
-                .ConfigureAwait(false);
+            Version = originalRequest.Version,
+            VersionPolicy = originalRequest.VersionPolicy,
+        };
+        foreach (var option in originalRequest.Options)
+        {
+            probe.Options.TryAdd(option.Key, option.Value);
         }
-
-        var probe = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-        probe.Headers.Authorization = null;
-        return await SendRequestAsync(probe, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Whether <paramref name="request"/> can be safely re-sent without authorization: the request is
-    /// an idempotent GET/HEAD, and any still-live 401 content can be bounded-buffered to release its
-    /// connection before the same-host probe.
-    /// </summary>
-    private static bool CanReplayWithoutAuthorization(
-        HttpRequestMessage request,
-        bool requestContentReplayable,
-        HttpResponseMessage? unauthorizedResponseToBuffer)
-    {
-        if (!requestContentReplayable
-            || (request.Method != HttpMethod.Get && request.Method != HttpMethod.Head))
+        foreach (var header in originalRequest.Headers)
         {
-            return false;
-        }
-
-        if (unauthorizedResponseToBuffer == null)
-        {
-            return true;
-        }
-
-        var contentLength = unauthorizedResponseToBuffer.Content.Headers.ContentLength;
-        return contentLength.HasValue
-            && contentLength.Value <= MaxBufferSize;
-    }
-
-    private static async Task BufferResponseContentAsync(
-        HttpResponseMessage response,
-        CancellationToken cancellationToken)
-    {
-        var content = response.Content;
-        var headers = content.Headers.ToArray();
-        byte[] bufferedBytes;
-
-        using (var source = await content
-            .ReadAsStreamAsync(cancellationToken)
-            .ConfigureAwait(false))
-        using (var destination = new MemoryStream())
-        {
-            var buffer = new byte[81920];
-            int bytesRead;
-            while ((bytesRead = await source
-                .ReadAsync(buffer.AsMemory(), cancellationToken)
-                .ConfigureAwait(false)) != 0)
+            if (!string.Equals(
+                    header.Key,
+                    "Authorization",
+                    StringComparison.OrdinalIgnoreCase))
             {
-                if (destination.Length > MaxBufferSize - bytesRead)
-                {
-                    throw new HttpRequestException(
-                        $"The unauthorized response content exceeds {MaxBufferSize} bytes.");
-                }
-
-                await destination
-                    .WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken)
-                    .ConfigureAwait(false);
+                probe.Headers.TryAddWithoutValidation(header.Key, header.Value);
             }
-
-            bufferedBytes = destination.ToArray();
         }
 
-        var bufferedContent = new ByteArrayContent(bufferedBytes);
-        foreach (var header in headers)
-        {
-            bufferedContent.Headers.TryAddWithoutValidation(header.Key, header.Value);
-        }
-
-        response.Content = bufferedContent;
-        content.Dispose();
+        return await SendRequestAsync(
+            probe,
+            allowRegistryRedirects,
+            cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Whether <paramref name="statusCode"/> is a 2xx success or a 3xx redirect (200–399).</summary>
@@ -1280,35 +1156,8 @@ public class Client : IClient
         => (int)statusCode is >= 200 and < 400;
 
     /// <summary>
-    /// Once a recovered token has demonstrably worked (a 2xx/3xx final response), replace the stale token
-    /// cached under the originally attempted non-empty scope key so future requests under that key succeed
-    /// directly instead of re-entering recovery. No-op for opaque scopes or unless the key changed.
-    /// </summary>
-    private void RefreshAttemptedScopeKeyIfNeeded(
-        bool refresh,
-        HttpStatusCode resolvedStatus,
-        string host,
-        Challenge.Scheme scheme,
-        string attemptedKey,
-        string newKey,
-        bool hasOpaqueScopes,
-        string token,
-        string? partitionId)
-    {
-        if (refresh
-            && !string.IsNullOrEmpty(attemptedKey)
-            && IsSuccessOrRedirect(resolvedStatus)
-            && !hasOpaqueScopes
-            && !string.Equals(newKey, attemptedKey, StringComparison.Ordinal))
-        {
-            Cache.SetCache(host, scheme, attemptedKey, token, partitionId);
-        }
-    }
-
-    /// <summary>
-    /// Reproduces the client's default behavior unless built-in recovery
-    /// applies: an unrecognized scheme yields the original 401; a malformed Bearer challenge throws the
-    /// same exception the standard flow has always thrown.
+    /// Maps an unusable challenge to terminal behavior. An unrecognized scheme returns the 401;
+    /// malformed or denied challenges throw, and token-endpoint failures rethrow their public exception.
     /// </summary>
     private static HttpResponseMessage HandleUnusableChallenge(
         HttpResponseMessage unauthorizedResponse, StandardAuthResult resolution, string host)
@@ -1335,7 +1184,7 @@ public class Client : IClient
                 resolution.TokenEndpointException!.Throw();
                 throw resolution.TokenEndpointException.SourceException; // unreachable; Throw() always throws
             default:
-                // NoUsableScheme: no recognized challenge scheme; return the original 401 to the caller.
+                // NoUsableScheme: no recognized challenge scheme; return this 401 to the caller.
                 return unauthorizedResponse;
         }
     }
@@ -1429,15 +1278,15 @@ public class Client : IClient
     /// built-in recovery while still rethrowing the exact original error when recovery does not apply.
     /// Scoped to the realm round-trip only — an out-of-band AccessTokenProvider 401 is excluded.
     /// </summary>
-    private sealed class TokenEndpointUnauthorizedException : Exception
+    private sealed class TokenEndpointUnauthorizedMarkerException : Exception
     {
-        public TokenEndpointUnauthorizedException(ResponseException responseException)
+        public TokenEndpointUnauthorizedMarkerException(ResponseException responseException)
             : base(responseException.Message, responseException)
         {
             ResponseException = responseException;
         }
 
-        /// <summary>The original token-endpoint 401 exception, rethrown verbatim when recovery declines.</summary>
+        /// <summary>The public token-endpoint exception surfaced by terminal challenge handling.</summary>
         public ResponseException ResponseException { get; }
     }
 
@@ -1477,14 +1326,14 @@ public class Client : IClient
     /// the token is only used in the catch-path stream check.
     /// With the 4 MB cap, buffering completes quickly in practice.
     /// </remarks>
-    private static async Task<bool> BufferNonSeekableContentAsync(
+    private static async Task BufferNonSeekableContentAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
         var content = request.Content;
         if (content == null)
         {
-            return true;
+            return;
         }
 
         // If Content-Length is declared and exceeds the cap, skip
@@ -1493,7 +1342,7 @@ public class Client : IClient
         // retry); non-seekable ones accept the limitation.
         if (content.Headers.ContentLength > MaxBufferSize)
         {
-            return false;
+            return;
         }
 
         try
@@ -1520,7 +1369,5 @@ public class Client : IClient
 
             stream.Position = 0;
         }
-
-        return true;
     }
 }
