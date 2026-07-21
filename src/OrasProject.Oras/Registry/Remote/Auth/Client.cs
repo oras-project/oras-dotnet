@@ -459,20 +459,20 @@ public class Client : IClient
             (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
         {
             return await FetchDistributionTokenAsync(
-                realm: realm,
-                service: service,
-                scopes: scopes,
-                username: credential.Username,
-                password: credential.Password,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                realm,
+                service,
+                scopes,
+                credential.Username,
+                credential.Password,
+                cancellationToken).ConfigureAwait(false);
         }
 
         return await FetchOauth2TokenAsync(
-            realm: realm,
-            service: service,
-            scopes: scopes,
-            credential: credential,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            realm,
+            service,
+            scopes,
+            credential,
+            cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
