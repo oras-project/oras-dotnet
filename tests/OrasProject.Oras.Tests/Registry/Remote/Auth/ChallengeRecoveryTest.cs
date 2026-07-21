@@ -63,7 +63,7 @@ public class ChallengeRecoveryTest
     }
 
     // Builds a 401 whose Bearer challenge is malformed: the realm's opening quote is never closed, so
-    // Challenge.ParseChallenge throws when the client parses it.
+    // Challenge.TryParseChallenge reports it as unusable when the client parses it.
     private static HttpResponseMessage UnauthorizedMalformed(HttpRequestMessage req, string realm)
     {
         var response = new HttpResponseMessage(HttpStatusCode.Unauthorized) { RequestMessage = req };
@@ -939,8 +939,8 @@ public class ChallengeRecoveryTest
     public async Task SendAsync_ChallengeRecovery_MalformedChallengeOnStaleToken_ColdProbeRecovers()
     {
         // Arrange: the stale-token attempt draws a 401 whose WWW-Authenticate is malformed (an
-        // unterminated quoted value). A malformed challenge is itself unusable, so recovery must treat it
-        // as terminal and cold-probe rather than surfacing the parse error to the caller.
+        // unterminated quoted value). A malformed challenge is itself unusable, so recovery treats it
+        // as no usable scheme and cold-probes rather than failing the request.
         var host = NewHost();
         var coldRealm = $"https://{host}/token";
 
@@ -969,11 +969,11 @@ public class ChallengeRecoveryTest
     }
 
     [Fact]
-    public async Task SendAsync_MalformedChallenge_WithoutStaleToken_SurfacesParseError()
+    public async Task SendAsync_MalformedChallenge_WithoutStaleToken_ReturnsUnauthorized()
     {
         // Arrange: no stale token is cached, so this request is not recovery-eligible. A malformed
-        // challenge must still surface its parse error (the pre-recovery behavior) rather than being
-        // swallowed, and the client must not reach the token endpoint.
+        // challenge names no usable scheme, so the client returns the 401 to the caller (like an
+        // unrecognized scheme) instead of throwing, and must not reach the token endpoint.
         var host = NewHost();
         var coldRealm = $"https://{host}/token";
 
@@ -988,9 +988,11 @@ public class ChallengeRecoveryTest
         // No stale token seeded → attempt 1 carries no Authorization and is not recovery-eligible.
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
 
-        // Act + Assert: the malformed challenge's parse error propagates unchanged, before any token fetch.
-        await Assert.ThrowsAsync<FormatException>(
-            () => client.SendAsync(request, cancellationToken: CancellationToken.None));
+        // Act
+        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+
+        // Assert: the malformed 401 is handed back unchanged, before any token fetch.
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         VerifyTokenFetch(mockHandler, Times.Never());
     }
 

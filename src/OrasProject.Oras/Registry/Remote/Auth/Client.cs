@@ -808,9 +808,9 @@ public class Client : IClient
     /// <summary>
     /// Runs the standard 401 challenge resolution: parse the <c>WWW-Authenticate</c> challenge and,
     /// for a recognized scheme, fetch/replay credentials. Returns a resolved response on success; a
-    /// terminal result carrying the exception to surface for a malformed or denied challenge or a
-    /// bearer-acquisition 401 (captured with its original stack); or a no-usable-scheme result when the
-    /// challenge names no recognized scheme. Acquisition failures other than a 401 still throw.
+    /// terminal result carrying the exception to surface for a denied challenge or a bearer-acquisition
+    /// 401 (captured with its original stack); or a no-usable-scheme result when the challenge is
+    /// malformed or names no recognized scheme. Acquisition failures other than a 401 still throw.
     /// </summary>
     /// <remarks>
     /// Disposal: for a recognized scheme (Basic or Bearer) this method disposes
@@ -835,19 +835,14 @@ public class Client : IClient
         CancellationToken cancellationToken,
         bool refreshAttemptedScopeKey = false)
     {
-        Challenge.Scheme schemeFromChallenge;
-        Dictionary<string, string>? parameters;
-        try
+        if (!Challenge.TryParseChallenge(
+                unauthorizedResponse.Headers.WwwAuthenticate.FirstOrDefault()?.ToString(),
+                out var schemeFromChallenge,
+                out var parameters))
         {
-            (schemeFromChallenge, parameters) = Challenge.ParseChallenge(
-                unauthorizedResponse.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
-        }
-        catch (Exception e) when (e is FormatException or ArgumentException)
-        {
-            // A malformed WWW-Authenticate header is itself an unusable challenge: dispose the 401
-            // and report it as terminal so an eligible stale-token GET/HEAD can still cold-probe.
-            unauthorizedResponse.Dispose();
-            return StandardAuthResult.Terminal(ExceptionDispatchInfo.Capture(e));
+            // A malformed WWW-Authenticate header names no usable scheme: leave the 401 undisposed so an
+            // eligible stale-token GET/HEAD can still cold-probe and an ineligible caller gets the 401 back.
+            return StandardAuthResult.NoUsableScheme();
         }
 
         // Attempt again with credentials for recognized schemes

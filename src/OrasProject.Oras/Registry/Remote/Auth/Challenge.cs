@@ -59,9 +59,42 @@ public static class Challenge
     /// <exception cref="FormatException">Thrown when a quoted parameter value is not properly closed.</exception>
     public static (Scheme, Dictionary<string, string>?) ParseChallenge(string? header)
     {
+        if (!TryParseChallenge(header, out var scheme, out var parameters))
+        {
+            throw new FormatException("Quoted parameter value is not properly closed.");
+        }
+        return (scheme, parameters);
+    }
+
+    /// <summary>
+    /// TryParseChallenge parses the "WWW-Authenticate" header returned by the remote registry and
+    /// extracts parameters if the scheme is Bearer, without throwing on a malformed challenge.
+    ///
+    /// Reference:
+    /// - https://datatracker.ietf.org/doc/html/rfc7235#section-2.1
+    /// </summary>
+    /// <param name="header">The authentication challenge header string.</param>
+    /// <param name="scheme">
+    /// The parsed <see cref="Scheme"/>; set even on failure and may be <see cref="Scheme.Unknown"/>.
+    /// </param>
+    /// <param name="parameters">
+    /// The parsed Bearer parameters, or <c>null</c> when the scheme is not Bearer or none are present.
+    /// A repeated parameter key keeps its last value.
+    /// </param>
+    /// <returns>
+    /// <c>true</c> when the header was parsed; <c>false</c> when a quoted parameter value is not properly
+    /// closed, which makes the whole challenge unusable.
+    /// </returns>
+    public static bool TryParseChallenge(
+        string? header,
+        out Scheme scheme,
+        out Dictionary<string, string>? parameters)
+    {
+        parameters = null;
         if (header == null)
         {
-            return (Scheme.Unknown, null);
+            scheme = Scheme.Unknown;
+            return true;
         }
         // as defined in RFC 7235 section 2.1, we have
         //     challenge   = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
@@ -71,17 +104,17 @@ public static class Challenge
         // since we focus parameters only on Bearer, we have
         //     challenge   = auth-scheme [ 1*SP #auth-param ]
         var (schemeString, rest) = ParseToken(header);
-        var scheme = ParseScheme(schemeString);
+        scheme = ParseScheme(schemeString);
 
         if (scheme != Scheme.Bearer)
         {
-            return (scheme, null);
+            return true;
         }
 
         rest = rest.Trim();
         if (string.IsNullOrEmpty(rest))
         {
-            return (scheme, null);
+            return true;
         }
 
         var paramsDictionary = new Dictionary<string, string>();
@@ -107,7 +140,8 @@ public static class Challenge
                 var nextQuote = remaining.IndexOf('"', 1);
                 if (nextQuote == -1)
                 {
-                    throw new FormatException("Quoted parameter value is not properly closed.");
+                    // An unterminated quoted value makes the whole challenge unusable.
+                    return false;
                 }
 
                 value = remaining.Substring(1, nextQuote - 1).Trim();
@@ -121,7 +155,8 @@ public static class Challenge
                     break;
                 }
             }
-            paramsDictionary.Add(key, value);
+            // Keep the last value for a repeated key rather than rejecting the whole challenge.
+            paramsDictionary[key] = value;
 
             rest = rest.Trim();
             if (string.IsNullOrEmpty(rest) || !rest.StartsWith(','))
@@ -132,7 +167,8 @@ public static class Challenge
             rest = rest.TrimStart(',');
         }
 
-        return (scheme, paramsDictionary);
+        parameters = paramsDictionary;
+        return true;
     }
 
     /// <summary>

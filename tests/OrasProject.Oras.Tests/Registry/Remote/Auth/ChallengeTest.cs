@@ -58,12 +58,46 @@ public class ChallengeTest
     }
 
     [Fact]
-    public void ParseChallenge_ThrowsArgumentException()
+    public void ParseChallenge_DuplicateParameterKey_LastValueWins()
     {
         var header =
-            "BEARER realm=\"https://registry.io/oauth2/token\",service=\"registry.io\",service=\"registry.io\",scope=\"repository:nginx:push,pull repository:abc:delete\",error=\"insufficient_scope\"";
-        var message = Assert.Throws<ArgumentException>(() => Challenge.ParseChallenge(header));
-        Assert.Equal("An item with the same key has already been added. Key: service", message.Message);
+            "BEARER realm=\"https://registry.io/oauth2/token\",service=\"first.io\",service=\"second.io\",scope=\"repository:nginx:push,pull\"";
+        var (scheme, parameters) = Challenge.ParseChallenge(header);
+
+        Assert.Equal(Challenge.Scheme.Bearer, scheme);
+        Assert.NotNull(parameters);
+        // A repeated parameter key keeps its last value rather than rejecting the whole challenge.
+        Assert.Equal("second.io", parameters["service"]);
+    }
+
+    [Fact]
+    public void ParseChallenge_UnterminatedQuotedValue_ThrowsFormatException()
+    {
+        var header = "Bearer realm=\"https://registry.io/oauth2/token";
+        Assert.Throws<FormatException>(() => Challenge.ParseChallenge(header));
+    }
+
+    [Fact]
+    public void TryParseChallenge_UnterminatedQuotedValue_ReturnsFalse()
+    {
+        var header = "Bearer realm=\"https://registry.io/oauth2/token";
+        var result = Challenge.TryParseChallenge(header, out _, out var parameters);
+
+        Assert.False(result);
+        Assert.Null(parameters);
+    }
+
+    [Fact]
+    public void TryParseChallenge_ValidHeader_ReturnsTrueWithParsedParameters()
+    {
+        var header = "Bearer realm=\"https://registry.io/oauth2/token\",service=\"registry.io\"";
+        var result = Challenge.TryParseChallenge(header, out var scheme, out var parameters);
+
+        Assert.True(result);
+        Assert.Equal(Challenge.Scheme.Bearer, scheme);
+        Assert.NotNull(parameters);
+        Assert.Equal("https://registry.io/oauth2/token", parameters["realm"]);
+        Assert.Equal("registry.io", parameters["service"]);
     }
 
     [Theory]
