@@ -307,6 +307,68 @@ public class ChallengeRecoveryTest
     }
 
     [Fact]
+    public async Task SendAsync_ChallengeRecovery_AccessTokenProvider401_ColdProbeRecovers()
+    {
+        // Arrange: bearer acquisition through a custom provider rejects the stale-token challenge once.
+        // The cold challenge retries the same provider, which then returns a usable fresh token.
+        var host = NewHost();
+        var realm = $"https://{host}/token";
+        var providerFailure = new ResponseException(
+            new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                RequestMessage = new HttpRequestMessage(HttpMethod.Get, realm)
+            });
+        var accessTokenProvider = new Mock<IAccessTokenProvider>();
+        accessTokenProvider
+            .SetupSequence(provider => provider.ResolveAccessTokenAsync(
+                host,
+                realm,
+                "registry",
+                It.IsAny<IReadOnlyList<string>>(),
+                true,
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(providerFailure)
+            .ReturnsAsync(_freshToken);
+
+        HttpResponseMessage Handler(HttpRequestMessage req, CancellationToken ct)
+        {
+            var token = req.Headers.Authorization?.Parameter;
+            if (token == _freshToken) return Ok(req);
+            return Unauthorized(req, realm);
+        }
+
+        var mockHandler = CustomHandler(Handler);
+        var client = new Client(
+            new HttpClient(mockHandler.Object),
+            noRedirectHttpClient: null,
+            credentialProvider: null,
+            accessTokenProvider: accessTokenProvider.Object,
+            cache: null);
+        SeedStaleToken(client, host);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
+
+        // Act
+        using var response = await client.SendAsync(
+            request,
+            cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        VerifyStaleTokenSent(mockHandler);
+        VerifyColdProbe(mockHandler, Times.Once());
+        VerifyFreshTokenSent(mockHandler);
+        accessTokenProvider.Verify(
+            provider => provider.ResolveAccessTokenAsync(
+                host,
+                realm,
+                "registry",
+                It.IsAny<IReadOnlyList<string>>(),
+                true,
+                It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
+
+    [Fact]
     public async Task SendAsync_ChallengeRecovery_TokenEndpoint401_ColdProbeAlsoFails_GivesUpAndRethrows()
     {
         // Arrange: a stale token yields a usable (allowed) challenge, but following it to the token

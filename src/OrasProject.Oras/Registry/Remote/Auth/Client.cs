@@ -455,38 +455,24 @@ public class Client : IClient
         {
             return credential.AccessToken;
         }
-        // The calls below follow the challenge to its token endpoint (the realm). Scope any 401 from
-        // that round-trip into a distinct marker so the standard resolver can offer it to built-in
-        // challenge recovery instead of failing outright. A cached out-of-band token from an
-        // AccessTokenProvider (handled above) is deliberately excluded because it does not follow the
-        // challenge, and non-401 token-endpoint errors propagate unchanged.
-        try
+        if (credential.IsEmpty() ||
+            (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
         {
-            if (credential.IsEmpty() ||
-                (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
-            {
-                return await FetchDistributionTokenAsync(
-                    realm,
-                    service,
-                    scopes,
-                    credential.Username,
-                    credential.Password,
-                    cancellationToken
-                ).ConfigureAwait(false);
-            }
+            return await FetchDistributionTokenAsync(
+                realm: realm,
+                service: service,
+                scopes: scopes,
+                username: credential.Username,
+                password: credential.Password,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
 
-            return await FetchOauth2TokenAsync(
-                realm,
-                service,
-                scopes,
-                credential,
-                cancellationToken
-            ).ConfigureAwait(false);
-        }
-        catch (ResponseException e) when (e.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            throw new TokenEndpointUnauthorizedMarkerException(e);
-        }
+        return await FetchOauth2TokenAsync(
+            realm: realm,
+            service: service,
+            scopes: scopes,
+            credential: credential,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -726,16 +712,44 @@ public class Client : IClient
             return response1;
         }
 
+        return await HandleUnauthorizedResponseAsync(
+            originalRequest: originalRequest,
+            unauthorizedResponse: response1,
+            partitionId: partitionId,
+            attemptedKey: attemptedKey,
+            attachedCachedBearerToken: attachedCachedBearerToken,
+            allowAutoRedirect: allowAutoRedirect,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Handles the complete 401 challenge flow, including one credential-free cold fallback when a
+    /// registry returns an unusable challenge for an SDK-cached bearer token.
+    /// </summary>
+    private async Task<HttpResponseMessage> HandleUnauthorizedResponseAsync(
+        HttpRequestMessage originalRequest,
+        HttpResponseMessage unauthorizedResponse,
+        string? partitionId,
+        string attemptedKey,
+        bool attachedCachedBearerToken,
+        bool allowAutoRedirect,
+        CancellationToken cancellationToken)
+    {
+        var host = originalRequest.RequestUri?.Authority
+            ?? throw new ArgumentException(
+                "originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.",
+                nameof(originalRequest));
+
         // Resolve the 401 through the standard challenge flow. This never throws for a structurally
         // unusable challenge (it reports the reason instead); it DOES throw for credential/token
-        // failures other than a token-endpoint 401, so those propagate and are never eligible for
+        // failures other than a bearer-acquisition 401, so those propagate and are never eligible for
         // recovery.
         StandardAuthResult resolution;
         try
         {
             resolution = await ResolveStandardChallengeAsync(
                 originalRequest: originalRequest,
-                unauthorizedResponse: response1,
+                unauthorizedResponse: unauthorizedResponse,
                 host: host,
                 partitionId: partitionId,
                 attemptedKey: attemptedKey,
@@ -745,7 +759,7 @@ public class Client : IClient
         }
         catch
         {
-            response1.Dispose();
+            unauthorizedResponse.Dispose();
             throw;
         }
 
@@ -755,14 +769,14 @@ public class Client : IClient
             return resolution.Response;
         }
 
-        // Standard resolution dead-ended on a challenge it could not use. For a cached bearer token on
-        // an OCI pull request, discard that failed response and derive a fresh challenge from a bodyless,
-        // credential-free request. This cold path is authoritative once entered.
+        // Normal expired-token challenge handling above applies to every HTTP method. The cold fallback
+        // is deliberately narrower: replay only the GET/HEAD methods used by OCI pull operations so a
+        // credential-free probe cannot repeat a mutating POST, PUT, PATCH, or DELETE.
         if (attachedCachedBearerToken
             && (originalRequest.Method == HttpMethod.Get
                 || originalRequest.Method == HttpMethod.Head))
         {
-            response1.Dispose();
+            unauthorizedResponse.Dispose();
 
             var coldResponse = await ProbeWithoutAuthorizationAsync(
                 originalRequest: originalRequest,
@@ -806,7 +820,7 @@ public class Client : IClient
 
         // Cold challenge recovery does not apply: preserve the original behavior for this 401.
         return HandleUnusableChallenge(
-            unauthorizedResponse: response1,
+            unauthorizedResponse: unauthorizedResponse,
             resolution: resolution,
             host: host);
     }
@@ -815,11 +829,9 @@ public class Client : IClient
     /// Runs the standard 401 challenge resolution: parse the <c>WWW-Authenticate</c> challenge and,
     /// for a recognized scheme, fetch/replay credentials. Returns a resolved response on success, or a
     /// <see cref="StandardAuthResult"/> describing why the challenge was structurally unusable. A 401
-    /// from following the challenge's token endpoint is reported as
-    /// <see cref="ChallengeFailureKind.TokenEndpointUnauthorized"/> (carrying the original exception for
-    /// verbatim rethrow), not thrown, so recovery can act on it. It still throws for other genuine
-    /// credential/token-endpoint failures, so a caller can distinguish "the registry withheld a usable
-    /// challenge" from "authentication failed".
+    /// from bearer acquisition is reported as
+    /// <see cref="ChallengeFailureKind.BearerAcquisitionUnauthorized"/> with the original public
+    /// exception captured for terminal handling. Other acquisition failures still throw.
     /// </summary>
     /// <remarks>
     /// Disposal: for a recognized scheme (Basic or Bearer) this method disposes
@@ -854,14 +866,26 @@ public class Client : IClient
                 {
                     // Usable challenge: release the original 401 before the credential round-trip.
                     unauthorizedResponse.Dispose();
-                    var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken, partitionId);
+                    var basicAuthToken = await FetchBasicAuthAsync(
+                        registry: host,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                    Cache.SetCache(
+                        registry: host,
+                        scheme: schemeFromChallenge,
+                        scopeKey: string.Empty,
+                        token: basicAuthToken,
+                        partitionId: partitionId);
 
                     // Attempt again with basic token
-                    var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+                    var requestAttempt2 = await originalRequest.CloneAsync(
+                        rewindContent: true,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
                     requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
-                    var basicResponse = await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-                    return StandardAuthResult.Resolved(basicResponse);
+                    var basicResponse = await SendRequestAsync(
+                        request: requestAttempt2,
+                        allowAutoRedirect: allowAutoRedirect,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                    return StandardAuthResult.Resolved(response: basicResponse);
                 }
             case Challenge.Scheme.Bearer:
                 {
@@ -870,18 +894,23 @@ public class Client : IClient
 
                     if (parameters == null)
                     {
-                        return StandardAuthResult.Unusable(ChallengeFailureKind.MissingParameters);
+                        return StandardAuthResult.Unusable(
+                            failureKind: ChallengeFailureKind.MissingParameters);
                     }
 
-                    var existingScopes = ScopeManager.GetScopesForHost(host, partitionId);
+                    var existingScopes = ScopeManager.GetScopesForHost(
+                        registry: host,
+                        partitionId: partitionId);
                     var mergedScopes = MergeChallengeScopes(
-                        existingScopes,
-                        parameters.TryGetValue("scope", out var scopesString)
+                        existingScopes: existingScopes,
+                        scopesString: parameters.TryGetValue("scope", out var scopesString)
                             ? scopesString
                             : null);
 
                     void RefreshAttemptedKey(HttpStatusCode statusCode, string token)
                     {
+                        // Refresh the stale lookup key only after a recovered, cacheable token succeeds.
+                        // Never populate the empty catch-all key or cache a token from opaque scopes.
                         if (refreshAttemptedScopeKey
                             && !string.IsNullOrEmpty(attemptedKey)
                             && IsSuccessOrRedirect(statusCode)
@@ -892,11 +921,11 @@ public class Client : IClient
                                 StringComparison.Ordinal))
                         {
                             Cache.SetCache(
-                                host,
-                                Challenge.Scheme.Bearer,
-                                attemptedKey,
-                                token,
-                                partitionId);
+                                registry: host,
+                                scheme: Challenge.Scheme.Bearer,
+                                scopeKey: attemptedKey,
+                                token: token,
+                                partitionId: partitionId);
                         }
                     }
 
@@ -910,14 +939,21 @@ public class Client : IClient
                             out var cachedToken,
                             partitionId))
                     {
-                        var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+                        var requestAttempt2 = await originalRequest.CloneAsync(
+                            rewindContent: true,
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
                         requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                        var response2 = await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                        var response2 = await SendRequestAsync(
+                            request: requestAttempt2,
+                            allowAutoRedirect: allowAutoRedirect,
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
 
                         if (response2.StatusCode != HttpStatusCode.Unauthorized)
                         {
-                            RefreshAttemptedKey(response2.StatusCode, cachedToken);
-                            return StandardAuthResult.Resolved(response2);
+                            RefreshAttemptedKey(
+                                statusCode: response2.StatusCode,
+                                token: cachedToken);
+                            return StandardAuthResult.Resolved(response: response2);
                         }
                         response2.Dispose();
                     }
@@ -925,7 +961,8 @@ public class Client : IClient
                     if (!parameters.TryGetValue("realm", out var realm))
                     {
                         // 'realm' is required as it specifies the token endpoint URL for Bearer auth.
-                        return StandardAuthResult.Unusable(ChallengeFailureKind.MissingRealm);
+                        return StandardAuthResult.Unusable(
+                            failureKind: ChallengeFailureKind.MissingRealm);
                     }
 
                     // Validate realm URL before sending credentials.
@@ -934,13 +971,18 @@ public class Client : IClient
                             out var realmUri)
                         || string.IsNullOrEmpty(realmUri.Host))
                     {
-                        return StandardAuthResult.Unusable(ChallengeFailureKind.InvalidRealm, realm);
+                        return StandardAuthResult.Unusable(
+                            failureKind: ChallengeFailureKind.InvalidRealm,
+                            realm: realm);
                     }
 
                     var registryUri = originalRequest.RequestUri!;
                     if (!await RealmValidator.IsRealmAllowedAsync(registryUri, realmUri, cancellationToken).ConfigureAwait(false))
                     {
-                        return StandardAuthResult.Unusable(ChallengeFailureKind.DeniedRealm, realm, realmUri);
+                        return StandardAuthResult.Unusable(
+                            failureKind: ChallengeFailureKind.DeniedRealm,
+                            realm: realm,
+                            realmUri: realmUri);
                     }
 
                     if (!parameters.TryGetValue("service", out var service))
@@ -954,43 +996,50 @@ public class Client : IClient
                     try
                     {
                         bearerAuthToken = await FetchBearerAuthAsync(
-                            host,
-                            realm,
-                            service,
-                            mergedScopes.TokenRequestScopes,
+                            registry: host,
+                            realm: realm,
+                            service: service,
+                            scopes: mergedScopes.TokenRequestScopes,
                             forceRefresh: true,
-                            cancellationToken
-                        ).ConfigureAwait(false);
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
                     }
-                    catch (TokenEndpointUnauthorizedMarkerException e)
+                    catch (ResponseException e) when (e.StatusCode == HttpStatusCode.Unauthorized)
                     {
-                        // We followed the challenge to its token endpoint and it returned 401. Report it
-                        // as unusable so built-in recovery can cold-probe a challenge derived from a stale
-                        // cached token. Terminal handling always surfaces the captured public exception.
+                        // A bearer provider or token endpoint returned 401. Report it as unusable so a
+                        // stale cached GET/HEAD can cold-probe once; terminal handling rethrows this
+                        // original public exception.
                         return StandardAuthResult.Unusable(
-                            ChallengeFailureKind.TokenEndpointUnauthorized,
-                            realm,
-                            realmUri,
-                            ExceptionDispatchInfo.Capture(e.ResponseException));
+                            failureKind: ChallengeFailureKind.BearerAcquisitionUnauthorized,
+                            realm: realm,
+                            realmUri: realmUri,
+                            bearerAcquisitionException: ExceptionDispatchInfo.Capture(e));
                     }
                     if (!mergedScopes.HasOpaqueScopes)
                     {
                         Cache.SetCache(
-                            host,
-                            schemeFromChallenge,
-                            mergedScopes.CacheKey,
-                            bearerAuthToken,
-                            partitionId);
+                            registry: host,
+                            scheme: schemeFromChallenge,
+                            scopeKey: mergedScopes.CacheKey,
+                            token: bearerAuthToken,
+                            partitionId: partitionId);
                     }
 
-                    var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
+                    var requestAttempt3 = await originalRequest.CloneAsync(
+                        rewindContent: true,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
                     requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
-                    var bearerResponse = await SendRequestAsync(requestAttempt3, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-                    RefreshAttemptedKey(bearerResponse.StatusCode, bearerAuthToken);
-                    return StandardAuthResult.Resolved(bearerResponse);
+                    var bearerResponse = await SendRequestAsync(
+                        request: requestAttempt3,
+                        allowAutoRedirect: allowAutoRedirect,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                    RefreshAttemptedKey(
+                        statusCode: bearerResponse.StatusCode,
+                        token: bearerAuthToken);
+                    return StandardAuthResult.Resolved(response: bearerResponse);
                 }
             default:
-                return StandardAuthResult.Unusable(ChallengeFailureKind.NoUsableScheme);
+                return StandardAuthResult.Unusable(
+                    failureKind: ChallengeFailureKind.NoUsableScheme);
         }
     }
 
@@ -1177,12 +1226,11 @@ public class Client : IClient
                 unauthorizedResponse.Dispose();
                 throw new AuthenticationException(
                     $"Authentication realm '{resolution.RealmUri}' is not allowed for registry '{host}'.");
-            case ChallengeFailureKind.TokenEndpointUnauthorized:
-                // We followed the challenge to its token endpoint and it returned 401. Recovery declined,
-                // so rethrow the exact token-endpoint exception with its original stack.
+            case ChallengeFailureKind.BearerAcquisitionUnauthorized:
+                // Bearer acquisition returned 401. Surface the exact public exception and original stack.
                 unauthorizedResponse.Dispose();
-                resolution.TokenEndpointException!.Throw();
-                throw resolution.TokenEndpointException.SourceException; // unreachable; Throw() always throws
+                resolution.BearerAcquisitionException!.Throw();
+                throw resolution.BearerAcquisitionException.SourceException; // unreachable
             default:
                 // NoUsableScheme: no recognized challenge scheme; return this 401 to the caller.
                 return unauthorizedResponse;
@@ -1200,13 +1248,13 @@ public class Client : IClient
             ChallengeFailureKind failureKind,
             string? realm,
             Uri? realmUri,
-            ExceptionDispatchInfo? tokenEndpointException)
+            ExceptionDispatchInfo? bearerAcquisitionException)
         {
             Response = response;
             FailureKind = failureKind;
             Realm = realm;
             RealmUri = realmUri;
-            TokenEndpointException = tokenEndpointException;
+            BearerAcquisitionException = bearerAcquisitionException;
         }
 
         /// <summary>The resolved response, or <c>null</c> when the challenge was unusable.</summary>
@@ -1222,11 +1270,11 @@ public class Client : IClient
         public Uri? RealmUri { get; }
 
         /// <summary>
-        /// The captured token-endpoint exception for a
-        /// <see cref="ChallengeFailureKind.TokenEndpointUnauthorized"/> failure, rethrown verbatim when
-        /// recovery does not apply; <c>null</c> for all other outcomes.
+        /// The captured public exception for a
+        /// <see cref="ChallengeFailureKind.BearerAcquisitionUnauthorized"/> failure; <c>null</c> for all
+        /// other outcomes.
         /// </summary>
-        public ExceptionDispatchInfo? TokenEndpointException { get; }
+        public ExceptionDispatchInfo? BearerAcquisitionException { get; }
 
         public static StandardAuthResult Resolved(HttpResponseMessage response)
             => new(response, ChallengeFailureKind.None, null, null, null);
@@ -1235,8 +1283,8 @@ public class Client : IClient
             ChallengeFailureKind failureKind,
             string? realm = null,
             Uri? realmUri = null,
-            ExceptionDispatchInfo? tokenEndpointException = null)
-            => new(null, failureKind, realm, realmUri, tokenEndpointException);
+            ExceptionDispatchInfo? bearerAcquisitionException = null)
+            => new(null, failureKind, realm, realmUri, bearerAcquisitionException);
     }
 
     /// <summary>
@@ -1263,31 +1311,10 @@ public class Client : IClient
         DeniedRealm,
 
         /// <summary>
-        /// The challenge was structurally usable and its realm was followed, but the token endpoint
-        /// rejected the token request with a 401 (e.g. a non-conformant registry that cannot mint a
-        /// token for a challenge it derived from a stale cached token). Distinct from the failure kinds
-        /// above, which never contacted the token endpoint.
+        /// The challenge was structurally usable, but bearer acquisition returned 401. This can come
+        /// from an access-token provider or from following the challenge to its token endpoint.
         /// </summary>
-        TokenEndpointUnauthorized,
-    }
-
-    /// <summary>
-    /// Internal marker raised when following a 401's challenge to its token endpoint itself returns a
-    /// 401. It carries the original <see cref="Exceptions.ResponseException"/> so the standard resolver
-    /// can convert it into a <see cref="ChallengeFailureKind.TokenEndpointUnauthorized"/> result for
-    /// built-in recovery while still rethrowing the exact original error when recovery does not apply.
-    /// Scoped to the realm round-trip only — an out-of-band AccessTokenProvider 401 is excluded.
-    /// </summary>
-    private sealed class TokenEndpointUnauthorizedMarkerException : Exception
-    {
-        public TokenEndpointUnauthorizedMarkerException(ResponseException responseException)
-            : base(responseException.Message, responseException)
-        {
-            ResponseException = responseException;
-        }
-
-        /// <summary>The public token-endpoint exception surfaced by terminal challenge handling.</summary>
-        public ResponseException ResponseException { get; }
+        BearerAcquisitionUnauthorized,
     }
 
     /// <summary>
