@@ -765,7 +765,7 @@ public class Client : IClient
             attemptedKey: attemptedKey,
             allowAutoRedirect: allowAutoRedirect,
             cancellationToken: cancellationToken,
-            refreshAttemptedScopeKey: false).ConfigureAwait(false);
+            backfillAttemptedScopeKey: false).ConfigureAwait(false);
         if (resolution.ResolvedResponse != null)
         {
             // ResolveStandardChallengeAsync disposed the original 401 before the token round-trip.
@@ -798,7 +798,7 @@ public class Client : IClient
                 attemptedKey: attemptedKey,
                 allowAutoRedirect: allowAutoRedirect,
                 cancellationToken: cancellationToken,
-                refreshAttemptedScopeKey: true).ConfigureAwait(false);
+                backfillAttemptedScopeKey: true).ConfigureAwait(false);
             if (coldResolution.ResolvedResponse != null)
             {
                 return coldResolution.ResolvedResponse;
@@ -825,7 +825,7 @@ public class Client : IClient
     /// A no-usable-scheme outcome leaves the response undisposed, so the caller can return it or hand it
     /// to the fallback.
     /// <para>
-    /// When <paramref name="refreshAttemptedScopeKey"/> is <c>true</c> (the recovery re-derive, gated on
+    /// When <paramref name="backfillAttemptedScopeKey"/> is <c>true</c> (the recovery re-derive, gated on
     /// a stale token having been attached), a token obtained from a successful (2xx/3xx) response is also
     /// cached under <paramref name="attemptedKey"/> so the stale token that provoked recovery is replaced
     /// and future requests under that scope key don't re-enter recovery.
@@ -839,7 +839,7 @@ public class Client : IClient
         string attemptedKey,
         bool allowAutoRedirect,
         CancellationToken cancellationToken,
-        bool refreshAttemptedScopeKey = false)
+        bool backfillAttemptedScopeKey = false)
     {
         if (!Challenge.TryParseChallenge(
                 unauthorizedResponse.Headers.WwwAuthenticate.FirstOrDefault()?.ToString(),
@@ -900,15 +900,15 @@ public class Client : IClient
                             ? scopesString
                             : null);
 
-                    StandardAuthResult ResolvedWithKeyRefresh(HttpResponseMessage response, string token)
+                    StandardAuthResult ResolvedWithKeyBackfill(HttpResponseMessage response, string token)
                     {
-                        // Refresh the stale lookup key only after a recovered, cacheable token succeeds;
+                        // Backfill the stale lookup key only after a recovered, cacheable token succeeds;
                         // never populate the empty catch-all key or cache a token from opaque scopes.
-                        // Dispose the just-received response if that post-send refresh throws (e.g. a
+                        // Dispose the just-received response if that post-send backfill throws (e.g. a
                         // custom ICache.SetCache) so recovery never leaks it.
                         try
                         {
-                            if (refreshAttemptedScopeKey
+                            if (backfillAttemptedScopeKey
                                 && !string.IsNullOrEmpty(attemptedKey)
                                 && IsSuccessOrRedirect(response.StatusCode)
                                 && !mergedScopes.HasOpaqueScopes
@@ -954,7 +954,7 @@ public class Client : IClient
 
                         if (cachedTokenResponse.StatusCode != HttpStatusCode.Unauthorized)
                         {
-                            return ResolvedWithKeyRefresh(cachedTokenResponse, cachedToken);
+                            return ResolvedWithKeyBackfill(cachedTokenResponse, cachedToken);
                         }
                         cachedTokenResponse.Dispose();
                     }
@@ -1028,7 +1028,7 @@ public class Client : IClient
                         request: bearerRequest,
                         allowAutoRedirect: allowAutoRedirect,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
-                    return ResolvedWithKeyRefresh(bearerResponse, bearerAuthToken);
+                    return ResolvedWithKeyBackfill(bearerResponse, bearerAuthToken);
                 }
             default:
                 return StandardAuthResult.NoUsableScheme();
