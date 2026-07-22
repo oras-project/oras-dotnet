@@ -247,6 +247,11 @@ public class Client : IClient
     private const string _defaultClientId = "oras-dotnet";
 
     /// <summary>
+    /// The HTTP Authorization header name.
+    /// </summary>
+    private const string _authorizationHeader = "Authorization";
+
+    /// <summary>
     /// Maximum size (4 MB) for buffering non-seekable request content.
     /// In practice only manifest-sized payloads flow through this path.
     /// </summary>
@@ -653,6 +658,9 @@ public class Client : IClient
         }
 
         originalRequest.AddDefaultUserAgent();
+        // Fast path: the Authorization value (Basic or Bearer) is already known ahead of time — either
+        // set on this request or as a default header on the underlying HttpClient. Send it as-is and
+        // skip all token acquisition, scope merging, and cache lookups.
         if (originalRequest.Headers.Authorization != null
             || BaseClient.DefaultRequestHeaders.Authorization != null
             || (!allowAutoRedirect
@@ -894,35 +902,30 @@ public class Client : IClient
                             ? scopesString
                             : null);
 
-                    void RefreshAttemptedKey(HttpStatusCode statusCode, string token)
-                    {
-                        // Refresh the stale lookup key only after a recovered, cacheable token succeeds.
-                        // Never populate the empty catch-all key or cache a token from opaque scopes.
-                        if (refreshAttemptedScopeKey
-                            && !string.IsNullOrEmpty(attemptedKey)
-                            && IsSuccessOrRedirect(statusCode)
-                            && !mergedScopes.HasOpaqueScopes
-                            && !string.Equals(
-                                mergedScopes.CacheKey,
-                                attemptedKey,
-                                StringComparison.Ordinal))
-                        {
-                            Cache.SetCache(
-                                registry: host,
-                                scheme: Challenge.Scheme.Bearer,
-                                scopeKey: attemptedKey,
-                                token: token,
-                                partitionId: partitionId);
-                        }
-                    }
-
                     StandardAuthResult ResolvedWithKeyRefresh(HttpResponseMessage response, string token)
                     {
-                        // Dispose the just-received response if the post-send key refresh throws
-                        // (e.g. a custom ICache.SetCache) so recovery never leaks it.
+                        // Refresh the stale lookup key only after a recovered, cacheable token succeeds;
+                        // never populate the empty catch-all key or cache a token from opaque scopes.
+                        // Dispose the just-received response if that post-send refresh throws (e.g. a
+                        // custom ICache.SetCache) so recovery never leaks it.
                         try
                         {
-                            RefreshAttemptedKey(response.StatusCode, token);
+                            if (refreshAttemptedScopeKey
+                                && !string.IsNullOrEmpty(attemptedKey)
+                                && IsSuccessOrRedirect(response.StatusCode)
+                                && !mergedScopes.HasOpaqueScopes
+                                && !string.Equals(
+                                    mergedScopes.CacheKey,
+                                    attemptedKey,
+                                    StringComparison.Ordinal))
+                            {
+                                Cache.SetCache(
+                                    registry: host,
+                                    scheme: Challenge.Scheme.Bearer,
+                                    scopeKey: attemptedKey,
+                                    token: token,
+                                    partitionId: partitionId);
+                            }
                         }
                         catch
                         {
@@ -1178,7 +1181,7 @@ public class Client : IClient
         {
             if (!string.Equals(
                     header.Key,
-                    "Authorization",
+                    _authorizationHeader,
                     StringComparison.OrdinalIgnoreCase))
             {
                 probe.Headers.TryAddWithoutValidation(header.Key, header.Value);
