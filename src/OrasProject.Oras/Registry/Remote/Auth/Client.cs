@@ -746,35 +746,21 @@ public class Client : IClient
         bool allowAutoRedirect,
         CancellationToken cancellationToken)
     {
-        // Resolve a 401 through the standard challenge flow, disposing the response if resolution throws.
-        // ResolveStandardChallengeAsync never throws for a structurally unusable challenge (it reports the
-        // reason instead); it DOES throw for credential/token failures other than a bearer-acquisition
-        // 401, so those propagate and are never eligible for recovery.
-        async Task<StandardAuthResult> ResolveGuardedAsync(
-            HttpResponseMessage response, bool refreshAttemptedScopeKey)
-        {
-            try
-            {
-                return await ResolveStandardChallengeAsync(
-                    originalRequest: originalRequest,
-                    unauthorizedResponse: response,
-                    host: host,
-                    partitionId: partitionId,
-                    attemptedKey: attemptedKey,
-                    allowAutoRedirect: allowAutoRedirect,
-                    cancellationToken: cancellationToken,
-                    refreshAttemptedScopeKey: refreshAttemptedScopeKey)
-                    .ConfigureAwait(false);
-            }
-            catch
-            {
-                response.Dispose();
-                throw;
-            }
-        }
-
-        var resolution = await ResolveGuardedAsync(
-            unauthorizedResponse, refreshAttemptedScopeKey: false).ConfigureAwait(false);
+        // ResolveStandardChallengeAsync owns the 401's disposal: for a usable Basic/Bearer challenge it
+        // disposes the response up front, before any token round-trip, so every throwing path has already
+        // released it and no guard is needed here. It reports a structurally unusable challenge as a
+        // result rather than throwing, but still throws for acquisition failures other than a bearer 401
+        // (those propagate out, never eligible for cold recovery). A no-usable-scheme outcome leaves the
+        // 401 undisposed for the caller to return or cold-probe.
+        var resolution = await ResolveStandardChallengeAsync(
+            originalRequest: originalRequest,
+            unauthorizedResponse: unauthorizedResponse,
+            host: host,
+            partitionId: partitionId,
+            attemptedKey: attemptedKey,
+            allowAutoRedirect: allowAutoRedirect,
+            cancellationToken: cancellationToken,
+            refreshAttemptedScopeKey: false).ConfigureAwait(false);
         if (resolution.ResolvedResponse != null)
         {
             // ResolveStandardChallengeAsync disposed the original 401 before the token round-trip.
@@ -799,8 +785,15 @@ public class Client : IClient
                 return coldResponse;
             }
 
-            var coldResolution = await ResolveGuardedAsync(
-                coldResponse, refreshAttemptedScopeKey: true).ConfigureAwait(false);
+            var coldResolution = await ResolveStandardChallengeAsync(
+                originalRequest: originalRequest,
+                unauthorizedResponse: coldResponse,
+                host: host,
+                partitionId: partitionId,
+                attemptedKey: attemptedKey,
+                allowAutoRedirect: allowAutoRedirect,
+                cancellationToken: cancellationToken,
+                refreshAttemptedScopeKey: true).ConfigureAwait(false);
             if (coldResolution.ResolvedResponse != null)
             {
                 return coldResolution.ResolvedResponse;
