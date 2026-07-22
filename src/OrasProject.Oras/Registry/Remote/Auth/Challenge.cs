@@ -82,8 +82,11 @@ public static class Challenge
     /// A repeated parameter key keeps its last value.
     /// </param>
     /// <returns>
-    /// <c>true</c> when the header was parsed; <c>false</c> when a quoted parameter value is not properly
-    /// closed, which makes the whole challenge unusable.
+    /// <c>true</c> when the challenge is not malformed and was consumed without error. This includes a
+    /// <c>null</c> <paramref name="header"/> (no challenge; <paramref name="scheme"/> becomes
+    /// <see cref="Scheme.Unknown"/>) and any non-Bearer scheme, so <c>true</c> does not mean a challenge
+    /// was present or that Bearer <paramref name="parameters"/> were extracted. <c>false</c> is returned
+    /// only when a quoted parameter value is not properly closed, which makes the whole challenge unusable.
     /// </returns>
     public static bool TryParseChallenge(
         string? header,
