@@ -142,7 +142,7 @@ public class ChallengeRecoveryTest
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
 
         // Act
-        var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
+        using var response = await client.SendAsync(request, cancellationToken: CancellationToken.None);
 
         // Assert: recovered to 200 via a cold probe + a freshly fetched token.
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
