@@ -680,7 +680,9 @@ public class Client : IClient
 
         var host = originalRequest.RequestUri?.Authority ??
                     throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
-        var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
+        var initialRequest = await originalRequest.CloneAsync(
+            rewindContent: false,
+            cancellationToken).ConfigureAwait(false);
         var attemptedKey = string.Empty;
         var attachedCachedBearerToken = false;
 
@@ -693,7 +695,7 @@ public class Client : IClient
                     {
                         if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken, partitionId))
                         {
-                            requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
+                            initialRequest.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
                             // Not flagged as a recoverable cached token: a credential-free re-derive can't
                             // help Basic auth (the same credentials are simply re-sent). Recovery targets
                             // stale Bearer tokens.
@@ -707,7 +709,7 @@ public class Client : IClient
                         attemptedKey = string.Join(" ", scopes);
                         if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken, partitionId))
                         {
-                            requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                            initialRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
                             attachedCachedBearerToken = true;
                         }
                         break;
@@ -715,15 +717,18 @@ public class Client : IClient
             }
         }
 
-        var response1 = await SendRequestAsync(requestAttempt1, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-        if (response1.StatusCode != HttpStatusCode.Unauthorized)
+        var initialResponse = await SendRequestAsync(
+            initialRequest,
+            allowAutoRedirect,
+            cancellationToken).ConfigureAwait(false);
+        if (initialResponse.StatusCode != HttpStatusCode.Unauthorized)
         {
-            return response1;
+            return initialResponse;
         }
 
         return await HandleUnauthorizedResponseAsync(
             originalRequest: originalRequest,
-            unauthorizedResponse: response1,
+            unauthorizedResponse: initialResponse,
             host: host,
             partitionId: partitionId,
             attemptedKey: attemptedKey,
@@ -864,12 +869,12 @@ public class Client : IClient
                         partitionId: partitionId);
 
                     // Attempt again with basic token
-                    var requestAttempt2 = await originalRequest.CloneAsync(
+                    var basicRequest = await originalRequest.CloneAsync(
                         rewindContent: true,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
-                    requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
+                    basicRequest.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
                     var basicResponse = await SendRequestAsync(
-                        request: requestAttempt2,
+                        request: basicRequest,
                         allowAutoRedirect: allowAutoRedirect,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
                     return StandardAuthResult.Resolved(response: basicResponse);
@@ -938,20 +943,20 @@ public class Client : IClient
                             out var cachedToken,
                             partitionId))
                     {
-                        var requestAttempt2 = await originalRequest.CloneAsync(
+                        var cachedTokenRequest = await originalRequest.CloneAsync(
                             rewindContent: true,
                             cancellationToken: cancellationToken).ConfigureAwait(false);
-                        requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                        var response2 = await SendRequestAsync(
-                            request: requestAttempt2,
+                        cachedTokenRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
+                        var cachedTokenResponse = await SendRequestAsync(
+                            request: cachedTokenRequest,
                             allowAutoRedirect: allowAutoRedirect,
                             cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                        if (response2.StatusCode != HttpStatusCode.Unauthorized)
+                        if (cachedTokenResponse.StatusCode != HttpStatusCode.Unauthorized)
                         {
-                            return ResolvedWithKeyRefresh(response2, cachedToken);
+                            return ResolvedWithKeyRefresh(cachedTokenResponse, cachedToken);
                         }
-                        response2.Dispose();
+                        cachedTokenResponse.Dispose();
                     }
 
                     if (!parameters.TryGetValue("realm", out var realm))
@@ -1015,12 +1020,12 @@ public class Client : IClient
                             partitionId: partitionId);
                     }
 
-                    var requestAttempt3 = await originalRequest.CloneAsync(
+                    var bearerRequest = await originalRequest.CloneAsync(
                         rewindContent: true,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
-                    requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
+                    bearerRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
                     var bearerResponse = await SendRequestAsync(
-                        request: requestAttempt3,
+                        request: bearerRequest,
                         allowAutoRedirect: allowAutoRedirect,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
                     return ResolvedWithKeyRefresh(bearerResponse, bearerAuthToken);
