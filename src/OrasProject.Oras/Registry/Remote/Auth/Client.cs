@@ -843,13 +843,14 @@ public class Client : IClient
     {
         if (!Challenge.TryParseChallenge(
                 unauthorizedResponse.Headers.WwwAuthenticate.FirstOrDefault()?.ToString(),
-                out var schemeFromChallenge,
-                out var parameters))
+                out var parsedChallenge))
         {
             // A malformed WWW-Authenticate header names no usable scheme: leave the 401 undisposed so an
             // eligible stale-token GET/HEAD can still cold-probe and an ineligible caller gets the 401 back.
             return StandardAuthResult.NoUsableScheme();
         }
+
+        var (schemeFromChallenge, parameters) = parsedChallenge;
 
         // Attempt again with credentials for recognized schemes
         switch (schemeFromChallenge)

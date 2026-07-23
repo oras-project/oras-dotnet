@@ -81,23 +81,23 @@ public class ChallengeTest
     public void TryParseChallenge_UnterminatedQuotedValue_ReturnsFalse()
     {
         var header = "Bearer realm=\"https://registry.io/oauth2/token";
-        var result = Challenge.TryParseChallenge(header, out _, out var parameters);
+        var result = Challenge.TryParseChallenge(header, out var challenge);
 
         Assert.False(result);
-        Assert.Null(parameters);
+        Assert.Null(challenge.Parameters);
     }
 
     [Fact]
     public void TryParseChallenge_ValidHeader_ReturnsTrueWithParsedParameters()
     {
         var header = "Bearer realm=\"https://registry.io/oauth2/token\",service=\"registry.io\"";
-        var result = Challenge.TryParseChallenge(header, out var scheme, out var parameters);
+        var result = Challenge.TryParseChallenge(header, out var challenge);
 
         Assert.True(result);
-        Assert.Equal(Challenge.Scheme.Bearer, scheme);
-        Assert.NotNull(parameters);
-        Assert.Equal("https://registry.io/oauth2/token", parameters["realm"]);
-        Assert.Equal("registry.io", parameters["service"]);
+        Assert.Equal(Challenge.Scheme.Bearer, challenge.Scheme);
+        Assert.NotNull(challenge.Parameters);
+        Assert.Equal("https://registry.io/oauth2/token", challenge.Parameters["realm"]);
+        Assert.Equal("registry.io", challenge.Parameters["service"]);
     }
 
     [Theory]

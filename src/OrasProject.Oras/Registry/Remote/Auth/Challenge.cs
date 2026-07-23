@@ -52,22 +52,41 @@ public static class Challenge
     /// - https://datatracker.ietf.org/doc/html/rfc7235#section-2.1
     /// </summary>
     /// <param name="header">The authentication challenge header string.</param>
-    /// <returns>
-    /// A tuple containing the parsed <see cref="Scheme"/> and a dictionary of parameters, 
-    /// or <c>null</c> if no parameters are present.
-    /// </returns>
+    /// <returns>The parsed <see cref="ParsedChallenge"/>.</returns>
     /// <exception cref="FormatException">Thrown when a quoted parameter value is not properly closed.</exception>
-    public static (Scheme, Dictionary<string, string>?) ParseChallenge(string? header)
+    public static ParsedChallenge ParseChallenge(string? header)
     {
-        if (!TryParseChallenge(header, out var scheme, out var parameters))
+        if (!TryParseChallenge(header, out var challenge))
         {
             throw new FormatException("Quoted parameter value is not properly closed.");
         }
-        return (scheme, parameters);
+        return challenge;
     }
 
     /// <summary>
-    /// TryParseChallenge parses the "WWW-Authenticate" header returned by the remote registry and
+    /// Attempts to parse the "WWW-Authenticate" header returned by the remote registry, extracting
+    /// Bearer parameters, without throwing on a malformed challenge.
+    /// </summary>
+    /// <param name="header">The authentication challenge header string.</param>
+    /// <param name="challenge">
+    /// The parsed <see cref="ParsedChallenge"/>. On a malformed challenge this is still set, carrying
+    /// the parsed <see cref="Scheme"/> with <c>null</c> parameters.
+    /// </param>
+    /// <returns>
+    /// <c>true</c> when the challenge is not malformed and was consumed without error (including a
+    /// <c>null</c> <paramref name="header"/> or any non-Bearer scheme, so <c>true</c> does not mean a
+    /// challenge was present or that Bearer parameters were extracted); <c>false</c> only when a quoted
+    /// parameter value is not properly closed, which makes the whole challenge unusable.
+    /// </returns>
+    public static bool TryParseChallenge(string? header, out ParsedChallenge challenge)
+    {
+        var isUsable = TryParseChallengeCore(header, out var scheme, out var parameters);
+        challenge = new ParsedChallenge(scheme, parameters);
+        return isUsable;
+    }
+
+    /// <summary>
+    /// TryParseChallengeCore parses the "WWW-Authenticate" header returned by the remote registry and
     /// extracts parameters if the scheme is Bearer, without throwing on a malformed challenge.
     ///
     /// Reference:
@@ -88,7 +107,7 @@ public static class Challenge
     /// was present or that Bearer <paramref name="parameters"/> were extracted. <c>false</c> is returned
     /// only when a quoted parameter value is not properly closed, which makes the whole challenge unusable.
     /// </returns>
-    public static bool TryParseChallenge(
+    private static bool TryParseChallengeCore(
         string? header,
         out Scheme scheme,
         out Dictionary<string, string>? parameters)
