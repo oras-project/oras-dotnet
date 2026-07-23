@@ -37,9 +37,9 @@ public class ChallengeTest
 
     [InlineData("Unknown realm=\"example\"", ChallengeScheme.Unknown, null)]
     [InlineData(null, ChallengeScheme.Unknown, null)]
-    public void ParseChallenge_ValidHeader_ReturnsExpectedSchemeAndParams(string? header, ChallengeScheme expectedScheme, string[]? expectedParams)
+    public void Parse_ValidHeader_ReturnsExpectedSchemeAndParams(string? header, ChallengeScheme expectedScheme, string[]? expectedParams)
     {
-        var (scheme, parameters) = Challenge.ParseChallenge(header);
+        var (scheme, parameters) = Challenge.Parse(header);
 
         Assert.Equal(expectedScheme, scheme);
 
@@ -58,11 +58,11 @@ public class ChallengeTest
     }
 
     [Fact]
-    public void ParseChallenge_DuplicateParameterKey_LastValueWins()
+    public void Parse_DuplicateParameterKey_LastValueWins()
     {
         var header =
             "BEARER realm=\"https://registry.io/oauth2/token\",service=\"first.io\",service=\"second.io\",scope=\"repository:nginx:push,pull\"";
-        var (scheme, parameters) = Challenge.ParseChallenge(header);
+        var (scheme, parameters) = Challenge.Parse(header);
 
         Assert.Equal(ChallengeScheme.Bearer, scheme);
         Assert.NotNull(parameters);
@@ -71,27 +71,27 @@ public class ChallengeTest
     }
 
     [Fact]
-    public void ParseChallenge_UnterminatedQuotedValue_ThrowsFormatException()
+    public void Parse_UnterminatedQuotedValue_ThrowsFormatException()
     {
         var header = "Bearer realm=\"https://registry.io/oauth2/token";
-        Assert.Throws<FormatException>(() => Challenge.ParseChallenge(header));
+        Assert.Throws<FormatException>(() => Challenge.Parse(header));
     }
 
     [Fact]
-    public void TryParseChallenge_UnterminatedQuotedValue_ReturnsFalse()
+    public void TryParse_UnterminatedQuotedValue_ReturnsFalse()
     {
         var header = "Bearer realm=\"https://registry.io/oauth2/token";
-        var result = Challenge.TryParseChallenge(header, out var challenge);
+        var result = Challenge.TryParse(header, out var challenge);
 
         Assert.False(result);
         Assert.Null(challenge.Parameters);
     }
 
     [Fact]
-    public void TryParseChallenge_ValidHeader_ReturnsTrueWithParsedParameters()
+    public void TryParse_ValidHeader_ReturnsTrueWithParsedParameters()
     {
         var header = "Bearer realm=\"https://registry.io/oauth2/token\",service=\"registry.io\"";
-        var result = Challenge.TryParseChallenge(header, out var challenge);
+        var result = Challenge.TryParse(header, out var challenge);
 
         Assert.True(result);
         Assert.Equal(ChallengeScheme.Bearer, challenge.Scheme);

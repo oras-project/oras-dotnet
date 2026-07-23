@@ -841,7 +841,7 @@ public class Client : IClient
         CancellationToken cancellationToken,
         bool backfillAttemptedScopeKey = false)
     {
-        if (!Challenge.TryParseChallenge(
+        if (!Challenge.TryParse(
                 unauthorizedResponse.Headers.WwwAuthenticate.FirstOrDefault()?.ToString(),
                 out var parsedChallenge))
         {

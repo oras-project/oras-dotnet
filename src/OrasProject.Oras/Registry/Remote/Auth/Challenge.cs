@@ -17,25 +17,33 @@ using System.Collections.Generic;
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 /// <summary>
-/// Challenge provides helpers for parsing registry authentication challenges.
+/// Represents a parsed registry <c>WWW-Authenticate</c> challenge, and provides
+/// factory methods for parsing challenge headers.
 /// </summary>
-public static class Challenge
+/// <param name="Scheme">The parsed authentication <see cref="ChallengeScheme"/>.</param>
+/// <param name="Parameters">
+/// The parsed Bearer parameters, or <c>null</c> when the scheme is not
+/// <see cref="ChallengeScheme.Bearer"/> or no parameters are present. A repeated key keeps its last value.
+/// </param>
+public readonly record struct Challenge(
+    ChallengeScheme Scheme,
+    IReadOnlyDictionary<string, string>? Parameters)
 {
     private const string _specialChars = "!#$%&'*+-.^_`|~";
 
     /// <summary>
-    /// ParseChallenge parses the "WWW-Authenticate" header returned by the remote registry
+    /// Parses the "WWW-Authenticate" header returned by the remote registry
     /// and extracts parameters if scheme is Bearer.
     ///
     /// Reference:
     /// - https://datatracker.ietf.org/doc/html/rfc7235#section-2.1
     /// </summary>
     /// <param name="header">The authentication challenge header string.</param>
-    /// <returns>The parsed <see cref="ParsedChallenge"/>.</returns>
+    /// <returns>The parsed <see cref="Challenge"/>.</returns>
     /// <exception cref="FormatException">Thrown when a quoted parameter value is not properly closed.</exception>
-    public static ParsedChallenge ParseChallenge(string? header)
+    public static Challenge Parse(string? header)
     {
-        if (!TryParseChallenge(header, out var challenge))
+        if (!TryParse(header, out var challenge))
         {
             throw new FormatException("Quoted parameter value is not properly closed.");
         }
@@ -48,7 +56,7 @@ public static class Challenge
     /// </summary>
     /// <param name="header">The authentication challenge header string.</param>
     /// <param name="challenge">
-    /// The parsed <see cref="ParsedChallenge"/>. On a malformed challenge this is still set, carrying
+    /// The parsed <see cref="Challenge"/>. On a malformed challenge this is still set, carrying
     /// the parsed <see cref="ChallengeScheme"/> with <c>null</c> parameters.
     /// </param>
     /// <returns>
@@ -57,15 +65,15 @@ public static class Challenge
     /// challenge was present or that Bearer parameters were extracted); <c>false</c> only when a quoted
     /// parameter value is not properly closed, which makes the whole challenge unusable.
     /// </returns>
-    public static bool TryParseChallenge(string? header, out ParsedChallenge challenge)
+    public static bool TryParse(string? header, out Challenge challenge)
     {
-        var isUsable = TryParseChallengeCore(header, out var scheme, out var parameters);
-        challenge = new ParsedChallenge(scheme, parameters);
+        var isUsable = TryParseCore(header, out var scheme, out var parameters);
+        challenge = new Challenge(scheme, parameters);
         return isUsable;
     }
 
     /// <summary>
-    /// TryParseChallengeCore parses the "WWW-Authenticate" header returned by the remote registry and
+    /// TryParseCore parses the "WWW-Authenticate" header returned by the remote registry and
     /// extracts parameters if the scheme is Bearer, without throwing on a malformed challenge.
     ///
     /// Reference:
@@ -86,7 +94,7 @@ public static class Challenge
     /// was present or that Bearer <paramref name="parameters"/> were extracted. <c>false</c> is returned
     /// only when a quoted parameter value is not properly closed, which makes the whole challenge unusable.
     /// </returns>
-    private static bool TryParseChallengeCore(
+    private static bool TryParseCore(
         string? header,
         out ChallengeScheme scheme,
         out Dictionary<string, string>? parameters)
