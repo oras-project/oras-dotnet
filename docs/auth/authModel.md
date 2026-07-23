@@ -64,14 +64,16 @@ In this design, the Client class, which inherits from HttpClient, is structured 
     }
 
     CacheEntry {
-        Scheme Scheme
+        ChallengeScheme Scheme
         Dictionary Tokens
     }
 
     Challenge {
+        ChallengeScheme Scheme
+        IReadOnlyDictionary Parameters
     }
 
-    Scheme {
+    ChallengeScheme {
         string Basic "Basic authentication scheme"
         string Bearer "Bearer token authentication scheme"
         string Unknown "Unknown or unsupported authentication scheme"
@@ -83,7 +85,7 @@ In this design, the Client class, which inherits from HttpClient, is structured 
     Client ||--o| ScopeManager : contains
     ScopeManager ||--o| Scope : manages
     Cache ||--o| CacheEntry : contains
-    Challenge ||--o| Scheme : contains
+    Challenge ||--o| ChallengeScheme : contains
     
     Client ||--o| SendAsync : overrides
     Client ||--o| FetchBasicAuth : method
@@ -93,7 +95,8 @@ In this design, the Client class, which inherits from HttpClient, is structured 
     ScopeManager ||--o| SetActionsForRepository : method
     ScopeManager ||--o| SetScopeForRegistry : method
     ICredentialHelper ||--o| Credential : returns
-    Challenge ||--o| ParseChallenge : method
+    Challenge ||--o| Parse : method
+    Challenge ||--o| TryParse : method
 ```
 
 ### Authentication Workflow:

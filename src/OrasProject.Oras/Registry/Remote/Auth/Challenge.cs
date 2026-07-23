@@ -190,7 +190,7 @@ public readonly record struct Challenge(
     /// </returns>
     internal static ChallengeScheme ParseScheme(string schemeString)
     {
-        return schemeString.ToLower() switch
+        return schemeString.ToLowerInvariant() switch
         {
             "basic" => ChallengeScheme.Basic,
             "bearer" => ChallengeScheme.Bearer,

@@ -35,7 +35,8 @@ internal static class HttpRequestMessageExtensions
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri)
         {
-            Version = request.Version
+            Version = request.Version,
+            VersionPolicy = request.VersionPolicy
         };
         if (rewindContent)
         {

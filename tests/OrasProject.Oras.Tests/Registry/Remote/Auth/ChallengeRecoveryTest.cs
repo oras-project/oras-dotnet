@@ -63,7 +63,7 @@ public class ChallengeRecoveryTest
     }
 
     // Builds a 401 whose Bearer challenge is malformed: the realm's opening quote is never closed, so
-    // Challenge.TryParseChallenge reports it as unusable when the client parses it.
+    // Challenge.TryParse reports it as unusable when the client parses it.
     private static HttpResponseMessage UnauthorizedMalformed(HttpRequestMessage req, string realm)
     {
         var response = new HttpResponseMessage(HttpStatusCode.Unauthorized) { RequestMessage = req };
