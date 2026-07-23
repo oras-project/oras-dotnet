@@ -21,27 +21,6 @@ namespace OrasProject.Oras.Registry.Remote.Auth;
 /// </summary>
 public static class Challenge
 {
-    /// <summary>
-    /// Defines the supported authentication schemes.
-    /// </summary>
-    public enum Scheme
-    {
-        /// <summary>
-        /// Basic authentication scheme.
-        /// </summary>
-        Basic,
-
-        /// <summary>
-        /// Bearer token authentication scheme.
-        /// </summary>
-        Bearer,
-
-        /// <summary>
-        /// Unknown or unsupported authentication scheme.
-        /// </summary>
-        Unknown,
-    }
-
     private const string _specialChars = "!#$%&'*+-.^_`|~";
 
     /// <summary>
@@ -70,7 +49,7 @@ public static class Challenge
     /// <param name="header">The authentication challenge header string.</param>
     /// <param name="challenge">
     /// The parsed <see cref="ParsedChallenge"/>. On a malformed challenge this is still set, carrying
-    /// the parsed <see cref="Scheme"/> with <c>null</c> parameters.
+    /// the parsed <see cref="ChallengeScheme"/> with <c>null</c> parameters.
     /// </param>
     /// <returns>
     /// <c>true</c> when the challenge is not malformed and was consumed without error (including a
@@ -94,7 +73,7 @@ public static class Challenge
     /// </summary>
     /// <param name="header">The authentication challenge header string.</param>
     /// <param name="scheme">
-    /// The parsed <see cref="Scheme"/>; set even on failure and may be <see cref="Scheme.Unknown"/>.
+    /// The parsed <see cref="ChallengeScheme"/>; set even on failure and may be <see cref="ChallengeScheme.Unknown"/>.
     /// </param>
     /// <param name="parameters">
     /// The parsed Bearer parameters, or <c>null</c> when the scheme is not Bearer or none are present.
@@ -103,19 +82,19 @@ public static class Challenge
     /// <returns>
     /// <c>true</c> when the challenge is not malformed and was consumed without error. This includes a
     /// <c>null</c> <paramref name="header"/> (no challenge; <paramref name="scheme"/> becomes
-    /// <see cref="Scheme.Unknown"/>) and any non-Bearer scheme, so <c>true</c> does not mean a challenge
+    /// <see cref="ChallengeScheme.Unknown"/>) and any non-Bearer scheme, so <c>true</c> does not mean a challenge
     /// was present or that Bearer <paramref name="parameters"/> were extracted. <c>false</c> is returned
     /// only when a quoted parameter value is not properly closed, which makes the whole challenge unusable.
     /// </returns>
     private static bool TryParseChallengeCore(
         string? header,
-        out Scheme scheme,
+        out ChallengeScheme scheme,
         out Dictionary<string, string>? parameters)
     {
         parameters = null;
         if (header == null)
         {
-            scheme = Scheme.Unknown;
+            scheme = ChallengeScheme.Unknown;
             return true;
         }
         // as defined in RFC 7235 section 2.1, we have
@@ -128,7 +107,7 @@ public static class Challenge
         var (schemeString, rest) = ParseToken(header);
         scheme = ParseScheme(schemeString);
 
-        if (scheme != Scheme.Bearer)
+        if (scheme != ChallengeScheme.Bearer)
         {
             return true;
         }
@@ -198,16 +177,16 @@ public static class Challenge
     /// </summary>
     /// <param name="schemeString">The string representation of the scheme.</param>
     /// <returns>
-    /// The corresponding <see cref="Scheme"/> value, or <see cref="Scheme.Unknown"/> 
+    /// The corresponding <see cref="ChallengeScheme"/> value, or <see cref="ChallengeScheme.Unknown"/> 
     /// if the scheme is not recognized.
     /// </returns>
-    internal static Scheme ParseScheme(string schemeString)
+    internal static ChallengeScheme ParseScheme(string schemeString)
     {
         return schemeString.ToLower() switch
         {
-            "basic" => Scheme.Basic,
-            "bearer" => Scheme.Bearer,
-            _ => Scheme.Unknown,
+            "basic" => ChallengeScheme.Basic,
+            "bearer" => ChallengeScheme.Bearer,
+            _ => ChallengeScheme.Unknown,
         };
     }
 

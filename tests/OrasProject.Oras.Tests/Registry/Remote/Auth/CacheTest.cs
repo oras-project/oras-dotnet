@@ -25,7 +25,7 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key = "testKey";
         var token = "testToken";
 
@@ -45,7 +45,7 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
-        var scheme = Challenge.Scheme.Basic;
+        var scheme = ChallengeScheme.Basic;
         var key = "";
         var token1 = "token1";
 
@@ -75,8 +75,8 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
-        var initialScheme = Challenge.Scheme.Basic;
-        var newScheme = Challenge.Scheme.Bearer;
+        var initialScheme = ChallengeScheme.Basic;
+        var newScheme = ChallengeScheme.Bearer;
         var key = "repository:repo1:delete,pull,push repository:repo2:*";
         var initialToken = "initialToken";
         var token = "testToken";
@@ -104,7 +104,7 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key = "repository:repo1:delete,pull,push repository:repo2:*";
         var initialToken = "initialToken";
         var updatedToken = "updatedToken";
@@ -127,7 +127,7 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key1 = "repository:repo1:delete,pull,push repository:repo2:*";
         var key2 = "repository:repo3:*";
 
@@ -162,7 +162,7 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "nonexistent.registry";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key = "testKey";
 
         // Act
@@ -179,8 +179,8 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
-        var storedScheme = Challenge.Scheme.Basic;
-        var requestedScheme = Challenge.Scheme.Bearer;
+        var storedScheme = ChallengeScheme.Basic;
+        var requestedScheme = ChallengeScheme.Bearer;
         var key = "testKey";
         var token = "testToken";
 
@@ -200,7 +200,7 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key = "nonexistentKey";
         var token = "testToken";
 
@@ -220,7 +220,7 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "test.registry";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key = "testKey";
         var token = "testToken";
 
@@ -241,7 +241,7 @@ public class CacheTest
         var memoryCache = new MemoryCache(new MemoryCacheOptions());
         var cache = new Cache(memoryCache);
         var registry = "test.registry";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key = "testKey";
         var token = "testToken";
 
@@ -282,7 +282,7 @@ public class CacheTest
         var memoryCache = new MemoryCache(new MemoryCacheOptions());
         var cache = new Cache(memoryCache);
         var registry = "test.registry";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key = "testKey";
         var token = "testToken";
 
@@ -334,22 +334,22 @@ public class CacheTest
         };
 
         // Add two different registry entries
-        cache.SetCache("registry1", Challenge.Scheme.Bearer, "key", "token1");
-        cache.SetCache("registry2", Challenge.Scheme.Bearer, "key", "token2");
+        cache.SetCache("registry1", ChallengeScheme.Bearer, "key", "token1");
+        cache.SetCache("registry2", ChallengeScheme.Bearer, "key", "token2");
 
         // Verify first two are cached
-        Assert.True(cache.TryGetToken("registry1", Challenge.Scheme.Bearer, "key", out _));
-        Assert.True(cache.TryGetToken("registry2", Challenge.Scheme.Bearer, "key", out _));
+        Assert.True(cache.TryGetToken("registry1", ChallengeScheme.Bearer, "key", out _));
+        Assert.True(cache.TryGetToken("registry2", ChallengeScheme.Bearer, "key", out _));
 
         // Add a third entry that should trigger compaction
-        cache.SetCache("registry3", Challenge.Scheme.Bearer, "key", "token3");
+        cache.SetCache("registry3", ChallengeScheme.Bearer, "key", "token3");
 
         // Since eviction is not deterministic, we can only verify that at least one entry
         // is still in cache. This test is less strict than before but more reliable
         int entriesFound = 0;
-        if (cache.TryGetToken("registry1", Challenge.Scheme.Bearer, "key", out _)) entriesFound++;
-        if (cache.TryGetToken("registry2", Challenge.Scheme.Bearer, "key", out _)) entriesFound++;
-        if (cache.TryGetToken("registry3", Challenge.Scheme.Bearer, "key", out _)) entriesFound++;
+        if (cache.TryGetToken("registry1", ChallengeScheme.Bearer, "key", out _)) entriesFound++;
+        if (cache.TryGetToken("registry2", ChallengeScheme.Bearer, "key", out _)) entriesFound++;
+        if (cache.TryGetToken("registry3", ChallengeScheme.Bearer, "key", out _)) entriesFound++;
 
         // At least one entry should remain in cache (likely the most recently added one)
         Assert.True(entriesFound > 0, $"Expected at least one cache entry, found {entriesFound}");
@@ -365,7 +365,7 @@ public class CacheTest
         var memoryCache = new MemoryCache(new MemoryCacheOptions());
         var cache = new Cache(memoryCache);
         var registry = "test.registry";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key = "testKey";
         var token = "testToken";
 
@@ -405,7 +405,7 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "docker.io";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key = "repository:library/nginx:pull";
 
         // Act - Set tokens for two different cache partitions
@@ -429,7 +429,7 @@ public class CacheTest
         // Arrange
         var cache = new Cache(new MemoryCache(new MemoryCacheOptions()));
         var registry = "docker.io";
-        var scheme = Challenge.Scheme.Bearer;
+        var scheme = ChallengeScheme.Bearer;
         var key = "repository:library/nginx:pull";
         var token = "default-token";
 

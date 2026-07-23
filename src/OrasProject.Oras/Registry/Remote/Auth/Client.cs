@@ -691,7 +691,7 @@ public class Client : IClient
         {
             switch (schemeFromCache)
             {
-                case Challenge.Scheme.Basic:
+                case ChallengeScheme.Basic:
                     {
                         if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken, partitionId))
                         {
@@ -703,7 +703,7 @@ public class Client : IClient
 
                         break;
                     }
-                case Challenge.Scheme.Bearer:
+                case ChallengeScheme.Bearer:
                     {
                         var scopes = ScopeManager.GetScopesStringForHost(host, partitionId);
                         attemptedKey = string.Join(" ", scopes);
@@ -855,7 +855,7 @@ public class Client : IClient
         // Attempt again with credentials for recognized schemes
         switch (schemeFromChallenge)
         {
-            case Challenge.Scheme.Basic:
+            case ChallengeScheme.Basic:
                 {
                     // Usable challenge: release the original 401 before the credential round-trip.
                     unauthorizedResponse.Dispose();
@@ -880,7 +880,7 @@ public class Client : IClient
                         cancellationToken: cancellationToken).ConfigureAwait(false);
                     return StandardAuthResult.Resolved(response: basicResponse);
                 }
-            case Challenge.Scheme.Bearer:
+            case ChallengeScheme.Bearer:
                 {
                     // Usable recognized scheme: release the 401 before the token round-trip.
                     unauthorizedResponse.Dispose();
@@ -920,7 +920,7 @@ public class Client : IClient
                             {
                                 Cache.SetCache(
                                     registry: host,
-                                    scheme: Challenge.Scheme.Bearer,
+                                    scheme: ChallengeScheme.Bearer,
                                     scopeKey: attemptedKey,
                                     token: token,
                                     partitionId: partitionId);

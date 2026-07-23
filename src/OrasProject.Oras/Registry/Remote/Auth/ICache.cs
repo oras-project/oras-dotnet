@@ -24,8 +24,8 @@ public interface ICache
     /// </summary>
     /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="scheme">
-    /// When this method returns, contains the <see cref="Challenge.Scheme"/> associated with the
-    /// registry if found in the cache; otherwise, <see cref="Challenge.Scheme.Unknown"/>.
+    /// When this method returns, contains the <see cref="ChallengeScheme"/> associated with the
+    /// registry if found in the cache; otherwise, <see cref="ChallengeScheme.Unknown"/>.
     /// </param>
     /// <param name="partitionId">
     /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
@@ -34,7 +34,7 @@ public interface ICache
     /// <returns>
     /// <c>true</c> if the authentication scheme was found in the cache; otherwise, <c>false</c>.
     /// </returns>
-    bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? partitionId = null);
+    bool TryGetScheme(string registry, out ChallengeScheme scheme, string? partitionId = null);
 
     /// <summary>
     /// SetCache sets or updates the cache for a specific registry and authentication scheme.
@@ -51,7 +51,7 @@ public interface ICache
     /// </param>
     void SetCache(
         string registry,
-        Challenge.Scheme scheme,
+        ChallengeScheme scheme,
         string scopeKey,
         string token,
         string? partitionId = null);
@@ -79,7 +79,7 @@ public interface ICache
     /// </returns>
     bool TryGetToken(
         string registry,
-        Challenge.Scheme scheme,
+        ChallengeScheme scheme,
         string scopeKey,
         out string token,
         string? partitionId = null);

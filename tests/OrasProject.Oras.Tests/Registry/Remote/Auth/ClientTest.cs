@@ -859,7 +859,7 @@ public class ClientTest
             });
 
         var client = new Client(new HttpClient(mockHandler.Object));
-        client.Cache.SetCache(host, Challenge.Scheme.Basic, "", token);
+        client.Cache.SetCache(host, ChallengeScheme.Basic, "", token);
         client.CustomHeaders["foo"] = ["bar"];
         client.CustomHeaders["foo"] = ["newBar"];
 
@@ -900,7 +900,7 @@ public class ClientTest
             });
 
         var client = new Client(new HttpClient(mockHandler.Object));
-        client.Cache.SetCache(host, Challenge.Scheme.Bearer, string.Join(" ", scopes), token);
+        client.Cache.SetCache(host, ChallengeScheme.Bearer, string.Join(" ", scopes), token);
         Assert.True(Scope.TryParse(scopes[0], out var scope1));
         client.ScopeManager.SetScopeForRegistry(host, scope1, null);
         Assert.True(Scope.TryParse(scopes[1], out var scope2));
@@ -1834,7 +1834,7 @@ public class ClientTest
         mockHandler.Invocations.Clear(); // Clear invocations to ensure no residual state between tests
 
         using var request2 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
-        Assert.True(client.Cache.TryGetToken(host, Challenge.Scheme.Basic, "", out var token));
+        Assert.True(client.Cache.TryGetToken(host, ChallengeScheme.Basic, "", out var token));
         Assert.Equal(basicToken, token);
         // Act
         response = await client.SendAsync(request2, cancellationToken: CancellationToken.None);
@@ -2134,11 +2134,11 @@ public class ClientTest
 
         // Inject mocked ICache to supply pre-cached token
         var cacheMock = new Mock<ICache>(MockBehavior.Strict);
-        var schemeOut = Challenge.Scheme.Bearer;
+        var schemeOut = ChallengeScheme.Bearer;
         cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut, null)).Returns(true);
         var tokenOut = expectedToken;
         cacheMock.Setup(m => m.TryGetToken(
-            authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut, null)).Returns(true);
+            authority, ChallengeScheme.Bearer, expectedKey, out tokenOut, null)).Returns(true);
         client.Cache = cacheMock.Object;
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{authority}");
@@ -2151,7 +2151,7 @@ public class ClientTest
         cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut, null), Times.AtLeastOnce());
         cacheMock.Verify(
             m => m.TryGetToken(
-                authority, Challenge.Scheme.Bearer, expectedKey, out tokenOut, null),
+                authority, ChallengeScheme.Bearer, expectedKey, out tokenOut, null),
             Times.AtLeastOnce());
         handler.Protected().Verify(
             "SendAsync",
@@ -2184,11 +2184,11 @@ public class ClientTest
         var handler = CustomHandler(Mock);
         var client = new Client(new HttpClient(handler.Object));
         var cacheMock = new Mock<ICache>(MockBehavior.Strict);
-        var schemeOut = Challenge.Scheme.Basic;
+        var schemeOut = ChallengeScheme.Basic;
         cacheMock.Setup(m => m.TryGetScheme(authority, out schemeOut, null)).Returns(true);
         var tokenOut = basicToken;
         cacheMock.Setup(m => m.TryGetToken(
-            authority, Challenge.Scheme.Basic, string.Empty, out tokenOut, null)).Returns(true);
+            authority, ChallengeScheme.Basic, string.Empty, out tokenOut, null)).Returns(true);
         client.Cache = cacheMock.Object;
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}");
@@ -2201,7 +2201,7 @@ public class ClientTest
         cacheMock.Verify(m => m.TryGetScheme(authority, out schemeOut, null), Times.AtLeastOnce());
         cacheMock.Verify(
             m => m.TryGetToken(
-                authority, Challenge.Scheme.Basic, string.Empty, out tokenOut, null),
+                authority, ChallengeScheme.Basic, string.Empty, out tokenOut, null),
             Times.AtLeastOnce());
         handler.Protected().Verify(
             "SendAsync",

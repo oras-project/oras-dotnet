@@ -80,7 +80,7 @@ public class ChallengeRecoveryTest
 
     // Seeds a stale cached bearer token so attempt 1 attaches it (mirrors a real stale-token pull).
     private static void SeedStaleToken(Client client, string host)
-        => client.Cache.SetCache(host, Challenge.Scheme.Bearer, string.Empty, _staleToken);
+        => client.Cache.SetCache(host, ChallengeScheme.Bearer, string.Empty, _staleToken);
 
     // Verifies attempt 1 actually carried the stale token — otherwise the request would degrade to a
     // credential-free probe and quietly exercise the wrong code path.
@@ -578,7 +578,7 @@ public class ChallengeRecoveryTest
         var client = new Client(new HttpClient(mockHandler.Object));
         Assert.True(Scope.TryParse(_scope, out var attemptedScope));
         client.ScopeManager.SetScopeForRegistry(host, attemptedScope, null);
-        client.Cache.SetCache(host, Challenge.Scheme.Bearer, _scope, _staleToken);
+        client.Cache.SetCache(host, ChallengeScheme.Bearer, _scope, _staleToken);
 
         // Act: two identical requests.
         using var request1 = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
@@ -754,7 +754,7 @@ public class ChallengeRecoveryTest
 
         var mockHandler = CustomHandler(Handler);
         var client = new Client(new HttpClient(mockHandler.Object));
-        client.Cache.SetCache(host, Challenge.Scheme.Basic, string.Empty, "cached_basic_creds");
+        client.Cache.SetCache(host, ChallengeScheme.Basic, string.Empty, "cached_basic_creds");
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
 
         // Act
@@ -797,13 +797,13 @@ public class ChallengeRecoveryTest
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(client.Cache.TryGetToken(
             host,
-            Challenge.Scheme.Bearer,
+            ChallengeScheme.Bearer,
             string.Empty,
             out var emptyScopeToken));
         Assert.Equal(_staleToken, emptyScopeToken);
         Assert.True(client.Cache.TryGetToken(
             host,
-            Challenge.Scheme.Bearer,
+            ChallengeScheme.Bearer,
             _scope,
             out var scopedToken));
         Assert.Equal(_freshToken, scopedToken);
@@ -844,7 +844,7 @@ public class ChallengeRecoveryTest
         var client = new Client(new HttpClient(mockHandler.Object));
         Assert.True(Scope.TryParse(_scope, out var structuredScope));
         client.ScopeManager.SetScopeForRegistry(host, structuredScope, null);
-        client.Cache.SetCache(host, Challenge.Scheme.Bearer, _scope, _staleToken);
+        client.Cache.SetCache(host, ChallengeScheme.Bearer, _scope, _staleToken);
 
         // Act: both calls must recover independently; the first opaque-scope token must not become
         // sticky under the structured attempted key.
@@ -1032,7 +1032,7 @@ public class ChallengeRecoveryTest
             (scopeKey, token) => scopeKey == _scope && token == _freshToken);
         Assert.True(Scope.TryParse(_scope, out var attemptedScope));
         client.ScopeManager.SetScopeForRegistry(host, attemptedScope, null);
-        client.Cache.SetCache(host, Challenge.Scheme.Bearer, _scope, _staleToken);
+        client.Cache.SetCache(host, ChallengeScheme.Bearer, _scope, _staleToken);
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}{_requestPath}");
 
         // Act + Assert: the cache failure propagates, and the recovered response was disposed, not leaked.
@@ -1075,12 +1075,12 @@ public class ChallengeRecoveryTest
             _shouldThrow = shouldThrow;
         }
 
-        public bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? partitionId = null)
+        public bool TryGetScheme(string registry, out ChallengeScheme scheme, string? partitionId = null)
             => _inner.TryGetScheme(registry, out scheme, partitionId);
 
         public void SetCache(
             string registry,
-            Challenge.Scheme scheme,
+            ChallengeScheme scheme,
             string scopeKey,
             string token,
             string? partitionId = null)
@@ -1094,7 +1094,7 @@ public class ChallengeRecoveryTest
 
         public bool TryGetToken(
             string registry,
-            Challenge.Scheme scheme,
+            ChallengeScheme scheme,
             string scopeKey,
             out string token,
             string? partitionId = null)

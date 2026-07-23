@@ -11,18 +11,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Collections.Generic;
-
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 /// <summary>
-/// Represents the result of parsing a registry <c>WWW-Authenticate</c> challenge header.
+/// Defines the supported registry authentication schemes.
 /// </summary>
-/// <param name="Scheme">The parsed authentication <see cref="ChallengeScheme"/>.</param>
-/// <param name="Parameters">
-/// The parsed Bearer parameters, or <c>null</c> when the scheme is not
-/// <see cref="ChallengeScheme.Bearer"/> or no parameters are present. A repeated key keeps its last value.
-/// </param>
-public readonly record struct ParsedChallenge(
-    ChallengeScheme Scheme,
-    IReadOnlyDictionary<string, string>? Parameters);
+public enum ChallengeScheme
+{
+    /// <summary>
+    /// Basic authentication scheme.
+    /// </summary>
+    Basic,
+
+    /// <summary>
+    /// Bearer authentication scheme.
+    /// </summary>
+    Bearer,
+
+    /// <summary>
+    /// Unknown or unsupported authentication scheme.
+    /// </summary>
+    Unknown,
+}
