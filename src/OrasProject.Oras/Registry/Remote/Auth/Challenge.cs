@@ -17,51 +17,93 @@ using System.Collections.Generic;
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
 /// <summary>
-/// Challenge provides helpers for parsing registry authentication challenges.
+/// Represents a parsed registry <c>WWW-Authenticate</c> challenge, and provides
+/// factory methods for parsing challenge headers.
 /// </summary>
-public static class Challenge
+/// <param name="Scheme">The parsed authentication <see cref="ChallengeScheme"/>.</param>
+/// <param name="Parameters">
+/// The parsed Bearer parameters, or <c>null</c> when the scheme is not
+/// <see cref="ChallengeScheme.Bearer"/> or no parameters are present. A repeated key keeps its last value.
+/// </param>
+public readonly record struct Challenge(
+    ChallengeScheme Scheme,
+    IReadOnlyDictionary<string, string>? Parameters)
 {
-    /// <summary>
-    /// Defines the supported authentication schemes.
-    /// </summary>
-    public enum Scheme
-    {
-        /// <summary>
-        /// Basic authentication scheme.
-        /// </summary>
-        Basic,
-
-        /// <summary>
-        /// Bearer token authentication scheme.
-        /// </summary>
-        Bearer,
-
-        /// <summary>
-        /// Unknown or unsupported authentication scheme.
-        /// </summary>
-        Unknown,
-    }
-
     private const string _specialChars = "!#$%&'*+-.^_`|~";
 
     /// <summary>
-    /// ParseChallenge parses the "WWW-Authenticate" header returned by the remote registry
+    /// Parses the "WWW-Authenticate" header returned by the remote registry
     /// and extracts parameters if scheme is Bearer.
     ///
     /// Reference:
     /// - https://datatracker.ietf.org/doc/html/rfc7235#section-2.1
     /// </summary>
     /// <param name="header">The authentication challenge header string.</param>
-    /// <returns>
-    /// A tuple containing the parsed <see cref="Scheme"/> and a dictionary of parameters, 
-    /// or <c>null</c> if no parameters are present.
-    /// </returns>
+    /// <returns>The parsed <see cref="Challenge"/>.</returns>
     /// <exception cref="FormatException">Thrown when a quoted parameter value is not properly closed.</exception>
-    public static (Scheme, Dictionary<string, string>?) ParseChallenge(string? header)
+    public static Challenge Parse(string? header)
     {
+        if (!TryParse(header, out var challenge))
+        {
+            throw new FormatException("Quoted parameter value is not properly closed.");
+        }
+        return challenge;
+    }
+
+    /// <summary>
+    /// Attempts to parse the "WWW-Authenticate" header returned by the remote registry, extracting
+    /// Bearer parameters, without throwing on a malformed challenge.
+    /// </summary>
+    /// <param name="header">The authentication challenge header string.</param>
+    /// <param name="challenge">
+    /// The parsed <see cref="Challenge"/>. On a malformed challenge this is still set, carrying
+    /// the parsed <see cref="ChallengeScheme"/> with <c>null</c> parameters.
+    /// </param>
+    /// <returns>
+    /// <c>true</c> when the challenge is not malformed and was consumed without error (including a
+    /// <c>null</c> <paramref name="header"/> or any non-Bearer scheme, so <c>true</c> does not mean a
+    /// challenge was present or that Bearer parameters were extracted); <c>false</c> only when a quoted
+    /// parameter value is not properly closed, which makes the whole challenge unusable.
+    /// </returns>
+    public static bool TryParse(string? header, out Challenge challenge)
+    {
+        var isUsable = TryParseCore(header, out var scheme, out var parameters);
+        challenge = new Challenge(scheme, parameters);
+        return isUsable;
+    }
+
+    /// <summary>
+    /// TryParseCore parses the "WWW-Authenticate" header returned by the remote registry and
+    /// extracts parameters if the scheme is Bearer, without throwing on a malformed challenge.
+    ///
+    /// Reference:
+    /// - https://datatracker.ietf.org/doc/html/rfc7235#section-2.1
+    /// </summary>
+    /// <param name="header">The authentication challenge header string.</param>
+    /// <param name="scheme">
+    /// The parsed <see cref="ChallengeScheme"/>; set even on failure and may be <see cref="ChallengeScheme.Unknown"/>.
+    /// </param>
+    /// <param name="parameters">
+    /// The parsed Bearer parameters, or <c>null</c> when the scheme is not Bearer or none are present.
+    /// A repeated parameter key keeps its last value.
+    /// </param>
+    /// <returns>
+    /// <c>true</c> when the challenge is not malformed and was consumed without error. This includes a
+    /// <c>null</c> <paramref name="header"/> (no challenge; <paramref name="scheme"/> becomes
+    /// <see cref="ChallengeScheme.Unknown"/>) and any non-Bearer scheme, so <c>true</c> does not mean a challenge
+    /// was present or that Bearer <paramref name="parameters"/> were extracted. <c>false</c> is returned
+    /// only when a quoted parameter value is not properly closed, which makes the whole challenge unusable.
+    /// </returns>
+    private static bool TryParseCore(
+        string? header,
+        out ChallengeScheme scheme,
+        out Dictionary<string, string>? parameters)
+    {
+        parameters = null;
         if (header == null)
         {
-            return (Scheme.Unknown, null);
+            scheme = ChallengeScheme.Unknown;
+            return true;
         }
         // as defined in RFC 7235 section 2.1, we have
         //     challenge   = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
@@ -71,17 +113,17 @@ public static class Challenge
         // since we focus parameters only on Bearer, we have
         //     challenge   = auth-scheme [ 1*SP #auth-param ]
         var (schemeString, rest) = ParseToken(header);
-        var scheme = ParseScheme(schemeString);
+        scheme = ParseScheme(schemeString);
 
-        if (scheme != Scheme.Bearer)
+        if (scheme != ChallengeScheme.Bearer)
         {
-            return (scheme, null);
+            return true;
         }
 
         rest = rest.Trim();
         if (string.IsNullOrEmpty(rest))
         {
-            return (scheme, null);
+            return true;
         }
 
         var paramsDictionary = new Dictionary<string, string>();
@@ -107,7 +149,8 @@ public static class Challenge
                 var nextQuote = remaining.IndexOf('"', 1);
                 if (nextQuote == -1)
                 {
-                    throw new FormatException("Quoted parameter value is not properly closed.");
+                    // An unterminated quoted value makes the whole challenge unusable.
+                    return false;
                 }
 
                 value = remaining.Substring(1, nextQuote - 1).Trim();
@@ -121,7 +164,8 @@ public static class Challenge
                     break;
                 }
             }
-            paramsDictionary.Add(key, value);
+            // Keep the last value for a repeated key rather than rejecting the whole challenge.
+            paramsDictionary[key] = value;
 
             rest = rest.Trim();
             if (string.IsNullOrEmpty(rest) || !rest.StartsWith(','))
@@ -132,7 +176,8 @@ public static class Challenge
             rest = rest.TrimStart(',');
         }
 
-        return (scheme, paramsDictionary);
+        parameters = paramsDictionary;
+        return true;
     }
 
     /// <summary>
@@ -140,16 +185,16 @@ public static class Challenge
     /// </summary>
     /// <param name="schemeString">The string representation of the scheme.</param>
     /// <returns>
-    /// The corresponding <see cref="Scheme"/> value, or <see cref="Scheme.Unknown"/> 
+    /// The corresponding <see cref="ChallengeScheme"/> value, or <see cref="ChallengeScheme.Unknown"/> 
     /// if the scheme is not recognized.
     /// </returns>
-    internal static Scheme ParseScheme(string schemeString)
+    internal static ChallengeScheme ParseScheme(string schemeString)
     {
-        return schemeString.ToLower() switch
+        return schemeString.ToLowerInvariant() switch
         {
-            "basic" => Scheme.Basic,
-            "bearer" => Scheme.Bearer,
-            _ => Scheme.Unknown,
+            "basic" => ChallengeScheme.Basic,
+            "bearer" => ChallengeScheme.Bearer,
+            _ => ChallengeScheme.Unknown,
         };
     }
 

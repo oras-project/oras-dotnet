@@ -19,27 +19,27 @@ namespace OrasProject.Oras.Tests.Registry.Remote.Auth;
 public class ChallengeTest
 {
     [Theory]
-    [InlineData("Basic realm=\"example\"", Challenge.Scheme.Basic, null)]
-    [InlineData("Bearer realm=\"example\",service=\"example.com\"", Challenge.Scheme.Bearer, new[] { "realm", "example", "service", "example.com" })]
-    [InlineData("Bearer realm=\"example\",service=\"example.com\",key1=value1,key2=value2", Challenge.Scheme.Bearer, new[] { "realm", "example", "service", "example.com", "key1", "value1", "key2", "value2" })]
+    [InlineData("Basic realm=\"example\"", ChallengeScheme.Basic, null)]
+    [InlineData("Bearer realm=\"example\",service=\"example.com\"", ChallengeScheme.Bearer, new[] { "realm", "example", "service", "example.com" })]
+    [InlineData("Bearer realm=\"example\",service=\"example.com\",key1=value1,key2=value2", ChallengeScheme.Bearer, new[] { "realm", "example", "service", "example.com", "key1", "value1", "key2", "value2" })]
     [InlineData(
         "Bearer realm=\"https://abc.io/oauth2/token\",service=\"abc.io\",scope=\"repository:nginx:push,pull\",error=\"insufficient_scope\"",
-        Challenge.Scheme.Bearer,
+        ChallengeScheme.Bearer,
         new[] { "realm", "https://abc.io/oauth2/token", "service", "abc.io", "scope", "repository:nginx:push,pull", "error", "insufficient_scope" })]
     [InlineData(
         "bearer realm=\"https://abc.io/oauth2/token\"  ,   service=\"abc.io\",  scope=\"repository:nginx:push,pull\"   ,  key1=value1  ,  key2=value2  ",
-        Challenge.Scheme.Bearer,
+        ChallengeScheme.Bearer,
         new[] { "realm", "https://abc.io/oauth2/token", "service", "abc.io", "scope", "repository:nginx:push,pull", "key1", "value1", "key2", "value2" })]
     [InlineData(
         "BEARER realm=\"https://registry.io/oauth2/token\",service=\"registry.io\",scope=\"repository:nginx:push,pull repository:abc:delete\",error=\"insufficient_scope\"",
-        Challenge.Scheme.Bearer,
+        ChallengeScheme.Bearer,
         new[] { "realm", "https://registry.io/oauth2/token", "service", "registry.io", "scope", "repository:nginx:push,pull repository:abc:delete", "error", "insufficient_scope" })]
 
-    [InlineData("Unknown realm=\"example\"", Challenge.Scheme.Unknown, null)]
-    [InlineData(null, Challenge.Scheme.Unknown, null)]
-    public void ParseChallenge_ValidHeader_ReturnsExpectedSchemeAndParams(string? header, Challenge.Scheme expectedScheme, string[]? expectedParams)
+    [InlineData("Unknown realm=\"example\"", ChallengeScheme.Unknown, null)]
+    [InlineData(null, ChallengeScheme.Unknown, null)]
+    public void Parse_ValidHeader_ReturnsExpectedSchemeAndParams(string? header, ChallengeScheme expectedScheme, string[]? expectedParams)
     {
-        var (scheme, parameters) = Challenge.ParseChallenge(header);
+        var (scheme, parameters) = Challenge.Parse(header);
 
         Assert.Equal(expectedScheme, scheme);
 
@@ -58,24 +58,58 @@ public class ChallengeTest
     }
 
     [Fact]
-    public void ParseChallenge_ThrowsArgumentException()
+    public void Parse_DuplicateParameterKey_LastValueWins()
     {
         var header =
-            "BEARER realm=\"https://registry.io/oauth2/token\",service=\"registry.io\",service=\"registry.io\",scope=\"repository:nginx:push,pull repository:abc:delete\",error=\"insufficient_scope\"";
-        var message = Assert.Throws<ArgumentException>(() => Challenge.ParseChallenge(header));
-        Assert.Equal("An item with the same key has already been added. Key: service", message.Message);
+            "BEARER realm=\"https://registry.io/oauth2/token\",service=\"first.io\",service=\"second.io\",scope=\"repository:nginx:push,pull\"";
+        var (scheme, parameters) = Challenge.Parse(header);
+
+        Assert.Equal(ChallengeScheme.Bearer, scheme);
+        Assert.NotNull(parameters);
+        // A repeated parameter key keeps its last value rather than rejecting the whole challenge.
+        Assert.Equal("second.io", parameters["service"]);
+    }
+
+    [Fact]
+    public void Parse_UnterminatedQuotedValue_ThrowsFormatException()
+    {
+        var header = "Bearer realm=\"https://registry.io/oauth2/token";
+        Assert.Throws<FormatException>(() => Challenge.Parse(header));
+    }
+
+    [Fact]
+    public void TryParse_UnterminatedQuotedValue_ReturnsFalse()
+    {
+        var header = "Bearer realm=\"https://registry.io/oauth2/token";
+        var result = Challenge.TryParse(header, out var challenge);
+
+        Assert.False(result);
+        Assert.Null(challenge.Parameters);
+    }
+
+    [Fact]
+    public void TryParse_ValidHeader_ReturnsTrueWithParsedParameters()
+    {
+        var header = "Bearer realm=\"https://registry.io/oauth2/token\",service=\"registry.io\"";
+        var result = Challenge.TryParse(header, out var challenge);
+
+        Assert.True(result);
+        Assert.Equal(ChallengeScheme.Bearer, challenge.Scheme);
+        Assert.NotNull(challenge.Parameters);
+        Assert.Equal("https://registry.io/oauth2/token", challenge.Parameters["realm"]);
+        Assert.Equal("registry.io", challenge.Parameters["service"]);
     }
 
     [Theory]
-    [InlineData("Basic", Challenge.Scheme.Basic)]
-    [InlineData("Bearer", Challenge.Scheme.Bearer)]
-    [InlineData("BASIC", Challenge.Scheme.Basic)]
-    [InlineData("BEARER", Challenge.Scheme.Bearer)]
-    [InlineData("basic", Challenge.Scheme.Basic)]
-    [InlineData("bearer", Challenge.Scheme.Bearer)]
-    [InlineData("Unknown", Challenge.Scheme.Unknown)]
-    [InlineData("Basic abd", Challenge.Scheme.Unknown)]
-    public void ParseScheme_ValidSchemeString_ReturnsExpectedScheme(string schemeString, Challenge.Scheme expectedScheme)
+    [InlineData("Basic", ChallengeScheme.Basic)]
+    [InlineData("Bearer", ChallengeScheme.Bearer)]
+    [InlineData("BASIC", ChallengeScheme.Basic)]
+    [InlineData("BEARER", ChallengeScheme.Bearer)]
+    [InlineData("basic", ChallengeScheme.Basic)]
+    [InlineData("bearer", ChallengeScheme.Bearer)]
+    [InlineData("Unknown", ChallengeScheme.Unknown)]
+    [InlineData("Basic abd", ChallengeScheme.Unknown)]
+    public void ParseScheme_ValidSchemeString_ReturnsExpectedScheme(string schemeString, ChallengeScheme expectedScheme)
     {
         var scheme = Challenge.ParseScheme(schemeString);
         Assert.Equal(expectedScheme, scheme);

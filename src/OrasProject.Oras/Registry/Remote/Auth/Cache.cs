@@ -33,7 +33,7 @@ public sealed class Cache : ICache
     /// A dictionary containing authentication tokens, where the key is the scopes and the value
     /// is the token itself.
     /// </param>
-    private sealed record CacheEntry(Challenge.Scheme Scheme, Dictionary<string, string> Tokens);
+    private sealed record CacheEntry(ChallengeScheme Scheme, Dictionary<string, string> Tokens);
 
     /// <summary>
     /// The underlying memory cache used to store authentication schemes and tokens.
@@ -102,8 +102,8 @@ public sealed class Cache : ICache
     /// </summary>
     /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="scheme">
-    /// When this method returns, contains the <see cref="Challenge.Scheme"/> associated with the
-    /// registry if found in the cache; otherwise, <see cref="Challenge.Scheme.Unknown"/>.
+    /// When this method returns, contains the <see cref="ChallengeScheme"/> associated with the
+    /// registry if found in the cache; otherwise, <see cref="ChallengeScheme.Unknown"/>.
     /// </param>
     /// <param name="partitionId">
     /// Optional cache partition identifier. When provided, tokens are isolated by this ID,
@@ -112,7 +112,7 @@ public sealed class Cache : ICache
     /// <returns>
     /// <c>true</c> if the authentication scheme was found in the cache; otherwise, <c>false</c>.
     /// </returns>
-    public bool TryGetScheme(string registry, out Challenge.Scheme scheme, string? partitionId = null)
+    public bool TryGetScheme(string registry, out ChallengeScheme scheme, string? partitionId = null)
     {
         var cacheKey = GetCacheKey(registry, partitionId);
         if (_memoryCache.TryGetValue(cacheKey, out CacheEntry? cacheEntry) && cacheEntry != null)
@@ -121,7 +121,7 @@ public sealed class Cache : ICache
             return true;
         }
 
-        scheme = Challenge.Scheme.Unknown;
+        scheme = ChallengeScheme.Unknown;
         return false;
     }
 
@@ -157,7 +157,7 @@ public sealed class Cache : ICache
     /// </remarks>
     public void SetCache(
         string registry,
-        Challenge.Scheme scheme,
+        ChallengeScheme scheme,
         string scopeKey,
         string token,
         string? partitionId = null)
@@ -211,7 +211,7 @@ public sealed class Cache : ICache
     /// </returns>
     public bool TryGetToken(
         string registry,
-        Challenge.Scheme scheme,
+        ChallengeScheme scheme,
         string scopeKey,
         out string token,
         string? partitionId = null)

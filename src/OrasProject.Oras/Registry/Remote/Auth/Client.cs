@@ -21,11 +21,13 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Mime;
+using System.Runtime.ExceptionServices;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using OrasProject.Oras.Registry.Remote.Exceptions;
 
 namespace OrasProject.Oras.Registry.Remote.Auth;
 
@@ -245,6 +247,11 @@ public class Client : IClient
     private const string _defaultClientId = "oras-dotnet";
 
     /// <summary>
+    /// The HTTP Authorization header name.
+    /// </summary>
+    private const string _authorizationHeader = "Authorization";
+
+    /// <summary>
     /// Maximum size (4 MB) for buffering non-seekable request content.
     /// In practice only manifest-sized payloads flow through this path.
     /// </summary>
@@ -462,8 +469,7 @@ public class Client : IClient
                 scopes,
                 credential.Username,
                 credential.Password,
-                cancellationToken
-            ).ConfigureAwait(false);
+                cancellationToken).ConfigureAwait(false);
         }
 
         return await FetchOauth2TokenAsync(
@@ -471,8 +477,7 @@ public class Client : IClient
             service,
             scopes,
             credential,
-            cancellationToken
-        ).ConfigureAwait(false);
+            cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -630,8 +635,9 @@ public class Client : IClient
 
     /// <summary>
     /// Core implementation for sending HTTP requests with authentication and optional redirect control.
-    /// This method handles the complete authentication flow including cached token retrieval,
-    /// challenge parsing, and credential fetching for both Basic and Bearer schemes.
+    /// Prepares the request, attaches any cached Basic/Bearer token, and sends the initial attempt;
+    /// a 401 is delegated to <see cref="HandleUnauthorizedResponseAsync"/> for standard challenge
+    /// resolution (Basic and Bearer) and the credential-free cold fallback.
     /// </summary>
     /// <param name="originalRequest">The original HTTP request message to send.</param>
     /// <param name="partitionId">Optional cache partition identifier for multi-partition isolation.</param>
@@ -652,7 +658,13 @@ public class Client : IClient
         }
 
         originalRequest.AddDefaultUserAgent();
-        if (originalRequest.Headers.Authorization != null || BaseClient.DefaultRequestHeaders.Authorization != null)
+        // Fast path: the Authorization value (Basic or Bearer) is already known ahead of time — either
+        // set on this request or as a default header on the underlying HttpClient. Send it as-is and
+        // skip all token acquisition, scope merging, and cache lookups.
+        if (originalRequest.Headers.Authorization != null
+            || BaseClient.DefaultRequestHeaders.Authorization != null
+            || (!allowAutoRedirect
+                && NoRedirectClient.DefaultRequestHeaders.Authorization != null))
         {
             return await SendRequestAsync(originalRequest, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
         }
@@ -668,73 +680,259 @@ public class Client : IClient
 
         var host = originalRequest.RequestUri?.Authority ??
                     throw new ArgumentException("originalRequest.RequestUri or originalRequest.RequestUri.Authority property is null.", nameof(originalRequest));
-        var requestAttempt1 = await originalRequest.CloneAsync(rewindContent: false, cancellationToken).ConfigureAwait(false);
+        var initialRequest = await originalRequest.CloneAsync(
+            rewindContent: false,
+            cancellationToken).ConfigureAwait(false);
         var attemptedKey = string.Empty;
+        var attachedCachedBearerToken = false;
 
         // attempt to send request with cached auth token
         if (Cache.TryGetScheme(host, out var schemeFromCache, partitionId))
         {
             switch (schemeFromCache)
             {
-                case Challenge.Scheme.Basic:
+                case ChallengeScheme.Basic:
                     {
                         if (Cache.TryGetToken(host, schemeFromCache, string.Empty, out var basicToken, partitionId))
                         {
-                            requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
+                            initialRequest.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicToken);
+                            // Not flagged as a recoverable cached token: a credential-free re-derive can't
+                            // help Basic auth (the same credentials are simply re-sent). Recovery targets
+                            // stale Bearer tokens.
                         }
 
                         break;
                     }
-                case Challenge.Scheme.Bearer:
+                case ChallengeScheme.Bearer:
                     {
                         var scopes = ScopeManager.GetScopesStringForHost(host, partitionId);
                         attemptedKey = string.Join(" ", scopes);
                         if (Cache.TryGetToken(host, schemeFromCache, attemptedKey, out var bearerToken, partitionId))
                         {
-                            requestAttempt1.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                            initialRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                            attachedCachedBearerToken = true;
                         }
                         break;
                     }
             }
         }
 
-        var response1 = await SendRequestAsync(requestAttempt1, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
-        if (response1.StatusCode != HttpStatusCode.Unauthorized)
+        var initialResponse = await SendRequestAsync(
+            initialRequest,
+            allowAutoRedirect,
+            cancellationToken).ConfigureAwait(false);
+        if (initialResponse.StatusCode != HttpStatusCode.Unauthorized)
         {
-            return response1;
+            return initialResponse;
         }
 
-        var (schemeFromChallenge, parameters) =
-            Challenge.ParseChallenge(response1.Headers.WwwAuthenticate.FirstOrDefault()?.ToString());
+        return await HandleUnauthorizedResponseAsync(
+            originalRequest: originalRequest,
+            unauthorizedResponse: initialResponse,
+            host: host,
+            partitionId: partitionId,
+            attemptedKey: attemptedKey,
+            attachedCachedBearerToken: attachedCachedBearerToken,
+            allowAutoRedirect: allowAutoRedirect,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Handles the complete 401 challenge flow, including one credential-free cold fallback when a
+    /// registry returns an unusable challenge for an SDK-cached bearer token.
+    /// </summary>
+    private async Task<HttpResponseMessage> HandleUnauthorizedResponseAsync(
+        HttpRequestMessage originalRequest,
+        HttpResponseMessage unauthorizedResponse,
+        string host,
+        string? partitionId,
+        string attemptedKey,
+        bool attachedCachedBearerToken,
+        bool allowAutoRedirect,
+        CancellationToken cancellationToken)
+    {
+        // ResolveStandardChallengeAsync owns the 401's disposal: for a usable Basic/Bearer challenge it
+        // disposes the response up front, before any token round-trip, so every throwing path has already
+        // released it and no guard is needed here. It reports a structurally unusable challenge as a
+        // result rather than throwing, but still throws for acquisition failures other than a bearer 401
+        // (those propagate out, never eligible for cold recovery). A no-usable-scheme outcome leaves the
+        // 401 undisposed for the caller to return or cold-probe.
+        var resolution = await ResolveStandardChallengeAsync(
+            originalRequest: originalRequest,
+            unauthorizedResponse: unauthorizedResponse,
+            host: host,
+            partitionId: partitionId,
+            attemptedKey: attemptedKey,
+            allowAutoRedirect: allowAutoRedirect,
+            cancellationToken: cancellationToken,
+            backfillAttemptedScopeKey: false).ConfigureAwait(false);
+        if (resolution.ResolvedResponse != null)
+        {
+            // ResolveStandardChallengeAsync disposed the original 401 before the token round-trip.
+            return resolution.ResolvedResponse;
+        }
+
+        // Normal expired-token challenge handling above applies to every HTTP method. The cold fallback
+        // is deliberately narrower: replay only the GET/HEAD methods used by OCI pull operations so a
+        // credential-free probe cannot repeat a mutating POST, PUT, PATCH, or DELETE.
+        if (attachedCachedBearerToken
+            && (originalRequest.Method == HttpMethod.Get
+                || originalRequest.Method == HttpMethod.Head))
+        {
+            unauthorizedResponse.Dispose();
+
+            var coldResponse = await ProbeWithoutAuthorizationAsync(
+                originalRequest: originalRequest,
+                allowRegistryRedirects: allowAutoRedirect,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (coldResponse.StatusCode != HttpStatusCode.Unauthorized)
+            {
+                return coldResponse;
+            }
+
+            var coldResolution = await ResolveStandardChallengeAsync(
+                originalRequest: originalRequest,
+                unauthorizedResponse: coldResponse,
+                host: host,
+                partitionId: partitionId,
+                attemptedKey: attemptedKey,
+                allowAutoRedirect: allowAutoRedirect,
+                cancellationToken: cancellationToken,
+                backfillAttemptedScopeKey: true).ConfigureAwait(false);
+            if (coldResolution.ResolvedResponse != null)
+            {
+                return coldResolution.ResolvedResponse;
+            }
+
+            return HandleUnusableChallenge(coldResponse, coldResolution);
+        }
+
+        // Cold challenge recovery does not apply: preserve the original behavior for this 401.
+        return HandleUnusableChallenge(unauthorizedResponse, resolution);
+    }
+
+    /// <summary>
+    /// Runs the standard 401 challenge resolution: parse the <c>WWW-Authenticate</c> challenge and,
+    /// for a recognized scheme, fetch/replay credentials. Returns a resolved response on success; a
+    /// terminal result carrying the exception to surface for a denied challenge or a bearer-acquisition
+    /// 401 (captured with its original stack); or a no-usable-scheme result when the challenge is
+    /// malformed or names no recognized scheme. Acquisition failures other than a 401 still throw.
+    /// </summary>
+    /// <remarks>
+    /// Disposal: for a recognized scheme (Basic or Bearer) this method disposes
+    /// <paramref name="unauthorizedResponse"/> up front, before the credential/token round-trip, matching
+    /// the client's long-standing eager-dispose behavior, whether the outcome is resolved or terminal.
+    /// A no-usable-scheme outcome leaves the response undisposed, so the caller can return it or hand it
+    /// to the fallback.
+    /// <para>
+    /// When <paramref name="backfillAttemptedScopeKey"/> is <c>true</c> (the recovery re-derive, gated on
+    /// a stale token having been attached), a token obtained from a successful (2xx/3xx) response is also
+    /// cached under <paramref name="attemptedKey"/> so the stale token that provoked recovery is replaced
+    /// and future requests under that scope key don't re-enter recovery.
+    /// </para>
+    /// </remarks>
+    private async Task<StandardAuthResult> ResolveStandardChallengeAsync(
+        HttpRequestMessage originalRequest,
+        HttpResponseMessage unauthorizedResponse,
+        string host,
+        string? partitionId,
+        string attemptedKey,
+        bool allowAutoRedirect,
+        CancellationToken cancellationToken,
+        bool backfillAttemptedScopeKey = false)
+    {
+        if (!Challenge.TryParse(
+                unauthorizedResponse.Headers.WwwAuthenticate.FirstOrDefault()?.ToString(),
+                out var parsedChallenge))
+        {
+            // A malformed WWW-Authenticate header names no usable scheme: leave the 401 undisposed so an
+            // eligible stale-token GET/HEAD can still cold-probe and an ineligible caller gets the 401 back.
+            return StandardAuthResult.NoUsableScheme();
+        }
+
+        var (schemeFromChallenge, parameters) = parsedChallenge;
 
         // Attempt again with credentials for recognized schemes
         switch (schemeFromChallenge)
         {
-            case Challenge.Scheme.Basic:
+            case ChallengeScheme.Basic:
                 {
-                    response1.Dispose();
-                    var basicAuthToken = await FetchBasicAuthAsync(host, cancellationToken).ConfigureAwait(false);
-                    Cache.SetCache(host, schemeFromChallenge, string.Empty, basicAuthToken, partitionId);
+                    // Usable challenge: release the original 401 before the credential round-trip.
+                    unauthorizedResponse.Dispose();
+                    var basicAuthToken = await FetchBasicAuthAsync(
+                        registry: host,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                    Cache.SetCache(
+                        registry: host,
+                        scheme: schemeFromChallenge,
+                        scopeKey: string.Empty,
+                        token: basicAuthToken,
+                        partitionId: partitionId);
 
                     // Attempt again with basic token
-                    var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                    requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
-                    return await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                    var basicRequest = await originalRequest.CloneAsync(
+                        rewindContent: true,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                    basicRequest.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicAuthToken);
+                    var basicResponse = await SendRequestAsync(
+                        request: basicRequest,
+                        allowAutoRedirect: allowAutoRedirect,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                    return StandardAuthResult.Resolved(response: basicResponse);
                 }
-            case Challenge.Scheme.Bearer:
+            case ChallengeScheme.Bearer:
                 {
-                    response1.Dispose();
+                    // Usable recognized scheme: release the 401 before the token round-trip.
+                    unauthorizedResponse.Dispose();
+
                     if (parameters == null)
                     {
-                        throw new AuthenticationException("Missing parameters in the Www-Authenticate challenge.");
+                        return StandardAuthResult.Terminal(ExceptionDispatchInfo.Capture(
+                            new AuthenticationException(
+                                "Missing parameters in the Www-Authenticate challenge.")));
                     }
 
-                    var existingScopes = ScopeManager.GetScopesForHost(host, partitionId);
+                    var existingScopes = ScopeManager.GetScopesForHost(
+                        registry: host,
+                        partitionId: partitionId);
                     var mergedScopes = MergeChallengeScopes(
-                        existingScopes,
-                        parameters.TryGetValue("scope", out var scopesString)
+                        existingScopes: existingScopes,
+                        scopesString: parameters.TryGetValue("scope", out var scopesString)
                             ? scopesString
                             : null);
+
+                    StandardAuthResult ResolvedWithKeyBackfill(HttpResponseMessage response, string token)
+                    {
+                        // Backfill the stale lookup key only after a recovered, cacheable token succeeds;
+                        // never populate the empty catch-all key or cache a token from opaque scopes.
+                        // Dispose the just-received response if that post-send backfill throws (e.g. a
+                        // custom ICache.SetCache) so recovery never leaks it.
+                        try
+                        {
+                            if (backfillAttemptedScopeKey
+                                && !string.IsNullOrEmpty(attemptedKey)
+                                && IsSuccessOrRedirect(response.StatusCode)
+                                && !mergedScopes.HasOpaqueScopes
+                                && !string.Equals(
+                                    mergedScopes.CacheKey,
+                                    attemptedKey,
+                                    StringComparison.Ordinal))
+                            {
+                                Cache.SetCache(
+                                    registry: host,
+                                    scheme: ChallengeScheme.Bearer,
+                                    scopeKey: attemptedKey,
+                                    token: token,
+                                    partitionId: partitionId);
+                            }
+                        }
+                        catch
+                        {
+                            response.Dispose();
+                            throw;
+                        }
+                        return StandardAuthResult.Resolved(response);
+                    }
 
                     // Attempt to send request when the scope changes and a token cache hits
                     if (!mergedScopes.HasOpaqueScopes
@@ -746,21 +944,28 @@ public class Client : IClient
                             out var cachedToken,
                             partitionId))
                     {
-                        var requestAttempt2 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                        requestAttempt2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
-                        var response2 = await SendRequestAsync(requestAttempt2, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                        var cachedTokenRequest = await originalRequest.CloneAsync(
+                            rewindContent: true,
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
+                        cachedTokenRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cachedToken);
+                        var cachedTokenResponse = await SendRequestAsync(
+                            request: cachedTokenRequest,
+                            allowAutoRedirect: allowAutoRedirect,
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                        if (response2.StatusCode != HttpStatusCode.Unauthorized)
+                        if (cachedTokenResponse.StatusCode != HttpStatusCode.Unauthorized)
                         {
-                            return response2;
+                            return ResolvedWithKeyBackfill(cachedTokenResponse, cachedToken);
                         }
-                        response2.Dispose();
+                        cachedTokenResponse.Dispose();
                     }
 
                     if (!parameters.TryGetValue("realm", out var realm))
                     {
-                        // 'realm' is required as it specifies the token endpoint URL for Bearer authentication.
-                        throw new KeyNotFoundException("Missing 'realm' parameter in WWW-Authenticate Bearer challenge.");
+                        // 'realm' is required as it specifies the token endpoint URL for Bearer auth.
+                        return StandardAuthResult.Terminal(ExceptionDispatchInfo.Capture(
+                            new KeyNotFoundException(
+                                "Missing 'realm' parameter in WWW-Authenticate Bearer challenge.")));
                     }
 
                     // Validate realm URL before sending credentials.
@@ -769,17 +974,16 @@ public class Client : IClient
                             out var realmUri)
                         || string.IsNullOrEmpty(realmUri.Host))
                     {
-                        throw new AuthenticationException(
-                            $"Invalid realm URL: '{realm}'");
+                        return StandardAuthResult.Terminal(ExceptionDispatchInfo.Capture(
+                            new AuthenticationException($"Invalid realm URL: '{realm}'")));
                     }
 
                     var registryUri = originalRequest.RequestUri!;
-                    if (!await RealmValidator.IsRealmAllowedAsync(
-                            registryUri, realmUri, cancellationToken)
-                        .ConfigureAwait(false))
+                    if (!await RealmValidator.IsRealmAllowedAsync(registryUri, realmUri, cancellationToken).ConfigureAwait(false))
                     {
-                        throw new AuthenticationException(
-                            $"Authentication realm '{realmUri}' is not allowed for registry '{registryUri.Authority}'.");
+                        return StandardAuthResult.Terminal(ExceptionDispatchInfo.Capture(
+                            new AuthenticationException(
+                                $"Authentication realm '{realmUri}' is not allowed for registry '{host}'.")));
                     }
 
                     if (!parameters.TryGetValue("service", out var service))
@@ -789,30 +993,46 @@ public class Client : IClient
                     }
 
                     // Try to fetch bearer token based on the challenge header
-                    var bearerAuthToken = await FetchBearerAuthAsync(
-                        host,
-                        realm,
-                        service,
-                        mergedScopes.TokenRequestScopes,
-                        forceRefresh: true,
-                        cancellationToken
-                    ).ConfigureAwait(false);
+                    string bearerAuthToken;
+                    try
+                    {
+                        bearerAuthToken = await FetchBearerAuthAsync(
+                            registry: host,
+                            realm: realm,
+                            service: service,
+                            scopes: mergedScopes.TokenRequestScopes,
+                            forceRefresh: true,
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (ResponseException e) when (e.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        // A bearer provider or token endpoint returned 401. Report it as terminal so a
+                        // stale cached GET/HEAD can cold-probe once; terminal handling rethrows this
+                        // original public exception with its stack intact.
+                        return StandardAuthResult.Terminal(ExceptionDispatchInfo.Capture(e));
+                    }
                     if (!mergedScopes.HasOpaqueScopes)
                     {
                         Cache.SetCache(
-                            host,
-                            schemeFromChallenge,
-                            mergedScopes.CacheKey,
-                            bearerAuthToken,
-                            partitionId);
+                            registry: host,
+                            scheme: schemeFromChallenge,
+                            scopeKey: mergedScopes.CacheKey,
+                            token: bearerAuthToken,
+                            partitionId: partitionId);
                     }
 
-                    var requestAttempt3 = await originalRequest.CloneAsync(rewindContent: true, cancellationToken).ConfigureAwait(false);
-                    requestAttempt3.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
-                    return await SendRequestAsync(requestAttempt3, allowAutoRedirect, cancellationToken).ConfigureAwait(false);
+                    var bearerRequest = await originalRequest.CloneAsync(
+                        rewindContent: true,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                    bearerRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerAuthToken);
+                    var bearerResponse = await SendRequestAsync(
+                        request: bearerRequest,
+                        allowAutoRedirect: allowAutoRedirect,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                    return ResolvedWithKeyBackfill(bearerResponse, bearerAuthToken);
                 }
             default:
-                return response1;
+                return StandardAuthResult.NoUsableScheme();
         }
     }
 
@@ -934,6 +1154,107 @@ public class Client : IClient
         public string CacheKey { get; }
 
         public bool HasOpaqueScopes { get; }
+    }
+
+    /// <summary>
+    /// Sends a fresh, bodyless copy of an OCI GET or HEAD request without authorization to elicit the
+    /// challenge that the registry serves to a cold client.
+    /// </summary>
+    private async Task<HttpResponseMessage> ProbeWithoutAuthorizationAsync(
+        HttpRequestMessage originalRequest,
+        bool allowRegistryRedirects,
+        CancellationToken cancellationToken)
+    {
+        var probe = new HttpRequestMessage(
+            originalRequest.Method,
+            originalRequest.RequestUri)
+        {
+            Version = originalRequest.Version,
+            VersionPolicy = originalRequest.VersionPolicy,
+        };
+        foreach (var option in originalRequest.Options)
+        {
+            probe.Options.TryAdd(option.Key, option.Value);
+        }
+        foreach (var header in originalRequest.Headers)
+        {
+            if (!string.Equals(
+                    header.Key,
+                    _authorizationHeader,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                probe.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+        }
+
+        return await SendRequestAsync(
+            probe,
+            allowRegistryRedirects,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Whether <paramref name="statusCode"/> is a 2xx success or a 3xx redirect (200–399).</summary>
+    private static bool IsSuccessOrRedirect(HttpStatusCode statusCode)
+        => (int)statusCode is >= 200 and < 400;
+
+    /// <summary>
+    /// Applies the terminal outcome of an unusable challenge: rethrow the captured error, or return the
+    /// 401 unchanged when it named no recognized authentication scheme.
+    /// </summary>
+    private static HttpResponseMessage HandleUnusableChallenge(
+        HttpResponseMessage unauthorizedResponse, StandardAuthResult resolution)
+    {
+        if (resolution.TerminalError != null)
+        {
+            // The 401 was already disposed by ResolveStandardChallengeAsync before the token
+            // round-trip; dispose is idempotent. Surface the exact public exception and its stack.
+            unauthorizedResponse.Dispose();
+            resolution.TerminalError.Throw();
+        }
+
+        // No recognized challenge scheme: hand the 401 back to the caller.
+        return unauthorizedResponse;
+    }
+
+    /// <summary>
+    /// The outcome of <see cref="ResolveStandardChallengeAsync"/>: a resolved response, a terminal error
+    /// to surface, or neither — meaning the 401 named no usable scheme and should be returned as-is.
+    /// </summary>
+    private sealed class StandardAuthResult
+    {
+        private StandardAuthResult(
+            HttpResponseMessage? resolvedResponse,
+            ExceptionDispatchInfo? terminalError)
+        {
+            ResolvedResponse = resolvedResponse;
+            TerminalError = terminalError;
+        }
+
+        /// <summary>The resolved response, or <c>null</c> when the challenge was not resolved.</summary>
+        public HttpResponseMessage? ResolvedResponse { get; }
+
+        /// <summary>
+        /// The exception to rethrow for a terminal challenge (malformed or denied realm, or a
+        /// bearer-acquisition 401); <c>null</c> when the challenge resolved or named no usable scheme.
+        /// </summary>
+        public ExceptionDispatchInfo? TerminalError { get; }
+
+        /// <summary>A challenge resolved by fetching or replaying credentials.</summary>
+        public static StandardAuthResult Resolved(HttpResponseMessage response)
+            => new(resolvedResponse: response, terminalError: null);
+
+        /// <summary>
+        /// A recognized challenge that failed terminally. The captured exception is rethrown verbatim,
+        /// with its original stack, once any recovery has been exhausted.
+        /// </summary>
+        public static StandardAuthResult Terminal(ExceptionDispatchInfo error)
+            => new(resolvedResponse: null, terminalError: error);
+
+        /// <summary>
+        /// The 401 named no recognized authentication scheme; the caller returns the response unchanged.
+        /// </summary>
+        public static StandardAuthResult NoUsableScheme()
+            => new(resolvedResponse: null, terminalError: null);
     }
 
     /// <summary>

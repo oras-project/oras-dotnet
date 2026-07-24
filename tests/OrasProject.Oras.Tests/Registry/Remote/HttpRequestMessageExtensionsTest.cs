@@ -26,6 +26,7 @@ public class HttpRequestMessageExtensionsTest
         var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com")
         {
             Version = new Version(2, 0),
+            VersionPolicy = HttpVersionPolicy.RequestVersionExact,
             Content = new StringContent("Test content")
         };
         originalRequest.Headers.Add("Custom-Header", "HeaderValue");
@@ -46,6 +47,7 @@ public class HttpRequestMessageExtensionsTest
         Assert.Equal(originalRequest.RequestUri, clonedRequest.RequestUri);
         // Check version
         Assert.Equal(originalRequest.Version, clonedRequest.Version);
+        Assert.Equal(originalRequest.VersionPolicy, clonedRequest.VersionPolicy);
         // Check content
         Assert.NotNull(clonedRequest.Content);
         Assert.NotSame(originalRequest.Content, clonedRequest.Content);
@@ -71,6 +73,7 @@ public class HttpRequestMessageExtensionsTest
         var originalRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.com")
         {
             Version = new Version(2, 0),
+            VersionPolicy = HttpVersionPolicy.RequestVersionExact,
             Content = new StringContent("Test content")
         };
         originalRequest.Headers.Add("Custom-Header", "HeaderValue");
@@ -91,6 +94,7 @@ public class HttpRequestMessageExtensionsTest
         Assert.Equal(originalRequest.RequestUri, clonedRequest.RequestUri);
         // Check version
         Assert.Equal(originalRequest.Version, clonedRequest.Version);
+        Assert.Equal(originalRequest.VersionPolicy, clonedRequest.VersionPolicy);
         // Check content
         Assert.NotNull(clonedRequest.Content);
         Assert.Same(originalRequest.Content, clonedRequest.Content);
