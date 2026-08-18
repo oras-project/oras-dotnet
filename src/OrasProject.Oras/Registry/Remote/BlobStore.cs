@@ -279,7 +279,11 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// </summary>
     /// <param name="target">The descriptor identifying the blob</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The blob location URL if a redirect is returned, otherwise null</returns>
+    /// <returns>
+    /// The blob location URL if a redirect is returned, otherwise null.
+    /// A relative Location header is resolved against the request URI, which may yield a URL on the
+    /// registry host that requires registry credentials rather than a direct storage backend URL.
+    /// </returns>
     /// <exception cref="ArgumentException">Thrown when the provided HttpClient has AllowAutoRedirect enabled</exception>
     /// <exception cref="HttpIOException">Thrown when the response is invalid</exception>
     /// <exception cref="NotFoundException">Thrown when the blob is not found</exception>
@@ -341,22 +345,36 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
                             $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: redirect response missing Location header");
                     }
 
-                    // Require absolute URI to avoid cross-domain ambiguity.
-                    // This constraint may be removed in the future if needed.
-                    if (!location.IsAbsoluteUri)
+                    // Reject a malformed Location rather than resolving it into a bogus URL,
+                    // consistent with the Link header handling in HttpResponseMessageExtensions.
+                    if (!location.IsWellFormedOriginalString())
                     {
                         throw new HttpIOException(HttpRequestError.InvalidResponse,
-                            $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: redirect Location header must be an absolute URI");
+                            $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: " +
+                            $"invalid redirect location {location.OriginalString}");
                     }
 
-                    // Validate HTTPS unless PlainHttp is explicitly allowed
-                    if (!Repository.Options.PlainHttp && location.Scheme != "https")
+                    // A Location header may be a relative reference, in which case it is resolved
+                    // against the request URI, consistent with the upload session Location handling
+                    // in PushAsync and MountAsync.
+                    // Reference: https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2
+                    var blobLocation = location.IsAbsoluteUri ? location : new Uri(url, location);
+
+                    // A blob redirect must point at an HTTP(S) endpoint, so that a Location such as
+                    // file:// or javascript: is never handed back to the caller.
+                    // HTTPS is required unless PlainHttp is explicitly allowed.
+                    var schemeAllowed = blobLocation.Scheme == Uri.UriSchemeHttps ||
+                        (Repository.Options.PlainHttp && blobLocation.Scheme == Uri.UriSchemeHttp);
+                    if (!schemeAllowed)
                     {
+                        var expectedSchemes = Repository.Options.PlainHttp ? "HTTP or HTTPS" : "HTTPS";
                         throw new HttpIOException(HttpRequestError.InvalidResponse,
-                            $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: redirect location must use HTTPS, got {location.Scheme}://{location.Host}");
+                            $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: " +
+                            $"redirect location must use {expectedSchemes}, " +
+                            $"got {blobLocation.Scheme}://{blobLocation.Host}");
                     }
 
-                    return location;
+                    return blobLocation;
                 }
 
             case HttpStatusCode.OK:

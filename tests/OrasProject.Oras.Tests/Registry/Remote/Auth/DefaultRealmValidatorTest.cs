@@ -419,7 +419,7 @@ public class DefaultRealmValidatorTest
     }
 
     [Fact]
-    public async Task TrustedHosts_IsReadOnly()
+    public void TrustedHosts_IsReadOnly()
     {
         var validator = new DefaultRealmValidator();
         // IReadOnlySet does not expose Add/Remove — compile-time
