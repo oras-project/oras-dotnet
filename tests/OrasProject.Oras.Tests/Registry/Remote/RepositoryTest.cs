@@ -1219,8 +1219,209 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     }
 
     /// <summary>
+    /// BlobStore_GetBlobLocationAsync_RelativeLocation tests that a relative redirect Location header
+    /// is resolved against the request URI, as required by RFC 9110 section 10.2.2.
+    /// A protocol-relative reference is a relative reference that resolves to a different host,
+    /// which is accepted because an absolute cross-host location is accepted as well.
+    /// </summary>
+    [Theory]
+    [InlineData("/storage/blobs/test", true, "http://localhost:5000/storage/blobs/test")]
+    [InlineData("/storage/blobs/test", false, "https://localhost:5000/storage/blobs/test")]
+    [InlineData("//storage.example.com/blob", false, "https://storage.example.com/blob")]
+    [InlineData("//storage.example.com:8443/blob", false, "https://storage.example.com:8443/blob")]
+    [InlineData("?token=xyz", false, "https://localhost:5000/v2/test/blobs/{digest}?token=xyz")]
+    public async Task BlobStore_GetBlobLocationAsync_RelativeLocation(
+        string relativeLocation, bool plainHttp, string expectedLocation)
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "test",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+
+        HttpResponseMessage MockHandlerRelativeRedirect(HttpRequestMessage req, CancellationToken ct = default)
+        {
+            var res = new HttpResponseMessage { RequestMessage = req };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                res.StatusCode = HttpStatusCode.TemporaryRedirect;
+                res.Headers.Location = new Uri(relativeLocation, UriKind.Relative);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                return res;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        IRepository repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandlerRelativeRedirect),
+            PlainHttp = plainHttp,
+        });
+
+        var uri = await repo.GetBlobLocationAsync(blobDesc, new CancellationToken());
+        Assert.NotNull(uri);
+        Assert.Equal(expectedLocation.Replace("{digest}", blobDesc.Digest), uri.ToString());
+    }
+
+    /// <summary>
+    /// BlobStore_GetBlobLocationAsync_RejectsNonHttpScheme tests that a redirect Location using a
+    /// scheme other than HTTP(S) is rejected, including when PlainHttp is enabled.
+    /// </summary>
+    [Theory]
+    [InlineData("javascript:alert(1)", true)]
+    [InlineData("javascript:alert(1)", false)]
+    [InlineData("file:///c:/secret", true)]
+    public async Task BlobStore_GetBlobLocationAsync_RejectsNonHttpScheme(string location, bool plainHttp)
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "test",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+
+        HttpResponseMessage MockHandlerNonHttpScheme(HttpRequestMessage req, CancellationToken ct = default)
+        {
+            var res = new HttpResponseMessage { RequestMessage = req };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                res.StatusCode = HttpStatusCode.TemporaryRedirect;
+                res.Headers.Location = new Uri(location);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                return res;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandlerNonHttpScheme),
+            PlainHttp = plainHttp,
+        });
+        var store = new BlobStore(repo);
+
+        var exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
+            await store.GetBlobLocationAsync(blobDesc, new CancellationToken()));
+        Assert.Contains("HTTPS", exception.Message);
+    }
+
+    /// <summary>
+    /// BlobStore_GetBlobLocationAsync_RejectsMalformedLocation tests that a malformed redirect Location
+    /// is rejected rather than resolved into a bogus URL, consistent with the Link header handling in
+    /// HttpResponseMessageExtensions.
+    /// </summary>
+    [Theory]
+    [InlineData("ht!tp://[bad")]
+    [InlineData(@"\\evil.example.com\blob")]
+    public async Task BlobStore_GetBlobLocationAsync_RejectsMalformedLocation(string location)
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "test",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+
+        HttpResponseMessage MockHandlerMalformed(HttpRequestMessage req, CancellationToken ct = default)
+        {
+            var res = new HttpResponseMessage { RequestMessage = req };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                res.StatusCode = HttpStatusCode.TemporaryRedirect;
+                res.Headers.Location = new Uri(location, UriKind.RelativeOrAbsolute);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                return res;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandlerMalformed),
+            PlainHttp = true,
+        });
+        var store = new BlobStore(repo);
+
+        var exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
+            await store.GetBlobLocationAsync(blobDesc, new CancellationToken()));
+        Assert.Contains("invalid redirect location", exception.Message);
+    }
+
+    /// <summary>
+    /// BlobStore_GetBlobLocationAsync_DoesNotContactRedirectTarget tests that the redirect target is
+    /// never requested: exactly one request is made, and it goes to the registry blob endpoint.
+    /// </summary>
+    [Fact]
+    public async Task BlobStore_GetBlobLocationAsync_DoesNotContactRedirectTarget()
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "test",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+        var redirectLocation = "https://storage.example.com/blob";
+        var requestedUris = new List<Uri>();
+
+        HttpResponseMessage MockHandlerRecording(HttpRequestMessage req, CancellationToken ct = default)
+        {
+            requestedUris.Add(req.RequestUri!);
+            var res = new HttpResponseMessage { RequestMessage = req };
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                res.StatusCode = HttpStatusCode.TemporaryRedirect;
+                res.Headers.Location = new Uri(redirectLocation);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                return res;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        IRepository repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandlerRecording),
+            PlainHttp = true,
+        });
+
+        var uri = await repo.GetBlobLocationAsync(blobDesc, new CancellationToken());
+        Assert.Equal(redirectLocation, uri?.ToString());
+
+        // The blob is never downloaded: the redirect target is not contacted.
+        var requested = Assert.Single(requestedUris);
+        Assert.Equal($"http://localhost:5000/v2/test/blobs/{blobDesc.Digest}", requested.ToString());
+    }
+
+    /// <summary>
     /// BlobStore_GetBlobLocationAsync_Errors tests GetBlobLocationAsync error scenarios.
-    /// Tests: 404 Not Found, missing Location header, non-HTTPS location when PlainHttp is false, and relative URI.
+    /// Tests: 404 Not Found, missing Location header, and non-HTTPS location when PlainHttp is false.
     /// </summary>
     /// <returns></returns>
     [Fact]
@@ -1316,39 +1517,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, cancellationToken));
         Assert.Contains("HTTPS", exception.Message);
-
-        // Test case 4: Relative URI in Location header
-        var relativeLocation = "/storage/blobs/test";
-        HttpResponseMessage MockHandlerRelative(HttpRequestMessage req, CancellationToken ct = default)
-        {
-            var res = new HttpResponseMessage { RequestMessage = req };
-            if (req.Method != HttpMethod.Get)
-            {
-                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
-            }
-
-            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
-            {
-                res.StatusCode = HttpStatusCode.TemporaryRedirect;
-                res.Headers.Location = new Uri(relativeLocation, UriKind.Relative);
-                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
-                return res;
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        }
-
-        repo = new Repository(new RepositoryOptions()
-        {
-            Reference = Reference.Parse("localhost:5000/test"),
-            Client = CustomClient(MockHandlerRelative),
-            PlainHttp = true,
-        });
-        store = new BlobStore(repo);
-
-        exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
-            await store.GetBlobLocationAsync(blobDesc, cancellationToken));
-        Assert.Contains("absolute URI", exception.Message);
     }
 
     /// <summary>
