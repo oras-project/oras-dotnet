@@ -345,6 +345,15 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
                             $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: redirect response missing Location header");
                     }
 
+                    // Reject a malformed Location rather than resolving it into a bogus URL,
+                    // consistent with the Link header handling in HttpResponseMessageExtensions.
+                    if (!location.IsWellFormedOriginalString())
+                    {
+                        throw new HttpIOException(HttpRequestError.InvalidResponse,
+                            $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: " +
+                            $"invalid redirect location {location.OriginalString}");
+                    }
+
                     // A Location header may be a relative reference, in which case it is resolved
                     // against the request URI, consistent with the upload session Location handling
                     // in PushAsync and MountAsync.

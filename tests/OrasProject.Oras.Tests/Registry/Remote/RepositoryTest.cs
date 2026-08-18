@@ -1223,7 +1223,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     /// is resolved against the request URI, as required by RFC 9110 section 10.2.2.
     /// A protocol-relative reference is a relative reference that resolves to a different host,
     /// which is accepted because an absolute cross-host location is accepted as well.
-    /// A malformed relative reference stays on the registry host and cannot escape cross-origin.
     /// </summary>
     [Theory]
     [InlineData("/storage/blobs/test", true, "http://localhost:5000/storage/blobs/test")]
@@ -1231,7 +1230,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     [InlineData("//storage.example.com/blob", false, "https://storage.example.com/blob")]
     [InlineData("//storage.example.com:8443/blob", false, "https://storage.example.com:8443/blob")]
     [InlineData("?token=xyz", false, "https://localhost:5000/v2/test/blobs/{digest}?token=xyz")]
-    [InlineData("ht!tp://[bad", true, "http://localhost:5000/v2/test/blobs/ht!tp://[bad")]
     public async Task BlobStore_GetBlobLocationAsync_RelativeLocation(
         string relativeLocation, bool plainHttp, string expectedLocation)
     {
@@ -1282,7 +1280,6 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
     [InlineData("javascript:alert(1)", true)]
     [InlineData("javascript:alert(1)", false)]
     [InlineData("file:///c:/secret", true)]
-    [InlineData(@"\\evil.example.com\blob", true)]
     public async Task BlobStore_GetBlobLocationAsync_RejectsNonHttpScheme(string location, bool plainHttp)
     {
         var blob = "hello world"u8.ToArray();
@@ -1323,6 +1320,56 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
             await store.GetBlobLocationAsync(blobDesc, new CancellationToken()));
         Assert.Contains("HTTPS", exception.Message);
+    }
+
+    /// <summary>
+    /// BlobStore_GetBlobLocationAsync_RejectsMalformedLocation tests that a malformed redirect Location
+    /// is rejected rather than resolved into a bogus URL, consistent with the Link header handling in
+    /// HttpResponseMessageExtensions.
+    /// </summary>
+    [Theory]
+    [InlineData("ht!tp://[bad")]
+    [InlineData(@"\\evil.example.com\blob")]
+    public async Task BlobStore_GetBlobLocationAsync_RejectsMalformedLocation(string location)
+    {
+        var blob = "hello world"u8.ToArray();
+        var blobDesc = new Descriptor()
+        {
+            MediaType = "test",
+            Digest = ComputeSha256(blob),
+            Size = blob.Length
+        };
+
+        HttpResponseMessage MockHandlerMalformed(HttpRequestMessage req, CancellationToken ct = default)
+        {
+            var res = new HttpResponseMessage { RequestMessage = req };
+            if (req.Method != HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+            }
+
+            if (req.RequestUri?.AbsolutePath == $"/v2/test/blobs/{blobDesc.Digest}")
+            {
+                res.StatusCode = HttpStatusCode.TemporaryRedirect;
+                res.Headers.Location = new Uri(location, UriKind.RelativeOrAbsolute);
+                res.Headers.Add(_dockerContentDigestHeader, blobDesc.Digest);
+                return res;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(MockHandlerMalformed),
+            PlainHttp = true,
+        });
+        var store = new BlobStore(repo);
+
+        var exception = await Assert.ThrowsAsync<HttpIOException>(async () =>
+            await store.GetBlobLocationAsync(blobDesc, new CancellationToken()));
+        Assert.Contains("invalid redirect location", exception.Message);
     }
 
     /// <summary>
