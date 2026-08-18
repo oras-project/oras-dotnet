@@ -351,12 +351,18 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
                     // Reference: https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2
                     var blobLocation = location.IsAbsoluteUri ? location : new Uri(url, location);
 
-                    // Validate HTTPS unless PlainHttp is explicitly allowed
-                    if (!Repository.Options.PlainHttp && blobLocation.Scheme != "https")
+                    // A blob redirect must point at an HTTP(S) endpoint, so that a Location such as
+                    // file:// or javascript: is never handed back to the caller.
+                    // HTTPS is required unless PlainHttp is explicitly allowed.
+                    var schemeAllowed = blobLocation.Scheme == Uri.UriSchemeHttps ||
+                        (Repository.Options.PlainHttp && blobLocation.Scheme == Uri.UriSchemeHttp);
+                    if (!schemeAllowed)
                     {
+                        var expectedSchemes = Repository.Options.PlainHttp ? "HTTP or HTTPS" : "HTTPS";
                         throw new HttpIOException(HttpRequestError.InvalidResponse,
                             $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: " +
-                            $"redirect location must use HTTPS, got {blobLocation.Scheme}://{blobLocation.Host}");
+                            $"redirect location must use {expectedSchemes}, " +
+                            $"got {blobLocation.Scheme}://{blobLocation.Host}");
                     }
 
                     return blobLocation;
