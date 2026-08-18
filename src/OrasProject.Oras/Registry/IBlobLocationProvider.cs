@@ -40,7 +40,11 @@ public interface IBlobLocationProvider
     /// </summary>
     /// <param name="target">The descriptor identifying the blob</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The blob location URL if a redirect is returned, otherwise null</returns>
+    /// <returns>
+    /// The blob location URL if a redirect is returned, otherwise null.
+    /// A relative Location header is resolved against the request URI, which may yield a URL on the
+    /// registry host that requires registry credentials rather than a direct storage backend URL.
+    /// </returns>
     /// <exception cref="ArgumentException">Thrown when the provided HttpClient has AllowAutoRedirect enabled</exception>
     /// <exception cref="HttpIOException">Thrown when the response is invalid</exception>
     /// <exception cref="NotFoundException">Thrown when the blob is not found</exception>
