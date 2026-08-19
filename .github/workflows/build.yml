@@ -28,20 +28,66 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet-version: ['8.0.x']
+        target-framework: ['net8.0', 'net10.0']
       fail-fast: true
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-      - name: Set up dotnet ${{ matrix.dotnet-version }} environment
+      - name: Set up dotnet environment
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: ${{ matrix.dotnet-version }}
-      - name: Run unit tests
-        run: dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover ./tests/OrasProject.Oras.Tests
+          # The .NET 10 SDK builds every target framework; the .NET 8 runtime is
+          # required to actually execute the net8.0 test run.
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Run unit tests (${{ matrix.target-framework }})
+        run: >
+          dotnet test ./tests/OrasProject.Oras.Tests
+          --framework ${{ matrix.target-framework }}
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=opencover
+          /p:CoverletOutput=${{ github.workspace }}/coverage/${{ matrix.target-framework }}/
       - name: Upload coverage to codecov.io
         uses: codecov/codecov-action@v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          files: ./tests/OrasProject.Oras.Tests/coverage.opencover.xml
+          directory: ${{ github.workspace }}/coverage/${{ matrix.target-framework }}
+          flags: ${{ matrix.target-framework }}
+
+  # Guards the core promise of multi-targeting: the published package must stay
+  # restorable from a net8.0 project built with the .NET 8 SDK.
+  package-compat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up dotnet environment
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Pack
+        run: >
+          dotnet pack ./src/OrasProject.Oras
+          --configuration Release
+          --output "$RUNNER_TEMP/nupkgs"
+          /p:PackageVersion=0.0.0-ci
+      - name: Assert the package ships both target frameworks
+        run: |
+          unzip -o -q "$RUNNER_TEMP/nupkgs/OrasProject.Oras.0.0.0-ci.nupkg" -d "$RUNNER_TEMP/extracted"
+          test -f "$RUNNER_TEMP/extracted/lib/net8.0/OrasProject.Oras.dll"
+          test -f "$RUNNER_TEMP/extracted/lib/net10.0/OrasProject.Oras.dll"
+      - name: Build a net8.0 consumer against the packed output using the .NET 8 SDK
+        run: |
+          CONSUMER="$RUNNER_TEMP/consumer"
+          mkdir -p "$CONSUMER"
+          cd "$CONSUMER"
+          printf '{ "sdk": { "version": "8.0.100", "rollForward": "latestFeature" } }\n' > global.json
+          dotnet new console -f net8.0 -o app
+          cd app
+          printf '<configuration><packageSources><clear /><add key="nuget.org" value="https://api.nuget.org/v3/index.json" /><add key="local" value="%s" /></packageSources></configuration>\n' "$RUNNER_TEMP/nupkgs" > NuGet.config
+          dotnet add package OrasProject.Oras --version 0.0.0-ci
+          dotnet build --configuration Release

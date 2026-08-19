@@ -10,6 +10,9 @@
         }
       ],
       "dest": "api",
+      "properties": {
+        "TargetFramework": "net10.0"
+      },
       "includePrivateMembers": false,
       "disableGitFeatures": false,
       "disableDefaultFilter": false,
