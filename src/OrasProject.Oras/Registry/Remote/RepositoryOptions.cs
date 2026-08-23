@@ -24,6 +24,11 @@ namespace OrasProject.Oras.Registry.Remote;
 public struct RepositoryOptions
 {
     /// <summary>
+    /// The default chunk size used for chunked blob uploads: 5 MiB.
+    /// </summary>
+    public const int DefaultBlobUploadChunkSize = 5 * 1024 * 1024;
+
+    /// <summary>
     /// Client is the underlying HTTP client used to access the remote registry.
     /// </summary>
     public required IClient Client { get; set; }
@@ -66,6 +71,31 @@ public struct RepositoryOptions
     public bool SkipReferrersGc { get; set; }
 
     /// <summary>
+    /// BlobUploadMode specifies how blobs are uploaded. The default is
+    /// <see cref="Remote.BlobUploadMode.Monolithic"/>.
+    /// </summary>
+    public BlobUploadMode BlobUploadMode { get; set; }
+
+    /// <summary>
+    /// BlobUploadChunkSize specifies the maximum number of bytes sent in each <c>PATCH</c>
+    /// request during a chunked blob upload. The getter returns 5 MiB when the value is zero
+    /// or not set. If the registry advertises a larger <c>OCI-Chunk-Min-Length</c>, that value
+    /// takes precedence for the upload.
+    /// </summary>
+    public int BlobUploadChunkSize
+    {
+        get => _blobUploadChunkSize == 0 ? DefaultBlobUploadChunkSize : _blobUploadChunkSize;
+        set
+        {
+            if (value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), "BlobUploadChunkSize must be greater than zero.");
+            }
+            _blobUploadChunkSize = value;
+        }
+    }
+
+    /// <summary>
     /// PartitionId is an optional cache partition identifier for multi-partition scenarios.
     /// When set, authentication tokens are isolated by this ID, allowing different credentials
     /// to be cached separately for the same upstream registry.
@@ -106,4 +136,5 @@ public struct RepositoryOptions
     }
 
     private long _maxMetadataBytes;
+    private int _blobUploadChunkSize;
 }

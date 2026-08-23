@@ -12,10 +12,13 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Content.Exceptions;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -32,6 +35,8 @@ namespace OrasProject.Oras.Registry.Remote;
 /// </summary>
 public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvider, IMounter
 {
+    private const string _ociChunkMinLengthHeader = "OCI-Chunk-Min-Length";
+
     private Repository Repository { get; } = repository ?? throw new ArgumentNullException(nameof(repository));
 
     /// <summary>
@@ -178,9 +183,10 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// PushAsync pushes the content, matching the expected descriptor.
     /// Existing content is not checked by PushAsync() to minimize the number of out-going
     /// requests.
-    /// Push is done by conventional 2-step monolithic upload instead of a single
-    /// `POST` request for better overall performance. It also allows early fail on
-    /// authentication errors.
+    /// The upload method is controlled by <see cref="RepositoryOptions.BlobUploadMode"/>.
+    /// The default is a conventional 2-step monolithic upload instead of a single
+    /// <c>POST</c> request for better overall performance. It also allows early failure
+    /// on authentication errors.
     /// References:
     /// - https://docs.docker.com/registry/spec/api/#pushing-an-image
     /// - https://docs.docker.com/registry/spec/api/#initiate-blob-upload
@@ -200,23 +206,9 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
             Repository.Options.PartitionId,
             Scope.Action.Pull,
             Scope.Action.Push);
-        var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
-        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
-        using (var response = await Repository.Options.Client.SendAsync(
-            requestMessage,
-            partitionId: Repository.Options.PartitionId,
-            cancellationToken: cancellationToken).ConfigureAwait(false))
-        {
-            if (response.StatusCode != HttpStatusCode.Accepted)
-            {
-                throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
-            url = location.IsAbsoluteUri ? location : new Uri(url, location);
-        }
-
-        await CompletePushAsync(url, expected, content, cancellationToken).ConfigureAwait(false);
+        var mode = Repository.Options.BlobUploadMode;
+        var session = await StartPushAsync(mode == BlobUploadMode.Chunked, cancellationToken).ConfigureAwait(false);
+        await CompletePushAsync(session, expected, content, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -431,6 +423,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         }
 
         var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
+        UploadSession? uploadSession = null;
         using var mountReq = new HttpRequestMessage(HttpMethod.Post, new UriBuilder(url)
         {
             Query =
@@ -454,6 +447,10 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
                         var location = response.Headers.Location ??
                                         throw new HttpRequestException("missing location header");
                         url = location.IsAbsoluteUri ? location : new Uri(url, location);
+                        var minimumChunkSize = Repository.Options.BlobUploadMode == BlobUploadMode.Chunked
+                            ? ParseMinimumChunkSize(response)
+                            : null;
+                        uploadSession = new UploadSession(url, minimumChunkSize);
                         break;
                     }
                 default:
@@ -497,28 +494,77 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         var contents = await GetContentStream().ConfigureAwait(false);
         await using (contents.ConfigureAwait(false))
         {
-            await CompletePushAsync(url, descriptor, contents, cancellationToken).ConfigureAwait(false);
+            await CompletePushAsync(uploadSession!, descriptor, contents, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task CompletePushAsync(UploadSession session, Descriptor descriptor, Stream content,
+        CancellationToken cancellationToken)
+    {
+        var mode = Repository.Options.BlobUploadMode;
+        if (mode == BlobUploadMode.Chunked)
+        {
+            await CompleteChunkedPushAsync(session, descriptor, content, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var initialPosition = content.CanSeek ? content.Position : 0;
+        try
+        {
+            await CompleteMonolithicPushAsync(session.Url, descriptor, content, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exceptions.ResponseException) when (
+            mode == BlobUploadMode.MonolithicWithChunkedFallback && content.CanSeek)
+        {
+            content.Position = initialPosition;
+            var chunkedSession = await StartPushAsync(chunked: true, cancellationToken).ConfigureAwait(false);
+            await CompleteChunkedPushAsync(chunkedSession, descriptor, content, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
     /// <summary>
-    /// Completes a push operation started beforehand.
+    /// Starts a blob push operation.
     /// </summary>
-    /// <param name="url"></param>
-    /// <param name="descriptor"></param>
-    /// <param name="content"></param>
+    /// <param name="chunked"></param>
     /// <param name="cancellationToken"></param>
-    /// <exception cref="Exception"></exception>
-    private async Task CompletePushAsync(Uri url, Descriptor descriptor, Stream content,
+    private async Task<UploadSession> StartPushAsync(bool chunked,
         CancellationToken cancellationToken = default)
     {
-        // monolithic upload
-        // add digest key to query string with descriptor digest value
+        var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
+        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        if (chunked)
+        {
+            request.Content = new ByteArrayContent([]);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
+        }
+
+        using var response = await Repository.Options.Client.SendAsync(
+            request,
+            partitionId: Repository.Options.PartitionId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode != HttpStatusCode.Accepted)
+        {
+            throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
+        var sessionUrl = location.IsAbsoluteUri ? location : new Uri(url, location);
+        return new UploadSession(sessionUrl, chunked ? ParseMinimumChunkSize(response) : null);
+    }
+
+    /// <summary>
+    /// Completes a push operation using a monolithic upload.
+    /// </summary>
+    private async Task CompleteMonolithicPushAsync(Uri url, Descriptor descriptor, Stream content,
+        CancellationToken cancellationToken = default)
+    {
         using var req = new HttpRequestMessage(HttpMethod.Put, new UriBuilder(url)
         {
             Query = $"{url.Query}&digest={HttpUtility.UrlEncode(descriptor.Digest)}"
         }.Uri);
-        req.Content = new StreamContent(content);
+        req.Content = new StreamContent(new NonDisposingStream(content));
         req.Content.Headers.ContentLength = descriptor.Size;
 
         // the descriptor media type is ignored as in the API doc.
@@ -532,5 +578,156 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Completes a push operation using PATCH-based chunked upload.
+    /// </summary>
+    private async Task CompleteChunkedPushAsync(UploadSession session, Descriptor descriptor, Stream content,
+        CancellationToken cancellationToken = default)
+    {
+        if (descriptor.Size < 0)
+        {
+            throw new InvalidDescriptorSizeException($"Descriptor size {descriptor.Size} is less than 0");
+        }
+
+        var chunkSize = Math.Max(Repository.Options.BlobUploadChunkSize, session.MinimumChunkSize ?? 0);
+        var buffer = new byte[Math.Min(chunkSize, Math.Max(1, descriptor.Size))];
+        long offset = 0;
+        while (offset < descriptor.Size)
+        {
+            var bytesToRead = (int)Math.Min(buffer.Length, descriptor.Size - offset);
+            var bytesRead = await ReadChunkAsync(content, buffer, bytesToRead, cancellationToken).ConfigureAwait(false);
+            if (bytesRead != bytesToRead)
+            {
+                throw new MismatchedSizeException(
+                    $"Descriptor size {descriptor.Size} is larger than the content length");
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Patch, session.Url);
+            request.Content = new ByteArrayContent(buffer, 0, bytesRead);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
+            request.Content.Headers.ContentLength = bytesRead;
+            request.Content.Headers.TryAddWithoutValidation("Content-Range", $"{offset}-{offset + bytesRead - 1}");
+
+            using var response = await Repository.Options.Client.SendAsync(
+                request,
+                partitionId: Repository.Options.PartitionId,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            if (response.StatusCode is HttpStatusCode.Accepted or HttpStatusCode.Created)
+            {
+                var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
+                session = session with { Url = location.IsAbsoluteUri ? location : new Uri(session.Url, location) };
+            }
+            else
+            {
+                throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            offset += bytesRead;
+        }
+
+        var extraByte = new byte[1];
+        if (await content.ReadAsync(extraByte.AsMemory(), cancellationToken).ConfigureAwait(false) != 0)
+        {
+            throw new MismatchedSizeException($"Descriptor size {descriptor.Size} is smaller than the content length");
+        }
+
+        await FinalizeChunkedPushAsync(session.Url, descriptor, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task FinalizeChunkedPushAsync(Uri url, Descriptor descriptor,
+        CancellationToken cancellationToken)
+    {
+        var uriBuilder = new UriBuilder(url)
+        {
+            Query = $"{url.Query}&digest={HttpUtility.UrlEncode(descriptor.Digest)}",
+        };
+        using var request = new HttpRequestMessage(HttpMethod.Put, uriBuilder.Uri);
+        request.Content = new ByteArrayContent([]);
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
+
+        using var response = await Repository.Options.Client.SendAsync(
+            request,
+            partitionId: Repository.Options.PartitionId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode != HttpStatusCode.Created)
+        {
+            throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static int? ParseMinimumChunkSize(HttpResponseMessage response)
+    {
+        if (!response.Headers.TryGetValues(_ociChunkMinLengthHeader, out var values))
+        {
+            return null;
+        }
+
+        var value = values.FirstOrDefault();
+        if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var minimumChunkSize) ||
+            minimumChunkSize <= 0)
+        {
+            throw new HttpIOException(
+                HttpRequestError.InvalidResponse,
+                $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: " +
+                $"invalid {_ociChunkMinLengthHeader} header");
+        }
+        return minimumChunkSize;
+    }
+
+    private static async Task<int> ReadChunkAsync(Stream content, byte[] buffer, int count,
+        CancellationToken cancellationToken)
+    {
+        var totalRead = 0;
+        while (totalRead < count)
+        {
+            var bytesRead = await content
+                .ReadAsync(buffer.AsMemory(totalRead, count - totalRead), cancellationToken)
+                .ConfigureAwait(false);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+            totalRead += bytesRead;
+        }
+        return totalRead;
+    }
+
+    private sealed record UploadSession(Uri Url, int? MinimumChunkSize);
+
+    private sealed class NonDisposingStream(Stream inner) : Stream
+    {
+        public override bool CanRead => inner.CanRead;
+        public override bool CanSeek => inner.CanSeek;
+        public override bool CanWrite => inner.CanWrite;
+        public override long Length => inner.Length;
+        public override long Position { get => inner.Position; set => inner.Position = value; }
+        public override void Flush() => inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
+        public override long Seek(long offset, SeekOrigin origin) => inner.Seek(offset, origin);
+        public override void SetLength(long value) => inner.SetLength(value);
+        public override void Write(byte[] buffer, int offset, int count) => inner.Write(buffer, offset, count);
+        public override Task FlushAsync(CancellationToken cancellationToken) => inner.FlushAsync(cancellationToken);
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default) => inner.ReadAsync(buffer, cancellationToken);
+
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken) => inner.ReadAsync(buffer, offset, count, cancellationToken);
+
+        public override ValueTask WriteAsync(
+            ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken = default) => inner.WriteAsync(buffer, cancellationToken);
+
+        public override Task WriteAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken) => inner.WriteAsync(buffer, offset, count, cancellationToken);
     }
 }
