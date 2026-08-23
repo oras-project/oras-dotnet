@@ -592,7 +592,8 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         }
 
         var chunkSize = Math.Max(Repository.Options.BlobUploadChunkSize, session.MinimumChunkSize ?? 0);
-        var buffer = new byte[Math.Min(chunkSize, Math.Max(1, descriptor.Size))];
+        var bufferLength = (int)Math.Min(chunkSize, Math.Max(1, descriptor.Size));
+        var buffer = new byte[bufferLength];
         long offset = 0;
         while (offset < descriptor.Size)
         {

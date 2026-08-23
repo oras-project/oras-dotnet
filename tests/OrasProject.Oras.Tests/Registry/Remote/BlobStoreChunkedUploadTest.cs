@@ -258,6 +258,39 @@ public class BlobStoreChunkedUploadTest
             };
     }
 
+    [Fact]
+    public async Task PushAsyncBoundsBufferSizeForLargeDescriptor()
+    {
+        var blob = Enumerable.Range(0, 5).Select(value => (byte)value).ToArray();
+        var descriptor = new Descriptor
+        {
+            Digest = ComputeSha256(blob),
+            MediaType = "application/octet-stream",
+            Size = (long)int.MaxValue + 1,
+        };
+        var patchCount = 0;
+
+        var store = CreateBlobStore(Handler, BlobUploadMode.Chunked, chunkSize: 4);
+        await Assert.ThrowsAsync<MismatchedSizeException>(() => store.PushAsync(descriptor, new MemoryStream(blob)));
+        Assert.Equal(1, patchCount);
+        return;
+
+        HttpResponseMessage Handler(HttpRequestMessage request, CancellationToken _)
+        {
+            if (request.Method == HttpMethod.Post)
+            {
+                return Response(request, HttpStatusCode.Accepted, "/v2/test/blobs/uploads/session");
+            }
+            if (request.Method == HttpMethod.Patch)
+            {
+                patchCount++;
+                Assert.Equal(4, request.Content!.Headers.ContentLength);
+                return Response(request, HttpStatusCode.Accepted, "/v2/test/blobs/uploads/session");
+            }
+            return Response(request, HttpStatusCode.MethodNotAllowed);
+        }
+    }
+
     private static BlobStore CreateBlobStore(
         Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> handler,
         BlobUploadMode mode,
