@@ -72,7 +72,7 @@ public struct RepositoryOptions
 
     /// <summary>
     /// BlobUploadMode specifies how blobs are uploaded. The default is
-    /// <see cref="Remote.BlobUploadMode.Monolithic"/>.
+    /// <see cref="BlobUploadMode.Monolithic"/>.
     /// </summary>
     public BlobUploadMode BlobUploadMode { get; set; }
 
