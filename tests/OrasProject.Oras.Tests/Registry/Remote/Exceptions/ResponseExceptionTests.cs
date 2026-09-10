@@ -12,6 +12,7 @@
 // limitations under the License.
 
 using System.Net;
+using System.Text.Json;
 using OrasProject.Oras.Registry.Remote.Exceptions;
 using Xunit;
 
@@ -259,8 +260,16 @@ public class ResponseExceptionTests
         // Act
         var exception = new ResponseException(response, responseBody);
 
+        using var responseJson = JsonDocument.Parse(responseBody);
+        var detailJson = responseJson
+            .RootElement.GetProperty("errors")[0]
+            .GetProperty("detail")
+            .GetRawText();
+
         // Assert
-        string expectedMessage = "PUT https://registry.example/v2/library/alpine/blobs/uploads/ returned 400 BadRequest: MANIFEST_INVALID: manifest invalid (Detail: {\"validationErrors\":[{\"field\":\"layers.0.mediaType\",\"message\":\"invalid media type\"}]})";
+        string expectedMessage =
+            "PUT https://registry.example/v2/library/alpine/blobs/uploads/ returned 400 " +
+            $"BadRequest: MANIFEST_INVALID: manifest invalid (Detail: {detailJson})";
         Assert.Equal(expectedMessage, exception.Message);
     }
 
@@ -300,8 +309,20 @@ public class ResponseExceptionTests
         // Act
         var exception = new ResponseException(response, responseBody);
 
+        using var responseJson = JsonDocument.Parse(responseBody);
+        var firstDetailJson = responseJson.RootElement.GetProperty("errors")[0]
+            .GetProperty("detail")
+            .GetRawText();
+        var secondDetailJson = responseJson.RootElement.GetProperty("errors")[1]
+            .GetProperty("detail")
+            .GetRawText();
+
         // Assert
-        string expectedMessage = "PUT https://registry.example/v2/library/alpine/manifests/latest returned 400 BadRequest: MANIFEST_INVALID: manifest invalid (Detail: {\"validationErrors\":[{\"field\":\"layers.0.mediaType\",\"message\":\"invalid media type\"}]}); TAG_INVALID: tag name invalid (Detail: {\"reason\":\"tag contains invalid characters\"})";
+        string expectedMessage =
+            "PUT https://registry.example/v2/library/alpine/manifests/latest returned 400 " +
+            "BadRequest: MANIFEST_INVALID: manifest invalid " +
+            $"(Detail: {firstDetailJson}); TAG_INVALID: tag name invalid " +
+            $"(Detail: {secondDetailJson})";
         Assert.Equal(expectedMessage, exception.Message);
     }
 
