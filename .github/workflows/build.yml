@@ -75,6 +75,7 @@ jobs:
           --configuration Release
           --output "$RUNNER_TEMP/nupkgs"
           /p:PackageVersion=0.0.0-ci
+          /p:GeneratePackageOnBuild=false
       - name: Assert the package ships both target frameworks
         run: |
           unzip -o -q "$RUNNER_TEMP/nupkgs/OrasProject.Oras.0.0.0-ci.nupkg" -d "$RUNNER_TEMP/extracted"
