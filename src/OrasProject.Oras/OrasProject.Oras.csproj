@@ -14,7 +14,7 @@ limitations under the License.
 -->
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFrameworks>net8.0;net10.0</TargetFrameworks>
 		<PackageId>OrasProject.Oras</PackageId>
 		<PackageVersion>0.0.0-dev</PackageVersion>
 		<Authors>Oras Project</Authors>
@@ -37,10 +37,13 @@ limitations under the License.
 			<_Parameter1>OrasProject.Oras.Tests</_Parameter1>
 		</AssemblyAttribute>
 	</ItemGroup>
-	<ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
 		<PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
-		<PackageReference Include="System.Text.Json" Version="8.0.6" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+		<PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="README.md" Pack="true" PackagePath="/" />
