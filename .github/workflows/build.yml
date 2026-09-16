@@ -89,6 +89,14 @@ jobs:
           printf '{ "sdk": { "version": "8.0.100", "rollForward": "latestFeature" } }\n' > global.json
           dotnet new console -f net8.0 -o app
           cd app
-          printf '<configuration><packageSources><clear /><add key="nuget.org" value="https://api.nuget.org/v3/index.json" /><add key="local" value="%s" /></packageSources></configuration>\n' "$RUNNER_TEMP/nupkgs" > NuGet.config
+          cat > NuGet.Config <<EOF
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+              <add key="local" value="$RUNNER_TEMP/nupkgs" />
+            </packageSources>
+          </configuration>
+          EOF
           dotnet add package OrasProject.Oras --version 0.0.0-ci
           dotnet build --configuration Release
