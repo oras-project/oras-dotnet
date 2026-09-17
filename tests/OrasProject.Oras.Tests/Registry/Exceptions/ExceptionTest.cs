@@ -19,10 +19,17 @@ namespace OrasProject.Oras.Tests.Registry.Exceptions;
 public class ExceptionTest
 {
     [Fact]
-    public async Task InvalidReferenceException()
+    public void InvalidReferenceException_Constructors()
     {
-        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException());
-        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException("Invalid reference"));
-        await Assert.ThrowsAsync<InvalidReferenceException>(() => throw new InvalidReferenceException("Invalid reference", null));
+        var ex1 = new InvalidReferenceException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new InvalidReferenceException("Invalid reference");
+        Assert.Equal("Invalid reference", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new InvalidReferenceException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 }
