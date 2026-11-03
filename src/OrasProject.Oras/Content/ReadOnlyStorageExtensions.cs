@@ -94,8 +94,8 @@ public static class ReadOnlyStorageExtensions
     {
         using var limiter = new SemaphoreSlim(copyGraphOptions.Concurrency, copyGraphOptions.Concurrency);
         var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
-        var dependencies = new Dictionary<BasicDescriptor, List<BasicDescriptor>>();
-        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, copied, dependencies, cancellationToken)
+        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>();
+        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, copied, parents, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -109,7 +109,7 @@ public static class ReadOnlyStorageExtensions
     /// <param name="copyGraphOptions"></param>
     /// <param name="limiter"></param>
     /// <param name="copied"></param>
-    /// <param name="dependencies"></param>
+    /// <param name="parents"></param>
     /// <param name="cancellationToken"></param>
     internal static async Task CopyGraphAsync(
         this IReadOnlyStorage src,
@@ -119,7 +119,7 @@ public static class ReadOnlyStorageExtensions
         CopyGraphOptions copyGraphOptions,
         SemaphoreSlim limiter,
         ConcurrentDictionary<BasicDescriptor, Lazy<Task>> copied,
-        Dictionary<BasicDescriptor, List<BasicDescriptor>> dependencies,
+        Dictionary<BasicDescriptor, List<BasicDescriptor>> parents,
         CancellationToken cancellationToken)
     {
         if (Descriptor.IsNullOrInvalid(node))
@@ -145,7 +145,7 @@ public static class ReadOnlyStorageExtensions
         // for actual copy completion.
         var copy = new Lazy<Task>(
             () => src.CopyNodeAsync(
-                dst, node, proxy, copyGraphOptions, limiter, copied, dependencies, cancellationToken),
+                dst, node, proxy, copyGraphOptions, limiter, copied, parents, cancellationToken),
             LazyThreadSafetyMode.ExecutionAndPublication);
         var sharedCopy = copied.GetOrAdd(node.BasicDescriptor, copy);
         await sharedCopy.Value.ConfigureAwait(false);
@@ -163,7 +163,7 @@ public static class ReadOnlyStorageExtensions
         CopyGraphOptions copyGraphOptions,
         SemaphoreSlim limiter,
         ConcurrentDictionary<BasicDescriptor, Lazy<Task>> copied,
-        Dictionary<BasicDescriptor, List<BasicDescriptor>> dependencies,
+        Dictionary<BasicDescriptor, List<BasicDescriptor>> parents,
         CancellationToken cancellationToken)
     {
         // acquire lock to find successors of the current node
@@ -188,13 +188,13 @@ public static class ReadOnlyStorageExtensions
             limiter.Release();
         }
 
-        RegisterSuccessors(node, successors, dependencies);
+        RegisterSuccessors(node, successors, parents);
         var childNodesCopies = new List<Task>();
         foreach (var childNode in successors)
         {
             childNodesCopies.Add(Task.Run(
                 () => src.CopyGraphAsync(
-                    dst, childNode, proxy, copyGraphOptions, limiter, copied, dependencies, cancellationToken),
+                    dst, childNode, proxy, copyGraphOptions, limiter, copied, parents, cancellationToken),
                 cancellationToken));
         }
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
@@ -229,9 +229,9 @@ public static class ReadOnlyStorageExtensions
     private static void RegisterSuccessors(
         Descriptor node,
         List<Descriptor> successors,
-        Dictionary<BasicDescriptor, List<BasicDescriptor>> dependencies)
+        Dictionary<BasicDescriptor, List<BasicDescriptor>> parents)
     {
-        var successorKeys = new List<BasicDescriptor>(successors.Count);
+        var successorKeys = new HashSet<BasicDescriptor>();
         foreach (var successor in successors)
         {
             if (Descriptor.IsNullOrInvalid(successor))
@@ -239,6 +239,10 @@ public static class ReadOnlyStorageExtensions
                 throw new ArgumentNullException(nameof(node));
             }
             successorKeys.Add(successor.BasicDescriptor);
+        }
+        if (successorKeys.Count == 0)
+        {
+            return;
         }
 
         // Copies of A and B can start independently:
@@ -256,30 +260,52 @@ public static class ReadOnlyStorageExtensions
         //
         // Both copies would wait forever for each other.
         //
-        // Keep dependencies from all copies in this operation in one shared graph.
-        // Under the lock, record this node's dependencies and check whether following
-        // them leads back to this node. If so, throw before starting its dependency
-        // waits. The lock ensures concurrent copies cannot both miss the cycle.
-        lock (dependencies)
+        // Keep each node's known parents in one shared graph: for A -> B, record A as B's parent.
+        // Before adding new dependencies, walk this node's ancestors, not its shared descendants.
+        // If a dependency is this node or one of its ancestors, the new edge would close a cycle.
+        // Entirely new dependencies cannot lead back to this node, so skip their ancestry scan.
+        // Reject cycles before starting dependency waits. Leaf nodes have no edges to check.
+        // Check and record under the same lock so concurrent copies cannot both miss the cycle.
+        lock (parents)
         {
             var key = node.BasicDescriptor;
-            dependencies.Add(key, successorKeys);
-            var pending = new Stack<BasicDescriptor>(successorKeys);
-            var visited = new HashSet<BasicDescriptor>();
-            while (pending.TryPop(out var dependency))
+            var pending = new Stack<BasicDescriptor>();
+            if (successorKeys.Contains(key) || successorKeys.Any(parents.ContainsKey))
             {
-                if (dependency == key)
+                pending.Push(key);
+            }
+            var visited = new HashSet<BasicDescriptor>();
+            while (pending.TryPop(out var ancestor))
+            {
+                if (!visited.Add(ancestor))
+                {
+                    continue;
+                }
+                if (successorKeys.Contains(ancestor))
                 {
                     throw new InvalidOperationException(
                         $"Dependency cycle detected while copying {node.Digest}.");
                 }
-                if (visited.Add(dependency) && dependencies.TryGetValue(dependency, out var children))
+                if (parents.TryGetValue(ancestor, out var ancestorParents))
                 {
-                    foreach (var child in children)
+                    foreach (var parent in ancestorParents)
                     {
-                        pending.Push(child);
+                        pending.Push(parent);
                     }
                 }
+            }
+            if (!parents.ContainsKey(key))
+            {
+                parents.Add(key, new List<BasicDescriptor>());
+            }
+            foreach (var successor in successorKeys)
+            {
+                if (!parents.TryGetValue(successor, out var successorParents))
+                {
+                    successorParents = new List<BasicDescriptor>();
+                    parents.Add(successor, successorParents);
+                }
+                successorParents.Add(key);
             }
         }
     }

@@ -70,14 +70,14 @@ public static class ReadOnlyGraphStorageExtensions
 
         // Track nodes being copied to avoid duplicate work across parallel root copies
         var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
-        var dependencies = new Dictionary<BasicDescriptor, List<BasicDescriptor>>();
+        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>();
 
         // Copy the sub-DAGs rooted by the root nodes
         var copyTasks = new List<Task>();
         foreach (var root in roots)
         {
             copyTasks.Add(Task.Run(
-                () => src.CopyGraphAsync(dst, root, proxy, opts, limiter, copied, dependencies, cancellationToken),
+                () => src.CopyGraphAsync(dst, root, proxy, opts, limiter, copied, parents, cancellationToken),
                 cancellationToken));
         }
 

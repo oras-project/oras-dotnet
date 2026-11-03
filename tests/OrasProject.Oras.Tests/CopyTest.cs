@@ -512,6 +512,98 @@ public class CopyTest
     }
 
     [Theory]
+    [InlineData(16, 64)]
+    [InlineData(64, 128)]
+    public async Task CopyGraphAsync_DoesNotRescanSharedDescendants_WhenRegisteringNewParentsAsync(
+        int parentCount, int layerCount)
+    {
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var source = new MemoryStore();
+        var destination = new MemoryStore();
+        var layers = new List<Descriptor>();
+        for (var i = 0; i < layerCount; i++)
+        {
+            layers.Add(await PushContentAsync(
+                source, Encoding.UTF8.GetBytes($"layer-{i}"), MediaType.ImageLayer, deadline.Token));
+        }
+        var shared = await PushContentAsync(
+            source, Encoding.UTF8.GetBytes("shared"), MediaType.ImageConfig, deadline.Token);
+        var options = new CopyGraphOptions
+        {
+            FindSuccessorsAsync = (_, node, _) => Task.FromResult<IEnumerable<Descriptor>>(
+                node == shared ? layers :
+                node.MediaType == MediaType.ImageConfig ? new[] { shared } : Array.Empty<Descriptor>())
+        };
+        var proxy = new Proxy { Source = source, Cache = new MemoryStore() };
+        using var limiter = new SemaphoreSlim(options.Concurrency, options.Concurrency);
+        var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
+        var lookups = new DependencyLookupCounter();
+        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>(lookups);
+
+        await source.CopyGraphAsync(
+            destination, shared, proxy, options, limiter, copied, parents, deadline.Token);
+        for (var i = 0; i < parentCount; i++)
+        {
+            var parent = await PushContentAsync(
+                source, Encoding.UTF8.GetBytes($"parent-{i}"), MediaType.ImageConfig, deadline.Token);
+            await source.CopyGraphAsync(
+                destination, parent, proxy, options, limiter, copied, parents, deadline.Token);
+            Assert.True(await destination.ExistsAsync(parent, deadline.Token));
+        }
+
+        // Count graph lookups rather than elapsed time to catch repeated scans without timing flakiness.
+        Assert.True(lookups.HashCalls <= 4 * (parentCount + layerCount),
+            $"Expected linear graph lookups, but observed {lookups.HashCalls} " +
+            $"for {parentCount} parents and {layerCount} shared layers.");
+        foreach (var layer in layers)
+        {
+            Assert.True(await destination.ExistsAsync(layer, deadline.Token));
+        }
+    }
+
+    [Theory]
+    [InlineData(64)]
+    [InlineData(256)]
+    public async Task CopyGraphAsync_DoesNotRescanAncestors_WhenDependenciesAreNewNodesAsync(int nodeCount)
+    {
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var source = new MemoryStore();
+        var destination = new MemoryStore();
+        var nodes = new List<Descriptor>();
+        for (var i = 0; i < nodeCount; i++)
+        {
+            nodes.Add(await PushContentAsync(
+                source, Encoding.UTF8.GetBytes($"node-{i}"), MediaType.ImageConfig, deadline.Token));
+        }
+        var successors = new Dictionary<BasicDescriptor, Descriptor>();
+        for (var i = 0; i < nodes.Count - 1; i++)
+        {
+            successors.Add(nodes[i].BasicDescriptor, nodes[i + 1]);
+        }
+        var options = new CopyGraphOptions
+        {
+            FindSuccessorsAsync = (_, node, _) => Task.FromResult<IEnumerable<Descriptor>>(
+                successors.TryGetValue(node.BasicDescriptor, out var successor)
+                    ? new[] { successor } : Array.Empty<Descriptor>())
+        };
+        var proxy = new Proxy { Source = source, Cache = new MemoryStore() };
+        using var limiter = new SemaphoreSlim(options.Concurrency, options.Concurrency);
+        var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
+        var lookups = new DependencyLookupCounter();
+        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>(lookups);
+
+        await source.CopyGraphAsync(
+            destination, nodes[0], proxy, options, limiter, copied, parents, deadline.Token);
+
+        Assert.True(lookups.HashCalls <= 8 * nodeCount,
+            $"Expected linear graph lookups, but observed {lookups.HashCalls} for a {nodeCount}-node chain.");
+        foreach (var node in nodes)
+        {
+            Assert.True(await destination.ExistsAsync(node, deadline.Token));
+        }
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ExtendedCopyGraphAsync_CopiesSharedLayerOnce_WhenPredecessorsOverlapAsync(
@@ -697,9 +789,9 @@ public class CopyTest
         var proxy = new Proxy { Source = graph.Source, Cache = new MemoryStore() };
         using var limiter = new SemaphoreSlim(1, 1);
         var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
-        var dependencies = new Dictionary<BasicDescriptor, List<BasicDescriptor>>();
+        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>();
         var owner = graph.Source.CopyGraphAsync(
-            destination, graph.Layer, proxy, options, limiter, copied, dependencies, cancellation.Token);
+            destination, graph.Layer, proxy, options, limiter, copied, parents, cancellation.Token);
         Task? duplicate = null;
         try
         {
@@ -708,7 +800,7 @@ public class CopyTest
 
             // This call reaches the existing Lazy synchronously, before returning its pending Task.
             duplicate = graph.Source.CopyGraphAsync(
-                destination, graph.Layer, proxy, options, limiter, copied, dependencies, cancellation.Token);
+                destination, graph.Layer, proxy, options, limiter, copied, parents, cancellation.Token);
             Assert.False(duplicate.IsCompleted);
             Assert.Single(copied);
 
@@ -960,6 +1052,21 @@ public class CopyTest
         using var stream = new MemoryStream(content, writable: false);
         await store.PushAsync(descriptor, stream, cancellationToken);
         return descriptor;
+    }
+
+    private sealed class DependencyLookupCounter : IEqualityComparer<BasicDescriptor>
+    {
+        private int _hashCalls;
+
+        public int HashCalls => Volatile.Read(ref _hashCalls);
+
+        public bool Equals(BasicDescriptor? left, BasicDescriptor? right) => left == right;
+
+        public int GetHashCode(BasicDescriptor value)
+        {
+            Interlocked.Increment(ref _hashCalls);
+            return value.GetHashCode();
+        }
     }
 
     private sealed class DependencyCheckingTarget(Descriptor sharedLayer) : ITarget
