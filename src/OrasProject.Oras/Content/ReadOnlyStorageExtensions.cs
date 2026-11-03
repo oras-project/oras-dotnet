@@ -121,10 +121,22 @@ public static class ReadOnlyStorageExtensions
             throw new ArgumentNullException(nameof(node));
         }
 
-        // GetOrAdd may discard this entry, so only start CopyNodeAsync through the winning Lazy.
-        // ExecutionAndPublication runs the factory once and shares its Task with all traversals.
-        // Lazy initialization ends when the Task is returned, not when the copy finishes.
-        // Awaiting that shared Task below waits for actual copy completion before parents proceed.
+        // Think of this as "start this copy when requested, exactly once, and share its Task."
+        //
+        // - () => CopyNodeAsync(...) is a recipe for starting the copy. Creating the
+        //   Lazy wrapper does not call it yet.
+        // - Lazy<Task> runs that recipe on the first access to .Value, then stores
+        //   the returned Task.
+        // - ExecutionAndPublication ensures that even if multiple threads access .Value
+        //   simultaneously, only one executes the recipe; everyone receives the same Task.
+        //
+        // For a shared layer, GetOrAdd below gives both parent traversals the same Lazy<Task>.
+        // The first .Value access starts its copy; both parents then await that one operation.
+        // Other Lazy wrappers created for the same layer are discarded without starting a copy.
+        //
+        // Important distinction: Lazy controls creating the Task, not waiting for the upload
+        // to finish. Initialization finishes when the Task is returned; the await below waits
+        // for actual copy completion.
         var copy = new Lazy<Task>(
             () => src.CopyNodeAsync(
                 dst, node, proxy, copyGraphOptions, limiter, copied, cancellationToken),
