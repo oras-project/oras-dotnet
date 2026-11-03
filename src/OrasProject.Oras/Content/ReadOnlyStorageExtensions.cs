@@ -15,6 +15,7 @@ using OrasProject.Oras.Oci;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -32,6 +33,7 @@ public static class ReadOnlyStorageExtensions
     /// <param name="dst"></param>
     /// <param name="node"></param>
     /// <param name="cancellationToken"></param>
+    /// <exception cref="InvalidOperationException">The dependency graph contains a cycle.</exception>
     public static async Task CopyGraphAsync(
         this IReadOnlyStorage src,
         IStorage dst,
@@ -56,6 +58,7 @@ public static class ReadOnlyStorageExtensions
     /// <param name="node"></param>
     /// <param name="copyGraphOptions"></param>
     /// <param name="cancellationToken"></param>
+    /// <exception cref="InvalidOperationException">The dependency graph contains a cycle.</exception>
     public static async Task CopyGraphAsync(
         this IReadOnlyStorage src,
         IStorage dst,
@@ -91,7 +94,8 @@ public static class ReadOnlyStorageExtensions
     {
         using var limiter = new SemaphoreSlim(copyGraphOptions.Concurrency, copyGraphOptions.Concurrency);
         var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
-        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, copied, cancellationToken)
+        var dependencies = new Dictionary<BasicDescriptor, List<BasicDescriptor>>();
+        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, copied, dependencies, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -105,6 +109,7 @@ public static class ReadOnlyStorageExtensions
     /// <param name="copyGraphOptions"></param>
     /// <param name="limiter"></param>
     /// <param name="copied"></param>
+    /// <param name="dependencies"></param>
     /// <param name="cancellationToken"></param>
     internal static async Task CopyGraphAsync(
         this IReadOnlyStorage src,
@@ -114,6 +119,7 @@ public static class ReadOnlyStorageExtensions
         CopyGraphOptions copyGraphOptions,
         SemaphoreSlim limiter,
         ConcurrentDictionary<BasicDescriptor, Lazy<Task>> copied,
+        Dictionary<BasicDescriptor, List<BasicDescriptor>> dependencies,
         CancellationToken cancellationToken)
     {
         if (Descriptor.IsNullOrInvalid(node))
@@ -139,7 +145,7 @@ public static class ReadOnlyStorageExtensions
         // for actual copy completion.
         var copy = new Lazy<Task>(
             () => src.CopyNodeAsync(
-                dst, node, proxy, copyGraphOptions, limiter, copied, cancellationToken),
+                dst, node, proxy, copyGraphOptions, limiter, copied, dependencies, cancellationToken),
             LazyThreadSafetyMode.ExecutionAndPublication);
         var sharedCopy = copied.GetOrAdd(node.BasicDescriptor, copy);
         await sharedCopy.Value.ConfigureAwait(false);
@@ -157,11 +163,12 @@ public static class ReadOnlyStorageExtensions
         CopyGraphOptions copyGraphOptions,
         SemaphoreSlim limiter,
         ConcurrentDictionary<BasicDescriptor, Lazy<Task>> copied,
+        Dictionary<BasicDescriptor, List<BasicDescriptor>> dependencies,
         CancellationToken cancellationToken)
     {
         // acquire lock to find successors of the current node
         await limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
-        IEnumerable<Descriptor> successors;
+        List<Descriptor> successors;
         try
         {
             // check if node exists in target
@@ -173,18 +180,21 @@ public static class ReadOnlyStorageExtensions
                 }
                 return;
             }
-            successors = await copyGraphOptions.FindSuccessorsAsync(proxy, node, cancellationToken).ConfigureAwait(false);
+            successors = (await copyGraphOptions.FindSuccessorsAsync(proxy, node, cancellationToken)
+                .ConfigureAwait(false)).ToList();
         }
         finally
         {
             limiter.Release();
         }
 
+        RegisterSuccessors(node, successors, dependencies);
         var childNodesCopies = new List<Task>();
         foreach (var childNode in successors)
         {
             childNodesCopies.Add(Task.Run(
-                () => src.CopyGraphAsync(dst, childNode, proxy, copyGraphOptions, limiter, copied, cancellationToken),
+                () => src.CopyGraphAsync(
+                    dst, childNode, proxy, copyGraphOptions, limiter, copied, dependencies, cancellationToken),
                 cancellationToken));
         }
         await Task.WhenAll(childNodesCopies).ConfigureAwait(false);
@@ -213,6 +223,47 @@ public static class ReadOnlyStorageExtensions
         finally
         {
             limiter.Release();
+        }
+    }
+
+    private static void RegisterSuccessors(
+        Descriptor node,
+        List<Descriptor> successors,
+        Dictionary<BasicDescriptor, List<BasicDescriptor>> dependencies)
+    {
+        var successorKeys = new List<BasicDescriptor>(successors.Count);
+        foreach (var successor in successors)
+        {
+            if (Descriptor.IsNullOrInvalid(successor))
+            {
+                throw new ArgumentNullException(nameof(node));
+            }
+            successorKeys.Add(successor.BasicDescriptor);
+        }
+
+        // A traversal-local ancestry check misses cycles between independently started copies.
+        // Register edges atomically and reject a path back to this node before starting any waits.
+        lock (dependencies)
+        {
+            var key = node.BasicDescriptor;
+            dependencies.Add(key, successorKeys);
+            var pending = new Stack<BasicDescriptor>(successorKeys);
+            var visited = new HashSet<BasicDescriptor>();
+            while (pending.TryPop(out var dependency))
+            {
+                if (dependency == key)
+                {
+                    throw new InvalidOperationException(
+                        $"Dependency cycle detected while copying {node.Digest}.");
+                }
+                if (visited.Add(dependency) && dependencies.TryGetValue(dependency, out var children))
+                {
+                    foreach (var child in children)
+                    {
+                        pending.Push(child);
+                    }
+                }
+            }
         }
     }
 }
