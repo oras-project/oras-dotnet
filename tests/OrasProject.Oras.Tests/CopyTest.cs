@@ -539,15 +539,16 @@ public class CopyTest
         var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
         var lookups = new DependencyLookupCounter();
         var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>(lookups);
+        var nodesWithSuccessors = new HashSet<BasicDescriptor>();
 
         await source.CopyGraphAsync(
-            destination, shared, proxy, options, limiter, copied, parents, deadline.Token);
+            destination, shared, proxy, options, limiter, copied, parents, nodesWithSuccessors, deadline.Token);
         for (var i = 0; i < parentCount; i++)
         {
             var parent = await PushContentAsync(
                 source, Encoding.UTF8.GetBytes($"parent-{i}"), MediaType.ImageConfig, deadline.Token);
             await source.CopyGraphAsync(
-                destination, parent, proxy, options, limiter, copied, parents, deadline.Token);
+                destination, parent, proxy, options, limiter, copied, parents, nodesWithSuccessors, deadline.Token);
             Assert.True(await destination.ExistsAsync(parent, deadline.Token));
         }
 
@@ -591,15 +592,65 @@ public class CopyTest
         var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
         var lookups = new DependencyLookupCounter();
         var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>(lookups);
+        var nodesWithSuccessors = new HashSet<BasicDescriptor>();
 
         await source.CopyGraphAsync(
-            destination, nodes[0], proxy, options, limiter, copied, parents, deadline.Token);
+            destination, nodes[0], proxy, options, limiter, copied, parents, nodesWithSuccessors, deadline.Token);
 
         Assert.True(lookups.HashCalls <= 8 * nodeCount,
             $"Expected linear graph lookups, but observed {lookups.HashCalls} for a {nodeCount}-node chain.");
         foreach (var node in nodes)
         {
             Assert.True(await destination.ExistsAsync(node, deadline.Token));
+        }
+    }
+
+    [Theory]
+    [InlineData(64, 1)]
+    [InlineData(512, 1)]
+    [InlineData(512, 3)]
+    public async Task CopyGraphAsync_DoesNotRescanAncestors_WhenManifestsShareALeafConfigAsync(
+        int manifestCount, int concurrency)
+    {
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var source = new MemoryStore();
+        var destination = new MemoryStore();
+        await PushContentAsync(source, Encoding.UTF8.GetBytes("{}"), MediaType.EmptyJson, deadline.Token);
+        var manifests = new List<Descriptor>();
+        Descriptor? subject = null;
+        for (var i = 0; i < manifestCount; i++)
+        {
+            var manifest = new Manifest
+            {
+                SchemaVersion = 2,
+                MediaType = MediaType.ImageManifest,
+                ArtifactType = "application/vnd.example.artifact.v1",
+                Config = Descriptor.Empty,
+                Layers = Array.Empty<Descriptor>(),
+                Subject = subject
+            };
+            subject = await PushContentAsync(
+                source, JsonSerializer.SerializeToUtf8Bytes(manifest), MediaType.ImageManifest, deadline.Token);
+            manifests.Add(subject);
+        }
+        var options = new CopyGraphOptions { Concurrency = concurrency };
+        var proxy = new Proxy { Source = source, Cache = new MemoryStore() };
+        using var limiter = new SemaphoreSlim(concurrency, concurrency);
+        var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
+        var lookups = new DependencyLookupCounter();
+        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>(lookups);
+        var nodesWithSuccessors = new HashSet<BasicDescriptor>();
+
+        await source.CopyGraphAsync(
+            destination, manifests[^1], proxy, options, limiter, copied, parents, nodesWithSuccessors, deadline.Token);
+
+        Assert.True(lookups.HashCalls <= 8 * (manifestCount + 1),
+            $"Expected linear graph lookups, but observed {lookups.HashCalls} " +
+            $"for {manifestCount} manifests sharing a leaf config.");
+        Assert.True(await destination.ExistsAsync(Descriptor.Empty, deadline.Token));
+        foreach (var manifest in manifests)
+        {
+            Assert.True(await destination.ExistsAsync(manifest, deadline.Token));
         }
     }
 
@@ -790,8 +841,10 @@ public class CopyTest
         using var limiter = new SemaphoreSlim(1, 1);
         var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
         var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>();
+        var nodesWithSuccessors = new HashSet<BasicDescriptor>();
         var owner = graph.Source.CopyGraphAsync(
-            destination, graph.Layer, proxy, options, limiter, copied, parents, cancellation.Token);
+            destination, graph.Layer, proxy, options, limiter,
+            copied, parents, nodesWithSuccessors, cancellation.Token);
         Task? duplicate = null;
         try
         {
@@ -800,7 +853,8 @@ public class CopyTest
 
             // This call reaches the existing Lazy synchronously, before returning its pending Task.
             duplicate = graph.Source.CopyGraphAsync(
-                destination, graph.Layer, proxy, options, limiter, copied, parents, cancellation.Token);
+                destination, graph.Layer, proxy, options, limiter,
+                copied, parents, nodesWithSuccessors, cancellation.Token);
             Assert.False(duplicate.IsCompleted);
             Assert.Single(copied);
 
