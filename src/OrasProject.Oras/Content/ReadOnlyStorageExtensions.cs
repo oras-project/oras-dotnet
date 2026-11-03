@@ -121,7 +121,10 @@ public static class ReadOnlyStorageExtensions
             throw new ArgumentNullException(nameof(node));
         }
 
-        // Publish unstarted work so concurrent claims cannot launch duplicate copies.
+        // GetOrAdd may discard this entry, so only start CopyNodeAsync through the winning Lazy.
+        // ExecutionAndPublication runs the factory once and shares its Task with all traversals.
+        // Lazy initialization ends when the Task is returned, not when the copy finishes.
+        // Awaiting that shared Task below waits for actual copy completion before parents proceed.
         var copy = new Lazy<Task>(
             () => src.CopyNodeAsync(
                 dst, node, proxy, copyGraphOptions, limiter, copied, cancellationToken),
