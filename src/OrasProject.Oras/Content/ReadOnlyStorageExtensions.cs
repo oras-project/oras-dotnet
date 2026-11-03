@@ -90,8 +90,9 @@ public static class ReadOnlyStorageExtensions
         CancellationToken cancellationToken = default)
     {
         using var limiter = new SemaphoreSlim(copyGraphOptions.Concurrency, copyGraphOptions.Concurrency);
-        var copied = new ConcurrentDictionary<BasicDescriptor, bool>();
-        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, copied, cancellationToken).ConfigureAwait(false);
+        var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
+        await src.CopyGraphAsync(dst, node, proxy, copyGraphOptions, limiter, copied, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>
@@ -112,7 +113,7 @@ public static class ReadOnlyStorageExtensions
         Proxy proxy,
         CopyGraphOptions copyGraphOptions,
         SemaphoreSlim limiter,
-        ConcurrentDictionary<BasicDescriptor, bool> copied,
+        ConcurrentDictionary<BasicDescriptor, Lazy<Task>> copied,
         CancellationToken cancellationToken)
     {
         if (Descriptor.IsNullOrInvalid(node))
@@ -120,19 +121,29 @@ public static class ReadOnlyStorageExtensions
             throw new ArgumentNullException(nameof(node));
         }
 
-        var nodeKey = node.BasicDescriptor;
-
-        // Try to mark this node as being copied; skip if already claimed by another task
-        if (!copied.TryAdd(nodeKey, true))
+        // Publish unstarted work so concurrent claims cannot launch duplicate copies.
+        var copy = new Lazy<Task>(
+            () => src.CopyNodeAsync(
+                dst, node, proxy, copyGraphOptions, limiter, copied, cancellationToken),
+            LazyThreadSafetyMode.ExecutionAndPublication);
+        var sharedCopy = copied.GetOrAdd(node.BasicDescriptor, copy);
+        await sharedCopy.Value.ConfigureAwait(false);
+        if (!ReferenceEquals(copy, sharedCopy) && copyGraphOptions.OnCopySkippedAsync != null)
         {
-            // Another task is already copying this node, skip it
-            if (copyGraphOptions.OnCopySkippedAsync != null)
-            {
-                await copyGraphOptions.OnCopySkippedAsync(node, cancellationToken).ConfigureAwait(false);
-            }
-            return;
+            await copyGraphOptions.OnCopySkippedAsync(node, cancellationToken).ConfigureAwait(false);
         }
+    }
 
+    private static async Task CopyNodeAsync(
+        this IReadOnlyStorage src,
+        IStorage dst,
+        Descriptor node,
+        Proxy proxy,
+        CopyGraphOptions copyGraphOptions,
+        SemaphoreSlim limiter,
+        ConcurrentDictionary<BasicDescriptor, Lazy<Task>> copied,
+        CancellationToken cancellationToken)
+    {
         // acquire lock to find successors of the current node
         await limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
         IEnumerable<Descriptor> successors;
