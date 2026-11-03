@@ -241,8 +241,25 @@ public static class ReadOnlyStorageExtensions
             successorKeys.Add(successor.BasicDescriptor);
         }
 
-        // A traversal-local ancestry check misses cycles between independently started copies.
-        // Register edges atomically and reject a path back to this node before starting any waits.
+        // Copies of A and B can start independently:
+        //
+        //     Copy A: A needs B, so it waits for B's copy.
+        //     Copy B: B needs A, so it waits for A's copy.
+        //
+        // Checking each copy's own ancestry misses the problem:
+        // A -> B and B -> A contain no repeated nodes individually.
+        // But together they form a cycle:
+        //
+        //     A ----> B
+        //     ^       |
+        //     |_______|
+        //
+        // Both copies would wait forever for each other.
+        //
+        // Keep dependencies from all copies in this operation in one shared graph.
+        // Under the lock, record this node's dependencies and check whether following
+        // them leads back to this node. If so, throw before starting its dependency
+        // waits. The lock ensures concurrent copies cannot both miss the cycle.
         lock (dependencies)
         {
             var key = node.BasicDescriptor;
