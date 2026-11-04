@@ -19,50 +19,93 @@ namespace OrasProject.Oras.Tests.Exceptions;
 public class ExceptionTest
 {
     [Fact]
-    public async Task AlreadyExistsException()
+    public void AlreadyExistsException_Constructors()
     {
-        await Assert.ThrowsAsync<AlreadyExistsException>(() => throw new AlreadyExistsException());
-        await Assert.ThrowsAsync<AlreadyExistsException>(() => throw new AlreadyExistsException("Already exists"));
-        await Assert.ThrowsAsync<AlreadyExistsException>(() => throw new AlreadyExistsException("Already exists", null));
+        var ex1 = new AlreadyExistsException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new AlreadyExistsException("Already exists");
+        Assert.Equal("Already exists", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new AlreadyExistsException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task NotFoundException()
+    public void NotFoundException_Constructors()
     {
-        await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException());
-        await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException("Not found"));
-        await Assert.ThrowsAsync<NotFoundException>(() => throw new NotFoundException("Not found", null));
+        var ex1 = new NotFoundException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new NotFoundException("Not found");
+        Assert.Equal("Not found", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new NotFoundException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task SizeLimitExceededException()
+    public void SizeLimitExceededException_Constructors()
     {
-        await Assert.ThrowsAsync<SizeLimitExceededException>(() => throw new SizeLimitExceededException());
-        await Assert.ThrowsAsync<SizeLimitExceededException>(() => throw new SizeLimitExceededException("Size limit exceeded"));
-        await Assert.ThrowsAsync<SizeLimitExceededException>(() => throw new SizeLimitExceededException("Size limit exceeded", null));
+        var ex1 = new SizeLimitExceededException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new SizeLimitExceededException("Size limit exceeded");
+        Assert.Equal("Size limit exceeded", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new SizeLimitExceededException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task MissingArtifactTypeException()
+    public void MissingArtifactTypeException_Constructors()
     {
-        await Assert.ThrowsAsync<MissingArtifactTypeException>(() => throw new MissingArtifactTypeException());
-        await Assert.ThrowsAsync<MissingArtifactTypeException>(() => throw new MissingArtifactTypeException("Missing artifact type"));
-        await Assert.ThrowsAsync<MissingArtifactTypeException>(() => throw new MissingArtifactTypeException("Missing artifact type", null));
+        var ex1 = new MissingArtifactTypeException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new MissingArtifactTypeException("Missing artifact type");
+        Assert.Equal("Missing artifact type", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new MissingArtifactTypeException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task InvalidMediaTypeException()
+    public void InvalidMediaTypeException_Constructors()
     {
-        await Assert.ThrowsAsync<InvalidMediaTypeException>(() => throw new InvalidMediaTypeException());
-        await Assert.ThrowsAsync<InvalidMediaTypeException>(() => throw new InvalidMediaTypeException("Invalid media type"));
-        await Assert.ThrowsAsync<InvalidMediaTypeException>(() => throw new InvalidMediaTypeException("Invalid media type", null));
+        var ex1 = new InvalidMediaTypeException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new InvalidMediaTypeException("Invalid media type");
+        Assert.Equal("Invalid media type", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new InvalidMediaTypeException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 
     [Fact]
-    public async Task InvalidDateTimeFormatException()
+    public void InvalidDateTimeFormatException_Constructors()
     {
-        await Assert.ThrowsAsync<InvalidDateTimeFormatException>(() => throw new InvalidDateTimeFormatException());
-        await Assert.ThrowsAsync<InvalidDateTimeFormatException>(() => throw new InvalidDateTimeFormatException("Invalid date time format"));
-        await Assert.ThrowsAsync<InvalidDateTimeFormatException>(() => throw new InvalidDateTimeFormatException("Invalid date time format", null));
+        var ex1 = new InvalidDateTimeFormatException();
+        Assert.NotNull(ex1.Message);
+
+        var ex2 = new InvalidDateTimeFormatException(
+            "Invalid date time format");
+        Assert.Equal("Invalid date time format", ex2.Message);
+
+        var inner = new InvalidOperationException("inner");
+        var ex3 = new InvalidDateTimeFormatException("msg", inner);
+        Assert.Equal("msg", ex3.Message);
+        Assert.Same(inner, ex3.InnerException);
     }
 }
