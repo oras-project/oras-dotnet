@@ -68,7 +68,7 @@ public static class ReadOnlyGraphStorageExtensions
         using var limiter = new SemaphoreSlim(opts.Concurrency, opts.Concurrency);
 
         // Track nodes being copied to avoid duplicate work across parallel root copies
-        var copied = new ConcurrentDictionary<BasicDescriptor, bool>();
+        var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
 
         // Copy the sub-DAGs rooted by the root nodes
         var copyTasks = new List<Task>();
