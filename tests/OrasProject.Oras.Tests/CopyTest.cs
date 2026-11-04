@@ -394,78 +394,10 @@ public class CopyTest
     }
 
     [Theory]
-    [InlineData("self", 1, false)]
-    [InlineData("ancestor", 1, false)]
-    [InlineData("ancestor", 3, false)]
-    [InlineData("cross-branch", 2, false)]
-    [InlineData("cross-branch", 3, false)]
-    [InlineData("cross-branch", 2, true)]
-    public async Task CopyGraphAsync_RejectsDependencyCycles_WithoutWaitingIndefinitelyAsync(
-        string cycle, int concurrency, bool extendedCopy)
-    {
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var source = new MemoryStore();
-        var a = await PushContentAsync(source, Encoding.UTF8.GetBytes("a"), MediaType.ImageConfig, deadline.Token);
-        var b = await PushContentAsync(source, Encoding.UTF8.GetBytes("b"), MediaType.ImageConfig, deadline.Token);
-        var root = await PushContentAsync(
-            source, Encoding.UTF8.GetBytes("root"), MediaType.ImageConfig, deadline.Token);
-        var destination = new MemoryStore();
-        var bothBranchesStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var branchesStarted = 0;
-        var options = new CopyGraphOptions { Concurrency = concurrency };
-        options.FindSuccessorsAsync = async (_, node, cancellationToken) =>
-        {
-            if (node == root)
-            {
-                return new[] { a, b };
-            }
-            if (cycle == "cross-branch")
-            {
-                // Ensure both nodes have independent owners before either discovers its back edge.
-                if (Interlocked.Increment(ref branchesStarted) == 2)
-                {
-                    bothBranchesStarted.TrySetResult();
-                }
-                await bothBranchesStarted.Task.WaitAsync(cancellationToken);
-            }
-            return new[] { cycle == "self" || node == b ? a : b };
-        };
-
-        Task copy;
-        if (extendedCopy)
-        {
-            var extendedOptions = new ExtendedCopyGraphOptions
-            {
-                Concurrency = concurrency,
-                Depth = 1,
-                FindPredecessors = (_, _, _) =>
-                    Task.FromResult<IEnumerable<Descriptor>>(new[] { a, b }),
-                FindSuccessorsAsync = options.FindSuccessorsAsync
-            };
-            copy = source.ExtendedCopyGraphAsync(destination, root, extendedOptions, deadline.Token);
-        }
-        else
-        {
-            copy = source.CopyGraphAsync(
-                destination, cycle == "cross-branch" ? root : a, options, deadline.Token);
-        }
-
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => copy.WaitAsync(deadline.Token));
-
-        Assert.Contains("Dependency cycle", error.Message);
-        Assert.True(copy.IsFaulted);
-        Assert.False(deadline.IsCancellationRequested);
-        Assert.False(await destination.ExistsAsync(a, deadline.Token));
-        Assert.False(await destination.ExistsAsync(b, deadline.Token));
-        Assert.False(await destination.ExistsAsync(root, deadline.Token));
-    }
-
-    [Theory]
     [InlineData(1, false)]
     [InlineData(3, false)]
     [InlineData(3, true)]
-    public async Task CopyGraphAsync_AllowsSharedNonLeafNodes_WithoutTreatingThemAsCyclesAsync(
+    public async Task CopyGraphAsync_CopiesSharedNonLeafNodes_WithCustomSuccessorsAsync(
         int concurrency, bool duplicateSuccessors)
     {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -495,7 +427,7 @@ public class CopyTest
     }
 
     [Fact]
-    public async Task CopyGraphAsync_RejectsInvalidSuccessors_BeforeStartingTheirCopiesAsync()
+    public async Task CopyGraphAsync_RejectsInvalidSuccessors_WhenReturnedByCustomFinderAsync()
     {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var source = new MemoryStore();
@@ -509,149 +441,6 @@ public class CopyTest
 
         await Assert.ThrowsAsync<ArgumentNullException>(
             () => source.CopyGraphAsync(new MemoryStore(), root, options, deadline.Token));
-    }
-
-    [Theory]
-    [InlineData(16, 64)]
-    [InlineData(64, 128)]
-    public async Task CopyGraphAsync_DoesNotRescanSharedDescendants_WhenRegisteringNewParentsAsync(
-        int parentCount, int layerCount)
-    {
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var source = new MemoryStore();
-        var destination = new MemoryStore();
-        var layers = new List<Descriptor>();
-        for (var i = 0; i < layerCount; i++)
-        {
-            layers.Add(await PushContentAsync(
-                source, Encoding.UTF8.GetBytes($"layer-{i}"), MediaType.ImageLayer, deadline.Token));
-        }
-        var shared = await PushContentAsync(
-            source, Encoding.UTF8.GetBytes("shared"), MediaType.ImageConfig, deadline.Token);
-        var options = new CopyGraphOptions
-        {
-            FindSuccessorsAsync = (_, node, _) => Task.FromResult<IEnumerable<Descriptor>>(
-                node == shared ? layers :
-                node.MediaType == MediaType.ImageConfig ? new[] { shared } : Array.Empty<Descriptor>())
-        };
-        var proxy = new Proxy { Source = source, Cache = new MemoryStore() };
-        using var limiter = new SemaphoreSlim(options.Concurrency, options.Concurrency);
-        var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
-        var lookups = new DependencyLookupCounter();
-        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>(lookups);
-        var nodesWithSuccessors = new HashSet<BasicDescriptor>();
-
-        await source.CopyGraphAsync(
-            destination, shared, proxy, options, limiter, copied, parents, nodesWithSuccessors, deadline.Token);
-        for (var i = 0; i < parentCount; i++)
-        {
-            var parent = await PushContentAsync(
-                source, Encoding.UTF8.GetBytes($"parent-{i}"), MediaType.ImageConfig, deadline.Token);
-            await source.CopyGraphAsync(
-                destination, parent, proxy, options, limiter, copied, parents, nodesWithSuccessors, deadline.Token);
-            Assert.True(await destination.ExistsAsync(parent, deadline.Token));
-        }
-
-        // Count graph lookups rather than elapsed time to catch repeated scans without timing flakiness.
-        Assert.True(lookups.HashCalls <= 4 * (parentCount + layerCount),
-            $"Expected linear graph lookups, but observed {lookups.HashCalls} " +
-            $"for {parentCount} parents and {layerCount} shared layers.");
-        foreach (var layer in layers)
-        {
-            Assert.True(await destination.ExistsAsync(layer, deadline.Token));
-        }
-    }
-
-    [Theory]
-    [InlineData(64)]
-    [InlineData(256)]
-    public async Task CopyGraphAsync_DoesNotRescanAncestors_WhenDependenciesAreNewNodesAsync(int nodeCount)
-    {
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var source = new MemoryStore();
-        var destination = new MemoryStore();
-        var nodes = new List<Descriptor>();
-        for (var i = 0; i < nodeCount; i++)
-        {
-            nodes.Add(await PushContentAsync(
-                source, Encoding.UTF8.GetBytes($"node-{i}"), MediaType.ImageConfig, deadline.Token));
-        }
-        var successors = new Dictionary<BasicDescriptor, Descriptor>();
-        for (var i = 0; i < nodes.Count - 1; i++)
-        {
-            successors.Add(nodes[i].BasicDescriptor, nodes[i + 1]);
-        }
-        var options = new CopyGraphOptions
-        {
-            FindSuccessorsAsync = (_, node, _) => Task.FromResult<IEnumerable<Descriptor>>(
-                successors.TryGetValue(node.BasicDescriptor, out var successor)
-                    ? new[] { successor } : Array.Empty<Descriptor>())
-        };
-        var proxy = new Proxy { Source = source, Cache = new MemoryStore() };
-        using var limiter = new SemaphoreSlim(options.Concurrency, options.Concurrency);
-        var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
-        var lookups = new DependencyLookupCounter();
-        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>(lookups);
-        var nodesWithSuccessors = new HashSet<BasicDescriptor>();
-
-        await source.CopyGraphAsync(
-            destination, nodes[0], proxy, options, limiter, copied, parents, nodesWithSuccessors, deadline.Token);
-
-        Assert.True(lookups.HashCalls <= 8 * nodeCount,
-            $"Expected linear graph lookups, but observed {lookups.HashCalls} for a {nodeCount}-node chain.");
-        foreach (var node in nodes)
-        {
-            Assert.True(await destination.ExistsAsync(node, deadline.Token));
-        }
-    }
-
-    [Theory]
-    [InlineData(64, 1)]
-    [InlineData(512, 1)]
-    [InlineData(512, 3)]
-    public async Task CopyGraphAsync_DoesNotRescanAncestors_WhenManifestsShareALeafConfigAsync(
-        int manifestCount, int concurrency)
-    {
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var source = new MemoryStore();
-        var destination = new MemoryStore();
-        await PushContentAsync(source, Encoding.UTF8.GetBytes("{}"), MediaType.EmptyJson, deadline.Token);
-        var manifests = new List<Descriptor>();
-        Descriptor? subject = null;
-        for (var i = 0; i < manifestCount; i++)
-        {
-            var manifest = new Manifest
-            {
-                SchemaVersion = 2,
-                MediaType = MediaType.ImageManifest,
-                ArtifactType = "application/vnd.example.artifact.v1",
-                Config = Descriptor.Empty,
-                Layers = Array.Empty<Descriptor>(),
-                Subject = subject
-            };
-            subject = await PushContentAsync(
-                source, JsonSerializer.SerializeToUtf8Bytes(manifest), MediaType.ImageManifest, deadline.Token);
-            manifests.Add(subject);
-        }
-        var options = new CopyGraphOptions { Concurrency = concurrency };
-        var proxy = new Proxy { Source = source, Cache = new MemoryStore() };
-        using var limiter = new SemaphoreSlim(concurrency, concurrency);
-        var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
-        var lookups = new DependencyLookupCounter();
-        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>(lookups);
-        var nodesWithSuccessors = new HashSet<BasicDescriptor>();
-
-        await source.CopyGraphAsync(
-            destination, manifests[^1], proxy, options, limiter, copied, parents, nodesWithSuccessors, deadline.Token);
-
-        Assert.True(lookups.HashCalls <= 8 * (manifestCount + 1),
-            $"Expected linear graph lookups, but observed {lookups.HashCalls} " +
-            $"for {manifestCount} manifests sharing a leaf config.");
-        Assert.True(await destination.ExistsAsync(Descriptor.Empty, deadline.Token));
-        foreach (var manifest in manifests)
-        {
-            Assert.True(await destination.ExistsAsync(manifest, deadline.Token));
-        }
     }
 
     [Theory]
@@ -840,11 +629,8 @@ public class CopyTest
         var proxy = new Proxy { Source = graph.Source, Cache = new MemoryStore() };
         using var limiter = new SemaphoreSlim(1, 1);
         var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
-        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>();
-        var nodesWithSuccessors = new HashSet<BasicDescriptor>();
         var owner = graph.Source.CopyGraphAsync(
-            destination, graph.Layer, proxy, options, limiter,
-            copied, parents, nodesWithSuccessors, cancellation.Token);
+            destination, graph.Layer, proxy, options, limiter, copied, cancellation.Token);
         Task? duplicate = null;
         try
         {
@@ -853,8 +639,7 @@ public class CopyTest
 
             // This call reaches the existing Lazy synchronously, before returning its pending Task.
             duplicate = graph.Source.CopyGraphAsync(
-                destination, graph.Layer, proxy, options, limiter,
-                copied, parents, nodesWithSuccessors, cancellation.Token);
+                destination, graph.Layer, proxy, options, limiter, copied, cancellation.Token);
             Assert.False(duplicate.IsCompleted);
             Assert.Single(copied);
 
@@ -1106,21 +891,6 @@ public class CopyTest
         using var stream = new MemoryStream(content, writable: false);
         await store.PushAsync(descriptor, stream, cancellationToken);
         return descriptor;
-    }
-
-    private sealed class DependencyLookupCounter : IEqualityComparer<BasicDescriptor>
-    {
-        private int _hashCalls;
-
-        public int HashCalls => Volatile.Read(ref _hashCalls);
-
-        public bool Equals(BasicDescriptor? left, BasicDescriptor? right) => left == right;
-
-        public int GetHashCode(BasicDescriptor value)
-        {
-            Interlocked.Increment(ref _hashCalls);
-            return value.GetHashCode();
-        }
     }
 
     private sealed class DependencyCheckingTarget(Descriptor sharedLayer) : ITarget

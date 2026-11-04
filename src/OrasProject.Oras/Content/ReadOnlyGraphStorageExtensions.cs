@@ -40,7 +40,6 @@ public static class ReadOnlyGraphStorageExtensions
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>A task representing the asynchronous operation</returns>
     /// <exception cref="ArgumentNullException">Thrown when src or dst is null</exception>
-    /// <exception cref="InvalidOperationException">The dependency graph contains a cycle.</exception>
     public static async Task ExtendedCopyGraphAsync(
         this IReadOnlyGraphStorage src,
         IStorage dst,
@@ -70,16 +69,13 @@ public static class ReadOnlyGraphStorageExtensions
 
         // Track nodes being copied to avoid duplicate work across parallel root copies
         var copied = new ConcurrentDictionary<BasicDescriptor, Lazy<Task>>();
-        var parents = new Dictionary<BasicDescriptor, List<BasicDescriptor>>();
-        var nodesWithSuccessors = new HashSet<BasicDescriptor>();
 
         // Copy the sub-DAGs rooted by the root nodes
         var copyTasks = new List<Task>();
         foreach (var root in roots)
         {
             copyTasks.Add(Task.Run(
-                () => src.CopyGraphAsync(
-                    dst, root, proxy, opts, limiter, copied, parents, nodesWithSuccessors, cancellationToken),
+                () => src.CopyGraphAsync(dst, root, proxy, opts, limiter, copied, cancellationToken),
                 cancellationToken));
         }
 
