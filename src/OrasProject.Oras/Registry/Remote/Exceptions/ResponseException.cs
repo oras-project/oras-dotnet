@@ -17,21 +17,24 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
-using OrasProject.Oras.Serialization;
 
 namespace OrasProject.Oras.Registry.Remote.Exceptions;
 
 /// <summary>
 /// Exception thrown for HTTP responses from registry operations.
 /// </summary>
-public class ResponseException : HttpRequestException
+public partial class ResponseException : HttpRequestException
 {
     private class ErrorResponse
     {
         [JsonPropertyName("errors")]
         public required IList<Error> Errors { get; set; }
     }
+
+    [JsonSerializable(typeof(ErrorResponse))]
+    private partial class ErrorJsonContext : JsonSerializerContext;
 
     /// <summary>
     /// Gets the HTTP method used in the request.
@@ -101,7 +104,9 @@ public class ResponseException : HttpRequestException
         {
             try
             {
-                var errorResponse = OciJsonSerializer.Deserialize<ErrorResponse>(responseBody);
+                var errorResponse = JsonSerializer.Deserialize(
+                    responseBody,
+                    ErrorJsonContext.Default.ErrorResponse);
                 errors = errorResponse?.Errors;
             }
             catch

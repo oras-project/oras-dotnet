@@ -15,6 +15,7 @@ using OrasProject.Oras.Content;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
+using OrasProject.Oras.Registry.Exceptions;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry.Remote.Exceptions;
 using System.Diagnostics;
@@ -3255,6 +3256,27 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         }
     }
 
+    [Fact]
+    public void Repository_ParseReference_MismatchedRepository_UsesRepositoryPathInMessage()
+    {
+        var repo = new Repository(new RepositoryOptions()
+        {
+            Reference = Reference.Parse("localhost:5000/test"),
+            Client = CustomClient(static (req, cancellationToken) => new HttpResponseMessage()
+            {
+                RequestMessage = req
+            }),
+            PlainHttp = true,
+        });
+
+        var exception = Assert.Throws<InvalidReferenceException>(
+            () => repo.ParseReference("localhost:5000/other:latest"));
+
+        Assert.Equal(
+            "Mismatch between received localhost:5000/other and expected localhost:5000/test",
+            exception.Message);
+    }
+
     /// <summary>
     /// Verifies that after GenerateDescriptorAsync computes the digest
     /// from the response body (when Docker-Content-Digest header is
@@ -3310,6 +3332,41 @@ public class RepositoryTest(ITestOutputHelper iTestOutputHelper)
         var buffer = new byte[content.Length];
         await stream.ReadExactlyAsync(buffer, CancellationToken.None);
         Assert.Equal(content, buffer);
+    }
+
+    [Fact]
+    public async Task GenerateDescriptorAsync_CanceledToken_ThrowsOperationCanceledException()
+    {
+        var reference = new Reference("eastern.haan.com", "from25to220ce")
+        {
+            ContentReference = "latest"
+        };
+
+        using var requestMessage = new HttpRequestMessage()
+        {
+            Method = HttpMethod.Get
+        };
+        using var response = new HttpResponseMessage()
+        {
+            Content = new ByteArrayContent(_theAmazingBanClan),
+            RequestMessage = requestMessage
+        };
+        response.Content.Headers.Add(
+            "Content-Type",
+            "application/vnd.oci.image.index.v1+json");
+
+        using var cancellationTokenSource = new CancellationTokenSource();
+        await cancellationTokenSource.CancelAsync();
+
+        var repo = new Repository(
+            "eastern.haan.com/from25to220ce",
+            new PlainClient(new HttpClient()));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => response.GenerateDescriptorAsync(
+                reference,
+                repo.Options.MaxMetadataBytes,
+                cancellationTokenSource.Token));
     }
 
     /// <summary>

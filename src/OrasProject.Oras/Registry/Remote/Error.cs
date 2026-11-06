@@ -15,7 +15,6 @@ namespace OrasProject.Oras.Registry.Remote;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using OrasProject.Oras.Serialization;
 
 /// <summary>
 /// ErrorCode enumerates the error codes returned by a registry.
@@ -71,7 +70,7 @@ public class Error
         {
             try
             {
-                var detailJson = OciJsonSerializer.FormatErrorDetail(detailValue);
+                var detailJson = detailValue.GetRawText();
                 return $"{result} (Detail: {detailJson})";
             }
             catch
