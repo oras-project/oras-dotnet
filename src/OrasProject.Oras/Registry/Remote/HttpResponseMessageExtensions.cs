@@ -241,7 +241,7 @@ internal static class HttpResponseMessageExtensions
                             maxBytes, cancellationToken)
                         .ConfigureAwait(false);
                 }
-                catch (Exception e)
+                catch (Exception e) when (e is not OperationCanceledException)
                 {
                     throw new HttpIOException(
                         HttpRequestError.InvalidResponse,
