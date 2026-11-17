@@ -373,13 +373,13 @@ public class BlobStoreUploadTransportTest
 
     private static BlobStore Store(Uri url, HttpClient client, BlobUploadMode mode, int chunkSize) =>
         new(new Repository(new RepositoryOptions
-    {
-        Reference = Reference.Parse(url.Authority + "/test"),
-        Client = new PlainClient(client),
-        PlainHttp = true,
-        BlobUploadMode = mode,
-        BlobUploadChunkSize = chunkSize,
-    }));
+        {
+            Reference = Reference.Parse(url.Authority + "/test"),
+            Client = new PlainClient(client),
+            PlainHttp = true,
+            BlobUploadMode = mode,
+            BlobUploadChunkSize = chunkSize,
+        }));
 
     // A small HTTP/1.1 peer lets tests close a connection before reading its body.
     // Each response closes the connection, so no persistent connection parser is needed.
