@@ -596,14 +596,15 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         // A registry must not force an unbounded allocation. Callers can explicitly
         // opt in to larger chunks through BlobUploadChunkSize.
         var bufferLimit = Math.Max(Repository.Options.BlobUploadChunkSize, RepositoryOptions.DefaultBlobUploadChunkSize);
-        if (chunkSize > bufferLimit)
+        // The final chunk may be shorter than the advertised minimum, including an empty blob.
+        var bufferLength = (int)Math.Min(chunkSize, Math.Max(1, descriptor.Size));
+        if (bufferLength > bufferLimit)
         {
             throw new HttpIOException(HttpRequestError.InvalidResponse,
                 $"{session.Url}: OCI-Chunk-Min-Length {chunkSize} exceeds the supported buffer size {bufferLimit}; " +
                 "increase BlobUploadChunkSize to allow this minimum");
         }
 
-        var bufferLength = (int)Math.Min(chunkSize, Math.Max(1, descriptor.Size));
         var buffer = new byte[bufferLength];
         long offset = 0;
         while (offset < descriptor.Size)

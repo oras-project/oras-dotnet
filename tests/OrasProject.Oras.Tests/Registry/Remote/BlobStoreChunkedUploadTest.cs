@@ -320,6 +320,38 @@ public class BlobStoreChunkedUploadTest
     }
 
     [Theory]
+    [InlineData(0)]
+    [InlineData(3)]
+    public async Task RegistryMinimumDoesNotRequireAnOversizedBufferForTheFinalChunk(int size)
+    {
+        var blob = new byte[size];
+        var patches = 0;
+        var completed = false;
+        var store = CreateBlobStore((request, _) =>
+        {
+            if (request.Method == HttpMethod.Post)
+            {
+                var response = Response(request, HttpStatusCode.Accepted, "/upload");
+                response.Headers.Add("OCI-Chunk-Min-Length", "2147483647");
+                return response;
+            }
+            if (request.Method == HttpMethod.Patch)
+            {
+                patches++;
+                Assert.Equal(size, request.Content!.Headers.ContentLength);
+                return Response(request, HttpStatusCode.Accepted, "/upload");
+            }
+            Assert.Equal(HttpMethod.Put, request.Method);
+            completed = true;
+            return Response(request, HttpStatusCode.Created);
+        }, BlobUploadMode.Chunked, chunkSize: 4);
+
+        await store.PushAsync(DescriptorFor(blob), new MemoryStream(blob));
+        Assert.Equal(size == 0 ? 0 : 1, patches);
+        Assert.True(completed);
+    }
+
+    [Theory]
     [InlineData(BlobUploadMode.Monolithic, false, false)]
     [InlineData(BlobUploadMode.MonolithicWithChunkedFallback, true, false)]
     [InlineData(BlobUploadMode.MonolithicWithChunkedFallback, false, true)]
