@@ -1286,6 +1286,8 @@ public class Client : IClient
     /// Non-seekable content with a declared Content-Length over the
     /// limit is also left untouched — the first send proceeds but
     /// a 401 retry would fail because the body cannot be replayed.
+    /// <see cref="ByteArrayContent"/> is left untouched because it
+    /// already replays from its own array.
     /// </summary>
     /// <remarks>
     /// <see cref="HttpContent.LoadIntoBufferAsync(long)"/> on
@@ -1298,7 +1300,10 @@ public class Client : IClient
         CancellationToken cancellationToken)
     {
         var content = request.Content;
-        if (content == null)
+        // Byte array content (including StringContent and FormUrlEncodedContent) already
+        // replays from its own array, so buffering it would only copy the payload. Chunked
+        // blob uploads send one such request per chunk.
+        if (content is null or ByteArrayContent)
         {
             return;
         }
