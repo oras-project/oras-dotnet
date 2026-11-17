@@ -15,6 +15,7 @@ using OrasProject.Oras.Content.Exceptions;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
+using OrasProject.Oras.Registry.Remote.Auth;
 using OrasProject.Oras.Registry.Remote.Exceptions;
 using System.Net;
 using System.Web;
@@ -471,6 +472,83 @@ public class BlobStoreChunkedUploadTest
         var error = await Assert.ThrowsAsync<ResponseException>(() => store.PushAsync(DescriptorFor([1]), new MemoryStream([1])));
         Assert.Equal(status, error.StatusCode);
         Assert.Equal([HttpMethod.Post, HttpMethod.Patch], methods);
+    }
+
+    [Theory]
+    [InlineData("source", "source")]
+    [InlineData("base/image", "base/image")]
+    [InlineData("localhost:5000/base/image", "base/image")]
+    public async Task MountAuthenticationRequestsSourcePullScopeWithoutChallengeScope(string source, string expectedRepository)
+    {
+        var credential = new SingleRegistryCredentialProvider("localhost:5000", new Credential("user", "pass"));
+        var tokenRequests = 0;
+        using var httpClient = new HttpClient(CustomHandler((request, _) =>
+        {
+            if (request.RequestUri!.AbsolutePath == "/token")
+            {
+                tokenRequests++;
+                var scopes = HttpUtility.ParseQueryString(request.RequestUri.Query).GetValues("scope")!;
+                Assert.Contains("repository:" + expectedRepository + ":pull", scopes);
+                Assert.Contains("repository:test:pull,push", scopes);
+                return Response(request, HttpStatusCode.OK, content: "{\"token\":\"mount-token\"}");
+            }
+            Assert.Equal(HttpMethod.Post, request.Method);
+            if (request.Headers.Authorization is null)
+            {
+                var response = Response(request, HttpStatusCode.Unauthorized);
+                response.Headers.TryAddWithoutValidation("WWW-Authenticate",
+                    "Bearer realm=\"http://localhost:5000/token\",service=\"registry\"");
+                return response;
+            }
+            Assert.Equal("Bearer mount-token", request.Headers.Authorization.ToString());
+            return Response(request, HttpStatusCode.Created);
+        }).Object);
+        var client = new Client(httpClient, credential)
+        {
+            RealmValidator = new DefaultRealmValidator { AllowInsecureHttp = true },
+        };
+        var repository = new Repository(new RepositoryOptions
+        {
+            Client = client,
+            PartitionId = Guid.NewGuid().ToString(),
+            Reference = Reference.Parse("localhost:5000/test"),
+            PlainHttp = true,
+            BlobUploadMode = BlobUploadMode.Chunked,
+        });
+        await repository.MountAsync(DescriptorFor([1]), source,
+            _ => throw new InvalidOperationException("Successful mount must not fetch content"));
+        Assert.Equal(1, tokenRequests);
+    }
+
+    [Theory]
+    [InlineData("source")]
+    [InlineData("base/image")]
+    public async Task MountFallbackFetchesContentFromSameRegistryNamespace(string source)
+    {
+        byte[] blob = [1, 2, 3];
+        var descriptor = DescriptorFor(blob);
+        var fetched = false;
+        var repository = CreateRepository((request, _) =>
+        {
+            if (request.Method == HttpMethod.Post)
+            {
+                return Response(request, HttpStatusCode.Accepted, "/upload");
+            }
+            if (request.Method == HttpMethod.Get)
+            {
+                fetched = true;
+                Assert.Equal("localhost:5000", request.RequestUri!.Authority);
+                Assert.Equal($"/v2/{source}/blobs/{descriptor.Digest}", request.RequestUri.AbsolutePath);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    RequestMessage = request,
+                    Content = new ByteArrayContent(blob),
+                };
+            }
+            return Response(request, request.Method == HttpMethod.Patch ? HttpStatusCode.Accepted : HttpStatusCode.Created, "/upload");
+        }, BlobUploadMode.Chunked, 4);
+        await repository.MountAsync(descriptor, source);
+        Assert.True(fetched);
     }
 
     private static BlobStore CreateBlobStore(

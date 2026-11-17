@@ -29,7 +29,7 @@ public interface IMounter
     /// available in the repository signified by the receiver.
     /// </summary>
     /// <param name="descriptor"></param>
-    /// <param name="fromRepository"></param>
+    /// <param name="fromRepository">The source repository name within the destination registry.</param>
     /// <param name="getContent"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>

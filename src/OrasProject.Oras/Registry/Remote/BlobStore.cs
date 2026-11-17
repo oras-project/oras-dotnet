@@ -395,7 +395,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// Mounts the given descriptor from fromRepository into the blob store.
     /// </summary>
     /// <param name="descriptor"></param>
-    /// <param name="fromRepository"></param>
+    /// <param name="fromRepository">The source repository name within this registry.</param>
     /// <param name="getContent"></param>
     /// <param name="cancellationToken"></param>
     /// <exception cref="HttpRequestException"></exception>
@@ -412,8 +412,18 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
             Scope.Action.Pull,
             Scope.Action.Push);
 
-        // We also need pull access to the source repo.
-        if (Reference.TryParse(fromRepository, out var fromReference))
+        // The mount API takes a repository name within this registry. Preserve
+        // support for full references to this registry used by existing callers.
+        var registry = Repository.Options.Reference.Registry;
+        Reference.TryParse(fromRepository, out var fromReference);
+        if (!string.Equals(fromReference?.Registry, registry, StringComparison.OrdinalIgnoreCase) &&
+            Reference.TryParse($"{registry}/{fromRepository}", out var localSourceReference))
+        {
+            fromReference = localSourceReference;
+        }
+
+        // We also need pull access to the source repo, even when the challenge omits scope.
+        if (fromReference is not null)
         {
             ScopeManager.SetActionsForRepository(
                 Repository.Options.Client,
@@ -483,7 +493,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
             {
                 var referenceOptions = Repository.Options with
                 {
-                    Reference = Reference.Parse(fromRepository),
+                    Reference = fromReference ?? Reference.Parse(fromRepository),
                 };
                 stream = await new Repository(referenceOptions).FetchAsync(descriptor, cancellationToken).ConfigureAwait(false);
             }
