@@ -469,7 +469,8 @@ public class BlobStoreChunkedUploadTest
                 ? Response(request, HttpStatusCode.Accepted, "/upload")
                 : Response(request, status);
         }, BlobUploadMode.Chunked, 4);
-        var error = await Assert.ThrowsAsync<ResponseException>(() => store.PushAsync(DescriptorFor([1]), new MemoryStream([1])));
+        var error = await Assert.ThrowsAsync<ResponseException>(() =>
+            store.PushAsync(DescriptorFor([1]), new MemoryStream([1])));
         Assert.Equal(status, error.StatusCode);
         Assert.Equal([HttpMethod.Post, HttpMethod.Patch], methods);
     }
@@ -478,7 +479,8 @@ public class BlobStoreChunkedUploadTest
     [InlineData("source", "source")]
     [InlineData("base/image", "base/image")]
     [InlineData("localhost:5000/base/image", "base/image")]
-    public async Task MountAuthenticationRequestsSourcePullScopeWithoutChallengeScope(string source, string expectedRepository)
+    public async Task MountAuthenticationRequestsSourcePullScopeWithoutChallengeScope(
+        string source, string expectedRepository)
     {
         var credential = new SingleRegistryCredentialProvider("localhost:5000", new Credential("user", "pass"));
         var tokenRequests = 0;
@@ -545,7 +547,8 @@ public class BlobStoreChunkedUploadTest
                     Content = new ByteArrayContent(blob),
                 };
             }
-            return Response(request, request.Method == HttpMethod.Patch ? HttpStatusCode.Accepted : HttpStatusCode.Created, "/upload");
+            return Response(request,
+                request.Method == HttpMethod.Patch ? HttpStatusCode.Accepted : HttpStatusCode.Created, "/upload");
         }, BlobUploadMode.Chunked, 4);
         await repository.MountAsync(descriptor, source);
         Assert.True(fetched);
@@ -634,7 +637,8 @@ public class BlobStoreChunkedUploadTest
                 requests++;
                 // An explicitly configured insecure-registry transport rewrites the request.
                 request.RequestUri = new UriBuilder(request.RequestUri!) { Scheme = "http" }.Uri;
-                return Response(request, request.Method == HttpMethod.Put ? HttpStatusCode.Created : HttpStatusCode.Accepted,
+                return Response(request,
+                    request.Method == HttpMethod.Put ? HttpStatusCode.Created : HttpStatusCode.Accepted,
                     "http://registry.example.com/upload");
             }),
         }));

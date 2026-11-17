@@ -217,7 +217,8 @@ public class BlobStoreUploadTransportTest
             }
             Assert.Equal("PUT", request.Method);
             Assert.StartsWith(location + "&digest=", request.Target);
-            Assert.Equal(descriptor.Digest, HttpUtility.ParseQueryString(new Uri(registry.Url, request.Target).Query)["digest"]);
+            Assert.Equal(descriptor.Digest,
+                HttpUtility.ParseQueryString(new Uri(registry.Url, request.Target).Query)["digest"]);
             Assert.Empty(await request.ReadBodyAsync());
             await request.ReplyAsync(201);
         }, timeout.Token);
@@ -370,7 +371,8 @@ public class BlobStoreUploadTransportTest
         Size = blob.Length,
     };
 
-    private static BlobStore Store(Uri url, HttpClient client, BlobUploadMode mode, int chunkSize) => new(new Repository(new RepositoryOptions
+    private static BlobStore Store(Uri url, HttpClient client, BlobUploadMode mode, int chunkSize) =>
+        new(new Repository(new RepositoryOptions
     {
         Reference = Reference.Parse(url.Authority + "/test"),
         Client = new PlainClient(client),

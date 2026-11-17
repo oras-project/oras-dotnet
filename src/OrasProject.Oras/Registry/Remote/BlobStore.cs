@@ -437,7 +437,8 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         using var mountReq = new HttpRequestMessage(HttpMethod.Post, new UriBuilder(url)
         {
             Query =
-                $"{url.Query}&mount={HttpUtility.UrlEncode(descriptor.Digest)}&from={HttpUtility.UrlEncode(fromRepository)}"
+                $"{url.Query}&mount={HttpUtility.UrlEncode(descriptor.Digest)}" +
+                $"&from={HttpUtility.UrlEncode(fromRepository)}"
         }.Uri);
 
         using (var response = await Repository.Options.Client.SendAsync(
@@ -493,7 +494,8 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
                 {
                     Reference = fromReference ?? Reference.Parse(fromRepository),
                 };
-                stream = await new Repository(referenceOptions).FetchAsync(descriptor, cancellationToken).ConfigureAwait(false);
+                stream = await new Repository(referenceOptions).FetchAsync(descriptor, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             return stream;
@@ -602,7 +604,8 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         var chunkSize = Math.Max(Repository.Options.BlobUploadChunkSize, session.MinimumChunkSize ?? 0);
         // A registry must not force an unbounded allocation. Callers can explicitly
         // opt in to larger chunks through BlobUploadChunkSize.
-        var bufferLimit = Math.Max(Repository.Options.BlobUploadChunkSize, RepositoryOptions.DefaultBlobUploadChunkSize);
+        var bufferLimit = Math.Max(Repository.Options.BlobUploadChunkSize,
+            RepositoryOptions.DefaultBlobUploadChunkSize);
         // The final chunk may be shorter than the advertised minimum, including an empty blob.
         var bufferLength = (int)Math.Min(chunkSize, Math.Max(1, descriptor.Size));
         if (bufferLength > bufferLimit)
@@ -688,7 +691,8 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         if (unsupportedScheme || insecureDowngrade)
         {
             throw new HttpIOException(HttpRequestError.InvalidResponse,
-                $"{effectiveUrl}: invalid upload location {nextUrl}; upload locations must use HTTP(S) and cannot downgrade HTTPS unless PlainHttp is enabled");
+                $"{effectiveUrl}: invalid upload location {nextUrl}; upload locations must use HTTP(S) " +
+                "and cannot downgrade HTTPS unless PlainHttp is enabled");
         }
         return nextUrl;
     }
