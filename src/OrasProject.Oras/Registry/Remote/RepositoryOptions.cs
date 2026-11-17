@@ -80,9 +80,10 @@ public struct RepositoryOptions
     /// BlobUploadChunkSize specifies the maximum number of bytes sent in each <c>PATCH</c>
     /// request during a chunked blob upload. The getter returns 5 MiB when the value is zero
     /// or not set. If the registry advertises a larger <c>OCI-Chunk-Min-Length</c>, that value
-    /// takes precedence for the upload. Registry minimums requiring a buffer larger than both the configured size and
-    /// the 5 MiB default are rejected before reading content. The final chunk may be smaller. Increase this option explicitly
-    /// to permit a larger minimum; each upload buffers one chunk for replay.
+    /// takes precedence for the upload. Registry minimums requiring a buffer larger than both
+    /// the configured size and the 5 MiB default are rejected before reading content. The final
+    /// chunk may be smaller. Increase this option explicitly to permit a larger minimum;
+    /// each upload buffers one chunk for replay.
     /// </summary>
     public int BlobUploadChunkSize
     {
