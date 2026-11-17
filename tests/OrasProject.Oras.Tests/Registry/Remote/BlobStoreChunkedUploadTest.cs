@@ -319,6 +319,67 @@ public class BlobStoreChunkedUploadTest
         Assert.Equal(1, requests);
     }
 
+    [Theory]
+    [InlineData(BlobUploadMode.Monolithic, false, false)]
+    [InlineData(BlobUploadMode.MonolithicWithChunkedFallback, true, false)]
+    [InlineData(BlobUploadMode.MonolithicWithChunkedFallback, false, true)]
+    public async Task TransportFailureDoesNotRetryWhenFallbackIsUnavailable(
+        BlobUploadMode mode, bool nonSeekable, bool canceled)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var requests = 0;
+        var failure = new HttpRequestException("connection closed while sending");
+        var store = CreateBlobStore((request, _) =>
+        {
+            requests++;
+            if (request.Method == HttpMethod.Post)
+            {
+                return Response(request, HttpStatusCode.Accepted, "/upload");
+            }
+            if (canceled)
+            {
+                cancellation.Cancel();
+            }
+            throw failure;
+        }, mode, chunkSize: 4);
+        byte[] blob = [1, 2, 3];
+        using Stream content = nonSeekable ? new NonSeekableStream(blob) : new MemoryStream(blob);
+        if (canceled)
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                store.PushAsync(DescriptorFor(blob), content, cancellation.Token));
+        }
+        else
+        {
+            var error = await Assert.ThrowsAsync<HttpRequestException>(() =>
+                store.PushAsync(DescriptorFor(blob), content, cancellation.Token));
+            Assert.Same(failure, error);
+        }
+        Assert.Equal(2, requests);
+    }
+
+    [Fact]
+    public async Task CancellationDoesNotStartFallbackSession()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var requests = 0;
+        var store = CreateBlobStore((request, _) =>
+        {
+            requests++;
+            if (request.Method == HttpMethod.Post)
+            {
+                return Response(request, HttpStatusCode.Accepted, "/upload");
+            }
+            cancellation.Cancel();
+            throw new OperationCanceledException(cancellation.Token);
+        }, BlobUploadMode.MonolithicWithChunkedFallback, chunkSize: 4);
+        byte[] blob = [1];
+        using var content = new MemoryStream(blob);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            store.PushAsync(DescriptorFor(blob), content, cancellation.Token));
+        Assert.Equal(2, requests);
+    }
+
     private static BlobStore CreateBlobStore(
         Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> handler,
         BlobUploadMode mode,

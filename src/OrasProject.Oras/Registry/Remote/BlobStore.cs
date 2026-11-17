@@ -446,7 +446,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
                         // 202, mounting failed. upload session has begun
                         var location = response.Headers.Location ??
                                         throw new HttpRequestException("missing location header");
-                        url = location.IsAbsoluteUri ? location : new Uri(url, location);
+                        url = location.IsAbsoluteUri ? location : new Uri(response.RequestMessage?.RequestUri ?? url, location);
                         var minimumChunkSize = Repository.Options.BlobUploadMode == BlobUploadMode.Chunked
                             ? ParseMinimumChunkSize(response)
                             : null;
@@ -514,8 +514,9 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
             await CompleteMonolithicPushAsync(session.Url, descriptor, content, cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (Exceptions.ResponseException) when (
-            mode == BlobUploadMode.MonolithicWithChunkedFallback && content.CanSeek)
+        catch (HttpRequestException) when (
+            mode == BlobUploadMode.MonolithicWithChunkedFallback && content.CanSeek &&
+            !cancellationToken.IsCancellationRequested)
         {
             content.Position = initialPosition;
             var chunkedSession = await StartPushAsync(chunked: true, cancellationToken).ConfigureAwait(false);
@@ -550,7 +551,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         }
 
         var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
-        var sessionUrl = location.IsAbsoluteUri ? location : new Uri(url, location);
+        var sessionUrl = location.IsAbsoluteUri ? location : new Uri(response.RequestMessage?.RequestUri ?? url, location);
         return new UploadSession(sessionUrl, chunked ? ParseMinimumChunkSize(response) : null);
     }
 
@@ -629,7 +630,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
             if (response.StatusCode is HttpStatusCode.Accepted or HttpStatusCode.Created)
             {
                 var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
-                session = session with { Url = location.IsAbsoluteUri ? location : new Uri(session.Url, location) };
+                session = session with { Url = location.IsAbsoluteUri ? location : new Uri(response.RequestMessage?.RequestUri ?? session.Url, location) };
             }
             else
             {

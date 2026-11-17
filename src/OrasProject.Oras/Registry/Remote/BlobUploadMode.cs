@@ -31,7 +31,8 @@ public enum BlobUploadMode
 
     /// <summary>
     /// Attempt a monolithic upload first and retry using a new chunked upload session when
-    /// the registry rejects the monolithic request. The source stream must be seekable for
+    /// the registry rejects the monolithic request or an HTTP transport failure occurs.
+    /// Cancellation does not trigger fallback. The source stream must be seekable for
     /// the retry to be attempted.
     /// </summary>
     MonolithicWithChunkedFallback,
