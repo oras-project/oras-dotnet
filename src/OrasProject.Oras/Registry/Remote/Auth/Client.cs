@@ -180,6 +180,13 @@ public class Client : IClient
     public HttpClient BaseClient { get; }
 
     /// <summary>
+    /// Optional transport for bearer-token requests, allowing separate redirect and network
+    /// policies for untrusted authentication realms. When unset, BaseClient is used.
+    /// The caller owns the supplied client and configures its redirect behavior.
+    /// </summary>
+    public HttpClient? TokenClient { get; init; }
+
+    /// <summary>
     /// NoRedirectClient is an instance of HttpClient configured to not follow redirects.
     /// Used for scenarios where we need to capture redirect locations (e.g., blob location URLs).
     /// </summary>
@@ -240,6 +247,13 @@ public class Client : IClient
     /// and password.
     /// </summary>
     public bool ForceAttemptOAuth2 { get; set; }
+
+    /// <summary>
+    /// When enabled, retry a rejected distribution-token GET with an OAuth2 password-grant
+    /// POST for username/password credentials. Transport failures and redirects do not trigger
+    /// this fallback. Disabled by default.
+    /// </summary>
+    public bool AttemptOAuth2Fallback { get; init; }
 
     /// <summary>
     /// defaultClientID specifies the default client ID used in OAuth2.
@@ -399,7 +413,8 @@ public class Client : IClient
     /// used: if credential is empty or refreshToken is not set and
     /// OAuth2 authentication is not forced, the method would fetch
     /// anonymous token with a Http Get request otherwise, it would
-    /// fetch OAuth2 token with a Http Post request.
+    /// fetch OAuth2 token with a Http Post request. An unsuccessful GET may be retried with a
+    /// password-grant POST when <see cref="AttemptOAuth2Fallback"/> is enabled.
     /// </summary>
     /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="realm">The authentication realm to use.</param>
@@ -463,13 +478,24 @@ public class Client : IClient
         if (credential.IsEmpty() ||
             (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
         {
-            return await FetchDistributionTokenAsync(
-                realm,
-                service,
-                scopes,
-                credential.Username,
-                credential.Password,
-                cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await FetchDistributionTokenAsync(
+                    realm,
+                    service,
+                    scopes,
+                    credential.Username,
+                    credential.Password,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (ResponseException error) when (
+                AttemptOAuth2Fallback && error.StatusCode is not null && (int)error.StatusCode >= 400 &&
+                !string.IsNullOrWhiteSpace(credential.Username) &&
+                !string.IsNullOrWhiteSpace(credential.Password) &&
+                !cancellationToken.IsCancellationRequested)
+            {
+                // Retry only a server rejection, never a transport or realm-policy failure.
+            }
         }
 
         return await FetchOauth2TokenAsync(
@@ -534,7 +560,8 @@ public class Client : IClient
         };
         request.RequestUri = uriBuilder.Uri;
 
-        using var response = await SendRequestAsync(request, allowAutoRedirect: true, cancellationToken).ConfigureAwait(false);
+        using var response = await (TokenClient ?? BaseClient).SendAsync(
+            request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -616,7 +643,8 @@ public class Client : IClient
         request.Content = content;
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.FormUrlEncoded);
 
-        using var response = await SendRequestAsync(request, allowAutoRedirect: true, cancellationToken).ConfigureAwait(false);
+        using var response = await (TokenClient ?? BaseClient).SendAsync(
+            request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -1286,6 +1314,8 @@ public class Client : IClient
     /// Non-seekable content with a declared Content-Length over the
     /// limit is also left untouched — the first send proceeds but
     /// a 401 retry would fail because the body cannot be replayed.
+    /// <see cref="ByteArrayContent"/> is left untouched because it
+    /// already replays from its own array.
     /// </summary>
     /// <remarks>
     /// <see cref="HttpContent.LoadIntoBufferAsync(long)"/> on
@@ -1298,7 +1328,10 @@ public class Client : IClient
         CancellationToken cancellationToken)
     {
         var content = request.Content;
-        if (content == null)
+        // Byte array content (including StringContent and FormUrlEncodedContent) already
+        // replays from its own array, so buffering it would only copy the payload. Chunked
+        // blob uploads send one such request per chunk.
+        if (content is null or ByteArrayContent)
         {
             return;
         }

@@ -2748,6 +2748,161 @@ public class ClientTest
     }
 
     [Fact]
+    public async Task SendAsync_ByteArrayContent_ReplaysSegmentWithoutCopying()
+    {
+        // Arrange — chunked blob uploads send one ByteArrayContent per chunk. It already
+        // replays from its own array, so the client must not buffer a second copy.
+        // A dedicated host keeps the cached Basic token out of the shared cache other tests use.
+        var host = "byte-array-replay.example.com";
+        var source = "xxxchunkyyy"u8.ToArray();
+        var attempts = new List<string>();
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (attempts.Count == 0)
+            {
+                // Visible to the transport only when the client sends the caller's
+                // array rather than a buffered copy of it.
+                source[3] = (byte)'C';
+            }
+
+            using var body = new MemoryStream();
+            await req.Content!.CopyToAsync(body, cancellationToken);
+            attempts.Add(Encoding.ASCII.GetString(body.ToArray()));
+            if (req.Headers.Authorization is null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Headers = { WwwAuthenticate = { new AuthenticationHeaderValue("Basic", "realm=\"test\"") } },
+                    RequestMessage = req,
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.Accepted) { RequestMessage = req };
+        }
+
+        var client = new Client(
+            new HttpClient(CustomHandler(MockHttpRequestHandler).Object),
+            new SingleRegistryCredentialProvider(host, new Credential("user", "pass")));
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"https://{host}/v2/repo/blobs/uploads/1")
+        {
+            Content = new ByteArrayContent(source, 3, 5),
+        };
+
+        // Act
+        using var response = await client.SendAsync(
+            request, cancellationToken: CancellationToken.None);
+
+        // Assert — the 401 replay resends exactly the original segment
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal(["Chunk", "Chunk"], attempts);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BearerTokenRequestsUseSeparateConfiguredTransport(bool oauth)
+    {
+        using var registry = new HttpClient(CustomHandler((_, _) =>
+            new HttpResponseMessage(HttpStatusCode.InternalServerError)).Object);
+        var requests = 0;
+        using var tokens = new HttpClient(CustomHandler((request, _) =>
+        {
+            requests++;
+            Assert.Equal("auth.example.com", request.RequestUri!.Host);
+            Assert.Equal(oauth ? HttpMethod.Post : HttpMethod.Get, request.Method);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"token\":\"token-value\",\"access_token\":\"token-value\"}"),
+            };
+        }).Object);
+        var client = new Client(registry,
+            new SingleRegistryCredentialProvider("registry.example.com", new Credential("user", "password")))
+        {
+            TokenClient = tokens,
+            ForceAttemptOAuth2 = oauth,
+        };
+        var result = await client.FetchBearerAuthAsync("registry.example.com", "https://auth.example.com/token",
+            "registry", ["repository:app:pull"], false, CancellationToken.None);
+        Assert.Equal("token-value", result);
+        Assert.Equal(1, requests);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK, true, true, 1)]
+    [InlineData(HttpStatusCode.Unauthorized, true, true, 2)]
+    [InlineData(HttpStatusCode.MethodNotAllowed, true, true, 2)]
+    [InlineData(HttpStatusCode.Unauthorized, false, true, 1)]
+    [InlineData(HttpStatusCode.Unauthorized, true, false, 1)]
+    [InlineData(HttpStatusCode.TemporaryRedirect, true, true, 1)]
+    public async Task FetchBearerAuth_OptionalPasswordGrantFallback(
+        HttpStatusCode getStatus, bool enabled, bool hasCredentials, int expectedRequests)
+    {
+        var methods = new List<HttpMethod>();
+        using var http = new HttpClient(CustomHandler((request, _) =>
+        {
+            methods.Add(request.Method);
+            if (request.Method == HttpMethod.Post)
+            {
+                var form = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+                Assert.Contains("grant_type=password", form);
+                Assert.Contains("username=user", form);
+                Assert.Contains("password=password", form);
+                Assert.Contains("scope=repository%3Aapp%3Apull", form);
+            }
+            return new HttpResponseMessage(request.Method == HttpMethod.Get ? getStatus : HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"token\":\"token-value\",\"access_token\":\"token-value\"}"),
+            };
+        }).Object);
+        var credential = hasCredentials ? new Credential("user", "password") : new Credential();
+        var client = new Client(http,
+            hasCredentials ? new SingleRegistryCredentialProvider("registry.example.com", credential) : null)
+        {
+            TokenClient = http,
+            AttemptOAuth2Fallback = enabled,
+        };
+        var task = client.FetchBearerAuthAsync("registry.example.com", "https://auth.example.com/token",
+            "registry", ["repository:app:pull"], false, CancellationToken.None);
+        if (getStatus == HttpStatusCode.OK || expectedRequests == 2)
+            Assert.Equal("token-value", await task);
+        else
+            await Assert.ThrowsAsync<ResponseException>(() => task);
+        Assert.Equal(expectedRequests, methods.Count);
+        Assert.Equal(HttpMethod.Get, methods[0]);
+        if (expectedRequests == 2) Assert.Equal(HttpMethod.Post, methods[1]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FetchBearerAuth_PasswordGrantFallbackDoesNotRetryTransportOrCancellation(bool cancel)
+    {
+        var attempts = 0;
+        using var http = new HttpClient(CustomHandler((_, _) =>
+        {
+            attempts++;
+            return Task.FromException<HttpResponseMessage>(cancel
+                ? new OperationCanceledException()
+                : new HttpRequestException("Token transport failed"));
+        }).Object);
+        var client = new Client(http,
+            new SingleRegistryCredentialProvider("registry.example.com", new Credential("user", "password")))
+        {
+            AttemptOAuth2Fallback = true,
+        };
+        var task = client.FetchBearerAuthAsync("registry.example.com", "https://auth.example.com/token",
+            "registry", [], false, CancellationToken.None);
+        if (cancel) await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
+        else await Assert.ThrowsAsync<HttpRequestException>(() => task);
+        Assert.Equal(1, attempts);
+    }
+
+    [Fact]
     public async Task FetchBearerAuth_WithAccessTokenProvider_ReturnsToken()
     {
         // Arrange

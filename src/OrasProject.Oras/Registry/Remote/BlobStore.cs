@@ -12,10 +12,13 @@
 // limitations under the License.
 
 using OrasProject.Oras.Content;
+using OrasProject.Oras.Content.Exceptions;
 using OrasProject.Oras.Exceptions;
 using OrasProject.Oras.Oci;
 using System;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -32,6 +35,8 @@ namespace OrasProject.Oras.Registry.Remote;
 /// </summary>
 public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvider, IMounter
 {
+    private const string _ociChunkMinLengthHeader = "OCI-Chunk-Min-Length";
+
     private Repository Repository { get; } = repository ?? throw new ArgumentNullException(nameof(repository));
 
     /// <summary>
@@ -178,16 +183,17 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// PushAsync pushes the content, matching the expected descriptor.
     /// Existing content is not checked by PushAsync() to minimize the number of out-going
     /// requests.
-    /// Push is done by conventional 2-step monolithic upload instead of a single
-    /// `POST` request for better overall performance. It also allows early fail on
-    /// authentication errors.
+    /// The upload method is controlled by <see cref="RepositoryOptions.BlobUploadMode"/>.
+    /// The default is a conventional 2-step monolithic upload instead of a single
+    /// <c>POST</c> request for better overall performance. It also allows early failure
+    /// on authentication errors.
     /// References:
     /// - https://docs.docker.com/registry/spec/api/#pushing-an-image
     /// - https://docs.docker.com/registry/spec/api/#initiate-blob-upload
     /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pushing-a-blob-monolithically
     /// </summary>
     /// <param name="expected"></param>
-    /// <param name="content"></param>
+    /// <param name="content">The upload stream. The caller retains ownership and must dispose it.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
@@ -200,23 +206,9 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
             Repository.Options.PartitionId,
             Scope.Action.Pull,
             Scope.Action.Push);
-        var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
-        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
-        using (var response = await Repository.Options.Client.SendAsync(
-            requestMessage,
-            partitionId: Repository.Options.PartitionId,
-            cancellationToken: cancellationToken).ConfigureAwait(false))
-        {
-            if (response.StatusCode != HttpStatusCode.Accepted)
-            {
-                throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
-            url = location.IsAbsoluteUri ? location : new Uri(url, location);
-        }
-
-        await CompletePushAsync(url, expected, content, cancellationToken).ConfigureAwait(false);
+        var mode = Repository.Options.BlobUploadMode;
+        var session = await StartPushAsync(mode == BlobUploadMode.Chunked, cancellationToken).ConfigureAwait(false);
+        await CompletePushAsync(session, expected, content, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -403,7 +395,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// Mounts the given descriptor from fromRepository into the blob store.
     /// </summary>
     /// <param name="descriptor"></param>
-    /// <param name="fromRepository"></param>
+    /// <param name="fromRepository">The source repository name within this registry.</param>
     /// <param name="getContent"></param>
     /// <param name="cancellationToken"></param>
     /// <exception cref="HttpRequestException"></exception>
@@ -420,8 +412,18 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
             Scope.Action.Pull,
             Scope.Action.Push);
 
-        // We also need pull access to the source repo.
-        if (Reference.TryParse(fromRepository, out var fromReference))
+        // The mount API takes a repository name within this registry. Preserve
+        // support for full references to this registry used by existing callers.
+        var registry = Repository.Options.Reference.Registry;
+        Reference.TryParse(fromRepository, out var fromReference);
+        if (!string.Equals(fromReference?.Registry, registry, StringComparison.OrdinalIgnoreCase) &&
+            Reference.TryParse($"{registry}/{fromRepository}", out var localSourceReference))
+        {
+            fromReference = localSourceReference;
+        }
+
+        // We also need pull access to the source repo, even when the challenge omits scope.
+        if (fromReference is not null)
         {
             ScopeManager.SetActionsForRepository(
                 Repository.Options.Client,
@@ -431,10 +433,12 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         }
 
         var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
+        UploadSession? uploadSession = null;
         using var mountReq = new HttpRequestMessage(HttpMethod.Post, new UriBuilder(url)
         {
             Query =
-                $"{url.Query}&mount={HttpUtility.UrlEncode(descriptor.Digest)}&from={HttpUtility.UrlEncode(fromRepository)}"
+                $"{url.Query}&mount={HttpUtility.UrlEncode(descriptor.Digest)}" +
+                $"&from={HttpUtility.UrlEncode(fromRepository)}"
         }.Uri);
 
         using (var response = await Repository.Options.Client.SendAsync(
@@ -451,9 +455,11 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
                 case HttpStatusCode.Accepted:
                     {
                         // 202, mounting failed. upload session has begun
-                        var location = response.Headers.Location ??
-                                        throw new HttpRequestException("missing location header");
-                        url = location.IsAbsoluteUri ? location : new Uri(url, location);
+                        url = ResolveUploadLocation(response, url);
+                        var minimumChunkSize = Repository.Options.BlobUploadMode == BlobUploadMode.Chunked
+                            ? ParseMinimumChunkSize(response)
+                            : null;
+                        uploadSession = new UploadSession(url, minimumChunkSize);
                         break;
                     }
                 default:
@@ -486,9 +492,10 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
             {
                 var referenceOptions = Repository.Options with
                 {
-                    Reference = Reference.Parse(fromRepository),
+                    Reference = fromReference ?? Reference.Parse(fromRepository),
                 };
-                stream = await new Repository(referenceOptions).FetchAsync(descriptor, cancellationToken).ConfigureAwait(false);
+                stream = await new Repository(referenceOptions).FetchAsync(descriptor, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             return stream;
@@ -497,28 +504,77 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         var contents = await GetContentStream().ConfigureAwait(false);
         await using (contents.ConfigureAwait(false))
         {
-            await CompletePushAsync(url, descriptor, contents, cancellationToken).ConfigureAwait(false);
+            await CompletePushAsync(uploadSession!, descriptor, contents, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task CompletePushAsync(UploadSession session, Descriptor descriptor, Stream content,
+        CancellationToken cancellationToken)
+    {
+        var mode = Repository.Options.BlobUploadMode;
+        if (mode == BlobUploadMode.Chunked)
+        {
+            await CompleteChunkedPushAsync(session, descriptor, content, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var initialPosition = content.CanSeek ? content.Position : 0;
+        try
+        {
+            await CompleteMonolithicPushAsync(session.Url, descriptor, content, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (HttpRequestException) when (
+            mode == BlobUploadMode.MonolithicWithChunkedFallback && content.CanSeek &&
+            !cancellationToken.IsCancellationRequested)
+        {
+            content.Position = initialPosition;
+            var chunkedSession = await StartPushAsync(chunked: true, cancellationToken).ConfigureAwait(false);
+            await CompleteChunkedPushAsync(chunkedSession, descriptor, content, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
     /// <summary>
-    /// Completes a push operation started beforehand.
+    /// Starts a blob push operation.
     /// </summary>
-    /// <param name="url"></param>
-    /// <param name="descriptor"></param>
-    /// <param name="content"></param>
+    /// <param name="chunked"></param>
     /// <param name="cancellationToken"></param>
-    /// <exception cref="Exception"></exception>
-    private async Task CompletePushAsync(Uri url, Descriptor descriptor, Stream content,
+    private async Task<UploadSession> StartPushAsync(bool chunked,
         CancellationToken cancellationToken = default)
     {
-        // monolithic upload
-        // add digest key to query string with descriptor digest value
+        var url = new UriFactory(Repository.Options).BuildRepositoryBlobUpload();
+        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        if (chunked)
+        {
+            request.Content = new ByteArrayContent([]);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
+        }
+
+        using var response = await Repository.Options.Client.SendAsync(
+            request,
+            partitionId: Repository.Options.PartitionId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode != HttpStatusCode.Accepted)
+        {
+            throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var sessionUrl = ResolveUploadLocation(response, url);
+        return new UploadSession(sessionUrl, chunked ? ParseMinimumChunkSize(response) : null);
+    }
+
+    /// <summary>
+    /// Completes a push operation using a monolithic upload.
+    /// </summary>
+    private async Task CompleteMonolithicPushAsync(Uri url, Descriptor descriptor, Stream content,
+        CancellationToken cancellationToken = default)
+    {
         using var req = new HttpRequestMessage(HttpMethod.Put, new UriBuilder(url)
         {
             Query = $"{url.Query}&digest={HttpUtility.UrlEncode(descriptor.Digest)}"
         }.Uri);
-        req.Content = new StreamContent(content);
+        req.Content = new StreamContent(new UploadContentStream(content));
         req.Content.Headers.ContentLength = descriptor.Size;
 
         // the descriptor media type is ignored as in the API doc.
@@ -533,4 +589,151 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Completes a push operation using PATCH-based chunked upload.
+    /// </summary>
+    private async Task CompleteChunkedPushAsync(UploadSession session, Descriptor descriptor, Stream content,
+        CancellationToken cancellationToken = default)
+    {
+        if (descriptor.Size < 0)
+        {
+            throw new InvalidDescriptorSizeException($"Descriptor size {descriptor.Size} is less than 0");
+        }
+
+        var chunkSize = Math.Max(Repository.Options.BlobUploadChunkSize, session.MinimumChunkSize ?? 0);
+        // A registry must not force an unbounded allocation. Callers can explicitly
+        // opt in to larger chunks through BlobUploadChunkSize.
+        var bufferLimit = Math.Max(Repository.Options.BlobUploadChunkSize,
+            RepositoryOptions.DefaultBlobUploadChunkSize);
+        // The final chunk may be shorter than the advertised minimum, including an empty blob.
+        var bufferLength = (int)Math.Min(chunkSize, Math.Max(1, descriptor.Size));
+        if (bufferLength > bufferLimit)
+        {
+            throw new HttpIOException(HttpRequestError.InvalidResponse,
+                $"{session.Url}: OCI-Chunk-Min-Length {chunkSize} exceeds the supported buffer size {bufferLimit}; " +
+                "increase BlobUploadChunkSize to allow this minimum");
+        }
+
+        var buffer = new byte[bufferLength];
+        long offset = 0;
+        while (offset < descriptor.Size)
+        {
+            var bytesToRead = (int)Math.Min(buffer.Length, descriptor.Size - offset);
+            var bytesRead = await ReadChunkAsync(content, buffer, bytesToRead, cancellationToken).ConfigureAwait(false);
+            if (bytesRead != bytesToRead)
+            {
+                throw new MismatchedSizeException(
+                    $"Descriptor size {descriptor.Size} is larger than the content length");
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Patch, session.Url);
+            request.Content = new ByteArrayContent(buffer, 0, bytesRead);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
+            request.Content.Headers.ContentLength = bytesRead;
+            request.Content.Headers.TryAddWithoutValidation("Content-Range", $"{offset}-{offset + bytesRead - 1}");
+
+            using var response = await Repository.Options.Client.SendAsync(
+                request,
+                partitionId: Repository.Options.PartitionId,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            if (response.StatusCode is HttpStatusCode.Accepted or HttpStatusCode.Created)
+            {
+                session = session with { Url = ResolveUploadLocation(response, session.Url) };
+            }
+            else
+            {
+                throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            offset += bytesRead;
+        }
+
+        var extraByte = new byte[1];
+        if (await content.ReadAsync(extraByte.AsMemory(), cancellationToken).ConfigureAwait(false) != 0)
+        {
+            throw new MismatchedSizeException($"Descriptor size {descriptor.Size} is smaller than the content length");
+        }
+
+        await FinalizeChunkedPushAsync(session.Url, descriptor, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task FinalizeChunkedPushAsync(Uri url, Descriptor descriptor,
+        CancellationToken cancellationToken)
+    {
+        var uriBuilder = new UriBuilder(url)
+        {
+            Query = $"{url.Query}&digest={HttpUtility.UrlEncode(descriptor.Digest)}",
+        };
+        using var request = new HttpRequestMessage(HttpMethod.Put, uriBuilder.Uri);
+        request.Content = new ByteArrayContent([]);
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.Octet);
+
+        using var response = await Repository.Options.Client.SendAsync(
+            request,
+            partitionId: Repository.Options.PartitionId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode != HttpStatusCode.Created)
+        {
+            throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private Uri ResolveUploadLocation(HttpResponseMessage response, Uri sessionUrl)
+    {
+        var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
+        var effectiveUrl = response.RequestMessage?.RequestUri ?? sessionUrl;
+        var nextUrl = location.IsAbsoluteUri ? location : new Uri(effectiveUrl, location);
+        var unsupportedScheme = nextUrl.Scheme != Uri.UriSchemeHttps && nextUrl.Scheme != Uri.UriSchemeHttp;
+        var insecureDowngrade = nextUrl.Scheme == Uri.UriSchemeHttp && effectiveUrl.Scheme == Uri.UriSchemeHttps &&
+            !Repository.Options.PlainHttp;
+        if (unsupportedScheme || insecureDowngrade)
+        {
+            throw new HttpIOException(HttpRequestError.InvalidResponse,
+                $"{effectiveUrl}: invalid upload location {nextUrl}; upload locations must use HTTP(S) " +
+                "and cannot downgrade HTTPS unless PlainHttp is enabled");
+        }
+        return nextUrl;
+    }
+
+    private static int? ParseMinimumChunkSize(HttpResponseMessage response)
+    {
+        if (!response.Headers.TryGetValues(_ociChunkMinLengthHeader, out var values))
+        {
+            return null;
+        }
+
+        var value = values.FirstOrDefault();
+        if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var minimumChunkSize) ||
+            minimumChunkSize <= 0)
+        {
+            throw new HttpIOException(
+                HttpRequestError.InvalidResponse,
+                $"{response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: " +
+                $"invalid {_ociChunkMinLengthHeader} header");
+        }
+        return minimumChunkSize;
+    }
+
+    private static async Task<int> ReadChunkAsync(Stream content, byte[] buffer, int count,
+        CancellationToken cancellationToken)
+    {
+        var totalRead = 0;
+        while (totalRead < count)
+        {
+            var bytesRead = await content
+                .ReadAsync(buffer.AsMemory(totalRead, count - totalRead), cancellationToken)
+                .ConfigureAwait(false);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+            totalRead += bytesRead;
+        }
+        return totalRead;
+    }
+
+    private sealed record UploadSession(Uri Url, int? MinimumChunkSize);
+
 }
