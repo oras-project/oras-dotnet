@@ -180,6 +180,13 @@ public class Client : IClient
     public HttpClient BaseClient { get; }
 
     /// <summary>
+    /// Optional transport for bearer-token requests, allowing separate redirect and network
+    /// policies for untrusted authentication realms. When unset, BaseClient is used.
+    /// The caller owns the supplied client and configures its redirect behavior.
+    /// </summary>
+    public HttpClient? TokenClient { get; init; }
+
+    /// <summary>
     /// NoRedirectClient is an instance of HttpClient configured to not follow redirects.
     /// Used for scenarios where we need to capture redirect locations (e.g., blob location URLs).
     /// </summary>
@@ -534,7 +541,8 @@ public class Client : IClient
         };
         request.RequestUri = uriBuilder.Uri;
 
-        using var response = await SendRequestAsync(request, allowAutoRedirect: true, cancellationToken).ConfigureAwait(false);
+        using var response = await (TokenClient ?? BaseClient).SendAsync(
+            request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
@@ -616,7 +624,8 @@ public class Client : IClient
         request.Content = content;
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(MediaTypeNames.Application.FormUrlEncoded);
 
-        using var response = await SendRequestAsync(request, allowAutoRedirect: true, cancellationToken).ConfigureAwait(false);
+        using var response = await (TokenClient ?? BaseClient).SendAsync(
+            request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode != HttpStatusCode.OK)
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);

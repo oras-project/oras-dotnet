@@ -2802,6 +2802,35 @@ public class ClientTest
         Assert.Equal(["Chunk", "Chunk"], attempts);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BearerTokenRequestsUseSeparateConfiguredTransport(bool oauth)
+    {
+        using var registry = new HttpClient(CustomHandler((_, _) => new HttpResponseMessage(HttpStatusCode.InternalServerError)).Object);
+        var requests = 0;
+        using var tokens = new HttpClient(CustomHandler((request, _) =>
+        {
+            requests++;
+            Assert.Equal("auth.example.com", request.RequestUri!.Host);
+            Assert.Equal(oauth ? HttpMethod.Post : HttpMethod.Get, request.Method);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"token\":\"token-value\",\"access_token\":\"token-value\"}"),
+            };
+        }).Object);
+        var client = new Client(registry,
+            new SingleRegistryCredentialProvider("registry.example.com", new Credential("user", "password")))
+        {
+            TokenClient = tokens,
+            ForceAttemptOAuth2 = oauth,
+        };
+        var result = await client.FetchBearerAuthAsync("registry.example.com", "https://auth.example.com/token",
+            "registry", ["repository:app:pull"], false, CancellationToken.None);
+        Assert.Equal("token-value", result);
+        Assert.Equal(1, requests);
+    }
+
     [Fact]
     public async Task FetchBearerAuth_WithAccessTokenProvider_ReturnsToken()
     {
