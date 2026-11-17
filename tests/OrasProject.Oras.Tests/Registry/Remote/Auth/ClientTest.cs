@@ -2748,6 +2748,61 @@ public class ClientTest
     }
 
     [Fact]
+    public async Task SendAsync_ByteArrayContent_ReplaysSegmentWithoutCopying()
+    {
+        // Arrange — chunked blob uploads send one ByteArrayContent per chunk. It already
+        // replays from its own array, so the client must not buffer a second copy.
+        // A dedicated host keeps the cached Basic token out of the shared cache other tests use.
+        var host = "byte-array-replay.example.com";
+        var source = "xxxchunkyyy"u8.ToArray();
+        var attempts = new List<string>();
+
+        async Task<HttpResponseMessage> MockHttpRequestHandler(
+            HttpRequestMessage req,
+            CancellationToken cancellationToken = default)
+        {
+            if (attempts.Count == 0)
+            {
+                // Visible to the transport only when the client sends the caller's
+                // array rather than a buffered copy of it.
+                source[3] = (byte)'C';
+            }
+
+            using var body = new MemoryStream();
+            await req.Content!.CopyToAsync(body, cancellationToken);
+            attempts.Add(Encoding.ASCII.GetString(body.ToArray()));
+            if (req.Headers.Authorization is null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Headers = { WwwAuthenticate = { new AuthenticationHeaderValue("Basic", "realm=\"test\"") } },
+                    RequestMessage = req,
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.Accepted) { RequestMessage = req };
+        }
+
+        var client = new Client(
+            new HttpClient(CustomHandler(MockHttpRequestHandler).Object),
+            new SingleRegistryCredentialProvider(host, new Credential("user", "pass")));
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"https://{host}/v2/repo/blobs/uploads/1")
+        {
+            Content = new ByteArrayContent(source, 3, 5),
+        };
+
+        // Act
+        using var response = await client.SendAsync(
+            request, cancellationToken: CancellationToken.None);
+
+        // Assert — the 401 replay resends exactly the original segment
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal(["Chunk", "Chunk"], attempts);
+    }
+
+    [Fact]
     public async Task FetchBearerAuth_WithAccessTokenProvider_ReturnsToken()
     {
         // Arrange
