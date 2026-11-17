@@ -179,6 +179,190 @@ public class BlobStoreUploadTransportTest
         Assert.True(source.CanRead);
     }
 
+    [Fact]
+    public async Task ChunkedAuthenticationReplayPreservesBodyRangeAndOpaqueQuery()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await using var registry = new UploadServer();
+        const int chunkSize = 5 * 1024 * 1024;
+        const string location = "/session?state=a%2Fb%2Bc%3D&empty=&state=second";
+        var blob = new byte[chunkSize + 13];
+        new Random(42).NextBytes(blob);
+        var descriptor = Describe(blob);
+        using var received = new MemoryStream();
+        var challenged = false;
+        var serving = registry.ServeAsync(5, async request =>
+        {
+            if (request.Method == "POST")
+            {
+                await request.ReplyAsync(202, location);
+                return;
+            }
+            if (request.Method == "PATCH")
+            {
+                Assert.Equal(location, request.Target);
+                var body = await request.ReadBodyAsync();
+                if (!challenged)
+                {
+                    Assert.Equal(blob[..chunkSize], body);
+                    challenged = true;
+                    await request.ReplyAsync(401, headers: "WWW-Authenticate: Basic realm=registry\r\n");
+                    return;
+                }
+                Assert.Equal("Basic dXNlcjpwYXNz", request.Header("Authorization"));
+                Assert.Equal($"{received.Length}-{received.Length + body.Length - 1}", request.Header("Content-Range"));
+                received.Write(body);
+                await request.ReplyAsync(202, location);
+                return;
+            }
+            Assert.Equal("PUT", request.Method);
+            Assert.StartsWith(location + "&digest=", request.Target);
+            Assert.Equal(descriptor.Digest, HttpUtility.ParseQueryString(new Uri(registry.Url, request.Target).Query)["digest"]);
+            Assert.Empty(await request.ReadBodyAsync());
+            await request.ReplyAsync(201);
+        }, timeout.Token);
+        using var httpClient = new HttpClient(new SocketsHttpHandler { UseProxy = false });
+        var authClient = new Client(httpClient,
+            new SingleRegistryCredentialProvider(registry.Url.Authority, new Credential("user", "pass")));
+        var repository = new Repository(new RepositoryOptions
+        {
+            Client = authClient,
+            Reference = Reference.Parse(registry.Url.Authority + "/test"),
+            PlainHttp = true,
+            BlobUploadMode = BlobUploadMode.Chunked,
+            BlobUploadChunkSize = chunkSize,
+        });
+        using var source = new NonSeekableStream(blob);
+        await repository.Blobs.PushAsync(descriptor, source, timeout.Token);
+        await serving;
+        Assert.Equal(blob, received.ToArray());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MountAvoidsOpeningContentOnSuccessAndReusesFallbackStream(bool mounted)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await using var registry = new UploadServer();
+        byte[] blob = [1, 2, 3, 4, 5, 6, 7];
+        var descriptor = Describe(blob);
+        using var received = new MemoryStream();
+        var opened = 0;
+        var posts = 0;
+        var serving = registry.ServeAsync(mounted ? 1 : 6, async request =>
+        {
+            if (request.Method == "POST")
+            {
+                posts++;
+                if (posts == 1)
+                {
+                    var query = HttpUtility.ParseQueryString(new Uri(registry.Url, request.Target).Query);
+                    Assert.Equal(descriptor.Digest, query["mount"]);
+                    Assert.Equal("base/image", query["from"]);
+                    await request.ReplyAsync(mounted ? 201 : 202, "/mounted-session");
+                }
+                else
+                {
+                    await request.ReplyAsync(202, "/chunked-session");
+                }
+                return;
+            }
+            if (request.Target.StartsWith("/mounted-session", StringComparison.Ordinal))
+            {
+                Assert.Equal("PUT", request.Method);
+                Assert.Equal(blob, await request.ReadBodyAsync());
+                await request.ReplyAsync(413);
+                return;
+            }
+            if (request.Method == "PATCH")
+            {
+                Assert.Equal("/chunked-session", request.Target);
+                received.Write(await request.ReadBodyAsync());
+                await request.ReplyAsync(202, "/chunked-session");
+                return;
+            }
+            Assert.Equal("PUT", request.Method);
+            Assert.Empty(await request.ReadBodyAsync());
+            await request.ReplyAsync(201);
+        }, timeout.Token);
+        using var httpClient = new HttpClient(new SocketsHttpHandler { UseProxy = false });
+        var repository = new Repository(new RepositoryOptions
+        {
+            Client = new PlainClient(httpClient),
+            Reference = Reference.Parse(registry.Url.Authority + "/test"),
+            PlainHttp = true,
+            BlobUploadMode = BlobUploadMode.MonolithicWithChunkedFallback,
+            BlobUploadChunkSize = 4,
+        });
+        await repository.MountAsync(descriptor, "base/image", _ =>
+        {
+            opened++;
+            return Task.FromResult<Stream>(new MemoryStream(blob));
+        }, timeout.Token);
+        await serving;
+        Assert.Equal(mounted ? 0 : 1, opened);
+        Assert.Equal(mounted ? [] : blob, received.ToArray());
+    }
+
+    [Fact]
+    public async Task CrossOriginRedirectDoesNotForwardCachedRegistryAuthorization()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await using var registry = new UploadServer();
+        await using var upload = new UploadServer();
+        byte[] blob = [1, 2, 3];
+        var posts = 0;
+        var registryTask = registry.ServeAsync(3, async request =>
+        {
+            if (request.Method == "POST")
+            {
+                if (++posts == 1)
+                {
+                    await request.ReplyAsync(401, headers: "WWW-Authenticate: Basic realm=registry\r\n");
+                }
+                else
+                {
+                    Assert.Equal("Basic dXNlcjpwYXNz", request.Header("Authorization"));
+                    await request.ReplyAsync(202, "/session");
+                }
+                return;
+            }
+            Assert.Equal("PATCH", request.Method);
+            Assert.Equal("Basic dXNlcjpwYXNz", request.Header("Authorization"));
+            Assert.Equal(blob, await request.ReadBodyAsync());
+            await request.ReplyAsync(307, upload.Url + "session");
+        }, timeout.Token);
+        var uploadTask = upload.ServeAsync(2, async request =>
+        {
+            Assert.Null(request.Header("Authorization"));
+            if (request.Method == "PATCH")
+            {
+                Assert.Equal(blob, await request.ReadBodyAsync());
+                await request.ReplyAsync(202, "/session?state=1");
+            }
+            else
+            {
+                Assert.Equal("PUT", request.Method);
+                Assert.StartsWith("/session?state=1&digest=", request.Target);
+                await request.ReplyAsync(201);
+            }
+        }, timeout.Token);
+        using var httpClient = new HttpClient(new SocketsHttpHandler { UseProxy = false });
+        var client = new Client(httpClient,
+            new SingleRegistryCredentialProvider(registry.Url.Authority, new Credential("user", "pass")));
+        var repository = new Repository(new RepositoryOptions
+        {
+            Client = client,
+            Reference = Reference.Parse(registry.Url.Authority + "/test"),
+            PlainHttp = true,
+            BlobUploadMode = BlobUploadMode.Chunked,
+            BlobUploadChunkSize = 4,
+        });
+        await repository.Blobs.PushAsync(Describe(blob), new MemoryStream(blob), timeout.Token);
+        await Task.WhenAll(registryTask, uploadTask);
+    }
+
     private static Descriptor Describe(byte[] blob) => new()
     {
         Digest = ComputeSha256(blob),

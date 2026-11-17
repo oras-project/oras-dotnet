@@ -412,6 +412,67 @@ public class BlobStoreChunkedUploadTest
         Assert.Equal(2, requests);
     }
 
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("not-a-size")]
+    [InlineData("2147483648")]
+    public async Task ChunkedUploadRejectsInvalidMinimumWithoutReadingContent(string minimum)
+    {
+        using var content = new MemoryStream([1]);
+        var requests = 0;
+        var store = CreateBlobStore((request, _) =>
+        {
+            requests++;
+            var response = Response(request, HttpStatusCode.Accepted, "/upload");
+            response.Headers.TryAddWithoutValidation("OCI-Chunk-Min-Length", minimum);
+            return response;
+        }, BlobUploadMode.Chunked, 4);
+        await Assert.ThrowsAsync<HttpIOException>(() => store.PushAsync(DescriptorFor([1]), content));
+        Assert.Equal(0, content.Position);
+        Assert.Equal(1, requests);
+    }
+
+    [Theory]
+    [InlineData(BlobUploadMode.Monolithic)]
+    [InlineData(BlobUploadMode.MonolithicWithChunkedFallback)]
+    public async Task SuccessfulMonolithicUploadIgnoresChunkMinimum(BlobUploadMode mode)
+    {
+        var methods = new List<HttpMethod>();
+        var store = CreateBlobStore((request, _) =>
+        {
+            methods.Add(request.Method);
+            if (request.Method == HttpMethod.Post)
+            {
+                var response = Response(request, HttpStatusCode.Accepted, "/upload");
+                response.Headers.TryAddWithoutValidation("OCI-Chunk-Min-Length", "not-a-size");
+                return response;
+            }
+            Assert.Equal(HttpMethod.Put, request.Method);
+            return Response(request, HttpStatusCode.Created);
+        }, mode, 4);
+        await store.PushAsync(DescriptorFor([1]), new MemoryStream([1]));
+        Assert.Equal([HttpMethod.Post, HttpMethod.Put], methods);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.RequestedRangeNotSatisfiable)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task RejectedChunkDoesNotFinalizeOrStartAnotherSession(HttpStatusCode status)
+    {
+        var methods = new List<HttpMethod>();
+        var store = CreateBlobStore((request, _) =>
+        {
+            methods.Add(request.Method);
+            return request.Method == HttpMethod.Post
+                ? Response(request, HttpStatusCode.Accepted, "/upload")
+                : Response(request, status);
+        }, BlobUploadMode.Chunked, 4);
+        var error = await Assert.ThrowsAsync<ResponseException>(() => store.PushAsync(DescriptorFor([1]), new MemoryStream([1])));
+        Assert.Equal(status, error.StatusCode);
+        Assert.Equal([HttpMethod.Post, HttpMethod.Patch], methods);
+    }
+
     private static BlobStore CreateBlobStore(
         Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> handler,
         BlobUploadMode mode,
