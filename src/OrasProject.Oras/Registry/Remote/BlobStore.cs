@@ -575,7 +575,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         {
             Query = $"{url.Query}&digest={HttpUtility.UrlEncode(descriptor.Digest)}"
         }.Uri);
-        req.Content = new StreamContent(new NonDisposingStream(content));
+        req.Content = new StreamContent(new UploadContentStream(content));
         req.Content.Headers.ContentLength = descriptor.Size;
 
         // the descriptor media type is ignored as in the API doc.
@@ -720,46 +720,4 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
 
     private sealed record UploadSession(Uri Url, int? MinimumChunkSize);
 
-    private sealed class NonDisposingStream(Stream inner) : Stream
-    {
-        // Auth retries rewind HttpContent to position zero. Make zero refer to the
-        // caller's original position rather than the beginning of the backing stream.
-        private readonly long _initialPosition = inner.CanSeek ? inner.Position : 0;
-
-        public override bool CanRead => inner.CanRead;
-        public override bool CanSeek => inner.CanSeek;
-        public override bool CanWrite => inner.CanWrite;
-        public override long Length => inner.Length - _initialPosition;
-        public override long Position
-        {
-            get => inner.Position - _initialPosition;
-            set => inner.Position = checked(value + _initialPosition);
-        }
-        public override void Flush() => inner.Flush();
-        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
-        public override long Seek(long offset, SeekOrigin origin) =>
-            inner.Seek(origin == SeekOrigin.Begin ? checked(offset + _initialPosition) : offset, origin) - _initialPosition;
-        public override void SetLength(long value) => inner.SetLength(checked(value + _initialPosition));
-        public override void Write(byte[] buffer, int offset, int count) => inner.Write(buffer, offset, count);
-        public override Task FlushAsync(CancellationToken cancellationToken) => inner.FlushAsync(cancellationToken);
-        public override ValueTask<int> ReadAsync(
-            Memory<byte> buffer,
-            CancellationToken cancellationToken = default) => inner.ReadAsync(buffer, cancellationToken);
-
-        public override Task<int> ReadAsync(
-            byte[] buffer,
-            int offset,
-            int count,
-            CancellationToken cancellationToken) => inner.ReadAsync(buffer, offset, count, cancellationToken);
-
-        public override ValueTask WriteAsync(
-            ReadOnlyMemory<byte> buffer,
-            CancellationToken cancellationToken = default) => inner.WriteAsync(buffer, cancellationToken);
-
-        public override Task WriteAsync(
-            byte[] buffer,
-            int offset,
-            int count,
-            CancellationToken cancellationToken) => inner.WriteAsync(buffer, offset, count, cancellationToken);
-    }
 }

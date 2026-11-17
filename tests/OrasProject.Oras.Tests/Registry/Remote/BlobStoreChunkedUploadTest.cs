@@ -551,6 +551,52 @@ public class BlobStoreChunkedUploadTest
         Assert.True(fetched);
     }
 
+    [Theory]
+    [InlineData("POST", new[] { "POST" })]
+    [InlineData("PATCH", new[] { "POST", "PATCH" })]
+    [InlineData("PUT", new[] { "POST", "PATCH", "PUT" })]
+    public async Task ChunkedPushStopsAtRejectedRequest(string rejectedMethod, string[] expectedSequence)
+    {
+        byte[] blob = [1, 2, 3];
+        var sequence = new List<string>();
+        var store = CreateBlobStore((request, _) =>
+        {
+            sequence.Add(request.Method.Method);
+            if (request.Method.Method == rejectedMethod)
+            {
+                return Response(request, HttpStatusCode.Forbidden, content: "{\"errors\":[{\"code\":\"DENIED\"}]}");
+            }
+            return request.Method == HttpMethod.Put
+                ? Response(request, HttpStatusCode.Created)
+                : Response(request, HttpStatusCode.Accepted, "/upload");
+        }, BlobUploadMode.Chunked, chunkSize: 4);
+
+        var error = await Assert.ThrowsAsync<ResponseException>(() =>
+            store.PushAsync(DescriptorFor(blob), new MemoryStream(blob)));
+
+        Assert.Equal(HttpStatusCode.Forbidden, error.StatusCode);
+        Assert.Equal(expectedSequence, sequence);
+    }
+
+    [Fact]
+    public async Task ChunkedPushRejectsNegativeDescriptorSizeBeforeReading()
+    {
+        using var content = new MemoryStream([1]);
+        var methods = new List<HttpMethod>();
+        var store = CreateBlobStore((request, _) =>
+        {
+            methods.Add(request.Method);
+            return Response(request, HttpStatusCode.Accepted, "/upload");
+        }, BlobUploadMode.Chunked, chunkSize: 4);
+        var descriptor = DescriptorFor([1]);
+        descriptor.Size = -1;
+
+        await Assert.ThrowsAsync<InvalidDescriptorSizeException>(() => store.PushAsync(descriptor, content));
+
+        Assert.Equal([HttpMethod.Post], methods);
+        Assert.Equal(0, content.Position);
+    }
+
     private static BlobStore CreateBlobStore(
         Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> handler,
         BlobUploadMode mode,
