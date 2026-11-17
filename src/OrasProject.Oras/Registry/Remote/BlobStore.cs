@@ -711,15 +711,24 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
 
     private sealed class NonDisposingStream(Stream inner) : Stream
     {
+        // Auth retries rewind HttpContent to position zero. Make zero refer to the
+        // caller's original position rather than the beginning of the backing stream.
+        private readonly long _initialPosition = inner.CanSeek ? inner.Position : 0;
+
         public override bool CanRead => inner.CanRead;
         public override bool CanSeek => inner.CanSeek;
         public override bool CanWrite => inner.CanWrite;
-        public override long Length => inner.Length;
-        public override long Position { get => inner.Position; set => inner.Position = value; }
+        public override long Length => inner.Length - _initialPosition;
+        public override long Position
+        {
+            get => inner.Position - _initialPosition;
+            set => inner.Position = checked(value + _initialPosition);
+        }
         public override void Flush() => inner.Flush();
         public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
-        public override long Seek(long offset, SeekOrigin origin) => inner.Seek(offset, origin);
-        public override void SetLength(long value) => inner.SetLength(value);
+        public override long Seek(long offset, SeekOrigin origin) =>
+            inner.Seek(origin == SeekOrigin.Begin ? checked(offset + _initialPosition) : offset, origin) - _initialPosition;
+        public override void SetLength(long value) => inner.SetLength(checked(value + _initialPosition));
         public override void Write(byte[] buffer, int offset, int count) => inner.Write(buffer, offset, count);
         public override Task FlushAsync(CancellationToken cancellationToken) => inner.FlushAsync(cancellationToken);
         public override ValueTask<int> ReadAsync(

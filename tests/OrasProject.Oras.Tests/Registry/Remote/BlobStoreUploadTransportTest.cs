@@ -18,6 +18,7 @@ using System.Web;
 using OrasProject.Oras.Oci;
 using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
+using OrasProject.Oras.Registry.Remote.Auth;
 using Xunit;
 using static OrasProject.Oras.Content.Digest;
 
@@ -125,6 +126,59 @@ public class BlobStoreUploadTransportTest
         Assert.True(source.CanRead);
     }
 
+    [Theory]
+    [InlineData(BlobUploadMode.Monolithic)]
+    [InlineData(BlobUploadMode.MonolithicWithChunkedFallback)]
+    public async Task AuthenticationReplayPreservesInitialStreamPosition(BlobUploadMode mode)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await using var registry = new UploadServer();
+        // Above Auth.Client's buffering limit so the retry must rewind the source stream.
+        var blob = new byte[5 * 1024 * 1024];
+        new Random(42).NextBytes(blob);
+        var descriptor = Describe(blob);
+        var puts = 0;
+        var serving = registry.ServeAsync(3, async request =>
+        {
+            if (request.Method == "POST")
+            {
+                await request.ReplyAsync(202, "/session");
+                return;
+            }
+            Assert.Equal("PUT", request.Method);
+            Assert.Equal(blob, await request.ReadBodyAsync());
+            puts++;
+            if (puts == 1)
+            {
+                Assert.Null(request.Header("Authorization"));
+                await request.ReplyAsync(401, headers: "WWW-Authenticate: Basic realm=registry\r\n");
+            }
+            else
+            {
+                Assert.Equal("Basic dXNlcjpwYXNz", request.Header("Authorization"));
+                await request.ReplyAsync(201);
+            }
+        }, timeout.Token);
+        using var httpClient = new HttpClient(new SocketsHttpHandler { UseProxy = false });
+        var authClient = new Client(httpClient,
+            new SingleRegistryCredentialProvider(registry.Url.Authority, new Credential("user", "pass")));
+        var store = new BlobStore(new Repository(new RepositoryOptions
+        {
+            Client = authClient,
+            Reference = Reference.Parse(registry.Url.Authority + "/test"),
+            PlainHttp = true,
+            BlobUploadMode = mode,
+        }));
+        using var source = new MemoryStream();
+        source.Write(new byte[17]);
+        source.Write(blob);
+        source.Position = 17;
+        await store.PushAsync(descriptor, source, timeout.Token);
+        await serving;
+        Assert.Equal(2, puts);
+        Assert.True(source.CanRead);
+    }
+
     private static Descriptor Describe(byte[] blob) => new()
     {
         Digest = ComputeSha256(blob),
@@ -186,6 +240,10 @@ public class BlobStoreUploadTransportTest
         public string Method { get; } = headers.Split(' ')[0];
         public string Target { get; } = headers.Split(' ')[1];
 
+        public string? Header(string name) => headers.Split("\r\n")
+            .FirstOrDefault(line => line.StartsWith(name + ":", StringComparison.OrdinalIgnoreCase))?
+            .Split(':', 2)[1].Trim();
+
         public async Task<byte[]> ReadBodyAsync()
         {
             var length = headers.Split("\r\n")
@@ -195,14 +253,14 @@ public class BlobStoreUploadTransportTest
             return body;
         }
 
-        public async Task ReplyAsync(int status, string? location = null)
+        public async Task ReplyAsync(int status, string? location = null, string? headers = null)
         {
             var response = $"HTTP/1.1 {status} Test\r\nContent-Length: 0\r\nConnection: close\r\n";
             if (location is not null)
             {
                 response += $"Location: {location}\r\n";
             }
-            await connection.GetStream().WriteAsync(Encoding.ASCII.GetBytes(response + "\r\n"), token);
+            await connection.GetStream().WriteAsync(Encoding.ASCII.GetBytes(response + headers + "\r\n"), token);
         }
 
         public void ResetConnection() => connection.Client.LingerState = new LingerOption(true, 0);
