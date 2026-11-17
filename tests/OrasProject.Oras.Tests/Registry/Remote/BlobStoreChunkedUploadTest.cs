@@ -597,6 +597,52 @@ public class BlobStoreChunkedUploadTest
         Assert.Equal(0, content.Position);
     }
 
+    [Theory]
+    [InlineData("POST")]
+    [InlineData("PATCH")]
+    public async Task SecureUploadRejectsLocationDowngradeBeforeFollowingIt(string downgradeMethod)
+    {
+        var methods = new List<string>();
+        var store = new BlobStore(new Repository(new RepositoryOptions
+        {
+            Reference = Reference.Parse("registry.example.com/test"),
+            BlobUploadMode = BlobUploadMode.Chunked,
+            Client = CustomClient((request, _) =>
+            {
+                methods.Add(request.Method.Method);
+                Assert.Equal("https", request.RequestUri!.Scheme);
+                return Response(request, HttpStatusCode.Accepted,
+                    request.Method.Method == downgradeMethod ? "http://registry.example.com/upload" : "/upload");
+            }),
+        }));
+        using var content = new MemoryStream([1]);
+        var error = await Assert.ThrowsAsync<HttpIOException>(() => store.PushAsync(DescriptorFor([1]), content));
+        Assert.Contains("cannot downgrade HTTPS", error.Message);
+        Assert.Equal(downgradeMethod == "POST" ? new[] { "POST" } : ["POST", "PATCH"], methods);
+    }
+
+    [Fact]
+    public async Task UploadAcceptsHttpLocationAfterTransportHasAlreadyFallenBackToHttp()
+    {
+        var requests = 0;
+        var store = new BlobStore(new Repository(new RepositoryOptions
+        {
+            Reference = Reference.Parse("registry.example.com/test"),
+            BlobUploadMode = BlobUploadMode.Chunked,
+            Client = CustomClient((request, _) =>
+            {
+                requests++;
+                // An explicitly configured insecure-registry transport rewrites the request.
+                request.RequestUri = new UriBuilder(request.RequestUri!) { Scheme = "http" }.Uri;
+                return Response(request, request.Method == HttpMethod.Put ? HttpStatusCode.Created : HttpStatusCode.Accepted,
+                    "http://registry.example.com/upload");
+            }),
+        }));
+        using var content = new MemoryStream([1]);
+        await store.PushAsync(DescriptorFor([1]), content);
+        Assert.Equal(3, requests);
+    }
+
     private static BlobStore CreateBlobStore(
         Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> handler,
         BlobUploadMode mode,

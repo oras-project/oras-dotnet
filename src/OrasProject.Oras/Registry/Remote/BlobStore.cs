@@ -193,7 +193,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
     /// - https://github.com/opencontainers/distribution-spec/blob/v1.0.1/spec.md#pushing-a-blob-monolithically
     /// </summary>
     /// <param name="expected"></param>
-    /// <param name="content"></param>
+    /// <param name="content">The upload stream. The caller retains ownership and must dispose it.</param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     public async Task PushAsync(Descriptor expected, Stream content, CancellationToken cancellationToken = default)
@@ -454,9 +454,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
                 case HttpStatusCode.Accepted:
                     {
                         // 202, mounting failed. upload session has begun
-                        var location = response.Headers.Location ??
-                                        throw new HttpRequestException("missing location header");
-                        url = location.IsAbsoluteUri ? location : new Uri(response.RequestMessage?.RequestUri ?? url, location);
+                        url = ResolveUploadLocation(response, url);
                         var minimumChunkSize = Repository.Options.BlobUploadMode == BlobUploadMode.Chunked
                             ? ParseMinimumChunkSize(response)
                             : null;
@@ -560,8 +558,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
-        var sessionUrl = location.IsAbsoluteUri ? location : new Uri(response.RequestMessage?.RequestUri ?? url, location);
+        var sessionUrl = ResolveUploadLocation(response, url);
         return new UploadSession(sessionUrl, chunked ? ParseMinimumChunkSize(response) : null);
     }
 
@@ -640,8 +637,7 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
 
             if (response.StatusCode is HttpStatusCode.Accepted or HttpStatusCode.Created)
             {
-                var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
-                session = session with { Url = location.IsAbsoluteUri ? location : new Uri(response.RequestMessage?.RequestUri ?? session.Url, location) };
+                session = session with { Url = ResolveUploadLocation(response, session.Url) };
             }
             else
             {
@@ -679,6 +675,22 @@ public class BlobStore(Repository repository) : IBlobStore, IBlobLocationProvide
         {
             throw await response.ParseErrorResponseAsync(cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private Uri ResolveUploadLocation(HttpResponseMessage response, Uri sessionUrl)
+    {
+        var location = response.Headers.Location ?? throw new HttpRequestException("missing location header");
+        var effectiveUrl = response.RequestMessage?.RequestUri ?? sessionUrl;
+        var nextUrl = location.IsAbsoluteUri ? location : new Uri(effectiveUrl, location);
+        var unsupportedScheme = nextUrl.Scheme != Uri.UriSchemeHttps && nextUrl.Scheme != Uri.UriSchemeHttp;
+        var insecureDowngrade = nextUrl.Scheme == Uri.UriSchemeHttp && effectiveUrl.Scheme == Uri.UriSchemeHttps &&
+            !Repository.Options.PlainHttp;
+        if (unsupportedScheme || insecureDowngrade)
+        {
+            throw new HttpIOException(HttpRequestError.InvalidResponse,
+                $"{effectiveUrl}: invalid upload location {nextUrl}; upload locations must use HTTP(S) and cannot downgrade HTTPS unless PlainHttp is enabled");
+        }
+        return nextUrl;
     }
 
     private static int? ParseMinimumChunkSize(HttpResponseMessage response)
