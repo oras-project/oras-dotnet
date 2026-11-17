@@ -291,6 +291,34 @@ public class BlobStoreChunkedUploadTest
         }
     }
 
+    [Theory]
+    [InlineData("2147483647")]
+    [InlineData("5242881")]
+    public async Task PushAsyncRejectsOversizedRegistryMinimumBeforeReading(string minimum)
+    {
+        var descriptor = new Descriptor
+        {
+            Digest = ComputeSha256([]),
+            MediaType = "application/octet-stream",
+            Size = (long)int.MaxValue + 1,
+        };
+        using var content = new MemoryStream([1]);
+        var requests = 0;
+        var store = CreateBlobStore((request, _) =>
+        {
+            requests++;
+            var response = Response(request, HttpStatusCode.Accepted, "/upload");
+            response.Headers.Add("OCI-Chunk-Min-Length", minimum);
+            return response;
+        }, BlobUploadMode.Chunked, chunkSize: 4);
+
+        var error = await Assert.ThrowsAsync<HttpIOException>(() => store.PushAsync(descriptor, content));
+        Assert.Contains("OCI-Chunk-Min-Length " + minimum, error.Message);
+        Assert.Contains("http://localhost:5000/upload", error.Message);
+        Assert.Equal(0, content.Position);
+        Assert.Equal(1, requests);
+    }
+
     private static BlobStore CreateBlobStore(
         Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> handler,
         BlobUploadMode mode,
