@@ -249,6 +249,13 @@ public class Client : IClient
     public bool ForceAttemptOAuth2 { get; set; }
 
     /// <summary>
+    /// When enabled, retry a rejected distribution-token GET with an OAuth2 password-grant
+    /// POST for username/password credentials. Transport failures and redirects do not trigger
+    /// this fallback. Disabled by default.
+    /// </summary>
+    public bool AttemptOAuth2Fallback { get; init; }
+
+    /// <summary>
     /// defaultClientID specifies the default client ID used in OAuth2.
     /// </summary>
     private const string _defaultClientId = "oras-dotnet";
@@ -406,7 +413,8 @@ public class Client : IClient
     /// used: if credential is empty or refreshToken is not set and
     /// OAuth2 authentication is not forced, the method would fetch
     /// anonymous token with a Http Get request otherwise, it would
-    /// fetch OAuth2 token with a Http Post request.
+    /// fetch OAuth2 token with a Http Post request. An unsuccessful GET may be retried with a
+    /// password-grant POST when <see cref="AttemptOAuth2Fallback"/> is enabled.
     /// </summary>
     /// <param name="registry">The registry host (e.g., "docker.io").</param>
     /// <param name="realm">The authentication realm to use.</param>
@@ -470,13 +478,24 @@ public class Client : IClient
         if (credential.IsEmpty() ||
             (string.IsNullOrWhiteSpace(credential.RefreshToken) && !ForceAttemptOAuth2))
         {
-            return await FetchDistributionTokenAsync(
-                realm,
-                service,
-                scopes,
-                credential.Username,
-                credential.Password,
-                cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await FetchDistributionTokenAsync(
+                    realm,
+                    service,
+                    scopes,
+                    credential.Username,
+                    credential.Password,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (ResponseException error) when (
+                AttemptOAuth2Fallback && error.StatusCode is not null && (int)error.StatusCode >= 400 &&
+                !string.IsNullOrWhiteSpace(credential.Username) &&
+                !string.IsNullOrWhiteSpace(credential.Password) &&
+                !cancellationToken.IsCancellationRequested)
+            {
+                // Retry only a server rejection, never a transport or realm-policy failure.
+            }
         }
 
         return await FetchOauth2TokenAsync(
